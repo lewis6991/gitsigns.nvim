@@ -144,8 +144,7 @@ local get_staged = awrap(function(root, path, callback)
       table.insert(content, line)
     end,
     on_stderr = function(_, line)
-      dprint('ERR: '..path)
-      dprint('ERR: '..line)
+      dprint('ERR(get_staged): '..line)
       valid = false
     end,
     on_exit = function()
@@ -168,6 +167,9 @@ local run_diff = awrap(function(staged, current, callback)
           table.insert(results[#results].lines, line)
         end
       end
+    end,
+    on_stderr = function(_, line)
+      dprint('ERR(run_diff): '..line)
     end,
     on_exit = function()
       callback(results)
@@ -225,13 +227,36 @@ local get_repo_root = awrap(function(file, callback)
         root = line
       end
     end,
+    on_stderr = function(_, line)
+      dprint('ERR(get_repo_root): '..line)
+    end,
     on_exit = function()
       callback(root)
     end
   }:start()
 end)
 
-local function update2(bufnr)
+--- Throttles a function on the leading edge.
+---
+--@param fn (function) Function to throttle
+--@param timeout (number) Timeout in ms
+--@returns (function) throttled function
+local function throttle_leading(ms, fn)
+  local running = false
+  return function(...)
+    if not running then
+      local timer = vim.loop.new_timer()
+      timer:start(ms, 0, function()
+        running = false
+        timer:stop()
+      end)
+      running = true
+      fn(...)
+    end
+  end
+end
+
+local function update0(bufnr)
   async(function()
     await(vim.schedule)
     bufnr = bufnr or current_buf()
@@ -262,9 +287,9 @@ local function update2(bufnr)
     local diffs = await(run_diff(staged, current))
 
     cache[bufnr] = {
-      file    = file,
-      git_dir = root,
-      diffs   = diffs,
+      file  = file,
+      root  = root,
+      diffs = diffs,
     }
 
     local status, signs = process_diffs(diffs)
@@ -278,28 +303,28 @@ local function update2(bufnr)
 
     api.nvim_buf_set_var(bufnr, 'git_signs_status_dict', status)
     api.nvim_buf_set_var(bufnr, 'git_signs_status', mk_status_txt(status))
-
-    -- print("UPDATE: " .. count)
-    -- count = count + 1
   end)()
 end
 
-local function update(bufnr)
-  local status, err = pcall(update2, bufnr)
+local update = throttle_leading(50, function(bufnr)
+  dprint("UPDATE: " .. count)
+  count = count + 1
+  local status, err = pcall(update0, bufnr)
   if not status then
     dprint(err)
     dprint(debug.traceback())
   end
-end
+end)
 
-local w = vim.loop.new_fs_poll()
 
-local function watch_file(fname)
+local function watch_file(fname, poller)
+  local w = vim.loop.new_fs_poll()
   w:start(fname, config.watch_index.interval,
     vim.schedule_wrap(function(err, prev, curr)
       update()
     end)
   )
+  return w
 end
 
 local function watch_index(file)
@@ -318,7 +343,7 @@ local stage_lines = awrap(function(root, lines, callback)
     cwd = root,
     writer = lines,
     on_stderr = function(_, line)
-      print(line)
+      print('ERR(stage_lines): '..line)
     end,
     on_exit = callback
   }:start()
@@ -349,7 +374,7 @@ local function stage_hunk()
   local head = string.format('@@ -%s,%s +%s,%s @@', ps, pc, ns, nc)
 
   async(function()
-    local relpath = relative(bcache.file, bcache.git_dir)
+    local relpath = relative(bcache.file, bcache.root)
 
     local lines = {
       string.format('diff --git a/%s b/%s', relpath, relpath),
@@ -361,7 +386,7 @@ local function stage_hunk()
     }
 
     await(vim.schedule)
-    await(stage_lines(bcache.git_dir, lines))
+    await(stage_lines(bcache.root, lines))
     update(bufnr)
   end)()
 end
