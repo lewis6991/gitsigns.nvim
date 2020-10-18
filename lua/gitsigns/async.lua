@@ -59,22 +59,14 @@ end
 
 
 -- sugar over coroutine
--- @param defer : Function to defer
--- @param ...   : Arguments to pass to defer
-local await = function(defer, ...)
+local await = function(defer)
   assert(type(defer) == "function", "type error :: expected func")
-  return co.yield(awrap(defer)(...))
+  return co.yield(defer)
 end
-
 
 local await_all = function(defer)
   assert(type(defer) == "table", "type error :: expected table")
   return co.yield(join(defer))
-end
-
--- Goto main event loop
-local await_main = function()
-  return await(vim.schedule)
 end
 
 return {
@@ -82,5 +74,4 @@ return {
   await      = await,
   await_all  = await_all,
   awrap      = awrap,
-  await_main = await_main
 }

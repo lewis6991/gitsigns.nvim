@@ -1,8 +1,10 @@
 local Job = require('plenary.job')
 local CM = require('plenary.context_manager')
-local FN = require('plenary.functional')
 
-local dprint = function(msg)
+local AS = require('gitsigns/async')
+local default_config = require('gitsigns/defaults')
+
+local function dprint(msg)
   vim.schedule(function()
     print(msg)
   end)
@@ -11,17 +13,17 @@ end
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
-local AS = require('gitsigns/async')
 
 local async = AS.async
 local await = AS.await
-local await_main = AS.await_main
+local awrap = AS.awrap
 
-local map = FN.map
 local with = CM.with
 local open = CM.open
 
 local count = 0
+
+local config = {}
 
 local sign_map = {
   add          = "GitSignsAdd",
@@ -31,12 +33,20 @@ local sign_map = {
   changedelete = "GitSignsChangeDelete",
 }
 
-local parse_diff_line = function(line)
+local function dirname(file)
+    return file:match("(.*/)")
+end
+
+local function relative(file, root)
+  return string.sub(file, #root + 2)
+end
+
+local function parse_diff_line(line)
   local diffkey = vim.trim(vim.split(line, '@@', true)[2])
 
   -- diffKey: "-xx,n +yy"
   -- pre: {xx, n}, now: {yy}
-  local pre, now = unpack(map(function(s)
+  local pre, now = unpack(vim.tbl_map(function(s)
     return vim.split(string.sub(s, 2), ',')
   end, vim.split(diffkey, ' ')))
 
@@ -67,11 +77,7 @@ local parse_diff_line = function(line)
   return diff
 end
 
-local add_sign = function(bufnr, type, lnum)
-  vim.fn.sign_place(0, 'gitsigns_ns', sign_map[type], bufnr, { lnum = lnum, priority = 100 })
-end
-
-local write_to_file = function(file, content)
+local function write_to_file(file, content)
     with(open(file, 'w'), function(writer)
       for _, l in pairs(content) do
         writer:write(l..'\n')
@@ -79,7 +85,7 @@ local write_to_file = function(file, content)
     end)
 end
 
-local update_status = function(status, diff)
+local function update_status(status, diff)
     if diff.type == 'add' then
       status.added = status.added + diff.added.count
     elseif diff.type == 'delete' then
@@ -93,11 +99,11 @@ local update_status = function(status, diff)
     end
 end
 
-local process_diffs = function(diffs)
+local function process_diffs(diffs)
   local status = { added = 0, changed = 0, removed = 0 }
 
   local signs = {}
-  local add_sign2 = function(type, lnum)
+  local add_sign = function(type, lnum)
     table.insert(signs, {type = type, lnum = lnum})
   end
 
@@ -107,7 +113,7 @@ local process_diffs = function(diffs)
     for i = diff.start, diff.dend do
       local topdelete = diff.type == 'delete' and i == 0
       local changedelete = diff.type == 'change' and diff.removed.count > diff.added.count and i == diff.dend
-      add_sign2(
+      add_sign(
         topdelete and 'topdelete' or changedelete and 'changedelete' or diff.type,
         topdelete and 1 or i
       )
@@ -116,7 +122,7 @@ local process_diffs = function(diffs)
       local add, remove = diff.added.count, diff.removed.count
       if add > remove then
         for i = 1, add - remove do
-          add_sign2('add', diff.dend + i)
+          add_sign('add', diff.dend + i)
         end
       end
     end
@@ -126,14 +132,14 @@ local process_diffs = function(diffs)
 end
 
 -- to be used with await
-local get_staged = function(path, callback)
-  -- local staged = os.tmpname()
-  local staged = '/tmp/staged'
+local get_staged = awrap(function(root, path, callback)
+  local relpath = relative(path, root)
   local content = {}
   local valid = true
   Job:new {
     command = 'git',
-    args = {'--no-pager', 'show', ':'..path},
+    args = {'--no-pager', 'show', ':'..relpath},
+    cwd = root,
     on_stdout = function(_, line, _)
       table.insert(content, line)
     end,
@@ -143,16 +149,13 @@ local get_staged = function(path, callback)
       valid = false
     end,
     on_exit = function()
-      if valid then
-        write_to_file(staged, content)
-      end
-      callback(valid, staged)
+      callback(valid, content)
     end
   }:start()
-end
+end)
 
 -- to be used with await
-local run_diff = function(staged, current, callback)
+local run_diff = awrap(function(staged, current, callback)
   local results = {}
   Job:new {
     command = 'git',
@@ -170,9 +173,9 @@ local run_diff = function(staged, current, callback)
       callback(results)
     end
   }:start()
-end
+end)
 
-local mk_status_txt = function(status)
+local function mk_status_txt(status)
   local added, changed, removed = status.added, status.changed, status.removed
   local status_txt = {}
   if added   > 0 then table.insert(status_txt, '+'..added  ) end
@@ -183,7 +186,7 @@ end
 
 local cache = {}
 
-local find_diff = function(line, diffs)
+local function find_diff(line, diffs)
   for _, diff in pairs(diffs) do
     if line == 1 and diff.start == 0 and diff.dend == 0 then
       return diff
@@ -200,17 +203,20 @@ local find_diff = function(line, diffs)
   end
 end
 
-local get_hunk = function()
-  local bufnr = current_buf()
+local function get_hunk(bufnr, diffs)
+  bufnr = bufnr or current_buf()
+  diffs = diffs or cache[bufnr].diffs
+
   local line = api.nvim_win_get_cursor(0)[1]
-  return find_diff(line, cache[bufnr])
+  return find_diff(line, diffs)
 end
 
-local get_repo_root = function(callback)
+local get_repo_root = awrap(function(file, callback)
   local root
   Job:new {
     command = 'git',
     args = {'rev-parse', '--show-toplevel'},
+    cwd = dirname(file),
     on_stderr = function(_, line)
       print(line)
     end,
@@ -223,53 +229,62 @@ local get_repo_root = function(callback)
       callback(root)
     end
   }:start()
-end
+end)
 
-
-local update2 = function(bufnr)
+local function update2(bufnr)
   async(function()
-    await_main()
+    await(vim.schedule)
     bufnr = bufnr or current_buf()
+
     local content = api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    local file = api.nvim_buf_get_name(bufnr)
-
-    local root = await(get_repo_root)
-    local relpath = string.sub(file, #root + 2)
-
-    -- local relpath = file
-
     -- local current = os.tmpname()
     local current = '/tmp/current'
-
     write_to_file(current, content)
 
-    local valid, staged = await(get_staged, relpath)
-    dprint(staged)
-    -- if not valid then
-    --   return
-    -- end
-    local diffs = await(run_diff, staged, current)
+    local file = api.nvim_buf_get_name(bufnr)
+    local root = await(get_repo_root(file))
+    if not root then
+      return
+    end
 
-    cache[bufnr] = diffs
+    await(vim.schedule)
+
+    local valid, staged_txt = await(get_staged(root, file))
+
+    if not valid then
+      return
+    end
+
+    -- local staged = os.tmpname()
+    local staged = '/tmp/staged'
+    write_to_file(staged, staged_txt)
+
+    local diffs = await(run_diff(staged, current))
+
+    cache[bufnr] = {
+      file    = file,
+      git_dir = root,
+      diffs   = diffs,
+    }
 
     local status, signs = process_diffs(diffs)
-    await_main()
+
+    await(vim.schedule)
 
     vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr})
     for _, s in pairs(signs) do
-      add_sign(bufnr, s.type, s.lnum)
+      vim.fn.sign_place(0, 'gitsigns_ns', sign_map[s.type], bufnr, { lnum = s.lnum, priority = 100 })
     end
 
     api.nvim_buf_set_var(bufnr, 'git_signs_status_dict', status)
     api.nvim_buf_set_var(bufnr, 'git_signs_status', mk_status_txt(status))
 
-    print("UPDATE: " .. count)
-    count = count + 1
-    -- print(vim.inspect(diffs))
+    -- print("UPDATE: " .. count)
+    -- count = count + 1
   end)()
 end
 
-local update = function(bufnr)
+local function update(bufnr)
   local status, err = pcall(update2, bufnr)
   if not status then
     dprint(err)
@@ -279,24 +294,24 @@ end
 
 local w = vim.loop.new_fs_poll()
 
-local index_poll_interval
-
-function watch_file(fname)
-  w:start(fname, index_poll_interval, vim.schedule_wrap(function(err, prev, curr)
-    update()
-  end))
+local function watch_file(fname)
+  w:start(fname, config.watch_index.interval,
+    vim.schedule_wrap(function(err, prev, curr)
+      update()
+    end)
+  )
 end
 
-
-local watch_index = function()
+local function watch_index(file)
   async(function()
-    local root = await(get_repo_root)
-    local file = root..'/.git/index'
-    watch_file(file)
+    local root = await(get_repo_root(file))
+    if root then
+      watch_file(root..'/.git/index')
+    end
   end)()
 end
 
-local stage_lines = function(root, lines, callback)
+local stage_lines = awrap(function(root, lines, callback)
   Job:new {
     command = 'git',
     args = {'apply', '--cached', '--unidiff-zero', '-'},
@@ -307,10 +322,14 @@ local stage_lines = function(root, lines, callback)
     end,
     on_exit = callback
   }:start()
-end
+end)
 
-local stage_hunk = function()
-  local hunk = get_hunk()
+local function stage_hunk()
+  local bufnr = current_buf()
+
+  local bcache = cache[bufnr]
+
+  local hunk = get_hunk(bufnr, bcache.diffs)
   if not hunk then
     return
   end
@@ -329,13 +348,8 @@ local stage_hunk = function()
 
   local head = string.format('@@ -%s,%s +%s,%s @@', ps, pc, ns, nc)
 
-  local bufnr = current_buf()
-  local file = api.nvim_buf_get_name(bufnr)
-
   async(function()
-    local root = await(get_repo_root)
-
-    local relpath = string.sub(file, #root + 2)
+    local relpath = relative(bcache.file, bcache.git_dir)
 
     local lines = {
       string.format('diff --git a/%s b/%s', relpath, relpath),
@@ -346,18 +360,15 @@ local stage_hunk = function()
       unpack(hunk.lines)
     }
 
-    await_main()
-    await(stage_lines, root, lines)
-    dprint('D1: '..bufnr)
+    await(vim.schedule)
+    await(stage_lines(bcache.git_dir, lines))
     update(bufnr)
-
   end)()
 end
 
-local nav_hunk = function(forwards)
-  local bufnr = current_buf()
+local function nav_hunk(forwards)
   local line = api.nvim_win_get_cursor(0)[1]
-  local diffs = cache[bufnr]
+  local diffs = cache[current_buf()].diffs
   local row
   if forwards then
     for i = 1, #diffs do
@@ -385,46 +396,55 @@ local nav_hunk = function(forwards)
   end
 end
 
-local next_hunk = function() nav_hunk(true)  end
-local prev_hunk = function() nav_hunk(false) end
+local function next_hunk() nav_hunk(true)  end
+local function prev_hunk() nav_hunk(false) end
 
-local keymap = function(mode, key, result)
+local function keymap(mode, key, result)
   api.nvim_buf_set_keymap(0, mode, key, result, {noremap = true, silent = true})
 end
 
-local default_config = {
-  signs = {
-    add          = {hl = 'GitGutterAdd'   , text = '│'},
-    change       = {hl = 'GitGutterChange', text = '│'},
-    delete       = {hl = 'GitGutterDelete', text = '_'},
-    topdelete    = {hl = 'GitGutterDelete', text = 'X'},
-    changedelete = {hl = 'GitGutterChange', text = '~'},
-  },
-  keymaps = {
-    [']c']         = '<cmd>lua require"gitsigns".next_hunk()<CR>',
-    ['[c']         = '<cmd>lua require"gitsigns".prev_hunk()<CR>',
-    ['<leader>hs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
-    ['<leader>gh'] = '<cmd>lua require"gitsigns".get_hunk()<CR>'
-  },
-  watch_index = {
-    enabled = true,
-    interval = 2000
-  }
-}
+local function attach()
+  local cbuf = current_buf()
 
+  if config.watch_index.enabled then
+    local file = api.nvim_buf_get_name(cbuf)
+    watch_index(file)
+  else
+    vim.cmd('autocmd CursorHold * lua require"gitsigns".update()')
+  end
 
-local attach = function()
-  update()
-  api.nvim_buf_attach(0, false, {
-    on_lines = function(event, buf, ct, first, last, lastu, bc, dcp, dcu)
-      if event == 'lines' then
-        local cbuf = current_buf()
-        if cbuf == buf then
-          update(buf)
-        end
-      end
+  -- Initial update
+  update(cbuf)
+
+  api.nvim_buf_attach(cbuf, false, {
+    on_lines = function(_, buf, ct, first, last, lastu, bc, dcp, dcu)
+      update(buf)
+    end,
+    on_detach = function(_, buf)
+      cache[buf] = nil
+      dprint("Detached from "..buf)
     end
   })
+end
+
+
+local function setup(cfg)
+  config = vim.tbl_deep_extend("keep", cfg or {}, default_config)
+
+  -- Define signs
+  for t, sign_name in pairs(sign_map) do
+    vim.fn.sign_define(sign_map[t], {
+      texthl = config.signs[t].hl,
+      text   = config.signs[t].text
+    })
+  end
+
+  -- Setup keymaps
+  for key, cmd in pairs(config.keymaps) do
+    keymap('n', key, cmd)
+  end
+
+  vim.cmd('autocmd BufRead * lua require"gitsigns".attach()')
 end
 
 return {
@@ -434,31 +454,5 @@ return {
   next_hunk  = next_hunk,
   prev_hunk  = prev_hunk,
   attach     = attach,
-  detach     = detach,
-
-  setup = function(config)
-    config = vim.tbl_extend("keep", config or {}, default_config)
-
-    for t, sign_name in pairs(sign_map) do
-      vim.fn.sign_define(sign_map[t], {
-        texthl = config.signs[t].hl,
-        text   = config.signs[t].text
-      })
-    end
-
-    for key, cmd in pairs(config.keymaps) do
-      keymap('n', key, cmd)
-    end
-
-    index_poll_interval = config.watch_index.interval
-
-    vim.cmd('autocmd BufRead * lua require"gitsigns".attach()')
-
-    if config.watch_index.enabled then
-      watch_index()
-    else
-      vim.cmd('autocmd CursorHold   * lua require"gitsigns".update()')
-    end
-
-  end
+  setup      = setup,
 }
