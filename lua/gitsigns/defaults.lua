@@ -14,6 +14,6 @@ return {
   },
   watch_index = {
     enabled = true,
-    interval = 2000
+    interval = 1000
   }
 }
