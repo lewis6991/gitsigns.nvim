@@ -135,7 +135,8 @@ end
 local get_staged = awrap(function(root, path, callback)
   local relpath = relative(path, root)
   local content = {}
-  local valid = true
+  local status = true
+  local err = {}
   Job:new {
     command = 'git',
     args = {'--no-pager', 'show', ':'..relpath},
@@ -144,11 +145,15 @@ local get_staged = awrap(function(root, path, callback)
       table.insert(content, line)
     end,
     on_stderr = function(_, line)
-      dprint('ERR(get_staged): '..line)
-      valid = false
+      status = false
+      table.insert(err, line)
     end,
     on_exit = function()
-      callback(valid, content)
+      if not status then
+        local s = table.concat(err, '\n')
+        error('Cannot get staged file. Command stderr:\n\n'..s)
+      end
+      callback(content)
     end
   }:start()
 end)
@@ -257,14 +262,8 @@ local function throttle_leading(ms, fn)
 end
 
 local function update0(bufnr)
-  async(function()
-    await(vim.schedule)
+  return async(function()
     bufnr = bufnr or current_buf()
-
-    local content = api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    -- local current = os.tmpname()
-    local current = '/tmp/current'
-    write_to_file(current, content)
 
     local file = api.nvim_buf_get_name(bufnr)
     local root = await(get_repo_root(file))
@@ -273,18 +272,19 @@ local function update0(bufnr)
     end
 
     await(vim.schedule)
+    local content = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+    local current = os.tmpname()
+    write_to_file(current, content)
 
-    local valid, staged_txt = await(get_staged(root, file))
+    local staged_txt = await(get_staged(root, file))
 
-    if not valid then
-      return
-    end
-
-    -- local staged = os.tmpname()
-    local staged = '/tmp/staged'
+    local staged = os.tmpname()
     write_to_file(staged, staged_txt)
 
     local diffs = await(run_diff(staged, current))
+
+    os.remove(staged)
+    os.remove(current)
 
     cache[bufnr] = {
       file  = file,
@@ -298,7 +298,9 @@ local function update0(bufnr)
 
     vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr})
     for _, s in pairs(signs) do
-      vim.fn.sign_place(0, 'gitsigns_ns', sign_map[s.type], bufnr, { lnum = s.lnum, priority = 100 })
+      vim.fn.sign_place(s.lnum, 'gitsigns_ns', sign_map[s.type], bufnr, {
+        lnum = s.lnum, priority = 100
+      })
     end
 
     api.nvim_buf_set_var(bufnr, 'git_signs_status_dict', status)
@@ -309,11 +311,12 @@ end
 local update = throttle_leading(50, function(bufnr)
   dprint("UPDATE: " .. count)
   count = count + 1
-  local status, err = pcall(update0, bufnr)
-  if not status then
-    dprint(err)
-    dprint(debug.traceback())
-  end
+  -- local status, err = pcall(update0, bufnr)
+  -- if not status then
+  --   dprint(err)
+  --   dprint(debug.traceback())
+  -- end
+  update0(bufnr)
 end)
 
 
@@ -328,7 +331,7 @@ local function watch_file(fname, poller)
 end
 
 local function watch_index(file)
-  async(function()
+  return async(function()
     local root = await(get_repo_root(file))
     if root then
       watch_file(root..'/.git/index')
@@ -337,59 +340,73 @@ local function watch_index(file)
 end
 
 local stage_lines = awrap(function(root, lines, callback)
+  local status = true
+  local err = {}
   Job:new {
     command = 'git',
     args = {'apply', '--cached', '--unidiff-zero', '-'},
     cwd = root,
     writer = lines,
     on_stderr = function(_, line)
-      print('ERR(stage_lines): '..line)
+      status = false
+      table.insert(err, line)
     end,
-    on_exit = callback
+    on_exit = function()
+      if not status then
+        local s = table.concat(err, '\n')
+        error('Cannot stage lines. Command stderr:\n\n'..s)
+      end
+      callback()
+    end
   }:start()
 end)
 
-local function stage_hunk()
+local function create_patch(relpath, hunk)
+  local type, added, removed = hunk.type, hunk.added, hunk.removed
+
+  local ps, pc, ns, nc = unpack(({
+    add    = {removed.start + 1, 0            , removed.start + 1, added.count},
+    delete = {removed.start    , removed.count, removed.start    , 0          },
+    change = {removed.start    , removed.count, removed.start    , added.count}
+  })[type])
+
+  return {
+    string.format('diff --git a/%s b/%s', relpath, relpath),
+    'index 000000..000000 100644',
+    '--- a/'..relpath,
+    '+++ b/'..relpath,
+    string.format('@@ -%s,%s +%s,%s @@', ps, pc, ns, nc),
+    unpack(hunk.lines)
+  }
+end
+
+local stage_hunk = async(function()
   local bufnr = current_buf()
-
   local bcache = cache[bufnr]
-
   local hunk = get_hunk(bufnr, bcache.diffs)
+
   if not hunk then
     return
   end
 
-  local type, added, removed = hunk.type, hunk.added, hunk.removed
+  local relpath = relative(bcache.file, bcache.root)
+  local lines = create_patch(relpath, hunk)
 
-  local ps, pc, ns, nc
+  await(stage_lines(bcache.root, lines))
 
-  if type == 'add' then
-    ps, pc, ns, nc = removed.start + 1, 0            , removed.start + 1, added.count
-  elseif type == 'delete' then
-    ps, pc, ns, nc = removed.start    , removed.count, removed.start    , 0
-  elseif type == 'change' then
-    ps, pc, ns, nc = removed.start    , removed.count, removed.start    , added.count
+  local _, signs = process_diffs({hunk})
+
+  await(vim.schedule)
+
+  -- If watch_index is enabled then that will eventually kick in and update the
+  -- signs, however for  smoother UX we can update the signs immediately without
+  -- running a full diff.
+  --
+  -- We cannot update the status bar as that requires a full diff.
+  for _, s in pairs(signs) do
+    vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr, id = s.lnum})
   end
-
-  local head = string.format('@@ -%s,%s +%s,%s @@', ps, pc, ns, nc)
-
-  async(function()
-    local relpath = relative(bcache.file, bcache.root)
-
-    local lines = {
-      string.format('diff --git a/%s b/%s', relpath, relpath),
-      'index 000000..000000 100644',
-      '--- a/'..relpath,
-      '+++ b/'..relpath,
-      head,
-      unpack(hunk.lines)
-    }
-
-    await(vim.schedule)
-    await(stage_lines(bcache.root, lines))
-    update(bufnr)
-  end)()
-end
+end)
 
 local function nav_hunk(forwards)
   local line = api.nvim_win_get_cursor(0)[1]
