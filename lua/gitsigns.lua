@@ -4,7 +4,6 @@ local CM = require('plenary.context_manager')
 local AS = require('gitsigns/async')
 local default_config = require('gitsigns/defaults')
 
-
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
@@ -17,8 +16,6 @@ end
 
 local with = CM.with
 local open = CM.open
-
-local update_cnt = 0
 
 local config = {}
 
@@ -261,6 +258,8 @@ local function throttle_leading(ms, fn)
   end
 end
 
+local update_cnt = 0
+
 local update = throttle_leading(50, async(function(bufnr)
   await_main()
   bufnr = bufnr or current_buf()
@@ -308,23 +307,18 @@ local update = throttle_leading(50, async(function(bufnr)
   api.nvim_buf_set_var(bufnr, 'gitsigns_status', mk_status_txt(status))
 end))
 
-
-local function watch_file(fname)
-  local w = vim.loop.new_fs_poll()
-  w:start(fname, config.watch_index.interval,
-    vim.schedule_wrap(function(err, prev, curr)
-      update()
-    end)
-  )
-  return w
-end
-
 local watch_index = async(function(bufnr)
   local file = api.nvim_buf_get_name(bufnr)
   local root = await(get_repo_root, file)
   if root then
     dprint('Watching index: '..bufnr, 'watch_index')
-    cache[bufnr].index_watcher = watch_file(root..'/.git/index')
+    local w = vim.loop.new_fs_poll()
+    w:start(root..'/.git/index', config.watch_index.interval,
+      vim.schedule_wrap(function()
+        update()
+      end)
+    )
+    cache[bufnr].index_watcher = w
   end
 end)
 
@@ -450,7 +444,7 @@ local attach = async(function()
   await_main()
 
   api.nvim_buf_attach(cbuf, false, {
-    on_lines = function(_, buf, ct, first, last, lastu, bc)
+    on_lines = function(_, buf)
       update(buf)
     end,
     on_detach = function(_, buf)
@@ -466,7 +460,7 @@ local function setup(cfg)
 
   -- Define signs
   for t, sign_name in pairs(sign_map) do
-    vim.fn.sign_define(sign_map[t], {
+    vim.fn.sign_define(sign_name, {
       texthl = config.signs[t].hl,
       text   = config.signs[t].text
     })

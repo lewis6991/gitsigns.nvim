@@ -1,0 +1,3 @@
+
+all:
+	luacheck lua
