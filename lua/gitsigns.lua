@@ -4,11 +4,6 @@ local CM = require('plenary.context_manager')
 local AS = require('gitsigns/async')
 local default_config = require('gitsigns/defaults')
 
-local function dprint(msg)
-  vim.schedule(function()
-    print(msg)
-  end)
-end
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
@@ -23,7 +18,7 @@ end
 local with = CM.with
 local open = CM.open
 
-local count = 0
+local update_cnt = 0
 
 local config = {}
 
@@ -34,6 +29,15 @@ local sign_map = {
   topdelete    = "GitSignsTopDelete",
   changedelete = "GitSignsChangeDelete",
 }
+
+local function dprint(msg, caller)
+  if config.debug_mode then
+    local name = debug.getinfo(2, 'n').name
+    vim.schedule(function()
+      print('gitsigns('..(caller or name or '')..'): '..msg)
+    end)
+  end
+end
 
 local function dirname(file)
     return file:match("(.*/)")
@@ -176,7 +180,7 @@ local run_diff = function(staged, current, callback)
       end
     end,
     on_stderr = function(_, line)
-      dprint('ERR(run_diff): '..line)
+      dprint('error: '..line, 'run_diff')
     end,
     on_exit = function()
       callback(results)
@@ -226,16 +230,10 @@ local get_repo_root = function(file, callback)
     command = 'git',
     args = {'rev-parse', '--show-toplevel'},
     cwd = dirname(file),
-    on_stderr = function(_, line)
-      print(line)
-    end,
     on_stdout = function(_, line)
       if line then
         root = line
       end
-    end,
-    on_stderr = function(_, line)
-      dprint('ERR(get_repo_root): '..line)
     end,
     on_exit = function()
       callback(root)
@@ -267,8 +265,8 @@ local update = throttle_leading(50, async(function(bufnr)
   await_main()
   bufnr = bufnr or current_buf()
 
-  dprint("UPDATE: " .. count)
-  count = count + 1
+  dprint(update_cnt, 'update')
+  update_cnt = update_cnt + 1
 
   local file = api.nvim_buf_get_name(bufnr)
   local root = await(get_repo_root, file)
@@ -325,7 +323,7 @@ local watch_index = async(function(bufnr)
   local file = api.nvim_buf_get_name(bufnr)
   local root = await(get_repo_root, file)
   if root then
-    dprint("Watching index: "..bufnr)
+    dprint('Watching index: '..bufnr, 'watch_index')
     cache[bufnr].index_watcher = watch_file(root..'/.git/index')
   end
 end)
@@ -456,7 +454,7 @@ local attach = async(function()
       update(buf)
     end,
     on_detach = function(_, buf)
-      dprint("Detached from "..buf)
+      dprint('Detached from '..buf, 'attach')
       cache[buf].index_watcher:stop()
       cache[buf] = nil
     end

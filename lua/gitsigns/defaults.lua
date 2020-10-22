@@ -15,5 +15,6 @@ return {
   watch_index = {
     enabled = true,
     interval = 1000
-  }
+  },
+  debug_mode = false
 }
