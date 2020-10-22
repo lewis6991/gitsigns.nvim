@@ -1,10 +1,10 @@
 return {
   signs = {
-    add          = {hl = 'GitGutterAdd'   , text = '│'},
-    change       = {hl = 'GitGutterChange', text = '│'},
-    delete       = {hl = 'GitGutterDelete', text = '_'},
-    topdelete    = {hl = 'GitGutterDelete', text = 'X'},
-    changedelete = {hl = 'GitGutterChange', text = '~'},
+    add          = {hl = 'DiffAdd'   , text = '│'},
+    change       = {hl = 'DiffChange', text = '│'},
+    delete       = {hl = 'DiffDelete', text = '_'},
+    topdelete    = {hl = 'DiffDelete', text = 'X'},
+    changedelete = {hl = 'DiffChange', text = '~'},
   },
   keymaps = {
     [']c']         = '<cmd>lua require"gitsigns".next_hunk()<CR>',
