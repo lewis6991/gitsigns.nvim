@@ -2,23 +2,27 @@
 
 local co = coroutine
 
-
--- use with wrap
-local pong = function (func, callback)
+local async = function(func)
   assert(type(func) == "function", "type error :: expected func")
-  local thread = co.create(func)
-  local step = nil
-  step = function (...)
-    local stat, ret = co.resume(thread, ...)
-    assert(stat, ret)
-    if co.status(thread) == "dead" then
-      (callback or function () end)(ret)
-    else
-      assert(type(ret) == "function", "type error :: expected func")
-      ret(step)
+  local nparams = debug.getinfo(func, 'u').nparams
+
+  return function(...)
+    local params = {...}
+    local callback = params[nparams+1]
+    local thread = co.create(func)
+    local step = nil
+    step = function (...)
+      local stat, ret = co.resume(thread, ...)
+      assert(stat, ret)
+      if co.status(thread) == "dead" then
+        (callback or function () end)(ret)
+      else
+        assert(type(ret) == "function", "type error :: expected func")
+        ret(step)
+      end
     end
+    step(unpack(params, 1, nparams))
   end
-  step()
 end
 
 
@@ -59,18 +63,18 @@ end
 
 
 -- sugar over coroutine
-local await = function(defer)
+local await = function(defer, ...)
   assert(type(defer) == "function", "type error :: expected func")
-  return co.yield(defer)
+  return co.yield(awrap(defer)(...))
 end
 
-local await_all = function(defer)
-  assert(type(defer) == "table", "type error :: expected table")
-  return co.yield(join(defer))
+local await_all = function(defers)
+  assert(type(defers) == "table", "type error :: expected table")
+  return co.yield(join(defers))
 end
 
 return {
-  async      = awrap(pong),
+  async      = async,
   await      = await,
   await_all  = await_all,
   awrap      = awrap,

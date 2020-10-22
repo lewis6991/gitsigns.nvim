@@ -13,10 +13,12 @@ end
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
-
 local async = AS.async
 local await = AS.await
-local awrap = AS.awrap
+
+local await_main = function()
+  await(vim.schedule)
+end
 
 local with = CM.with
 local open = CM.open
@@ -132,7 +134,7 @@ local function process_diffs(diffs)
 end
 
 -- to be used with await
-local get_staged = awrap(function(root, path, callback)
+local get_staged = function(root, path, callback)
   local relpath = relative(path, root)
   local content = {}
   local status = true
@@ -156,10 +158,10 @@ local get_staged = awrap(function(root, path, callback)
       callback(content)
     end
   }:start()
-end)
+end
 
 -- to be used with await
-local run_diff = awrap(function(staged, current, callback)
+local run_diff = function(staged, current, callback)
   local results = {}
   Job:new {
     command = 'git',
@@ -180,7 +182,7 @@ local run_diff = awrap(function(staged, current, callback)
       callback(results)
     end
   }:start()
-end)
+end
 
 local function mk_status_txt(status)
   local added, changed, removed = status.added, status.changed, status.removed
@@ -218,7 +220,7 @@ local function get_hunk(bufnr, diffs)
   return find_diff(line, diffs)
 end
 
-local get_repo_root = awrap(function(file, callback)
+local get_repo_root = function(file, callback)
   local root
   Job:new {
     command = 'git',
@@ -239,7 +241,7 @@ local get_repo_root = awrap(function(file, callback)
       callback(root)
     end
   }:start()
-end)
+end
 
 --- Throttles a function on the leading edge.
 ---
@@ -261,66 +263,55 @@ local function throttle_leading(ms, fn)
   end
 end
 
-local function update0(bufnr)
-  return async(function()
-    bufnr = bufnr or current_buf()
+local update = throttle_leading(50, async(function(bufnr)
+  await_main()
+  bufnr = bufnr or current_buf()
 
-    local file = api.nvim_buf_get_name(bufnr)
-    local root = await(get_repo_root(file))
-    if not root then
-      return
-    end
-
-    await(vim.schedule)
-    local content = api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    local current = os.tmpname()
-    write_to_file(current, content)
-
-    local staged_txt = await(get_staged(root, file))
-
-    local staged = os.tmpname()
-    write_to_file(staged, staged_txt)
-
-    local diffs = await(run_diff(staged, current))
-
-    os.remove(staged)
-    os.remove(current)
-
-    cache[bufnr] = {
-      file  = file,
-      root  = root,
-      diffs = diffs,
-    }
-
-    local status, signs = process_diffs(diffs)
-
-    await(vim.schedule)
-
-    vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr})
-    for _, s in pairs(signs) do
-      vim.fn.sign_place(s.lnum, 'gitsigns_ns', sign_map[s.type], bufnr, {
-        lnum = s.lnum, priority = 100
-      })
-    end
-
-    api.nvim_buf_set_var(bufnr, 'git_signs_status_dict', status)
-    api.nvim_buf_set_var(bufnr, 'git_signs_status', mk_status_txt(status))
-  end)()
-end
-
-local update = throttle_leading(50, function(bufnr)
   dprint("UPDATE: " .. count)
   count = count + 1
-  -- local status, err = pcall(update0, bufnr)
-  -- if not status then
-  --   dprint(err)
-  --   dprint(debug.traceback())
-  -- end
-  update0(bufnr)
-end)
+
+  local file = api.nvim_buf_get_name(bufnr)
+  local root = await(get_repo_root, file)
+  if not root then
+    return
+  end
+
+  await_main()
+  local content = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local current = os.tmpname()
+  write_to_file(current, content)
+
+  local staged_txt = await(get_staged, root, file)
+
+  local staged = os.tmpname()
+  write_to_file(staged, staged_txt)
+
+  local diffs = await(run_diff, staged, current)
+
+  os.remove(staged)
+  os.remove(current)
+
+  cache[bufnr].file  = file
+  cache[bufnr].root  = root
+  cache[bufnr].diffs = diffs
+
+  local status, signs = process_diffs(diffs)
+
+  await_main()
+
+  vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr})
+  for _, s in pairs(signs) do
+    vim.fn.sign_place(s.lnum, 'gitsigns_ns', sign_map[s.type], bufnr, {
+      lnum = s.lnum, priority = 100
+    })
+  end
+
+  api.nvim_buf_set_var(bufnr, 'git_signs_status_dict', status)
+  api.nvim_buf_set_var(bufnr, 'git_signs_status', mk_status_txt(status))
+end))
 
 
-local function watch_file(fname, poller)
+local function watch_file(fname)
   local w = vim.loop.new_fs_poll()
   w:start(fname, config.watch_index.interval,
     vim.schedule_wrap(function(err, prev, curr)
@@ -330,16 +321,16 @@ local function watch_file(fname, poller)
   return w
 end
 
-local function watch_index(file)
-  return async(function()
-    local root = await(get_repo_root(file))
-    if root then
-      watch_file(root..'/.git/index')
-    end
-  end)()
-end
+local watch_index = async(function(bufnr)
+  local file = api.nvim_buf_get_name(bufnr)
+  local root = await(get_repo_root, file)
+  if root then
+    dprint("Watching index: "..bufnr)
+    cache[bufnr].index_watcher = watch_file(root..'/.git/index')
+  end
+end)
 
-local stage_lines = awrap(function(root, lines, callback)
+local stage_lines = function(root, lines, callback)
   local status = true
   local err = {}
   Job:new {
@@ -359,7 +350,7 @@ local stage_lines = awrap(function(root, lines, callback)
       callback()
     end
   }:start()
-end)
+end
 
 local function create_patch(relpath, hunk)
   local type, added, removed = hunk.type, hunk.added, hunk.removed
@@ -392,11 +383,11 @@ local stage_hunk = async(function()
   local relpath = relative(bcache.file, bcache.root)
   local lines = create_patch(relpath, hunk)
 
-  await(stage_lines(bcache.root, lines))
+  await(stage_lines, bcache.root, lines)
 
   local _, signs = process_diffs({hunk})
 
-  await(vim.schedule)
+  await_main()
 
   -- If watch_index is enabled then that will eventually kick in and update the
   -- signs, however for  smoother UX we can update the signs immediately without
@@ -445,30 +436,32 @@ local function keymap(mode, key, result)
   api.nvim_buf_set_keymap(0, mode, key, result, {noremap = true, silent = true})
 end
 
-local function attach()
+local attach = async(function()
   local cbuf = current_buf()
+  cache[cbuf] = {}
 
   if config.watch_index.enabled then
-    local file = api.nvim_buf_get_name(cbuf)
-    watch_index(file)
+    await(watch_index, cbuf)
   else
     vim.cmd('autocmd CursorHold * lua require"gitsigns".update()')
   end
 
   -- Initial update
-  update(cbuf)
+  await(update, cbuf)
+
+  await_main()
 
   api.nvim_buf_attach(cbuf, false, {
-    on_lines = function(_, buf, ct, first, last, lastu, bc, dcp, dcu)
+    on_lines = function(_, buf, ct, first, last, lastu, bc)
       update(buf)
     end,
     on_detach = function(_, buf)
-      cache[buf] = nil
       dprint("Detached from "..buf)
+      cache[buf].index_watcher:stop()
+      cache[buf] = nil
     end
   })
-end
-
+end)
 
 local function setup(cfg)
   config = vim.tbl_deep_extend("keep", cfg or {}, default_config)
@@ -486,7 +479,7 @@ local function setup(cfg)
     keymap('n', key, cmd)
   end
 
-  vim.cmd('autocmd BufRead * lua require"gitsigns".attach()')
+  vim.cmd('autocmd BufRead * lua require("gitsigns").attach()')
 end
 
 return {
