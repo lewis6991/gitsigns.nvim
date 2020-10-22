@@ -42,11 +42,11 @@ the default settings:
 ```lua
 require('gitsigns').setup {
   signs = {
-    add          = {hl = 'GitSignsAdd'   , text = '│'},
-    change       = {hl = 'GitSignsChange', text = '│'},
-    delete       = {hl = 'GitSignsDelete', text = '_'},
-    topdelete    = {hl = 'GitSignsDelete', text = '_'},
-    changedelete = {hl = 'GitSignsChange', text = '~'},
+    add          = {hl = 'DiffAdd'   , text = '│'},
+    change       = {hl = 'DiffChange', text = '│'},
+    delete       = {hl = 'DiffDelete', text = '_'},
+    topdelete    = {hl = 'DiffDelete', text = '_'},
+    changedelete = {hl = 'DiffChange', text = '~'},
   },
   keymaps = {
     [']c']         = '<cmd>lua require("gitsigns").next_hunk()<CR>',
