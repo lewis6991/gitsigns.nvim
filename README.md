@@ -75,3 +75,10 @@ Example:
 ```viml
 set statusline+=%{get(b:,'gitsigns_status','')}
 ```
+
+## TODO
+
+- [ ] Add action for undoing a stage of a hunk
+- [ ] Add action for undoing a hunk
+- [ ] Add action for showing diff (or original text) in a floating window
+- [ ] Add ability to show staged hunks with different signs (maybe in a different sign column?)
