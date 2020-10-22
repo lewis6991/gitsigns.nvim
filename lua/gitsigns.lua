@@ -304,8 +304,8 @@ local update = throttle_leading(50, async(function(bufnr)
     })
   end
 
-  api.nvim_buf_set_var(bufnr, 'git_signs_status_dict', status)
-  api.nvim_buf_set_var(bufnr, 'git_signs_status', mk_status_txt(status))
+  api.nvim_buf_set_var(bufnr, 'gitsigns_status_dict', status)
+  api.nvim_buf_set_var(bufnr, 'gitsigns_status', mk_status_txt(status))
 end))
 
 

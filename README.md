@@ -36,7 +36,9 @@ For basic setup with all batteries included:
 require('gitsigns').setup()
 ```
 
-Configuration can be passed to the setup function. Here is an example with all the default settings:
+Configuration can be passed to the setup function. Here is an example with all
+the default settings:
+
 ```lua
 require('gitsigns').setup {
   signs = {
@@ -59,7 +61,17 @@ require('gitsigns').setup {
 }
 ```
 
-For information on configuring neovim via lua please see [nvim-lua-guide](https://github.com/nanotee/nvim-lua-guide).
+For information on configuring neovim via lua please see
+[nvim-lua-guide](https://github.com/nanotee/nvim-lua-guide).
 
 ## Status Line
-WIP
+
+Use `b:gitsigns_status` or `b:gitsigns_status_dict`. `b:gitsigns_status` is
+a preformatted and ready to use string (e.g. `+10 -5 ~1`) and ommits zero
+values. `b:gitsigns_status_dict`is a dictionary with the keys `added`,
+`removed`, `changed`.
+
+Example:
+```viml
+set statusline+=%{get(b:,'gitsigns_status','')}
+```
