@@ -8,7 +8,7 @@ WIP
 - Signs for added, removed, and changed lines
 - Asynchronous using [luv](https://github.com/luvit/luv/blob/master/docs.md)
 - Navigation between diff blocks (hunks)
-- Stage partial diffs
+- Stage partial diffs (with undo)
 - Customisable (signs, highlights, mappings, etc)
 - Status bar integration
 
@@ -52,6 +52,7 @@ require('gitsigns').setup {
     [']c']         = '<cmd>lua require("gitsigns").next_hunk()<CR>',
     ['[c']         = '<cmd>lua require("gitsigns").prev_hunk()<CR>',
     ['<leader>hs'] = '<cmd>lua require("gitsigns").stage_hunk()<CR>',
+    ['<leader>hu'] = '<cmd>lua require("gitsigns").undo_stage_hunk()<CR>',
     ['<leader>gh'] = '<cmd>lua require("gitsigns").get_hunk()<CR>'
   },
   watch_index = {
@@ -78,7 +79,7 @@ set statusline+=%{get(b:,'gitsigns_status','')}
 
 ## TODO
 
-- [ ] Add action for undoing a stage of a hunk
+- [x] Add action for undoing a stage of a hunk
 - [ ] Add action for undoing a hunk
 - [ ] Add action for showing diff (or original text) in a floating window
 - [ ] Add ability to show staged hunks with different signs (maybe in a different sign column?)

@@ -185,6 +185,13 @@ local function mk_status_txt(status)
 end
 
 local cache = {}
+-- <bufnr> = {
+--   file: string - Full filename
+--   root: string - Root git directory (where .git is)
+--   diffs: array(diffs) - List of diff objects
+--   staged_diffs: array(diffs) - List of staged diffs
+--   index_watcher: Timer object watching the files index
+-- }
 
 local function find_diff(line, diffs)
   for _, diff in pairs(diffs) do
@@ -226,6 +233,20 @@ local get_repo_root = function(file, callback)
       callback(root)
     end
   }:start()
+end
+
+local add_signs = function(bufnr, signs, reset)
+  reset = reset or false
+
+  if reset then
+    vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr})
+  end
+
+  for _, s in pairs(signs) do
+    vim.fn.sign_place(s.lnum, 'gitsigns_ns', sign_map[s.type], bufnr, {
+      lnum = s.lnum, priority = 100
+    })
+  end
 end
 
 --- Throttles a function on the leading edge.
@@ -293,12 +314,7 @@ local update = throttle_leading(50, async(function(bufnr)
 
   await_main()
 
-  vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr})
-  for _, s in pairs(signs) do
-    vim.fn.sign_place(s.lnum, 'gitsigns_ns', sign_map[s.type], bufnr, {
-      lnum = s.lnum, priority = 100
-    })
-  end
+  add_signs(bufnr, signs, true)
 
   api.nvim_buf_set_var(bufnr, 'gitsigns_status_dict', status)
   api.nvim_buf_set_var(bufnr, 'gitsigns_status', mk_status_txt(status))
@@ -341,7 +357,8 @@ local stage_lines = function(root, lines, callback)
   }:start()
 end
 
-local function create_patch(relpath, hunk)
+local function create_patch(relpath, hunk, invert)
+  invert = invert or false
   local type, added, removed = hunk.type, hunk.added, hunk.removed
 
   local ps, pc, ns, nc = unpack(({
@@ -350,13 +367,30 @@ local function create_patch(relpath, hunk)
     change = {removed.start    , removed.count, removed.start    , added.count}
   })[type])
 
+  local lines = hunk.lines
+
+  if invert then
+    ps, pc, ns, nc = ns, nc, ps, pc
+
+    local tlines = {}
+    for _, l in ipairs(lines) do
+      if vim.startswith(l, '+') then
+        l = '-'..string.sub(l, 2, -1)
+      elseif vim.startswith(l, '-') then
+        l = '+'..string.sub(l, 2, -1)
+      end
+      table.insert(tlines, l)
+    end
+    lines = tlines
+  end
+
   return {
     string.format('diff --git a/%s b/%s', relpath, relpath),
     'index 000000..000000 100644', -- TODO: Get the correct perms
     '--- a/'..relpath,
     '+++ b/'..relpath,
     string.format('@@ -%s,%s +%s,%s @@', ps, pc, ns, nc),
-    unpack(hunk.lines)
+    unpack(lines)
   }
 end
 
@@ -374,6 +408,8 @@ local stage_hunk = async(function()
 
   await(stage_lines, bcache.root, lines)
 
+  table.insert(bcache.staged_diffs, hunk)
+
   local _, signs = process_diffs({hunk})
 
   await_main()
@@ -386,6 +422,30 @@ local stage_hunk = async(function()
   for _, s in pairs(signs) do
     vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr, id = s.lnum})
   end
+end)
+
+local undo_stage_hunk = async(function()
+  local bufnr = current_buf()
+  local bcache = cache[bufnr]
+
+  local hunk = bcache.staged_diffs[#bcache.staged_diffs]
+
+  if not hunk then
+    print("No hunks to undo")
+    return
+  end
+
+  local relpath = relative(bcache.file, bcache.root)
+  local lines = create_patch(relpath, hunk, true)
+
+  await(stage_lines, bcache.root, lines)
+
+  table.remove(bcache.staged_diffs)
+
+  local _, signs = process_diffs({hunk})
+
+  await_main()
+  add_signs(bufnr, signs)
 end)
 
 local function nav_hunk(forwards)
@@ -427,7 +487,13 @@ end
 
 local attach = async(function()
   local cbuf = current_buf()
-  cache[cbuf] = {}
+  cache[cbuf] = {
+    file = nil,
+    root = nil,
+    diffs = {},
+    staged_diffs = {},
+    index_watcher = nil
+  }
 
   if config.watch_index.enabled then
     await(watch_index, cbuf)
@@ -482,6 +548,7 @@ return {
   update     = update,
   get_hunk   = get_hunk,
   stage_hunk = stage_hunk,
+  undo_stage_hunk = undo_stage_hunk,
   next_hunk  = next_hunk,
   prev_hunk  = prev_hunk,
   attach     = attach,
