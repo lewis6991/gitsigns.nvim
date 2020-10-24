@@ -137,25 +137,18 @@ end
 -- to be used with await
 local get_staged = function(root, path, callback)
   local relpath = relative(path, root)
-  local content = {}
-  local status = true
-  local err = {}
+  local content
   Job:new {
     command = 'git',
     args = {'--no-pager', 'show', ':'..relpath},
     cwd = root,
     on_stdout = function(_, line, _)
+      if not content then
+        content = {}
+      end
       table.insert(content, line)
     end,
-    on_stderr = function(_, line)
-      status = false
-      table.insert(err, line)
-    end,
     on_exit = function()
-      if not status then
-        local s = table.concat(err, '\n')
-        error('Cannot get staged file. Command stderr:\n\n'..s)
-      end
       callback(content)
     end
   }:start()
@@ -270,6 +263,15 @@ local update = throttle_leading(50, async(function(bufnr)
   local file = api.nvim_buf_get_name(bufnr)
   local root = await(get_repo_root, file)
   if not root then
+    -- Not in git repo
+    return
+  end
+
+  await_main()
+
+  local staged_txt = await(get_staged, root, file)
+  if not staged_txt then
+    -- File not in index
     return
   end
 
@@ -277,8 +279,6 @@ local update = throttle_leading(50, async(function(bufnr)
   local content = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local current = os.tmpname()
   write_to_file(current, content)
-
-  local staged_txt = await(get_staged, root, file)
 
   local staged = os.tmpname()
   write_to_file(staged, staged_txt)
@@ -355,7 +355,7 @@ local function create_patch(relpath, hunk)
 
   return {
     string.format('diff --git a/%s b/%s', relpath, relpath),
-    'index 000000..000000 100644',
+    'index 000000..000000 100644', -- TODO: Get the correct perms
     '--- a/'..relpath,
     '+++ b/'..relpath,
     string.format('@@ -%s,%s +%s,%s @@', ps, pc, ns, nc),
@@ -425,7 +425,7 @@ local function next_hunk() nav_hunk(true)  end
 local function prev_hunk() nav_hunk(false) end
 
 local function keymap(mode, key, result)
-  api.nvim_buf_set_keymap(0, mode, key, result, {noremap = true, silent = true})
+  api.nvim_set_keymap(mode, key, result, {noremap = true, silent = true})
 end
 
 local attach = async(function()
