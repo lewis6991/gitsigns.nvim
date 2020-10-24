@@ -37,7 +37,7 @@ local function dprint(msg, caller)
 end
 
 local function dirname(file)
-    return file:match("(.*/)")
+  return file:match("(.*/)")
 end
 
 local function relative(file, root)
@@ -81,25 +81,25 @@ local function parse_diff_line(line)
 end
 
 local function write_to_file(file, content)
-    with(open(file, 'w'), function(writer)
-      for _, l in pairs(content) do
-        writer:write(l..'\n')
-      end
-    end)
+  with(open(file, 'w'), function(writer)
+    for _, l in pairs(content) do
+      writer:write(l..'\n')
+    end
+  end)
 end
 
 local function update_status(status, diff)
-    if diff.type == 'add' then
-      status.added = status.added + diff.added.count
-    elseif diff.type == 'delete' then
-      status.removed = status.removed + diff.removed.count
-    elseif diff.type == 'change' then
-      local add, remove = diff.added.count, diff.removed.count
-      local min = math.min(add, remove)
-      status.changed = status.changed + min
-      status.added   = status.added   + add - min
-      status.removed = status.removed + remove - min
-    end
+  if diff.type == 'add' then
+    status.added = status.added + diff.added.count
+  elseif diff.type == 'delete' then
+    status.removed = status.removed + diff.removed.count
+  elseif diff.type == 'change' then
+    local add, remove = diff.added.count, diff.removed.count
+    local min = math.min(add, remove)
+    status.changed = status.changed + min
+    status.added   = status.added   + add - min
+    status.removed = status.removed + remove - min
+  end
 end
 
 local function process_diffs(diffs)
@@ -449,7 +449,14 @@ local attach = async(function()
     end,
     on_detach = function(_, buf)
       dprint('Detached from '..buf, 'attach')
-      cache[buf].index_watcher:stop()
+
+      local w = cache[buf].index_watcher
+      if w then
+        w:stop()
+      else
+        dprint('index_watcher for buf '..buf..' was nil', 'attach')
+      end
+
       cache[buf] = nil
     end
   })
