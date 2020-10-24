@@ -137,19 +137,16 @@ end
 -- to be used with await
 local get_staged = function(root, path, callback)
   local relpath = relative(path, root)
-  local content
+  local content = {}
   Job:new {
     command = 'git',
     args = {'--no-pager', 'show', ':'..relpath},
     cwd = root,
     on_stdout = function(_, line, _)
-      if not content then
-        content = {}
-      end
       table.insert(content, line)
     end,
-    on_exit = function()
-      callback(content)
+    on_exit = function(_, code)
+      callback(code == 0 and content or nil)
     end
   }:start()
 end
