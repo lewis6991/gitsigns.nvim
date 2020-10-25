@@ -249,29 +249,25 @@ local add_signs = function(bufnr, signs, reset)
   end
 end
 
---- Throttles a function on the leading edge.
+--- Debounces a function on the trailing edge.
 ---
---@param fn (function) Function to throttle
---@param timeout (number) Timeout in ms
---@returns (function) throttled function
-local function throttle_leading(ms, fn)
-  local running = false
+--@param ms (number) Timeout in ms
+--@param fn (function) Function to debounce
+--@returns (function) Debounced function.
+function debounce_trailing(ms, fn)
+  local timer = vim.loop.new_timer()
   return function(...)
-    if not running then
-      local timer = vim.loop.new_timer()
-      timer:start(ms, 0, function()
-        running = false
-        timer:stop()
-      end)
-      running = true
-      fn(...)
-    end
+    local argv = {...}
+    timer:start(ms, 0, function()
+      timer:stop()
+      fn(unpack(argv))
+    end)
   end
 end
 
 local update_cnt = 0
 
-local update = throttle_leading(50, async(function(bufnr)
+local update = debounce_trailing(50, async(function(bufnr)
   await_main()
   bufnr = bufnr or current_buf()
 
