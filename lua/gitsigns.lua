@@ -419,7 +419,7 @@ local stage_hunk = async(function()
   end
 end)
 
-local reset_hunk = async(function()
+local reset_hunk = function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   local hunk = get_hunk(bufnr, bcache.diffs)
@@ -447,7 +447,7 @@ local reset_hunk = async(function()
     lend = hunk.start - 1 + length
   end
   api.nvim_buf_set_lines(bufnr, lstart, lend, false, orig_lines)
-end)
+end
 
 local undo_stage_hunk = async(function()
   local bufnr = current_buf()
