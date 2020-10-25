@@ -83,3 +83,4 @@ set statusline+=%{get(b:,'gitsigns_status','')}
 - [x] Add action for ~~undoing~~ reseting a hunk
 - [ ] Add action for showing diff (or original text) in a floating window
 - [ ] Add ability to show staged hunks with different signs (maybe in a different sign column?)
+- [x] Add support for repeat.vim
