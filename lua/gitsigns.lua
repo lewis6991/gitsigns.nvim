@@ -3,6 +3,7 @@ local CM = require('plenary.context_manager')
 
 local AS = require('gitsigns/async')
 local default_config = require('gitsigns/defaults')
+local mk_repeatable = require('gitsigns/repeat').mk_repeatable
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
@@ -569,12 +570,12 @@ local function setup(cfg)
 end
 
 return {
-  update     = update,
-  stage_hunk = stage_hunk,
-  undo_stage_hunk = undo_stage_hunk,
-  reset_hunk = reset_hunk,
-  next_hunk  = next_hunk,
-  prev_hunk  = prev_hunk,
-  attach     = attach,
-  setup      = setup,
+  update          = update,
+  stage_hunk      = mk_repeatable(stage_hunk),
+  undo_stage_hunk = mk_repeatable(undo_stage_hunk),
+  reset_hunk      = mk_repeatable(reset_hunk),
+  next_hunk       = next_hunk,
+  prev_hunk       = prev_hunk,
+  attach          = attach,
+  setup           = setup,
 }
