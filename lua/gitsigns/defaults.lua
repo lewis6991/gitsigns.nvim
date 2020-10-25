@@ -12,7 +12,6 @@ return {
     ['<leader>hs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
     ['<leader>hu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
     ['<leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
-    ['<leader>gh'] = '<cmd>lua require"gitsigns".get_hunk()<CR>'
   },
   watch_index = {
     enabled = true,

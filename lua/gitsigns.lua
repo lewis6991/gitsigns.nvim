@@ -574,7 +574,6 @@ end
 
 return {
   update     = update,
-  get_hunk   = get_hunk,
   stage_hunk = stage_hunk,
   undo_stage_hunk = undo_stage_hunk,
   reset_hunk = reset_hunk,
