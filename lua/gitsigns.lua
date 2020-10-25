@@ -372,16 +372,14 @@ local function create_patch(relpath, hunk, invert)
   if invert then
     ps, pc, ns, nc = ns, nc, ps, pc
 
-    local tlines = {}
-    for _, l in ipairs(lines) do
+    lines = vim.tbl_map(function(l)
       if vim.startswith(l, '+') then
         l = '-'..string.sub(l, 2, -1)
       elseif vim.startswith(l, '-') then
         l = '+'..string.sub(l, 2, -1)
       end
-      table.insert(tlines, l)
-    end
-    lines = tlines
+      return l
+    end, lines)
   end
 
   return {
@@ -422,6 +420,36 @@ local stage_hunk = async(function()
   for _, s in pairs(signs) do
     vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr, id = s.lnum})
   end
+end)
+
+local reset_hunk = async(function()
+  local bufnr = current_buf()
+  local bcache = cache[bufnr]
+  local hunk = get_hunk(bufnr, bcache.diffs)
+
+  if not hunk then
+    return
+  end
+
+  local orig_lines = vim.tbl_map(function(l)
+      return string.sub(l, 2, -1)
+    end, vim.tbl_filter(function(l)
+      return vim.startswith(l, '-')
+    end, hunk.lines))
+
+  local lstart, lend
+  if hunk.type == 'delete' then
+      lstart = hunk.start
+      lend = hunk.start
+  else
+    local length = vim.tbl_count(vim.tbl_filter(function(l)
+      return vim.startswith(l, '+')
+    end, hunk.lines))
+
+    lstart = hunk.start - 1
+    lend = hunk.start - 1 + length
+  end
+  api.nvim_buf_set_lines(bufnr, lstart, lend, false, orig_lines)
 end)
 
 local undo_stage_hunk = async(function()
@@ -549,6 +577,7 @@ return {
   get_hunk   = get_hunk,
   stage_hunk = stage_hunk,
   undo_stage_hunk = undo_stage_hunk,
+  reset_hunk = reset_hunk,
   next_hunk  = next_hunk,
   prev_hunk  = prev_hunk,
   attach     = attach,
