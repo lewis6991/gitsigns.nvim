@@ -1,9 +1,14 @@
-local Job = require('plenary.job')
-local CM = require('plenary.context_manager')
+local Job = require('plenary/job')
+local Path = require('plenary/path')
+local CM = require('plenary/context_manager')
 
 local AS = require('gitsigns/async')
 local default_config = require('gitsigns/defaults')
 local mk_repeatable = require('gitsigns/repeat').mk_repeatable
+local DB = require('gitsigns/debounce')
+
+local throttle_leading = DB.throttle_leading
+local debounce_trailing = DB.debounce_trailing
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
@@ -135,11 +140,18 @@ local function process_diffs(diffs)
   return status, signs
 end
 
+local job_cnt = 0
+
+local function run_job(job_spec)
+  Job:new(job_spec):start()
+  job_cnt = job_cnt + 1
+end
+
 -- to be used with await
 local get_staged = function(root, path, callback)
   local relpath = relative(path, root)
   local content = {}
-  Job:new {
+  run_job {
     command = 'git',
     args = {'--no-pager', 'show', ':'..relpath},
     cwd = root,
@@ -149,13 +161,13 @@ local get_staged = function(root, path, callback)
     on_exit = function(_, code)
       callback(code == 0 and content or nil)
     end
-  }:start()
+  }
 end
 
 -- to be used with await
 local run_diff = function(staged, current, callback)
   local results = {}
-  Job:new {
+  run_job {
     command = 'git',
     args = {'--no-pager', 'diff', '--patch-with-raw', '--unified=0', '--no-color', staged, current},
     on_stdout = function(_, line, _)
@@ -173,7 +185,7 @@ local run_diff = function(staged, current, callback)
     on_exit = function()
       callback(results)
     end
-  }:start()
+  }
 end
 
 local function mk_status_txt(status)
@@ -189,6 +201,7 @@ local cache = {}
 -- <bufnr> = {
 --   file: string - Full filename
 --   root: string - Root git directory (where .git is)
+--   staged: string - Path to staged contents
 --   diffs: array(diffs) - List of diff objects
 --   staged_diffs: array(diffs) - List of staged diffs
 --   index_watcher: Timer object watching the files index
@@ -221,7 +234,7 @@ end
 
 local get_repo_root = function(file, callback)
   local root
-  Job:new {
+  run_job {
     command = 'git',
     args = {'rev-parse', '--show-toplevel'},
     cwd = dirname(file),
@@ -233,7 +246,7 @@ local get_repo_root = function(file, callback)
     on_exit = function()
       callback(root)
     end
-  }:start()
+  }
 end
 
 local add_signs = function(bufnr, signs, reset)
@@ -250,44 +263,18 @@ local add_signs = function(bufnr, signs, reset)
   end
 end
 
---- Debounces a function on the trailing edge.
----
---@param ms (number) Timeout in ms
---@param fn (function) Function to debounce
---@returns (function) Debounced function.
-function debounce_trailing(ms, fn)
-  local timer = vim.loop.new_timer()
-  return function(...)
-    local argv = {...}
-    timer:start(ms, 0, function()
-      timer:stop()
-      fn(unpack(argv))
-    end)
-  end
-end
-
 local update_cnt = 0
 
 local update = debounce_trailing(50, async(function(bufnr)
-  await_main()
   bufnr = bufnr or current_buf()
 
-  dprint(update_cnt, 'update')
-  update_cnt = update_cnt + 1
+  local file = cache[bufnr].file
+  local root = cache[bufnr].root
 
-  local file = api.nvim_buf_get_name(bufnr)
-  local root = await(get_repo_root, file)
-  if not root then
-    -- Not in git repo
-    return
-  end
-
-  await_main()
-
-  local staged_txt = await(get_staged, root, file)
-  if not staged_txt then
-    -- File not in index
-    return
+  local staged = cache[bufnr].staged
+  if not Path:new(staged):exists() then
+    staged = await(update_staged, bufnr, root, file)
+    cache[bufnr].staged = staged
   end
 
   await_main()
@@ -295,16 +282,10 @@ local update = debounce_trailing(50, async(function(bufnr)
   local current = os.tmpname()
   write_to_file(current, content)
 
-  local staged = os.tmpname()
-  write_to_file(staged, staged_txt)
-
   local diffs = await(run_diff, staged, current)
 
-  os.remove(staged)
   os.remove(current)
 
-  cache[bufnr].file  = file
-  cache[bufnr].root  = root
   cache[bufnr].diffs = diffs
 
   local status, signs = process_diffs(diffs)
@@ -315,27 +296,44 @@ local update = debounce_trailing(50, async(function(bufnr)
 
   api.nvim_buf_set_var(bufnr, 'gitsigns_status_dict', status)
   api.nvim_buf_set_var(bufnr, 'gitsigns_status', mk_status_txt(status))
+
+  dprint(string.format('updates: %s, jobs: %s', update_cnt, job_cnt), 'update')
+  update_cnt = update_cnt + 1
 end))
 
-local watch_index = async(function(bufnr)
-  local file = api.nvim_buf_get_name(bufnr)
-  local root = await(get_repo_root, file)
-  if root then
-    dprint('Watching index: '..bufnr, 'watch_index')
-    local w = vim.loop.new_fs_poll()
-    w:start(root..'/.git/index', config.watch_index.interval,
-      vim.schedule_wrap(function()
-        update()
-      end)
-    )
-    cache[bufnr].index_watcher = w
+local update_staged = async(function(bufnr, root, file)
+  await_main()
+  local staged_txt = await(get_staged, root, file)
+
+  if not staged_txt then
+    -- File not in index
+    return
   end
+  await_main()
+  local staged = os.tmpname()
+  write_to_file(staged, staged_txt)
+  return staged
+end)
+
+local watch_index = async(function(bufnr, file, root)
+  -- TODO: Buffers of the same git repo can share an index watcher
+  dprint('Watching index: '..bufnr, 'watch_index')
+  local w = vim.loop.new_fs_poll()
+  w:start(root..'/.git/index', config.watch_index.interval,
+    async(function()
+      dprint('index update for buf '..bufnr, 'watch_index#cb')
+      cache[bufnr].staged = await(update_staged, bufnr, root, file)
+      await(update, bufnr)
+    end)
+  )
+
+  cache[bufnr].index_watcher = w
 end)
 
 local stage_lines = function(root, lines, callback)
   local status = true
   local err = {}
-  Job:new {
+  run_job {
     command = 'git',
     args = {'apply', '--cached', '--unidiff-zero', '-'},
     cwd = root,
@@ -351,7 +349,7 @@ local stage_lines = function(root, lines, callback)
       end
       callback()
     end
-  }:start()
+  }
 end
 
 local function create_patch(relpath, hunk, invert)
@@ -510,21 +508,40 @@ local function keymap(mode, key, result)
   api.nvim_set_keymap(mode, key, result, {noremap = true, silent = true})
 end
 
-local attach = async(function()
+local detach = function(bufnr)
+  dprint('Detached from '..bufnr)
+
+  local w = cache[bufnr].index_watcher
+  if w then
+    w:stop()
+  else
+    dprint('index_watcher for buf '..bufnr..' was nil')
+  end
+
+  cache[bufnr] = nil
+end
+
+local attach = throttle_leading(50, async(function()
   local cbuf = current_buf()
+  local file = api.nvim_buf_get_name(cbuf)
+  local root = await(get_repo_root, file)
+
+  if not root then
+    return
+  end
+
+  local staged = await(update_staged, cbuf, root, file)
+
   cache[cbuf] = {
-    file = nil,
-    root = nil,
+    file = file,
+    root = root,
+    staged = staged, -- Temp filename of staged file
     diffs = {},
     staged_diffs = {},
     index_watcher = nil
   }
 
-  if config.watch_index.enabled then
-    await(watch_index, cbuf)
-  else
-    vim.cmd('autocmd CursorHold * lua require"gitsigns".update()')
-  end
+  await(watch_index, cbuf, file, root)
 
   -- Initial update
   await(update, cbuf)
@@ -536,19 +553,10 @@ local attach = async(function()
       update(buf)
     end,
     on_detach = function(_, buf)
-      dprint('Detached from '..buf, 'attach')
-
-      local w = cache[buf].index_watcher
-      if w then
-        w:stop()
-      else
-        dprint('index_watcher for buf '..buf..' was nil', 'attach')
-      end
-
-      cache[buf] = nil
+      detach(buf)
     end
   })
-end)
+end))
 
 local function setup(cfg)
   config = vim.tbl_deep_extend("keep", cfg or {}, default_config)
@@ -566,6 +574,8 @@ local function setup(cfg)
     keymap('n', key, cmd)
   end
 
+  -- This seems to be triggered twice on the first buffer so we have throttled
+  -- the attach function with throttle_leading
   vim.cmd('autocmd BufRead * lua require("gitsigns").attach()')
 end
 

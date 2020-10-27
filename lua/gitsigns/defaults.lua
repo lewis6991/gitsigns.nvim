@@ -14,7 +14,6 @@ return {
     ['<leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
   },
   watch_index = {
-    enabled = true,
     interval = 1000
   },
   debug_mode = false
