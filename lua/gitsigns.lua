@@ -333,7 +333,7 @@ local update = debounce_trailing(50, async('update', function(bufnr)
   local file, toplevel, staged = bcache.file, bcache.toplevel, bcache.staged
 
   if not path_exists(staged) then
-    local res = await(get_staged, staged, bufnr, toplevel, bcache.relpath)
+    local res = await(get_staged, bufnr, staged, toplevel, relpath)
     if not res then
       return
     end
