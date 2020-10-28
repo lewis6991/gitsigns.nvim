@@ -85,3 +85,4 @@ set statusline+=%{get(b:,'gitsigns_status','')}
 - [x] Add support for repeat.vim
 - [ ] Apply buffer updates incrementally
 - [ ] Add tests
+- [x] Respect algorithm in diffopt
