@@ -565,6 +565,10 @@ local detach = function(bufnr)
   dprint('Detached', bufnr)
   local bcache = cache[bufnr]
 
+  if not bcache then
+    return
+  end
+
   os.remove(bcache.staged)
 
   local w = bcache.index_watcher
@@ -574,7 +578,7 @@ local detach = function(bufnr)
     dprint('Index_watcher was nil', bufnr)
   end
 
-  bcache = nil
+  cache[bufnr] = nil
 end
 
 local detach_all = function()
