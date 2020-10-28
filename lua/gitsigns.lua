@@ -13,11 +13,12 @@ local debounce_trailing = DB.debounce_trailing
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
-local async = AS.async
-local await = AS.await
+local async  = AS.async
+local async0 = AS.async0
+local await  = AS.await
 
 local await_main = function()
-  await(vim.schedule)
+  return await(vim.schedule)
 end
 
 local with = CM.with
@@ -33,21 +34,15 @@ local sign_map = {
   changedelete = "GitSignsChangeDelete",
 }
 
-local function dprint(msg, caller)
+local function dprint(msg, bufnr, caller)
   if config.debug_mode then
-    local name = debug.getinfo(2, 'n').name
-    vim.schedule(function()
-      print('gitsigns('..(caller or name or '')..'): '..msg)
-    end)
+    local name = caller or debug.getinfo(2, 'n').name or ''
+    vim.schedule_wrap(print)(string.format('gitsigns(%s, %s): %s', name, bufnr, msg))
   end
 end
 
 local function dirname(file)
   return file:match("(.*/)")
-end
-
-local function relative(file, root)
-  return string.sub(file, #root + 2)
 end
 
 local function parse_diff_line(line)
@@ -140,21 +135,44 @@ local function process_diffs(diffs)
   return status, signs
 end
 
+local path_exists = function(p)
+  return Path:new(p):exists()
+end
+
 local job_cnt = 0
 
 local function run_job(job_spec)
+  if config.debug_mode then
+    local cmd = job_spec.command..' '..table.concat(job_spec.args, ' ')
+    dprint('Running: '..cmd)
+  end
   Job:new(job_spec):start()
   job_cnt = job_cnt + 1
 end
 
--- to be used with await
-local get_staged = function(root, path, callback)
-  local relpath = relative(path, root)
+local function git_relative(file, toplevel, callback)
+  local relpath
+  run_job {
+    command = 'git',
+    args = {'--no-pager', 'ls-files', file},
+    cwd = toplevel,
+    on_stdout = function(_, line, _)
+      if line then
+        relpath = line
+      end
+    end,
+    on_exit = function(_, code)
+      callback(relpath)
+    end
+  }
+end
+
+local get_staged_txt = function(toplevel, relpath, callback)
   local content = {}
   run_job {
     command = 'git',
     args = {'--no-pager', 'show', ':'..relpath},
-    cwd = root,
+    cwd = toplevel,
     on_stdout = function(_, line, _)
       table.insert(content, line)
     end,
@@ -191,7 +209,7 @@ local run_diff = function(staged, current, callback)
       end
     end,
     on_stderr = function(_, line)
-      dprint('error: '..line, 'run_diff')
+      print('error: '..line, 'NA', 'run_diff')
     end,
     on_exit = function()
       callback(results)
@@ -211,7 +229,7 @@ end
 local cache = {}
 -- <bufnr> = {
 --   file: string - Full filename
---   root: string - Root git directory (where .git is)
+--   toplevel: string - Top level git directory
 --   staged: string - Path to staged contents
 --   diffs: array(diffs) - List of diff objects
 --   staged_diffs: array(diffs) - List of staged diffs
@@ -244,18 +262,20 @@ local function get_hunk(bufnr, diffs)
 end
 
 local get_repo_root = function(file, callback)
-  local root
+  local out = {}
   run_job {
     command = 'git',
-    args = {'rev-parse', '--show-toplevel'},
+    args = {'rev-parse', '--show-toplevel', '--git-dir'},
     cwd = dirname(file),
     on_stdout = function(_, line)
       if line then
-        root = line
+        table.insert(out, line)
       end
     end,
     on_exit = function()
-      callback(root)
+      local toplevel = out[1]
+      local gitdir = out[2]
+      callback(toplevel, gitdir)
     end
   }
 end
@@ -274,18 +294,49 @@ local add_signs = function(bufnr, signs, reset)
   end
 end
 
+local v
+
+local get_staged = async('get_staged', function(bufnr, staged_path, toplevel, relpath)
+  vim.validate {
+    bufnr       = {bufnr      , 'number'},
+    staged_path = {staged_path, 'string'},
+    toplevel    = {toplevel   , 'string'},
+    relpath     = {relpath    , 'string'}
+  }
+
+  await_main()
+  local staged_txt = await(get_staged_txt, toplevel, relpath)
+
+  if not staged_txt then
+    dprint('File not in index', bufnr, 'get_staged')
+    return false
+  end
+
+  await_main()
+
+  write_to_file(staged_path, staged_txt)
+  dprint('Updated staged file', bufnr, 'get_staged')
+  return true
+end)
+
 local update_cnt = 0
 
-local update = debounce_trailing(50, async(function(bufnr)
-  bufnr = bufnr or current_buf()
+local update = debounce_trailing(50, async('update', function(bufnr)
+  vim.validate {bufnr = {bufnr, 'number'}}
 
-  local file = cache[bufnr].file
-  local root = cache[bufnr].root
+  local bcache = cache[bufnr]
+  if not bcache then
+    error('Cache for buffer '..bufnr..' was nil')
+    return
+  end
 
-  local staged = cache[bufnr].staged
-  if not Path:new(staged):exists() then
-    staged = await(update_staged, bufnr, root, file)
-    cache[bufnr].staged = staged
+  local file, toplevel, staged = bcache.file, bcache.toplevel, bcache.staged
+
+  if not path_exists(staged) then
+    local res = await(get_staged, staged, bufnr, toplevel, bcache.relpath)
+    if not res then
+      return
+    end
   end
 
   await_main()
@@ -293,13 +344,11 @@ local update = debounce_trailing(50, async(function(bufnr)
   local current = os.tmpname()
   write_to_file(current, content)
 
-  local diffs = await(run_diff, staged, current)
+  bcache.diffs = await(run_diff, staged, current)
 
   os.remove(current)
 
-  cache[bufnr].diffs = diffs
-
-  local status, signs = process_diffs(diffs)
+  local status, signs = process_diffs(bcache.diffs)
 
   await_main()
 
@@ -308,46 +357,39 @@ local update = debounce_trailing(50, async(function(bufnr)
   api.nvim_buf_set_var(bufnr, 'gitsigns_status_dict', status)
   api.nvim_buf_set_var(bufnr, 'gitsigns_status', mk_status_txt(status))
 
-  dprint(string.format('updates: %s, jobs: %s', update_cnt, job_cnt), 'update')
   update_cnt = update_cnt + 1
+  dprint(string.format('updates: %s, jobs: %s', update_cnt, job_cnt), bufnr, 'update')
 end))
 
-local update_staged = async(function(bufnr, root, file)
-  await_main()
-  local staged_txt = await(get_staged, root, file)
+local watch_index = async('watch_index', function(bufnr, gitdir, on_change)
+  vim.validate {
+    bufnr     = {bufnr    , 'number'},
+    gitdir    = {gitdir   , 'string'},
+    on_change = {on_change, 'function'}
+  }
 
-  if not staged_txt then
-    -- File not in index
+  local index = gitdir..'/index'
+  if not path_exists(index) then
+     error('Cannot open index file: '..index)
     return
   end
-  await_main()
-  local staged = os.tmpname()
-  write_to_file(staged, staged_txt)
-  return staged
-end)
 
-local watch_index = async(function(bufnr, file, root)
   -- TODO: Buffers of the same git repo can share an index watcher
-  dprint('Watching index: '..bufnr, 'watch_index')
-  local w = vim.loop.new_fs_poll()
-  w:start(root..'/.git/index', config.watch_index.interval,
-    async(function()
-      dprint('index update for buf '..bufnr, 'watch_index#cb')
-      cache[bufnr].staged = await(update_staged, bufnr, root, file)
-      await(update, bufnr)
-    end)
-  )
+  dprint('Watching index', bufnr, 'watch_index')
 
-  cache[bufnr].index_watcher = w
+  local w = vim.loop.new_fs_poll()
+  w:start(index, config.watch_index.interval, on_change)
+
+  return w
 end)
 
-local stage_lines = function(root, lines, callback)
+local stage_lines = function(toplevel, lines, callback)
   local status = true
   local err = {}
   run_job {
     command = 'git',
     args = {'apply', '--cached', '--unidiff-zero', '-'},
-    cwd = root,
+    cwd = toplevel,
     writer = lines,
     on_stderr = function(_, line)
       status = false
@@ -363,7 +405,7 @@ local stage_lines = function(root, lines, callback)
   }
 end
 
-local function create_patch(relpath, hunk, invert)
+local create_patch = function(relpath, hunk, invert)
   invert = invert or false
   local type, added, removed = hunk.type, hunk.added, hunk.removed
 
@@ -398,7 +440,7 @@ local function create_patch(relpath, hunk, invert)
   }
 end
 
-local stage_hunk = async(function()
+local stage_hunk = async('stage_hunk', function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   local hunk = get_hunk(bufnr, bcache.diffs)
@@ -407,10 +449,10 @@ local stage_hunk = async(function()
     return
   end
 
-  local relpath = relative(bcache.file, bcache.root)
-  local lines = create_patch(relpath, hunk)
+  local lines = create_patch(bcache.relpath, hunk)
 
-  await(stage_lines, bcache.root, lines)
+  await_main()
+  await(stage_lines, bcache.toplevel, lines)
 
   table.insert(bcache.staged_diffs, hunk)
 
@@ -458,7 +500,7 @@ local reset_hunk = function()
   api.nvim_buf_set_lines(bufnr, lstart, lend, false, orig_lines)
 end
 
-local undo_stage_hunk = async(function()
+local undo_stage_hunk = async('undo_stage_hunk', function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
 
@@ -469,10 +511,10 @@ local undo_stage_hunk = async(function()
     return
   end
 
-  local relpath = relative(bcache.file, bcache.root)
-  local lines = create_patch(relpath, hunk, true)
+  local lines = create_patch(bcache.relpath, hunk, true)
 
-  await(stage_lines, bcache.root, lines)
+  await_main()
+  await(stage_lines, bcache.toplevel, lines)
 
   table.remove(bcache.staged_diffs)
 
@@ -520,39 +562,84 @@ local function keymap(mode, key, result)
 end
 
 local detach = function(bufnr)
-  dprint('Detached from '..bufnr)
+  dprint('Detached', bufnr)
+  local bcache = cache[bufnr]
 
-  local w = cache[bufnr].index_watcher
+  os.remove(bcache.staged)
+
+  local w = bcache.index_watcher
   if w then
     w:stop()
   else
-    dprint('index_watcher for buf '..bufnr..' was nil')
+    dprint('Index_watcher was nil', bufnr)
   end
 
-  cache[bufnr] = nil
+  bcache = nil
 end
 
-local attach = throttle_leading(50, async(function()
-  local cbuf = current_buf()
-  local file = api.nvim_buf_get_name(cbuf)
-  local root = await(get_repo_root, file)
+local detach_all = function()
+  for k, _ in pairs(cache) do
+    detach(k)
+  end
+end
 
-  if not root then
+local attach = throttle_leading(50, async('attach', function()
+  local cbuf = current_buf()
+  if cache[cbuf] ~= nil then
+    dprint('Already attached', cbuf, 'attach')
+    return
+  end
+  dprint('Attaching', cbuf, 'attach')
+  local file = api.nvim_buf_get_name(cbuf)
+
+  if not path_exists(file) then
+    dprint('Not a file', cbuf, 'attach')
     return
   end
 
-  local staged = await(update_staged, cbuf, root, file)
+  local toplevel, gitdir = await(get_repo_root, file)
+
+  if not gitdir then
+    dprint('Not in git repo', cbuf, 'attach')
+    return
+  end
+
+  await_main()
+
+  local relpath = await(git_relative, file, toplevel)
+
+  if not relpath then
+    dprint('File not tracked', cbuf, 'attach')
+    return
+  end
+
+  local staged = os.tmpname()
+
+  local res = await(get_staged, cbuf, staged, toplevel, relpath)
+  if not res then
+    return
+  end
 
   cache[cbuf] = {
     file = file,
-    root = root,
+    relpath = relpath,
+    toplevel = toplevel,
+    gitdir = gitdir,
     staged = staged, -- Temp filename of staged file
     diffs = {},
-    staged_diffs = {},
-    index_watcher = nil
+    staged_diffs = {}
   }
 
-  await(watch_index, cbuf, file, root)
+  cache[cbuf].index_watcher = await(watch_index, cbuf, gitdir,
+    async0('watcher_cb', function()
+      dprint('Index update', cbuf, 'watcher_cb')
+      local res = await(get_staged, cbuf, cache[cbuf].staged, toplevel, relpath)
+      if not res then
+         return
+      end
+      await(update, cbuf)
+    end)
+  )
 
   -- Initial update
   await(update, cbuf)
@@ -588,6 +675,8 @@ local function setup(cfg)
   -- This seems to be triggered twice on the first buffer so we have throttled
   -- the attach function with throttle_leading
   vim.cmd('autocmd BufRead * lua require("gitsigns").attach()')
+
+  vim.cmd('autocmd ExitPre * lua require("gitsigns").detach_all()')
 end
 
 return {
@@ -598,5 +687,6 @@ return {
   next_hunk       = next_hunk,
   prev_hunk       = prev_hunk,
   attach          = attach,
+  detach_all      = detach_all,
   setup           = setup,
 }

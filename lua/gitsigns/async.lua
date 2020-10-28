@@ -4,13 +4,17 @@ local co = coroutine
 
 local M = {}
 
-M.async = function(func)
+M.async = function(name, func)
   assert(type(func) == "function", "type error :: expected func")
   local nparams = debug.getinfo(func, 'u').nparams
+  -- print("async: "..name.." "..nparams)
 
   return function(...)
     local params = {...}
     local callback = params[nparams+1]
+
+    assert(type(callback) == "function" or callback == nil, "type error :: expected func, got "..type(callback))
+
     local thread = co.create(func)
     local function step(...)
       local stat, ret = co.resume(thread, ...)
@@ -25,6 +29,12 @@ M.async = function(func)
       end
     end
     step(unpack(params, 1, nparams))
+  end
+end
+
+M.async0 = function(name, fn)
+  return function()
+    M.async(name, fn)()
   end
 end
 
