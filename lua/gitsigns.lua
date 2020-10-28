@@ -164,12 +164,23 @@ local get_staged = function(root, path, callback)
   }
 end
 
--- to be used with await
+local get_diff_algorithm = function()
+  local algo = 'myers'
+  for o in vim.gsplit(vim.o.diffopt, ',') do
+    if vim.startswith(o, 'algorithm:') then
+      algo = string.sub(o, 11)
+    end
+  end
+  return algo
+end
+
+local algo = get_diff_algorithm()
+
 local run_diff = function(staged, current, callback)
   local results = {}
   run_job {
     command = 'git',
-    args = {'--no-pager', 'diff', '--patch-with-raw', '--unified=0', '--no-color', staged, current},
+    args = {'--no-pager', 'diff', '--diff-algorithm='..algo, '--patch-with-raw', '--unified=0', '--no-color', staged, current},
     on_stdout = function(_, line, _)
       if vim.startswith(line, '@@') then
         table.insert(results, parse_diff_line(line))
