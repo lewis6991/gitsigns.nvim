@@ -152,17 +152,22 @@ end
 
 local function git_relative(file, toplevel, callback)
   local relpath
+  local object_name
+  local mode_bits
   run_job {
     command = 'git',
-    args = {'--no-pager', 'ls-files', file},
+    args = {'--no-pager', 'ls-files', '--stage', file},
     cwd = toplevel,
     on_stdout = function(_, line, _)
       if line then
-        relpath = line
+        local parts = vim.split(line, ' +')
+        mode_bits   = parts[1]
+        object_name = parts[2]
+        relpath = vim.split(parts[3], '\t', true)[2]
       end
     end,
     on_exit = function(_, code)
-      callback(relpath)
+      callback(relpath, object_name, mode_bits)
     end
   }
 end
@@ -229,7 +234,11 @@ end
 local cache = {}
 -- <bufnr> = {
 --   file: string - Full filename
+--   relpath: string - Relative path to toplevel
+--   object_name: string - Object name of file in index
+--   mode_bits: string
 --   toplevel: string - Top level git directory
+--   gitdir: string - Path to git directory
 --   staged: string - Path to staged contents
 --   diffs: array(diffs) - List of diff objects
 --   staged_diffs: array(diffs) - List of staged diffs
@@ -330,7 +339,8 @@ local update = debounce_trailing(50, async('update', function(bufnr)
     return
   end
 
-  local file, toplevel, staged = bcache.file, bcache.toplevel, bcache.staged
+  local file, relpath, toplevel, staged =
+      bcache.file, bcache.relpath, bcache.toplevel, bcache.staged
 
   if not path_exists(staged) then
     local res = await(get_staged, bufnr, staged, toplevel, relpath)
@@ -405,7 +415,7 @@ local stage_lines = function(toplevel, lines, callback)
   }
 end
 
-local create_patch = function(relpath, hunk, invert)
+local create_patch = function(relpath, hunk, mode_bits, invert)
   invert = invert or false
   local type, added, removed = hunk.type, hunk.added, hunk.removed
 
@@ -432,7 +442,7 @@ local create_patch = function(relpath, hunk, invert)
 
   return {
     string.format('diff --git a/%s b/%s', relpath, relpath),
-    'index 000000..000000 100644', -- TODO: Get the correct perms
+    'index 000000..000000 '..mode_bits,
     '--- a/'..relpath,
     '+++ b/'..relpath,
     string.format('@@ -%s,%s +%s,%s @@', ps, pc, ns, nc),
@@ -449,7 +459,7 @@ local stage_hunk = async('stage_hunk', function()
     return
   end
 
-  local lines = create_patch(bcache.relpath, hunk)
+  local lines = create_patch(bcache.relpath, hunk, bcache.mode_bits)
 
   await_main()
   await(stage_lines, bcache.toplevel, lines)
@@ -511,7 +521,7 @@ local undo_stage_hunk = async('undo_stage_hunk', function()
     return
   end
 
-  local lines = create_patch(bcache.relpath, hunk, true)
+  local lines = create_patch(bcache.relpath, hunk, bcache.mode_bits, true)
 
   await_main()
   await(stage_lines, bcache.toplevel, lines)
@@ -610,7 +620,7 @@ local attach = throttle_leading(50, async('attach', function()
 
   await_main()
 
-  local relpath = await(git_relative, file, toplevel)
+  local relpath, object_name, mode_bits = await(git_relative, file, toplevel)
 
   if not relpath then
     dprint('File not tracked', cbuf, 'attach')
@@ -625,19 +635,30 @@ local attach = throttle_leading(50, async('attach', function()
   end
 
   cache[cbuf] = {
-    file = file,
-    relpath = relpath,
-    toplevel = toplevel,
-    gitdir = gitdir,
-    staged = staged, -- Temp filename of staged file
-    diffs = {},
+    file         = file,
+    relpath      = relpath,
+    object_name  = object_name,
+    mode_bits    = mode_bits,
+    toplevel     = toplevel,
+    gitdir       = gitdir,
+    staged       = staged, -- Temp filename of staged file
+    diffs        = {},
     staged_diffs = {}
   }
 
   cache[cbuf].index_watcher = await(watch_index, cbuf, gitdir,
     async0('watcher_cb', function()
       dprint('Index update', cbuf, 'watcher_cb')
-      local res = await(get_staged, cbuf, cache[cbuf].staged, toplevel, relpath)
+      local bcache = cache[cbuf]
+      await_main()
+      local _, object_name, mode_bits = await(git_relative, file, toplevel)
+      if object_name == bcache.object_name then
+         dprint('File not changed', cbuf, 'watcher_cb')
+         return
+      end
+      bcache.object_name = object_name
+      bcache.mode_bits = mode_bits
+      local res = await(get_staged, cbuf, bcache.staged, toplevel, relpath)
       if not res then
          return
       end
