@@ -16,5 +16,6 @@ return {
   watch_index = {
     interval = 1000
   },
-  debug_mode = false
+  debug_mode = false,
+  sign_priority = 6
 }
