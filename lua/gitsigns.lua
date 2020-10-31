@@ -298,7 +298,7 @@ local add_signs = function(bufnr, signs, reset)
 
   for _, s in pairs(signs) do
     vim.fn.sign_place(s.lnum, 'gitsigns_ns', sign_map[s.type], bufnr, {
-      lnum = s.lnum, priority = 6
+      lnum = s.lnum, priority = config.sign_priority
     })
   end
 end
