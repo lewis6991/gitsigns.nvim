@@ -199,11 +199,25 @@ end
 
 local algo = get_diff_algorithm()
 
-local run_diff = function(staged, current, callback)
+local run_diff = function(staged, text, callback)
   local results = {}
   run_job {
     command = 'git',
-    args = {'--no-pager', 'diff', '--diff-algorithm='..algo, '--patch-with-raw', '--unified=0', '--no-color', staged, current},
+    args = {
+      '--no-pager',
+      'diff',
+      '--diff-algorithm='..algo,
+      '--patch-with-raw',
+      '--unified=0',
+      '--no-color',
+      staged,
+      '-'
+    },
+    -- For some strange reason, if lines are fed one by one to git diff via a
+    -- pipe, it stops reading at line ~278. Some internal buffer limit?. To
+    -- workaround this we pass the file as a single string by concatenating
+    -- all the lines.
+    writer = table.concat(text, '\n'),
     on_stdout = function(_, line, _)
       if vim.startswith(line, '@@') then
         table.insert(results, parse_diff_line(line))
@@ -350,13 +364,9 @@ local update = debounce_trailing(50, async('update', function(bufnr)
   end
 
   await_main()
-  local content = api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  local current = os.tmpname()
-  write_to_file(current, content)
 
-  bcache.diffs = await(run_diff, staged, current)
-
-  os.remove(current)
+  local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  bcache.diffs = await(run_diff, staged, buftext)
 
   local status, signs = process_diffs(bcache.diffs)
 
