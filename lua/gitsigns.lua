@@ -34,10 +34,9 @@ local sign_map = {
   changedelete = "GitSignsChangeDelete",
 }
 
-local function dprint(msg, bufnr, caller)
+local function dprint(...)
   if config.debug_mode then
-    local name = caller or debug.getinfo(2, 'n').name or ''
-    vim.schedule_wrap(print)(string.format('gitsigns(%s, %s): %s', name, bufnr, msg))
+    require('gitsigns/debug').dprint(...)
   end
 end
 
