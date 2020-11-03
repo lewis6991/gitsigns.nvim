@@ -497,7 +497,7 @@ local reset_hunk = function()
   local bufnr = current_buf()
 
   local bcache = cache[bufnr]
-  if not bache then
+  if not bcache then
     return
   end
 
