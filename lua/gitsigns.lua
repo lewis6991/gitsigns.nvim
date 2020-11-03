@@ -343,7 +343,7 @@ end)
 
 local update_cnt = 0
 
-local update = debounce_trailing(50, async('update', function(bufnr)
+local update = debounce_trailing(100, async('update', function(bufnr)
   vim.validate {bufnr = {bufnr, 'number'}}
 
   local bcache = cache[bufnr]
