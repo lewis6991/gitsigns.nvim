@@ -461,9 +461,13 @@ end
 
 local stage_hunk = async('stage_hunk', function()
   local bufnr = current_buf()
-  local bcache = cache[bufnr]
-  local hunk = get_hunk(bufnr, bcache.diffs)
 
+  local bcache = cache[bufnr]
+  if not bcache then
+    return
+  end
+
+  local hunk = get_hunk(bufnr, bcache.diffs)
   if not hunk then
     return
   end
@@ -491,9 +495,13 @@ end)
 
 local reset_hunk = function()
   local bufnr = current_buf()
-  local bcache = cache[bufnr]
-  local hunk = get_hunk(bufnr, bcache.diffs)
 
+  local bcache = cache[bufnr]
+  if not bache then
+    return
+  end
+
+  local hunk = get_hunk(bufnr, bcache.diffs)
   if not hunk then
     return
   end
@@ -521,7 +529,11 @@ end
 
 local undo_stage_hunk = async('undo_stage_hunk', function()
   local bufnr = current_buf()
+
   local bcache = cache[bufnr]
+  if not bcache then
+    return
+  end
 
   local hunk = bcache.staged_diffs[#bcache.staged_diffs]
 
@@ -585,8 +597,8 @@ end
 
 local detach = function(bufnr)
   dprint('Detached', bufnr)
-  local bcache = cache[bufnr]
 
+  local bcache = cache[bufnr]
   if not bcache then
     return
   end
