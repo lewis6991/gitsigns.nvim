@@ -17,6 +17,5 @@ return {
     interval = 1000
   },
   debug_mode = false,
-  sign_priority = 6,
-  debounce = 100
+  sign_priority = 6
 }
