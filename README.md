@@ -1,9 +1,12 @@
 # gitsigns.nvim
 Git signs written in pure lua.
 
-WIP
+![](https://raw.githubusercontent.com/lewis6991/media/main/gitsigns_demo1.gif)
 
-#### Features:
+## Status
+Still very **WIP**. Expect things to sometimes break but please don't hesitate to raise an issue.
+
+## Features
 
 - Signs for added, removed, and changed lines
 - Asynchronous using [luv](https://github.com/luvit/luv/blob/master/docs.md)
