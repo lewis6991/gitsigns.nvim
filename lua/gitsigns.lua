@@ -216,7 +216,7 @@ local run_diff = function(staged, text, callback)
     -- pipe, it stops reading at line ~278. Some internal buffer limit?. To
     -- workaround this we pass the file as a single string by concatenating
     -- all the lines.
-    writer = table.concat(text, '\n'),
+    writer = table.concat(text, '\n')..'\n',
     on_stdout = function(_, line, _)
       if vim.startswith(line, '@@') then
         table.insert(results, parse_diff_line(line))
