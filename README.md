@@ -59,7 +59,6 @@ require('gitsigns').setup {
     interval = 1000
   }
   sign_priority = 6,
-  debounce = 100,
 }
 ```
 
