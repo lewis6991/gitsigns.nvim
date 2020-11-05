@@ -287,7 +287,7 @@ local get_repo_root = function(file, callback)
   local out = {}
   run_job {
     command = 'git',
-    args = {'rev-parse', '--show-toplevel', '--git-dir'},
+    args = {'rev-parse', '--show-toplevel', '--absolute-git-dir'},
     cwd = dirname(file),
     on_stdout = function(_, line)
       if line then
