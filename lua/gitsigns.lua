@@ -556,8 +556,12 @@ local undo_stage_hunk = async('undo_stage_hunk', function()
 end)
 
 local function nav_hunk(forwards)
-  local diffs = cache[current_buf()].diffs
-  if not diffs then
+  local bcache = cache[current_buf()]
+  if not bcache then
+    return
+  end
+  local diffs = bcache.diffs
+  if not diffs or vim.tbl_isempty(diffs) then
     return
   end
   local line = api.nvim_win_get_cursor(0)[1]
