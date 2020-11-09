@@ -6,6 +6,7 @@ local AS = require('gitsigns/async')
 local default_config = require('gitsigns/defaults')
 local mk_repeatable = require('gitsigns/repeat').mk_repeatable
 local DB = require('gitsigns/debounce')
+local apply_mappings = require('gitsigns/mappings')
 
 local throttle_leading = DB.throttle_leading
 local debounce_trailing = DB.debounce_trailing
@@ -389,7 +390,7 @@ local watch_index = async('watch_index', function(bufnr, gitdir, on_change)
 
   local index = gitdir..'/index'
   if not path_exists(index) then
-     error('Cannot open index file: '..index)
+    error('Cannot find index file: '..index)
     return
   end
 
@@ -595,10 +596,6 @@ end
 local function next_hunk() nav_hunk(true)  end
 local function prev_hunk() nav_hunk(false) end
 
-local function keymap(mode, key, result)
-  api.nvim_set_keymap(mode, key, result, {noremap = true, silent = true})
-end
-
 local detach = function(bufnr)
   dprint('Detached', bufnr)
 
@@ -625,7 +622,11 @@ local detach_all = function()
   end
 end
 
-local attach = throttle_leading(50, async('attach', function()
+local function apply_keymaps(bufonly)
+  apply_mappings(config.keymaps, bufonly)
+end
+
+local attach = throttle_leading(100, async('attach', function()
   local cbuf = current_buf()
   if cache[cbuf] ~= nil then
     dprint('Already attached', cbuf, 'attach')
@@ -707,9 +708,15 @@ local attach = throttle_leading(50, async('attach', function()
       detach(buf)
     end
   })
+
+  apply_keymaps(true)
 end))
 
 local function setup(cfg)
+  if cfg.keymaps and not vim.tbl_isempty(cfg.keymaps) then
+    default_config.keymaps = {}
+  end
+
   config = vim.tbl_deep_extend("keep", cfg or {}, default_config)
 
   -- Define signs
@@ -720,10 +727,7 @@ local function setup(cfg)
     })
   end
 
-  -- Setup keymaps
-  for key, cmd in pairs(config.keymaps) do
-    keymap('n', key, cmd)
-  end
+  apply_keymaps(false)
 
   -- This seems to be triggered twice on the first buffer so we have throttled
   -- the attach function with throttle_leading
