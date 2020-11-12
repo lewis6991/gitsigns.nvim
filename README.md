@@ -22,8 +22,14 @@ Neovim nightly
 
 [packer.nvim](https://github.com/wbthomason/packer.nvim):
 ```lua
-use 'nvim-lua/plenary.nvim'
-use 'lewis6991/gitsigns.nvim'
+use {
+  'lewis6991/gitsigns.nvim',
+  -- Need to provide branch explicitly, see: https://github.com/wbthomason/packer.nvim/issues/86
+  branch = "main",
+  requires = {
+    'nvim-lua/plenary.nvim'
+  }
+}
 ```
 
 [vim-plug](https://github.com/junegunn/vim-plug):
