@@ -62,6 +62,7 @@ require('gitsigns').setup {
     ['n <leader>hs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
     ['n <leader>hu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
     ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
+    ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
   },
   watch_index = {
     interval = 1000
@@ -89,7 +90,7 @@ set statusline+=%{get(b:,'gitsigns_status','')}
 
 - [x] Add action for undoing a stage of a hunk
 - [x] Add action for ~~undoing~~ reseting a hunk
-- [ ] Add action for showing diff (or original text) in a floating window
+- [x] Add action for showing diff (or original text) in a floating window
 - [ ] Add ability to show staged hunks with different signs (maybe in a different sign column?)
 - [x] Add support for repeat.vim
 - [ ] Apply buffer updates incrementally
