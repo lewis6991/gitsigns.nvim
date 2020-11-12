@@ -714,6 +714,8 @@ local attach = throttle_leading(100, async('attach', function()
 end))
 
 local function setup(cfg)
+  cfg = cfg or {}
+
   if cfg.keymaps then
     default_config.keymaps = {}
   end
