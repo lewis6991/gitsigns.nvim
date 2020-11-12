@@ -7,6 +7,7 @@ local default_config = require('gitsigns/defaults')
 local mk_repeatable = require('gitsigns/repeat').mk_repeatable
 local DB = require('gitsigns/debounce')
 local apply_mappings = require('gitsigns/mappings')
+local popup = require('gitsigns/popup')
 
 local throttle_leading = DB.throttle_leading
 local debounce_trailing = DB.debounce_trailing
@@ -736,6 +737,24 @@ local function setup(cfg)
   vim.cmd('autocmd ExitPre * lua require("gitsigns").detach_all()')
 end
 
+function preview_hunk()
+  local hunk = get_hunk()
+
+  if not hunk then
+    return
+  end
+
+  local winid, bufnr = popup.create(hunk.lines, { relative = 'cursor' })
+
+  vim.fn.nvim_buf_set_option(bufnr, 'filetype', 'diff')
+  vim.fn.nvim_win_set_option(winid, 'number', false)
+  vim.fn.nvim_win_set_option(winid, 'relativenumber', false)
+end
+
+function dump_cache()
+  print(vim.inspect(cache))
+end
+
 return {
   update          = update,
   stage_hunk      = mk_repeatable(stage_hunk),
@@ -743,7 +762,9 @@ return {
   reset_hunk      = mk_repeatable(reset_hunk),
   next_hunk       = next_hunk,
   prev_hunk       = prev_hunk,
+  preview_hunk    = preview_hunk,
   attach          = attach,
   detach_all      = detach_all,
   setup           = setup,
+  dump_cache      = dump_cache
 }
