@@ -24,8 +24,6 @@ Neovim nightly
 ```lua
 use {
   'lewis6991/gitsigns.nvim',
-  -- Need to provide branch explicitly, see: https://github.com/wbthomason/packer.nvim/issues/86
-  branch = "main",
   requires = {
     'nvim-lua/plenary.nvim'
   }
