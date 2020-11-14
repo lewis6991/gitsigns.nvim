@@ -1,0 +1,140 @@
+*gitsigns.txt* Gitsigns
+*gitsigns.nvim*
+
+Author:   Lewis Russell <lewis6991@gmail.com>
+Homepage: <https://github.com/lewis6991/gitsigns.nvim>
+License:  MIT license
+
+==============================================================================
+INTRODUCTION                                                        *gitsigns*
+
+Gitsigns is a plugin for Neovim that provides integration with Git via a
+feature set which includes (but not limited to):
+  • Provides signs in the |signcolumn| to show changed/added/removed lines.
+  • Mappings to operate on hunks to stage, undo or reset against Git's index.
+
+Gitsigns is implemented entirely in Lua which is built into Neovim and because
+of this requires no external dependencies. This is unlike other plugins that
+require python, node, etc, which need to communicate with Neovim using |RPC|.
+
+==============================================================================
+USAGE                                                         *gitsigns-usage*
+
+For basic setup with all batteries included:
+>
+    require('gitsigns').setup()
+<
+
+Configuration can be passed to the setup function. Here is an example with all
+the default settings:
+>
+    require('gitsigns').setup {
+      signs = {
+        add          = {hl = 'DiffAdd'   , text = '│'},
+        change       = {hl = 'DiffChange', text = '│'},
+        delete       = {hl = 'DiffDelete', text = '_'},
+        topdelete    = {hl = 'DiffDelete', text = '‾'},
+        changedelete = {hl = 'DiffChange', text = '~'},
+      },
+      keymaps = {
+        -- Default keymap options
+        noremap = true,
+        buffer = true,
+
+        ['n ]c'] = { expr = true, "&diff ? ']c' : '<cmd>lua require\"gitsigns\".next_hunk()<CR>'"},
+        ['n [c'] = { expr = true, "&diff ? '[c' : '<cmd>lua require\"gitsigns\".prev_hunk()<CR>'"},
+
+        ['n <leader>hs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
+        ['n <leader>hu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
+        ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
+        ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
+      },
+      watch_index = {
+        interval = 1000
+      },
+      sign_priority = 6
+    }
+<
+
+==============================================================================
+MAPPINGS                                                   *gitsigns-mappings*
+
+All mappings are configurable via |gitsigns-setup()|.
+
+Most actions can be repeated with `.` if you have |vim-repeat| installed.
+
+Buffer ~
+    ]c         Jump to the next hunk.
+    [c         Jump to the previous hunk.
+    <leader>hs Stage the hunk at the cursor position.
+    <leader>hu Undo the last stage hunk.
+    <leader>hr Reset the lines of the hunk to what is in Git's index.
+    <leader>hp Preview the hunk in a floating window.
+
+Custom mappings are defined using the `keymaps` table in the config table
+passed to |gitsigns-setup()|.  Each key in the table defines the mode and key
+(whitespace delimited) for the mapping and the value defines what the key maps
+to. The value can be a table which can contain keys matching the options
+defined in |map-arguments| which are: `expr`, `noremap`, `nowait`, `script`,
+`silent`, `unique` and `buffer`.  These options can also be used in the
+top level of the `keymaps` table to define default options for all mappings.
+See |gitsigns-usages| for a an example.
+
+==============================================================================
+FUNCTIONS                                                 *gitsigns-functions*
+
+setup({config})                                             *gitsigns.setup()*
+                Setup and start Gitsigns.
+
+                Parameters: ~
+                    {config} Table object containing configuration for
+                    Gitsigns. See |gitsigns-usage| for more details.
+
+next_hunk()                                             *gitsigns.next_hunk()*
+                Jump to the next hunk in the current buffer. Respects
+                |wrapscan|.
+
+prev_hunk()                                             *gitsigns.prev_hunk()*
+                Jump to the previous hunk in the current buffer. Respects
+                |wrapscan|.
+
+stage_hunk()                                           *gitsigns.stage_hunk()*
+                Stage the hunk at the cursor position.
+
+undo_stage_hunk()                                 *gitsigns.undo_stage_hunk()*
+                Undo the last call of stage_hunk(). Note: only the calls to
+                stage_hunk() performed in the current session can be undone.
+
+reset_hunk()                                           *gitsigns.reset_hunk()*
+                Reset the lines of the hunk at the cursor position to what
+                is in Git's index.
+
+preview_hunk()                                       *gitsigns.preview_hunk()*
+                Preview the hunk at the cursor position in a floating
+                window.
+
+update()                                                   *gitsigns.update()*
+                Update signs for the current buffer.
+
+attach()                                                   *gitsigns.attach()*
+                Attach Gitsigns to the current buffer.
+
+detach_all()                                           *gitsigns.detach_all()*
+                Detach Gitsigns from all buffers it is attached to.
+
+==============================================================================
+STATUSLINE                                               *gitsigns-statusline*
+
+                                *b:gitsigns_status* *b:gitsigns_status_dict*
+The buffer variables `b:gitsigns_status` and `b:gitsigns_status_dict` are
+provided. `b:gitsigns_status` is a preformatted and ready to use string (e.g.
+`+10 -5 ~1`) and ommits zero values. `b:gitsigns_status_dict` is a dictionary
+with the keys `added`, `removed`, `changed`.
+
+Example:
+>
+    set statusline+=%{get(b:,'gitsigns_status','')}
+<
+
+------------------------------------------------------------------------------
+vim:tw=78:ts=8:ft=help:norl:

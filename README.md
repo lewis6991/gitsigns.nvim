@@ -102,5 +102,5 @@ set statusline+=%{get(b:,'gitsigns_status','')}
 - [x] Respect algorithm in diffopt
 - [x] When detecting index changes, also check if the file of the buffer changed
 - [ ] Add ability to show commit in floating window of current line
-- [ ] add help doc
+- [x] Add help doc
 
