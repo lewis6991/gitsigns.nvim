@@ -202,6 +202,7 @@ local algo = get_diff_algorithm()
 
 local run_diff = function(staged, text, callback)
   local results = {}
+  local stdin = vim.loop.new_pipe(false)
   run_job {
     command = 'git',
     args = {
@@ -214,11 +215,10 @@ local run_diff = function(staged, text, callback)
       staged,
       '-'
     },
-    -- For some strange reason, if lines are fed one by one to git diff via a
-    -- pipe, it stops reading at line ~278. Some internal buffer limit?. To
-    -- workaround this we pass the file as a single string by concatenating
-    -- all the lines.
-    writer = table.concat(text, '\n')..'\n',
+    -- Remove stdin handle when the following PR is merged:
+    -- https://github.com/nvim-lua/plenary.nvim/pull/23
+    -- writer = text,
+    writer = stdin,
     on_stdout = function(_, line, _)
       if vim.startswith(line, '@@') then
         table.insert(results, parse_diff_line(line))
@@ -235,6 +235,14 @@ local run_diff = function(staged, text, callback)
       callback(results)
     end
   }
+
+  text = vim.tbl_map(function(l)
+    return l..'\n'
+  end, text)
+
+  stdin:write(text, function()
+    stdin:close()
+  end)
 end
 
 local function mk_status_txt(status)
