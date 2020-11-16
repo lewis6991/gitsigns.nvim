@@ -46,6 +46,12 @@ local function dirname(file)
   return file:match("(.*/)")
 end
 
+local function set_buf_var(bufnr, name, value)
+  vim.schedule(function()
+    api.nvim_buf_set_var(bufnr, name, value)
+  end)
+end
+
 local function parse_diff_line(line)
   local diffkey = vim.trim(vim.split(line, '@@', true)[2])
 
@@ -293,22 +299,42 @@ local function get_hunk(bufnr, diffs)
   return find_diff(line, diffs)
 end
 
-local get_repo_root = function(file, callback)
+local function process_abbrev_head(gitdir, head_str)
+  if not gitdir then
+    return head_str
+  end
+  if head_str == 'HEAD' then
+    if path_exists(gitdir..'/rebase-merge')
+      or path_exists(gitdir..'/rebase-apply') then
+      return '(rebasing)'
+    else
+      return ''
+    end
+  end
+  return head_str
+end
+
+local get_repo_info = function(file, callback)
   local out = {}
   run_job {
     command = 'git',
-    args = {'rev-parse', '--show-toplevel', '--absolute-git-dir'},
+    args = {'rev-parse',
+      '--show-toplevel',
+      '--absolute-git-dir',
+      '--abbrev-ref', 'HEAD',
+    },
     cwd = dirname(file),
     on_stdout = function(_, line)
       if line then
         table.insert(out, line)
       end
     end,
-    on_exit = function()
+    on_exit = vim.schedule_wrap(function()
       local toplevel = out[1]
       local gitdir = out[2]
-      callback(toplevel, gitdir)
-    end
+      local abbrev_head = process_abbrev_head(gitdir, out[3])
+      callback(toplevel, gitdir, abbrev_head)
+    end)
   }
 end
 
@@ -383,8 +409,8 @@ local update = debounce_trailing(100, async('update', function(bufnr)
 
   add_signs(bufnr, signs, true)
 
-  api.nvim_buf_set_var(bufnr, 'gitsigns_status_dict', status)
-  api.nvim_buf_set_var(bufnr, 'gitsigns_status', mk_status_txt(status))
+  set_buf_var(bufnr, 'gitsigns_status_dict', status)
+  set_buf_var(bufnr, 'gitsigns_status', mk_status_txt(status))
 
   update_cnt = update_cnt + 1
   dprint(string.format('updates: %s, jobs: %s', update_cnt, job_cnt), bufnr, 'update')
@@ -649,15 +675,16 @@ local attach = throttle_leading(100, async('attach', function()
     return
   end
 
-  local toplevel, gitdir = await(get_repo_root, file)
+  local toplevel, gitdir, abbrev_head = await(get_repo_info, file)
 
   if not gitdir then
     dprint('Not in git repo', cbuf, 'attach')
     return
   end
 
-  await_main()
+  set_buf_var(bufnr, 'gitsigns_head', abbrev_head)
 
+  await_main()
   local relpath, object_name, mode_bits = await(git_relative, file, toplevel)
 
   if not relpath then
@@ -679,6 +706,7 @@ local attach = throttle_leading(100, async('attach', function()
     mode_bits    = mode_bits,
     toplevel     = toplevel,
     gitdir       = gitdir,
+    abbrev_head  = abbrev_head,
     staged       = staged, -- Temp filename of staged file
     diffs        = {},
     staged_diffs = {}
@@ -688,6 +716,12 @@ local attach = throttle_leading(100, async('attach', function()
     async0('watcher_cb', function()
       dprint('Index update', cbuf, 'watcher_cb')
       local bcache = cache[cbuf]
+
+      await_main()
+      local _, _, abbrev_head = await(get_repo_info, file)
+      bcache.abbrev_head = abbrev_head
+      set_buf_var(bufnr, 'gitsigns_head', abbrev_head)
+
       await_main()
       local _, object_name, mode_bits = await(git_relative, file, toplevel)
       if object_name == bcache.object_name then

@@ -90,6 +90,8 @@ Example:
 set statusline+=%{get(b:,'gitsigns_status','')}
 ```
 
+For the current branch use the variable `b:gitsigns_head`.
+
 ## TODO
 
 - [x] Add action for undoing a stage of a hunk
