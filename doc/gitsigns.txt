@@ -135,6 +135,9 @@ Example:
 >
     set statusline+=%{get(b:,'gitsigns_status','')}
 <
+                                                             *b:gitsigns_head*
+Use `b:gitsigns_head` to return the name of the current branch. If the current
+HEAD is detached then this will be an empty string.
 
 ------------------------------------------------------------------------------
 vim:tw=78:ts=8:ft=help:norl:
