@@ -18,10 +18,12 @@ return {
     ['n <leader>hu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
     ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
     ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
+    ['n m'] = '<cmd>lua require"gitsigns".dump_cache()<CR>',
   },
   watch_index = {
     interval = 1000
   },
   debug_mode = false,
-  sign_priority = 6
+  sign_priority = 6,
+  status_formatter = nil, -- Use default
 }
