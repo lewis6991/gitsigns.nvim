@@ -644,7 +644,7 @@ local attach = throttle_leading(100, async('attach', function()
   dprint('Attaching', cbuf, 'attach')
   local file = api.nvim_buf_get_name(cbuf)
 
-  if not path_exists(file) then
+  if not path_exists(file) or vim.fn.isdirectory(file) == 1 then
     dprint('Not a file', cbuf, 'attach')
     return
   end
