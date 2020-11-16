@@ -72,6 +72,7 @@ require('gitsigns').setup {
     interval = 1000
   }
   sign_priority = 6,
+  status_formatter = nil, -- Use default
 }
 ```
 
@@ -80,10 +81,9 @@ For information on configuring neovim via lua please see
 
 ## Status Line
 
-Use `b:gitsigns_status` or `b:gitsigns_status_dict`. `b:gitsigns_status` is
-a preformatted and ready to use string (e.g. `+10 -5 ~1`) and ommits zero
-values. `b:gitsigns_status_dict`is a dictionary with the keys `added`,
-`removed`, `changed`.
+Use `b:gitsigns_status` or `b:gitsigns_status_dict`. `b:gitsigns_status` is a
+is formatted using `config.status_formatter`. `b:gitsigns_status_dict`is a
+dictionary with the keys `added`, `removed`, `changed` and `head`.
 
 Example:
 ```viml

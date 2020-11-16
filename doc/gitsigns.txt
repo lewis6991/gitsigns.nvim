@@ -52,7 +52,8 @@ the default settings:
       watch_index = {
         interval = 1000
       },
-      sign_priority = 6
+      sign_priority = 6,
+      status_formatter = nil -- Use default
     }
 <
 
@@ -127,9 +128,9 @@ STATUSLINE                                               *gitsigns-statusline*
 
                                 *b:gitsigns_status* *b:gitsigns_status_dict*
 The buffer variables `b:gitsigns_status` and `b:gitsigns_status_dict` are
-provided. `b:gitsigns_status` is a preformatted and ready to use string (e.g.
-`+10 -5 ~1`) and ommits zero values. `b:gitsigns_status_dict` is a dictionary
-with the keys `added`, `removed`, `changed`.
+provided. `b:gitsigns_status` is formatted using `config.status_formatter`
+. `b:gitsigns_status_dict` is a dictionary with the keys `added`, `removed`,
+`changed` and `head`.
 
 Example:
 >

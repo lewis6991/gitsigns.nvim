@@ -404,13 +404,14 @@ local update = debounce_trailing(100, async('update', function(bufnr)
   bcache.diffs = await(run_diff, staged, buftext)
 
   local status, signs = process_diffs(bcache.diffs)
+  status.head = bcache.abbrev_head
 
   await_main()
 
   add_signs(bufnr, signs, true)
 
   set_buf_var(bufnr, 'gitsigns_status_dict', status)
-  set_buf_var(bufnr, 'gitsigns_status', mk_status_txt(status))
+  set_buf_var(bufnr, 'gitsigns_status', config.status_formatter(status))
 
   update_cnt = update_cnt + 1
   dprint(string.format('updates: %s, jobs: %s', update_cnt, job_cnt), bufnr, 'update')
@@ -763,6 +764,10 @@ local function setup(cfg)
   end
 
   config = vim.tbl_deep_extend("keep", cfg or {}, default_config)
+
+  if type(config.status_formatter) ~= 'function' then
+    config.status_formatter = mk_status_txt
+  end
 
   -- Define signs
   for t, sign_name in pairs(sign_map) do
