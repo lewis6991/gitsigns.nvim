@@ -1,0 +1,25 @@
+
+local M = {}
+
+local sign_define_cache = {}
+
+local function sign_get(name)
+  if not sign_define_cache[name] then
+    local s = vim.fn.sign_getdefined(name)
+    if not vim.tbl_isempty(s) then
+      sign_define_cache[name] = s
+    end
+  end
+  return sign_define_cache[name]
+end
+
+function M.sign_define(name, texthl, text)
+  if not sign_get(name) then
+    vim.fn.sign_define(name, {
+      texthl = texthl,
+      text   = text
+    })
+  end
+end
+
+return M
