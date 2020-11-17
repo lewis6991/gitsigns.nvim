@@ -8,6 +8,7 @@ local mk_repeatable = require('gitsigns/repeat').mk_repeatable
 local DB = require('gitsigns/debounce')
 local apply_mappings = require('gitsigns/mappings')
 local popup = require('gitsigns/popup')
+local sign_define = require('gitsigns/signs').sign_define
 
 local throttle_leading = DB.throttle_leading
 local debounce_trailing = DB.debounce_trailing
@@ -112,11 +113,7 @@ end
 
 local function process_diffs(diffs)
   local status = { added = 0, changed = 0, removed = 0 }
-
   local signs = {}
-  local add_sign = function(type, lnum)
-    table.insert(signs, {type = type, lnum = lnum})
-  end
 
   for _, diff in pairs(diffs) do
     update_status(status, diff)
@@ -124,16 +121,23 @@ local function process_diffs(diffs)
     for i = diff.start, diff.dend do
       local topdelete = diff.type == 'delete' and i == 0
       local changedelete = diff.type == 'change' and diff.removed.count > diff.added.count and i == diff.dend
-      add_sign(
-        topdelete and 'topdelete' or changedelete and 'changedelete' or diff.type,
-        topdelete and 1 or i
-      )
+      local count = diff.type == 'add' and diff.added.count or diff.removed.count
+      table.insert(signs, {
+        type = topdelete and 'topdelete' or changedelete and 'changedelete' or diff.type,
+        lnum = topdelete and 1 or i,
+        count = i == diff.start and count
+      })
     end
     if diff.type == "change" then
       local add, remove = diff.added.count, diff.removed.count
       if add > remove then
         for i = 1, add - remove do
-          add_sign('add', diff.dend + i)
+          local count = add - remove
+          table.insert(signs, {
+            type = 'add',
+            lnum = diff.dend + i,
+            count = i == 1 and count
+          })
         end
       end
     end
@@ -334,7 +338,19 @@ local add_signs = function(bufnr, signs, reset)
   end
 
   for _, s in pairs(signs) do
-    vim.fn.sign_place(s.lnum, 'gitsigns_ns', sign_map[s.type], bufnr, {
+    local type = sign_map[s.type]
+    local count = s.count
+
+    local cs = config.signs[s.type]
+    if cs.show_count and count then
+      local cc = config.count_chars
+      local count_suffix = cc[count] and count or cc['+'] and 'Plus' or ''
+      local count_char   = cc[count]           or cc['+']            or ''
+      type = type..count_suffix
+      sign_define(type, cs.hl, cs.text..count_char)
+    end
+
+    vim.fn.sign_place(s.lnum, 'gitsigns_ns', type, bufnr, {
       lnum = s.lnum, priority = config.sign_priority
     })
   end
@@ -759,10 +775,7 @@ local function setup(cfg)
 
   -- Define signs
   for t, sign_name in pairs(sign_map) do
-    vim.fn.sign_define(sign_name, {
-      texthl = config.signs[t].hl,
-      text   = config.signs[t].text
-    })
+    sign_define(sign_name, config.signs[t].hl, config.signs[t].text)
   end
 
   apply_keymaps(false)
