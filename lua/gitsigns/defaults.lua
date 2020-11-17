@@ -6,6 +6,18 @@ return {
     topdelete    = {hl = 'DiffDelete', text = '‾'},
     changedelete = {hl = 'DiffChange', text = '~'},
   },
+  count_chars = {
+    [1]   = '1', -- '₁',
+    [2]   = '2', -- '₂',
+    [3]   = '3', -- '₃',
+    [4]   = '4', -- '₄',
+    [5]   = '5', -- '₅',
+    [6]   = '6', -- '₆',
+    [7]   = '7', -- '₇',
+    [8]   = '8', -- '₈',
+    [9]   = '9', -- '₉',
+    ['+'] = '>', -- '₊',
+  },
   keymaps = {
     -- Default keymap options
     noremap = true,
