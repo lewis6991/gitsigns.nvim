@@ -70,7 +70,7 @@ require('gitsigns').setup {
   },
   watch_index = {
     interval = 1000
-  }
+  },
   sign_priority = 6,
   status_formatter = nil, -- Use default
 }
