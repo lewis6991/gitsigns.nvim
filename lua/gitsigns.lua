@@ -22,6 +22,16 @@ local apply_config   = require('gitsigns/config')
 local mk_repeatable  = require('gitsigns/repeat').mk_repeatable
 local apply_mappings = require('gitsigns/mappings')
 
+local gs_hunks = require("gitsigns/hunks")
+local create_patch    = gs_hunks.create_patch
+local process_hunks   = gs_hunks.process_hunks
+local parse_diff_line = gs_hunks.parse_diff_line
+local get_summary     = gs_hunks.get_summary
+local find_hunk       = gs_hunks.find_hunk
+
+local gs_objs = require("gitsigns/objects")
+local validate = gs_objs.validate
+
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
@@ -51,97 +61,12 @@ local function set_buf_var(bufnr, name, value)
   end)
 end
 
-local function parse_diff_line(line)
-  local diffkey = vim.trim(vim.split(line, '@@', true)[2])
-
-  -- diffKey: "-xx,n +yy"
-  -- pre: {xx, n}, now: {yy}
-  local pre, now = unpack(vim.tbl_map(function(s)
-    return vim.split(string.sub(s, 2), ',')
-  end, vim.split(diffkey, ' ')))
-
-  local removed = { start = tonumber(pre[1]), count = tonumber(pre[2]) or 1 }
-  local added   = { start = tonumber(now[1]), count = tonumber(now[2]) or 1 }
-
-  local diff = {
-    start   = added.start,
-    head    = line,
-    lines   = {},
-    removed = removed,
-    added   = added
-  }
-
-  if added.count == 0 then
-    -- delete
-    diff.dend = added.start
-    diff.type = "delete"
-  elseif removed.count == 0 then
-    -- add
-    diff.dend = added.start + added.count - 1
-    diff.type = "add"
-  else
-    -- change
-    diff.dend = added.start + math.min(added.count, removed.count) - 1
-    diff.type = "change"
-  end
-  return diff
-end
-
 local function write_to_file(file, content)
   with(open(file, 'w'), function(writer)
     for _, l in pairs(content) do
       writer:write(l..'\n')
     end
   end)
-end
-
-local function update_status(status, diff)
-  if diff.type == 'add' then
-    status.added = status.added + diff.added.count
-  elseif diff.type == 'delete' then
-    status.removed = status.removed + diff.removed.count
-  elseif diff.type == 'change' then
-    local add, remove = diff.added.count, diff.removed.count
-    local min = math.min(add, remove)
-    status.changed = status.changed + min
-    status.added   = status.added   + add - min
-    status.removed = status.removed + remove - min
-  end
-end
-
-local function process_diffs(diffs)
-  local status = { added = 0, changed = 0, removed = 0 }
-  local signs = {}
-
-  for _, diff in pairs(diffs) do
-    update_status(status, diff)
-
-    for i = diff.start, diff.dend do
-      local topdelete = diff.type == 'delete' and i == 0
-      local changedelete = diff.type == 'change' and diff.removed.count > diff.added.count and i == diff.dend
-      local count = diff.type == 'add' and diff.added.count or diff.removed.count
-      table.insert(signs, {
-        type = topdelete and 'topdelete' or changedelete and 'changedelete' or diff.type,
-        lnum = topdelete and 1 or i,
-        count = i == diff.start and count
-      })
-    end
-    if diff.type == "change" then
-      local add, remove = diff.added.count, diff.removed.count
-      if add > remove then
-        for i = 1, add - remove do
-          local count = add - remove
-          table.insert(signs, {
-            type = 'add',
-            lnum = diff.dend + i,
-            count = i == 1 and count
-          })
-        end
-      end
-    end
-  end
-
-  return status, signs
 end
 
 local path_exists = function(p)
@@ -234,34 +159,19 @@ local cache = {}
 --   toplevel: string - Top level git directory
 --   gitdir: string - Path to git directory
 --   staged: string - Path to staged contents
---   diffs: array(diffs) - List of diff objects
---   staged_diffs: array(diffs) - List of staged diffs
+--   hunks: array(hunks) - List of hunk objects
+--   staged_diffs: array(hunks) - List of staged hunks
 --   index_watcher: Timer object watching the files index
 -- }
 
-local function find_diff(line, diffs)
-  for _, diff in pairs(diffs) do
-    if line == 1 and diff.start == 0 and diff.dend == 0 then
-      return diff
-    end
-
-    local dend =
-      diff.type == 'change' and diff.added.count > diff.removed.count and
-        (diff.dend + diff.added.count - diff.removed.count) or
-        diff.dend
-
-    if diff.start <= line and dend >= line then
-      return diff
-    end
-  end
-end
-
-local function get_hunk(bufnr, diffs)
+local function get_hunk(bufnr, hunks)
   bufnr = bufnr or current_buf()
-  diffs = diffs or cache[bufnr].diffs
+  hunks = hunks or cache[bufnr].hunks
 
-  local line = api.nvim_win_get_cursor(0)[1]
-  return find_diff(line, diffs)
+  validate.hunks(hunks)
+
+  local lnum = api.nvim_win_get_cursor(0)[1]
+  return find_hunk(lnum, hunks)
 end
 
 local function process_abbrev_head(gitdir, head_str)
@@ -302,6 +212,8 @@ local get_repo_info = function(file, callback)
 end
 
 local add_signs = function(bufnr, signs, reset)
+  validate.signs(signs)
+
   reset = reset or false
 
   if reset then
@@ -326,8 +238,6 @@ local add_signs = function(bufnr, signs, reset)
     })
   end
 end
-
-local v
 
 local get_staged = async('get_staged', function(bufnr, staged_path, toplevel, relpath)
   vim.validate {
@@ -376,10 +286,12 @@ local update = debounce_trailing(100, async('update', function(bufnr)
   await_main()
 
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  bcache.diffs = await(run_diff, staged, buftext)
+  bcache.hunks = await(run_diff, staged, buftext)
 
-  local status, signs = process_diffs(bcache.diffs)
+  local status = get_summary(bcache.hunks)
   status.head = bcache.abbrev_head
+
+  local signs = process_hunks(bcache.hunks)
 
   await_main()
 
@@ -436,41 +348,6 @@ local stage_lines = function(toplevel, lines, callback)
   }
 end
 
-local create_patch = function(relpath, hunk, mode_bits, invert)
-  invert = invert or false
-  local type, added, removed = hunk.type, hunk.added, hunk.removed
-
-  local ps, pc, ns, nc = unpack(({
-    add    = {removed.start + 1, 0            , removed.start + 1, added.count},
-    delete = {removed.start    , removed.count, removed.start    , 0          },
-    change = {removed.start    , removed.count, removed.start    , added.count}
-  })[type])
-
-  local lines = hunk.lines
-
-  if invert then
-    ps, pc, ns, nc = ns, nc, ps, pc
-
-    lines = vim.tbl_map(function(l)
-      if vim.startswith(l, '+') then
-        l = '-'..string.sub(l, 2, -1)
-      elseif vim.startswith(l, '-') then
-        l = '+'..string.sub(l, 2, -1)
-      end
-      return l
-    end, lines)
-  end
-
-  return {
-    string.format('diff --git a/%s b/%s', relpath, relpath),
-    'index 000000..000000 '..mode_bits,
-    '--- a/'..relpath,
-    '+++ b/'..relpath,
-    string.format('@@ -%s,%s +%s,%s @@', ps, pc, ns, nc),
-    unpack(lines)
-  }
-end
-
 local stage_hunk = async('stage_hunk', function()
   local bufnr = current_buf()
 
@@ -479,7 +356,7 @@ local stage_hunk = async('stage_hunk', function()
     return
   end
 
-  local hunk = get_hunk(bufnr, bcache.diffs)
+  local hunk = get_hunk(bufnr, bcache.hunks)
   if not hunk then
     return
   end
@@ -491,7 +368,7 @@ local stage_hunk = async('stage_hunk', function()
 
   table.insert(bcache.staged_diffs, hunk)
 
-  local _, signs = process_diffs({hunk})
+  local signs = process_hunks({hunk})
 
   await_main()
 
@@ -513,7 +390,7 @@ local reset_hunk = function()
     return
   end
 
-  local hunk = get_hunk(bufnr, bcache.diffs)
+  local hunk = get_hunk(bufnr, bcache.hunks)
   if not hunk then
     return
   end
@@ -561,7 +438,7 @@ local undo_stage_hunk = async('undo_stage_hunk', function()
 
   table.remove(bcache.staged_diffs)
 
-  local _, signs = process_diffs({hunk})
+  local signs = process_hunks({hunk})
 
   await_main()
   add_signs(bufnr, signs)
@@ -572,32 +449,32 @@ local function nav_hunk(forwards)
   if not bcache then
     return
   end
-  local diffs = bcache.diffs
-  if not diffs or vim.tbl_isempty(diffs) then
+  local hunks = bcache.hunks
+  if not hunks or vim.tbl_isempty(hunks) then
     return
   end
   local line = api.nvim_win_get_cursor(0)[1]
   local row
   if forwards then
-    for i = 1, #diffs do
-      local diff = diffs[i]
-      if diff.start > line then
-        row = diff.start
+    for i = 1, #hunks do
+      local hunk = hunks[i]
+      if hunk.start > line then
+        row = hunk.start
         break
       end
     end
   else
-    for i = #diffs, 1, -1 do
-      local diff = diffs[i]
-      if diff.dend < line then
-        row = diff.start
+    for i = #hunks, 1, -1 do
+      local hunk = hunks[i]
+      if hunk.dend < line then
+        row = hunk.start
         break
       end
     end
   end
   -- wrap around
   if not row and vim.o.wrapscan then
-    row = math.max(diffs[forwards and 1 or #diffs].start, 1)
+    row = math.max(hunks[forwards and 1 or #hunks].start, 1)
   end
   if row then
     api.nvim_win_set_cursor(0, {row, 0})
@@ -684,7 +561,7 @@ local attach = throttle_leading(100, async('attach', function()
     gitdir       = gitdir,
     abbrev_head  = abbrev_head,
     staged       = staged, -- Temp filename of staged file
-    diffs        = {},
+    hunks        = {},
     staged_diffs = {}
   }
 
@@ -734,6 +611,10 @@ end))
 local function setup(cfg)
   config = apply_config(cfg)
 
+  -- TODO: Attach to all open buffers
+
+  gs_objs.init(config.debug_mode)
+
   -- Define signs
   for t, sign_name in pairs(sign_map) do
     sign_define(sign_name, config.signs[t].hl, config.signs[t].text)
@@ -750,6 +631,7 @@ end
 
 function preview_hunk()
   local hunk = get_hunk()
+  validate.hunk(hunk)
 
   if not hunk then
     return
