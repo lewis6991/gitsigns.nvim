@@ -56,4 +56,8 @@ M.await = function(defer, ...)
   return co.yield(M.awrap(defer)(...))
 end
 
+M.await_main = function()
+  return M.await(vim.schedule)
+end
+
 return M
