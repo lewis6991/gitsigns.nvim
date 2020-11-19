@@ -1,31 +1,29 @@
 local Job = require('plenary/job')
 local Path = require('plenary/path')
-local CM = require('plenary/context_manager')
 
-local AS = require('gitsigns/async')
-local default_config = require('gitsigns/defaults')
-local mk_repeatable = require('gitsigns/repeat').mk_repeatable
-local DB = require('gitsigns/debounce')
+local pln_cm = require('plenary/context_manager')
+local with = pln_cm.with
+local open = pln_cm.open
+
+local gs_async = require('gitsigns/async')
+local async      = gs_async.async
+local async0     = gs_async.async0
+local await      = gs_async.await
+local await_main = gs_async.await_main
+
+local gs_debounce = require('gitsigns/debounce')
+local throttle_leading  = gs_debounce.throttle_leading
+local debounce_trailing = gs_debounce.debounce_trailing
+
+local gs_popup    = require('gitsigns/popup')
+
+local sign_define    = require('gitsigns/signs').sign_define
+local apply_config   = require('gitsigns/config')
+local mk_repeatable  = require('gitsigns/repeat').mk_repeatable
 local apply_mappings = require('gitsigns/mappings')
-local popup = require('gitsigns/popup')
-local sign_define = require('gitsigns/signs').sign_define
-
-local throttle_leading = DB.throttle_leading
-local debounce_trailing = DB.debounce_trailing
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
-
-local async  = AS.async
-local async0 = AS.async0
-local await  = AS.await
-
-local await_main = function()
-  return await(vim.schedule)
-end
-
-local with = CM.with
-local open = CM.open
 
 local config = {}
 
@@ -198,18 +196,6 @@ local get_staged_txt = function(toplevel, relpath, callback)
   }
 end
 
-local get_diff_algorithm = function()
-  local algo = 'myers'
-  for o in vim.gsplit(vim.o.diffopt, ',') do
-    if vim.startswith(o, 'algorithm:') then
-      algo = string.sub(o, 11)
-    end
-  end
-  return algo
-end
-
-local algo = get_diff_algorithm()
-
 local run_diff = function(staged, text, callback)
   local results = {}
   run_job {
@@ -241,15 +227,6 @@ local run_diff = function(staged, text, callback)
       callback(results)
     end
   }
-end
-
-local function mk_status_txt(status)
-  local added, changed, removed = status.added, status.changed, status.removed
-  local status_txt = {}
-  if added   > 0 then table.insert(status_txt, '+'..added  ) end
-  if changed > 0 then table.insert(status_txt, '~'..changed) end
-  if removed > 0 then table.insert(status_txt, '-'..removed) end
-  return table.concat(status_txt, ' ')
 end
 
 local cache = {}
@@ -761,17 +738,7 @@ local attach = throttle_leading(100, async('attach', function()
 end))
 
 local function setup(cfg)
-  cfg = cfg or {}
-
-  if cfg.keymaps then
-    default_config.keymaps = {}
-  end
-
-  config = vim.tbl_deep_extend("keep", cfg or {}, default_config)
-
-  if type(config.status_formatter) ~= 'function' then
-    config.status_formatter = mk_status_txt
-  end
+  config = apply_config(cfg)
 
   -- Define signs
   for t, sign_name in pairs(sign_map) do
@@ -794,7 +761,7 @@ function preview_hunk()
     return
   end
 
-  local winid, bufnr = popup.create(hunk.lines, { relative = 'cursor' })
+  local winid, bufnr = gs_popup.create(hunk.lines, { relative = 'cursor' })
 
   vim.fn.nvim_buf_set_option(bufnr, 'filetype', 'diff')
   vim.fn.nvim_win_set_option(winid, 'number', false)
