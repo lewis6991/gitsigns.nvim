@@ -167,13 +167,11 @@ local function git_relative(file, toplevel, callback)
     command = 'git',
     args = {'--no-pager', 'ls-files', '--stage', file},
     cwd = toplevel,
-    on_stdout = function(_, line, _)
-      if line then
-        local parts = vim.split(line, ' +')
-        mode_bits   = parts[1]
-        object_name = parts[2]
-        relpath = vim.split(parts[3], '\t', true)[2]
-      end
+    on_stdout = function(_, line)
+      local parts = vim.split(line, ' +')
+      mode_bits   = parts[1]
+      object_name = parts[2]
+      relpath = vim.split(parts[3], '\t', true)[2]
     end,
     on_exit = function(_, code)
       callback(relpath, object_name, mode_bits)
@@ -187,7 +185,7 @@ local get_staged_txt = function(toplevel, relpath, callback)
     command = 'git',
     args = {'--no-pager', 'show', ':'..relpath},
     cwd = toplevel,
-    on_stdout = function(_, line, _)
+    on_stdout = function(_, line)
       table.insert(content, line)
     end,
     on_exit = function(_, code)
@@ -201,17 +199,15 @@ local run_diff = function(staged, text, callback)
   run_job {
     command = 'git',
     args = {
-      '--no-pager',
       'diff',
-      '--diff-algorithm='..algo,
+      '--diff-algorithm='..config.diff_algorithm,
       '--patch-with-raw',
       '--unified=0',
-      '--no-color',
       staged,
       '-'
     },
     writer = text,
-    on_stdout = function(_, line, _)
+    on_stdout = function(_, line)
       if vim.startswith(line, '@@') then
         table.insert(results, parse_diff_line(line))
       else
@@ -294,9 +290,7 @@ local get_repo_info = function(file, callback)
     },
     cwd = dirname(file),
     on_stdout = function(_, line)
-      if line then
-        table.insert(out, line)
-      end
+      table.insert(out, line)
     end,
     on_exit = vim.schedule_wrap(function()
       local toplevel = out[1]
