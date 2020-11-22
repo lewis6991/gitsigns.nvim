@@ -232,7 +232,7 @@ local add_signs = function(bufnr, signs, reset)
       local count_suffix = cc[count] and count or cc['+'] and 'Plus' or ''
       local count_char   = cc[count]           or cc['+']            or ''
       type = type..count_suffix
-      sign_define(type, cs.hl, cs.text..count_char)
+      sign_define(type, cs.hl, cs.text..count_char, config.numhl and cs.numhl)
     end
 
     vim.fn.sign_place(s.lnum, 'gitsigns_ns', type, bufnr, {
@@ -632,7 +632,21 @@ local function setup(cfg)
 
   -- Define signs
   for t, sign_name in pairs(sign_map) do
-    sign_define(sign_name, config.signs[t].hl, config.signs[t].text)
+    local cs = config.signs[t]
+
+    if config.numhl then
+      local hl_exists, _ = pcall(api.nvim_get_hl_by_name, cs.numhl, false)
+      if not hl_exists then
+        vim.cmd(('highlight link %s %s'):format(cs.numhl, cs.hl))
+      end
+    end
+
+    sign_define(sign_name, {
+      texthl = cs.hl,
+      text   = cs.text,
+      numhl  = config.numhl and cs.numhl
+    })
+
   end
 
   apply_keymaps(false)

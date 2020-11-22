@@ -65,6 +65,7 @@ describe('gitsigns', function()
       [2] = {background = Screen.colors.LightMagenta};
       [3] = {background = Screen.colors.LightBlue};
       [4] = {background = Screen.colors.LightCyan1, bold = true, foreground = Screen.colors.Blue1};
+      [5] = {foreground = Screen.colors.Brown};
     })
 
     exec_lua('package.path = ...', package.path)
@@ -192,6 +193,47 @@ describe('gitsigns', function()
     local res = split(helpers.exec_capture('messages'), '\n')
 
     eq(res[#res-1], 'attach(1): In git dir')
+  end)
+
+  it('numhl', function()
+    -- exec_lua('require("gitsigns").setup(...)', {unpack(test_config), numhl=false})
+    local cfg = helpers.deepcopy(test_config)
+    cfg.numhl = true
+    exec_lua('require("gitsigns").setup(...)', cfg)
+    command("edit ../test/dummy.txt")
+    command("set signcolumn=no")
+    command("set number")
+
+    feed("dd") -- Top delete
+    feed("j")
+    feed("o<esc>") -- Add
+    feed("2j")
+    feed("x") -- Change
+    feed("3j")
+    feed("dd") -- Delete
+    feed("j")
+    feed("ddx") -- Change delete
+
+    -- screen:snapshot_util()
+    screen:expect{grid=[[
+      {4:  1 }is              |
+      {5:  2 }a               |
+      {3:  3 }                |
+      {5:  4 }file            |
+      {2:  5 }sed             |
+      {5:  6 }for             |
+      {4:  7 }testing         |
+      {5:  8 }The             |
+      {2:  9 }^oesn't          |
+      {5: 10 }matter,         |
+      {5: 11 }it              |
+      {5: 12 }just            |
+      {5: 13 }needs           |
+      {5: 14 }to              |
+      {5: 15 }be              |
+      {5: 16 }static.         |
+                          |
+    ]]}
   end)
 
 end)

@@ -13,12 +13,9 @@ local function sign_get(name)
   return sign_define_cache[name]
 end
 
-function M.sign_define(name, texthl, text)
+function M.sign_define(name, opts)
   if not sign_get(name) then
-    vim.fn.sign_define(name, {
-      texthl = texthl,
-      text   = text
-    })
+    vim.fn.sign_define(name, opts)
   end
 end
 
