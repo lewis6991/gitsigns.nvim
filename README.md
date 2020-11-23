@@ -100,7 +100,7 @@ For the current branch use the variable `b:gitsigns_head`.
 - [ ] Add ability to show staged hunks with different signs (maybe in a different sign column?)
 - [x] Add support for repeat.vim
 - [ ] Apply buffer updates incrementally
-- [ ] Add tests
+- [x] Add tests
 - [x] Respect algorithm in diffopt
 - [x] When detecting index changes, also check if the file of the buffer changed
 - [ ] Add ability to show commit in floating window of current line
