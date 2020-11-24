@@ -1,6 +1,6 @@
 # gitsigns.nvim
 
-[![CI](https://github.com/lewis6991/gitsigns.nvim/workflows/CI/badge.svg)](https://github.com/lewis6991/gitsigns.nvim/actions?query=workflow%3ACI)
+[![CI](https://github.com/lewis6991/gitsigns.nvim/workflows/CI/badge.svg?branch=main)](https://github.com/lewis6991/gitsigns.nvim/actions?query=workflow%3ACI)
 
 Git signs written in pure lua.
 
