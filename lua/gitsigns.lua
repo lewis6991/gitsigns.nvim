@@ -528,6 +528,13 @@ local attach = throttle_leading(100, async('attach', function()
     return
   end
 
+  for _, p in ipairs(vim.split(file, '/')) do
+    if p == '.git' then
+        dprint('In git dir', cbuf, 'attach')
+        return
+    end
+  end
+
   local toplevel, gitdir, abbrev_head = await(get_repo_info, file)
 
   if not gitdir then

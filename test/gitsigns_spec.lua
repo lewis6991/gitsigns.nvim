@@ -10,6 +10,7 @@ local eq            = helpers.eq
 local sleep         = helpers.sleep
 
 local test_config = {
+  debug_mode = true,
   signs = {
     add          = {text = '+'},
     delete       = {text = '_'},
@@ -158,6 +159,16 @@ describe('gitsigns', function()
                           |
     ]]}
 
+  end)
+
+  it('do not attach inside .git', function()
+    exec_lua('require("gitsigns").setup(...)', test_config)
+    command("edit ../.git/index")
+    sleep(200)
+
+    local res = split(helpers.exec_capture('messages'), '\n')
+
+    eq(res[#res-1], 'attach(1): In git dir')
   end)
 
 end)
