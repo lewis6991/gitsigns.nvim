@@ -631,11 +631,12 @@ end
 
 function preview_hunk()
   local hunk = get_hunk()
-  validate.hunk(hunk)
 
   if not hunk then
     return
   end
+
+  validate.hunk(hunk)
 
   local winid, bufnr = gs_popup.create(hunk.lines, { relative = 'cursor' })
 
