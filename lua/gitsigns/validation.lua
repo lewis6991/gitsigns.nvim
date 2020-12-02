@@ -76,6 +76,15 @@ function M.print_err(error_list, parents)
   return error_output
 end
 
+local function validator_gen(ty)
+  return function(value)
+    if type(value) ~= ty then
+      return false, error_message(value, 'a '..ty)
+    end
+    return true
+  end
+end
+
 --- Validators.
 --
 -- A validator is a function in charge of verifying data compliance.
@@ -97,12 +106,7 @@ end
 --   String validator function.
 ---
 function M.is_string()
-  return function(value)
-    if type(value) ~= 'string' then
-      return false, error_message(value, 'a string')
-    end
-    return true
-  end
+  return validator_gen('string')
 end
 
 --- Generates integer validator.
@@ -125,12 +129,7 @@ end
 --   Number validator function.
 ---
 function M.is_number()
-  return function(value)
-    if type(value) ~= 'number' then
-      return false, error_message(value, 'a number')
-    end
-    return true
-  end
+  return validator_gen('number')
 end
 
 --- Generates boolean validator.
@@ -139,12 +138,16 @@ end
 --   Boolean validator function.
 ---
 function M.is_boolean()
-  return function(value)
-    if type(value) ~= 'boolean' then
-      return false, error_message(value, 'a boolean')
-    end
-    return true
-  end
+  return validator_gen('boolean')
+end
+
+--- Generates userdata validator.
+--
+-- @return
+--   Userdata validator function.
+---
+function M.is_userdata()
+  return validator_gen('userdata')
 end
 
 --- Generates an array validator.
@@ -203,7 +206,8 @@ end
 ---
 function M.optional(validator)
   return function(value, key, data)
-    if not value then return true
+    if not value then
+      return true
     else
       return validator(value, key, data)
     end
@@ -297,36 +301,6 @@ function M.in_list(list)
   end
 end
 
---- Generates table validator.
---
--- Validate table data by using appropriate schema.
---
--- @param schema table
---   Schema used to validate the table.
---
--- @return
---   Table validator function.
---   This validator return value is either true on success or false and
---   a nested table holding all errors.
----
-function M.is_table(schema, tolerant)
-  return function(value)
-    local result, err = nil
-
-    if type(value) ~= 'table' then
-      -- Enforce errors of childs value.
-      _, err = validate_table({}, schema, tolerant)
-      if not err then err = {} end
-      result = false
-      insert(err, error_message(value, 'a table') )
-    else
-      result, err = validate_table(value, schema, tolerant)
-    end
-
-    return result, err
-  end
-end
-
 --- Validate function.
 --
 -- @param data
@@ -337,7 +311,7 @@ end
 -- @return
 --   String describing the error or true.
 ---
-function validate_table(data, schema, tolerant)
+local function validate_table(data, schema, tolerant)
 
   -- Array of error messages.
   local errs = {}
@@ -370,6 +344,36 @@ function validate_table(data, schema, tolerant)
   end
 
   return true
+end
+
+--- Generates table validator.
+--
+-- Validate table data by using appropriate schema.
+--
+-- @param schema table
+--   Schema used to validate the table.
+--
+-- @return
+--   Table validator function.
+--   This validator return value is either true on success or false and
+--   a nested table holding all errors.
+---
+function M.is_table(schema, tolerant)
+  return function(value)
+    local result, err = nil
+
+    if type(value) ~= 'table' then
+      -- Enforce errors of childs value.
+      _, err = validate_table({}, schema, tolerant)
+      if not err then err = {} end
+      result = false
+      insert(err, error_message(value, 'a table') )
+    else
+      result, err = validate_table(value, schema, tolerant)
+    end
+
+    return result, err
+  end
 end
 
 return M

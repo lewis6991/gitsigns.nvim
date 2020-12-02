@@ -151,18 +151,18 @@ local run_diff = function(staged, text, callback)
 end
 
 local cache = {}
--- <bufnr> = {
---   file: string - Full filename
---   relpath: string - Relative path to toplevel
---   object_name: string - Object name of file in index
---   mode_bits: string
---   toplevel: string - Top level git directory
---   gitdir: string - Path to git directory
---   staged: string - Path to staged contents
---   hunks: array(hunks) - List of hunk objects
---   staged_diffs: array(hunks) - List of staged hunks
---   index_watcher: Timer object watching the files index
--- }
+
+local function get_cache(bufnr)
+  local c = cache[bufnr]
+  validate.cache_entry(c)
+  return c
+end
+
+local function get_cache_opt(bufnr)
+  local c = cache[bufnr]
+  validate.cache_entry_opt(c)
+  return c
+end
 
 local function get_hunk(bufnr, hunks)
   bufnr = bufnr or current_buf()
@@ -267,7 +267,7 @@ local update_cnt = 0
 local update = debounce_trailing(100, async('update', function(bufnr)
   vim.validate {bufnr = {bufnr, 'number'}}
 
-  local bcache = cache[bufnr]
+  local bcache = get_cache_opt(bufnr)
   if not bcache then
     error('Cache for buffer '..bufnr..' was nil')
     return
@@ -351,7 +351,7 @@ end
 local stage_hunk = async('stage_hunk', function()
   local bufnr = current_buf()
 
-  local bcache = cache[bufnr]
+  local bcache = get_cache_opt(bufnr)
   if not bcache then
     return
   end
@@ -385,7 +385,7 @@ end)
 local reset_hunk = function()
   local bufnr = current_buf()
 
-  local bcache = cache[bufnr]
+  local bcache = get_cache_opt(bufnr)
   if not bcache then
     return
   end
@@ -419,7 +419,7 @@ end
 local undo_stage_hunk = async('undo_stage_hunk', function()
   local bufnr = current_buf()
 
-  local bcache = cache[bufnr]
+  local bcache = get_cache_opt(bufnr)
   if not bcache then
     return
   end
@@ -445,7 +445,7 @@ local undo_stage_hunk = async('undo_stage_hunk', function()
 end)
 
 local function nav_hunk(forwards)
-  local bcache = cache[current_buf()]
+  local bcache = get_cache_opt(current_buf())
   if not bcache then
     return
   end
@@ -487,8 +487,9 @@ local function prev_hunk() nav_hunk(false) end
 local detach = function(bufnr)
   dprint('Detached', bufnr)
 
-  local bcache = cache[bufnr]
+  local bcache = get_cache_opt(bufnr)
   if not bcache then
+    dprint('Cache was nil', bufnr)
     return
   end
 
@@ -575,7 +576,7 @@ local attach = throttle_leading(100, async('attach', function()
   cache[cbuf].index_watcher = await(watch_index, cbuf, gitdir,
     async0('watcher_cb', function()
       dprint('Index update', cbuf, 'watcher_cb')
-      local bcache = cache[cbuf]
+      local bcache = get_cache(cbuf)
 
       await_main()
       local _, _, abbrev_head = await(get_repo_info, file)
