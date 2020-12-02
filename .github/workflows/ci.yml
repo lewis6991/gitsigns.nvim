@@ -2,7 +2,7 @@
 
 name: CI
 
-# Controls when the action will run. 
+# Controls when the action will run.
 on:
   # Triggers the workflow on push or pull request events but only for the main branch
   push:
@@ -51,5 +51,8 @@ jobs:
             pkg-config \
             unzip
 
-      - name: Run test
+      - name: Build Neovim
+        run: make neovim
+
+      - name: Run Test
         run: make test
