@@ -8,6 +8,7 @@ local feed          = helpers.feed
 local exec_lua      = helpers.exec_lua
 local eq            = helpers.eq
 local sleep         = helpers.sleep
+local split         = helpers.split
 
 local test_config = {
   signs = {
@@ -62,14 +63,16 @@ describe('gitsigns', function()
     command("edit ../test/dummy.txt")
     sleep(200)
 
-    -- Check all keymaps get set
-    eq(helpers.exec_capture('nmap <buffer>'), helpers.dedent([[
+    local res = split(helpers.exec_capture('nmap <buffer>'), '\n')
+    table.sort(res)
 
-      n  mhu         *@<Cmd>lua require"gitsigns".undo_stage_hunk()<CR>
-      n  mhp         *@<Cmd>lua require"gitsigns".preview_hunk()<CR>
-      n  mhs         *@<Cmd>lua require"gitsigns".stage_hunk()<CR>
-      n  mhr         *@<Cmd>lua require"gitsigns".reset_hunk()<CR>]]
-    ))
+    -- Check all keymaps get set
+    eq(res, {'',
+      'n  mhp         *@<Cmd>lua require"gitsigns".preview_hunk()<CR>',
+      'n  mhr         *@<Cmd>lua require"gitsigns".reset_hunk()<CR>',
+      'n  mhs         *@<Cmd>lua require"gitsigns".stage_hunk()<CR>',
+      'n  mhu         *@<Cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
+    })
   end)
 
   it('basic signs', function()
