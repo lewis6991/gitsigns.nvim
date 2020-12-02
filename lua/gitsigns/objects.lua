@@ -66,6 +66,32 @@ function M.validate.signs(obj)
   validate_schema(obj, signs_schema)
 end
 
+local cache_entry_schema = v.is_table {
+  file          = v.is_string(),           -- Full filename
+  relpath       = v.is_string(),           -- Relative path to toplevel
+  object_name   = v.is_string(),           -- Object name of file in index
+  mode_bits     = v.is_string(),
+  toplevel      = v.is_string(),           -- Top level git directory
+  gitdir        = v.is_string(),           -- Path to git directory
+  staged        = v.is_string(),           -- Path to staged contents
+  abbrev_head   = v.is_string(),
+  hunks         = v.is_array(hunk_schema), -- List of hunk objects
+  staged_diffs  = v.is_array(hunk_schema), -- List of staged hunks
+  index_watcher = v.is_userdata()          -- Timer object watching the files index
+}
+
+function M.validate.cache_entry(obj)
+  validate_schema(obj, cache_entry_schema)
+end
+
+function M.validate.cache_entry_opt(obj)
+  validate_schema(obj, v.optional(cache_entry_schema))
+end
+
+function M.validate.cache(obj)
+  validate_schema(obj, v.is_array(cache_entry_schema))
+end
+
 function M.init(en)
   enabled = en
 end
