@@ -124,7 +124,9 @@ local run_diff = function(staged, text, callback)
   run_job {
     command = 'git',
     args = {
+      '--no-pager',
       'diff',
+      '--color=never',
       '--diff-algorithm='..config.diff_algorithm,
       '--patch-with-raw',
       '--unified=0',
