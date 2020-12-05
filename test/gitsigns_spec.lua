@@ -10,6 +10,25 @@ local eq            = helpers.eq
 local sleep         = helpers.sleep
 local split         = helpers.split
 
+local function setup_git()
+  -- Always force color to test settings don't interfere with gitsigns systems
+  -- commands (addresses #23)
+  for k, v in ipairs({
+    branch      = 'always',
+    ui          = 'always',
+    branch      = 'always',
+    diff        = 'always',
+    interactive = 'always',
+    status      = 'always',
+    grep        = 'always',
+    pager       = 'true',
+    decorate    = 'always',
+    showbranch  = 'always'
+  }) do
+    os.execute(string.format('git config color.%s %s', k, v))
+  end
+end
+
 local test_config = {
   debug_mode = true,
   signs = {
@@ -49,6 +68,7 @@ describe('gitsigns', function()
     })
 
     exec_lua('package.path = ...', package.path)
+    setup_git()
   end)
 
   after_each(function()
