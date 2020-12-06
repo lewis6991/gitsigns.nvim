@@ -7,7 +7,9 @@ Git signs written in pure lua.
 ![](https://raw.githubusercontent.com/lewis6991/media/main/gitsigns_demo1.gif)
 
 ## Status
-Still very **WIP**. Expect things to sometimes break but please don't hesitate to raise an issue.
+**WIP**
+
+Expect things to sometimes break but please don't hesitate to raise an issue.
 
 ## Features
 
@@ -17,6 +19,7 @@ Still very **WIP**. Expect things to sometimes break but please don't hesitate t
 - Stage partial diffs (with undo)
 - Customisable (signs, highlights, mappings, etc)
 - Status bar integration
+- Git blame a specific line
 
 ## Requirements
 Neovim nightly
@@ -70,6 +73,7 @@ require('gitsigns').setup {
     ['n <leader>hu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
     ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
     ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
+    ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line()<CR>',
   },
   watch_index = {
     interval = 1000
