@@ -48,6 +48,7 @@ the default settings:
         ['n <leader>hu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
         ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
         ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
+        ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line()<CR>',
       },
       watch_index = {
         interval = 1000
@@ -113,6 +114,10 @@ reset_hunk()                                           *gitsigns.reset_hunk()*
 preview_hunk()                                       *gitsigns.preview_hunk()*
                 Preview the hunk at the cursor position in a floating
                 window.
+
+blame_line()                                           *gitsigns.blame_line()*
+                Run git blame on the current line and show the results in a
+                floating window.
 
 update()                                                   *gitsigns.update()*
                 Update signs for the current buffer.

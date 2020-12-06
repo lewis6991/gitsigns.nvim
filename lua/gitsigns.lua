@@ -650,10 +650,84 @@ local function preview_hunk()
 
   local winid, bufnr = gs_popup.create(hunk.lines, { relative = 'cursor' })
 
-  vim.fn.nvim_buf_set_option(bufnr, 'filetype', 'diff')
-  vim.fn.nvim_win_set_option(winid, 'number', false)
-  vim.fn.nvim_win_set_option(winid, 'relativenumber', false)
+  api.nvim_buf_set_option(bufnr, 'filetype', 'diff')
+  api.nvim_win_set_option(winid, 'number', false)
+  api.nvim_win_set_option(winid, 'relativenumber', false)
 end
+
+local function run_blame(file, toplevel, lines, lnum, callback)
+  local results = {}
+  run_job {
+    command = 'git',
+    args = {
+      '--no-pager',
+      'blame',
+      '--contents', '-',
+      '-L', lnum..',+1',
+      '--line-porcelain',
+      file
+    },
+    writer = lines,
+    cwd = toplevel,
+    on_stdout = function(_, line)
+      table.insert(results, line)
+    end,
+    on_exit = function()
+      local ret = {}
+      local header = vim.split(table.remove(results, 1), ' ')
+      ret.sha = header[1]
+      ret.abbrev_sha = string.sub(ret.sha, 1, 8)
+      ret.orig_lnum = header[2]
+      ret.final_lnum = header[3]
+      for _, l in ipairs(results) do
+        if not vim.startswith(l, '\t') then
+          local cols = vim.split(l, ' ')
+          local key = table.remove(cols, 1)
+          ret[key] = table.concat(cols, ' ')
+        end
+      end
+      callback(ret)
+    end
+  }
+end
+
+local blame_line = async('blame_line', function()
+  local bufnr = current_buf()
+
+  local bcache = get_cache_opt(bufnr)
+  if not bcache then
+    return
+  end
+
+  local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local lnum = api.nvim_win_get_cursor(0)[1]
+  local result = await(run_blame, bcache.file, bcache.toplevel, buftext, lnum)
+
+  local date = os.date('%Y-%m-%d %H:%M', result['author-time'])
+  local lines = {
+    ('%s %s (%s):'):format(result.abbrev_sha, result.author, date),
+    result.summary
+  }
+
+  await_main()
+
+  local winid, pbufnr = gs_popup.create(lines, { relative = 'cursor', col = 1 })
+
+  api.nvim_win_set_option(winid, 'number', false)
+  api.nvim_win_set_option(winid, 'relativenumber', false)
+
+  local p1 = #result.abbrev_sha
+  local p2 = #result.author
+  local p3 = #date
+
+  local function add_highlight(hlgroup, line, start, length)
+    api.nvim_buf_add_highlight(pbufnr, -1, hlgroup, line, start, start+length)
+  end
+
+  add_highlight('Directory', 0, 0      , p1)
+  add_highlight('MoreMsg'  , 0, p1+1   , p2)
+  add_highlight('Label'    , 0, p1+p2+2, p3+2)
+end)
 
 local function dump_cache()
   print(vim.inspect(cache))
@@ -667,6 +741,7 @@ return {
   next_hunk       = next_hunk,
   prev_hunk       = prev_hunk,
   preview_hunk    = preview_hunk,
+  blame_line      = blame_line,
   attach          = attach,
   detach_all      = detach_all,
   setup           = setup,
