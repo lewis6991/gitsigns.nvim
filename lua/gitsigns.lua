@@ -639,7 +639,7 @@ local function setup(cfg)
   vim.cmd('autocmd ExitPre * lua require("gitsigns").detach_all()')
 end
 
-function preview_hunk()
+local function preview_hunk()
   local hunk = get_hunk()
 
   if not hunk then
@@ -655,7 +655,7 @@ function preview_hunk()
   vim.fn.nvim_win_set_option(winid, 'relativenumber', false)
 end
 
-function dump_cache()
+local function dump_cache()
   print(vim.inspect(cache))
 end
 
