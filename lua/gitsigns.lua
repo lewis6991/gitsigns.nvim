@@ -517,6 +517,11 @@ local function apply_keymaps(bufonly)
   apply_mappings(config.keymaps, bufonly)
 end
 
+local function get_buf_path(bufnr)
+  local file = api.nvim_buf_get_name(bufnr)
+  return vim.fn.resolve(vim.fn.expand(file))
+end
+
 local attach = throttle_leading(100, async('attach', function()
   local cbuf = current_buf()
   if cache[cbuf] ~= nil then
@@ -524,7 +529,7 @@ local attach = throttle_leading(100, async('attach', function()
     return
   end
   dprint('Attaching', cbuf, 'attach')
-  local file = api.nvim_buf_get_name(cbuf)
+  local file = get_buf_path(cbuf)
 
   if not path_exists(file) or vim.fn.isdirectory(file) == 1 then
     dprint('Not a file', cbuf, 'attach')
