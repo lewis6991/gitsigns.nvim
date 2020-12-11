@@ -519,7 +519,7 @@ end
 
 local function get_buf_path(bufnr)
   local file = api.nvim_buf_get_name(bufnr)
-  return vim.fn.resolve(vim.fn.expand(file))
+  return vim.loop.fs_realpath(file)
 end
 
 local attach = throttle_leading(100, async('attach', function()
@@ -531,7 +531,7 @@ local attach = throttle_leading(100, async('attach', function()
   dprint('Attaching', cbuf, 'attach')
   local file = get_buf_path(cbuf)
 
-  if not path_exists(file) or vim.fn.isdirectory(file) == 1 then
+  if not path_exists(file) or Path:new(file):is_dir() then
     dprint('Not a file', cbuf, 'attach')
     return
   end
