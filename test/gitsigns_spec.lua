@@ -111,6 +111,7 @@ describe('gitsigns', function()
     feed("dd") -- Delete
     feed("j")
     feed("ddx") -- Change delete
+    sleep(100)
 
     -- screen:snapshot_util()
     screen:expect{grid=[[
@@ -149,6 +150,7 @@ describe('gitsigns', function()
 
     -- Stage
     feed("mhs")
+    sleep(100)
 
     screen:expect{grid=[[
       {1:  }This              |
@@ -161,6 +163,7 @@ describe('gitsigns', function()
 
     -- Undo stage
     feed("mhu")
+    sleep(100)
 
     screen:expect{grid=[[
       {1:  }This              |
@@ -173,6 +176,7 @@ describe('gitsigns', function()
 
     -- Reset
     feed("mhr")
+    sleep(100)
 
     screen:expect{grid=[[
       {1:  }This              |
@@ -213,6 +217,7 @@ describe('gitsigns', function()
     feed("dd") -- Delete
     feed("j")
     feed("ddx") -- Change delete
+    sleep(100)
 
     -- screen:snapshot_util()
     screen:expect{grid=[[
