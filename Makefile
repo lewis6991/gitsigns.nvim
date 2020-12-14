@@ -1,5 +1,5 @@
 
-all:
+lint:
 	luacheck lua
 
 PJ_ROOT=$(PWD)

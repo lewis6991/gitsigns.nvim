@@ -1,6 +1,3 @@
-local dfile
-local log = 'gitsigns.log'
-
 local M = {}
 
 function M.dprint(msg, bufnr, caller)

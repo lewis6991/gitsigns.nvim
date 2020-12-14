@@ -99,7 +99,7 @@ local function git_relative(file, toplevel, callback)
       object_name = parts[2]
       relpath = vim.split(parts[3], '\t', true)[2]
     end,
-    on_exit = function(_, code)
+    on_exit = function(_, _)
       callback(relpath, object_name, mode_bits)
     end
   }
@@ -280,8 +280,7 @@ local update = debounce_trailing(100, async('update', function(bufnr)
     return
   end
 
-  local file, relpath, toplevel, staged =
-      bcache.file, bcache.relpath, bcache.toplevel, bcache.staged
+  local relpath, toplevel, staged = bcache.relpath, bcache.toplevel, bcache.staged
 
   if not path_exists(staged) then
     local res = await(get_staged, bufnr, staged, toplevel, relpath)
@@ -555,7 +554,7 @@ local attach = throttle_leading(100, async('attach', function()
     return
   end
 
-  set_buf_var(bufnr, 'gitsigns_head', abbrev_head)
+  set_buf_var(cbuf, 'gitsigns_head', abbrev_head)
 
   await_main()
   local relpath, object_name, mode_bits = await(git_relative, file, toplevel)
@@ -591,20 +590,20 @@ local attach = throttle_leading(100, async('attach', function()
       local bcache = get_cache(cbuf)
 
       await_main()
-      local _, _, abbrev_head = await(get_repo_info, file)
-      bcache.abbrev_head = abbrev_head
-      set_buf_var(bufnr, 'gitsigns_head', abbrev_head)
+      local _, _, abbrev_head0 = await(get_repo_info, file)
+      bcache.abbrev_head = abbrev_head0
+      set_buf_var(cbuf, 'gitsigns_head', abbrev_head0)
 
       await_main()
-      local _, object_name, mode_bits = await(git_relative, file, toplevel)
-      if object_name == bcache.object_name then
+      local _, object_name0, mode_bits0 = await(git_relative, file, toplevel)
+      if object_name0 == bcache.object_name then
          dprint('File not changed', cbuf, 'watcher_cb')
          return
       end
-      bcache.object_name = object_name
-      bcache.mode_bits = mode_bits
-      local res = await(get_staged, cbuf, bcache.staged, toplevel, relpath)
-      if not res then
+      bcache.object_name = object_name0
+      bcache.mode_bits = mode_bits0
+      local res0 = await(get_staged, cbuf, bcache.staged, toplevel, relpath)
+      if not res0 then
          return
       end
       await(update, cbuf)
