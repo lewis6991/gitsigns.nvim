@@ -232,7 +232,11 @@ local add_signs = function(bufnr, signs, reset)
       local count_suffix = cc[count] and count or cc['+'] and 'Plus' or ''
       local count_char   = cc[count]           or cc['+']            or ''
       type = type..count_suffix
-      sign_define(type, cs.hl, cs.text..count_char, config.numhl and cs.numhl)
+      sign_define(type, {
+          texthl = cs.hl,
+          text   = cs.text..count_char,
+          numhl  = config.numhl and cs.numhl
+      })
     end
 
     vim.fn.sign_place(s.lnum, 'gitsigns_ns', type, bufnr, {
