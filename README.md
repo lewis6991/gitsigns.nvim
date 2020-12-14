@@ -3,8 +3,6 @@
 [![CI](https://github.com/lewis6991/gitsigns.nvim/workflows/CI/badge.svg?branch=main)](https://github.com/lewis6991/gitsigns.nvim/actions?query=workflow%3ACI)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-
-
 Git signs written in pure lua.
 
 ![](https://raw.githubusercontent.com/lewis6991/media/main/gitsigns_demo1.gif)
@@ -12,20 +10,21 @@ Git signs written in pure lua.
 ## Status
 **WIP**
 
-Expect things to sometimes break but please don't hesitate to raise an issue.
+Expect things to break sometimes but please don't hesitate to raise an issue.
 
 ## Features
 
 - Signs for added, removed, and changed lines
 - Asynchronous using [luv](https://github.com/luvit/luv/blob/master/docs.md)
-- Navigation between diff blocks (hunks)
-- Stage partial diffs (with undo)
+- Navigation between hunks
+- Stage hunks (with undo)
+- Preview diffs of hunks
 - Customisable (signs, highlights, mappings, etc)
 - Status bar integration
 - Git blame a specific line
 
 ## Requirements
-Neovim nightly
+Neovim >= 0.5.0
 
 ## Installation
 
@@ -50,6 +49,21 @@ Plug 'lewis6991/gitsigns.nvim'
 For basic setup with all batteries included:
 ```lua
 require('gitsigns').setup()
+```
+
+If using [packer.nvim](https://github.com/wbthomason/packer.nvim) gitsigns can
+be setup directly in the plugin spec:
+
+```lua
+use {
+  'lewis6991/gitsigns.nvim',
+  requires = {
+    'nvim-lua/plenary.nvim'
+  },
+  config = function()
+    require('gitsigns').setup()
+  end
+}
 ```
 
 Configuration can be passed to the setup function. Here is an example with all
@@ -92,8 +106,8 @@ For information on configuring neovim via lua please see
 
 ## Status Line
 
-Use `b:gitsigns_status` or `b:gitsigns_status_dict`. `b:gitsigns_status` is a
-is formatted using `config.status_formatter`. `b:gitsigns_status_dict`is a
+Use `b:gitsigns_status` or `b:gitsigns_status_dict`. `b:gitsigns_status` is
+formatted using `config.status_formatter`. `b:gitsigns_status_dict` is a
 dictionary with the keys `added`, `removed`, `changed` and `head`.
 
 Example:
@@ -116,4 +130,11 @@ For the current branch use the variable `b:gitsigns_head`.
 - [x] When detecting index changes, also check if the file of the buffer changed
 - [ ] Add ability to show commit in floating window of current line
 - [x] Add help doc
-
+- [ ] Allow extra options to be passed to `git diff`
+- [ ] Folding of text around hunks
+- [ ] Diff against working tree instead of index, or diff against any SHA.
+- [ ] Line highlighting
+- [ ] Hunk text object
+- [ ] Open diff mode of buffer against what gitsigns is comparing to (currently the index)
+- [ ] Share index watchers for files in the same repo
+- [ ] Show messages when navigating hunks similar to '/' search
