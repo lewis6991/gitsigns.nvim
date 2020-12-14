@@ -4,7 +4,7 @@ local co = coroutine
 
 local M = {}
 
-M.async = function(name, func)
+M.async = function(name, func) -- luacheck: ignore
   assert(type(func) == "function", "type error :: expected func")
   local nparams = debug.getinfo(func, 'u').nparams
   -- print("async: "..name.." "..nparams)
