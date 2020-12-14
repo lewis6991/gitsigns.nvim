@@ -1,7 +1,6 @@
 -- Originated from:
 -- https://github.com/norcalli/neovim-plugin/blob/master/lua/neovim-plugin/apply_mappings.lua
 
-local byte = string.byte
 local validate = vim.validate
 local api = vim.api
 
@@ -20,11 +19,6 @@ local valid_options = {
   unique  = 'boolean',
   buffer  = 'boolean',
 }
-
-local function escape_keymap(key)
-  -- Prepend with a letter so it can be used as a dictionary key
-  return 'k'..key:gsub('.', byte)
-end
 
 local function validate_option_keywords(options)
   validate { options = { options, 'table' } }

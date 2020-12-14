@@ -46,10 +46,15 @@ jobs:
             lua-bitop \
             lua-lpeg \
             lua-mpack \
+            luarocks \
             lua5.1 \
             ninja-build \
             pkg-config \
             unzip
+          sudo luarocks install luacheck
+
+      - name: Lint
+        run: make lint
 
       - name: Build Neovim
         run: make neovim

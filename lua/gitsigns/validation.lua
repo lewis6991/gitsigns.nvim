@@ -19,9 +19,7 @@
 -- Import from global environment.
 local type = type
 local pairs = pairs
-local print = print
 local format = string.format
-local floor = math.floor
 local insert = table.insert
 local next = next
 
@@ -59,8 +57,8 @@ end
 ---
 function M.print_err(error_list, parents)
   -- Makes prefix not nil, for posterior concatenation.
+  parents = parents or ''
   local error_output = ''
-  local parents = parents or ''
   if not error_list then return false end
   -- Iterates over the list of messages.
   for key, err in pairs(error_list) do
@@ -165,8 +163,7 @@ end
 --   a table holding child_validator errors.
 ---
 function M.is_array(child_validator, is_object)
-  return function(value, key, data)
-    local result, err = nil
+  return function(value, _, _)
     local err_array = {}
 
     -- Iterate the array and validate them.
@@ -175,7 +172,7 @@ function M.is_array(child_validator, is_object)
         if not is_object and type(index) ~= 'number' then
           insert(err_array, error_message(value, 'an array') )
         else
-          result, err = child_validator(value[index], index, value)
+          local result, err = child_validator(value[index], index, value)
           if not result then
             err_array[index] = err
           end
@@ -230,7 +227,9 @@ end
 ---
 function M.or_op(validator_a, validator_b)
   return function(value, key, data)
-    if not value then return true
+    local err_b
+    if not value then
+      return true
     else
       local valid, err_a = validator_a(value, key, data)
       if not valid then
@@ -339,7 +338,7 @@ local function validate_table(data, schema, tolerant)
 
   -- Lua does not give size of table holding only string as keys.
   -- Despite the use of #table we have to manually loop over it.
-  for _ in pairs(errs) do
+  for _ in pairs(errs) do -- luacheck: ignore
     return false, errs
   end
 
@@ -360,12 +359,14 @@ end
 ---
 function M.is_table(schema, tolerant)
   return function(value)
-    local result, err = nil
+    local result, err
 
     if type(value) ~= 'table' then
       -- Enforce errors of childs value.
       _, err = validate_table({}, schema, tolerant)
-      if not err then err = {} end
+      if not err then
+        err = {}
+      end
       result = false
       insert(err, error_message(value, 'a table') )
     else
