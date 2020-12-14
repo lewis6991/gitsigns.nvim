@@ -33,6 +33,7 @@ local gs_objs = require("gitsigns/objects")
 local validate = gs_objs.validate
 
 local api = vim.api
+local uv = vim.loop
 local current_buf = api.nvim_get_current_buf
 
 local config = {}
@@ -326,7 +327,7 @@ local watch_index = async('watch_index', function(bufnr, gitdir, on_change)
   -- TODO: Buffers of the same git repo can share an index watcher
   dprint('Watching index', bufnr, 'watch_index')
 
-  local w = vim.loop.new_fs_poll()
+  local w = uv.new_fs_poll()
   w:start(index, config.watch_index.interval, on_change)
 
   return w
@@ -523,7 +524,7 @@ end
 
 local function get_buf_path(bufnr)
   local file = api.nvim_buf_get_name(bufnr)
-  return vim.loop.fs_realpath(file)
+  return uv.fs_realpath(file)
 end
 
 local attach = throttle_leading(100, async('attach', function()
