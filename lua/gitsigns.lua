@@ -659,7 +659,7 @@ local function setup(cfg)
   -- the attach function with throttle_leading
   vim.cmd('autocmd BufRead * lua require("gitsigns").attach()')
 
-  vim.cmd('autocmd ExitPre * lua require("gitsigns").detach_all()')
+  vim.cmd('autocmd VimLeavePre * lua require("gitsigns").detach_all()')
 end
 
 local function preview_hunk()
