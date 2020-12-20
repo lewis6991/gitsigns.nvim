@@ -127,15 +127,15 @@ detach_all()                                           *gitsigns.detach_all()*
 CONFIGURATION                                                *gitsigns-config*
 
 signs                                                  *gitsigns-config-signs*
-        Type: `dictionary`, Default:
+        Type: `table`, Default:
 >
-            {
-              add          = {hl = 'DiffAdd'   , text = '│', numhl='GitSignsAddNr'},
-              change       = {hl = 'DiffChange', text = '│', numhl='GitSignsChangeNr'},
-              delete       = {hl = 'DiffDelete', text = '_', numhl='GitSignsDeleteNr'},
-              topdelete    = {hl = 'DiffDelete', text = '‾', numhl='GitSignsDeleteNr'},
-              changedelete = {hl = 'DiffChange', text = '~', numhl='GitSignsChangeNr'},
-            }
+        {
+          add          = {hl = 'DiffAdd'   , text = '│', numhl='GitSignsAddNr'},
+          change       = {hl = 'DiffChange', text = '│', numhl='GitSignsChangeNr'},
+          delete       = {hl = 'DiffDelete', text = '_', numhl='GitSignsDeleteNr'},
+          topdelete    = {hl = 'DiffDelete', text = '‾', numhl='GitSignsDeleteNr'},
+          changedelete = {hl = 'DiffChange', text = '~', numhl='GitSignsChangeNr'},
+        }
 <
         Configuration for signs:
           • `hl` specifies the highlight group to use for the sign.
@@ -146,7 +146,7 @@ signs                                                  *gitsigns-config-signs*
             lines.
 
 keymaps                                              *gitsigns-config-keymaps*
-        Type: `dicitonary`, Default:
+        Type: `table`, Default:
 >
         {
           -- Default keymap options
@@ -173,8 +173,10 @@ keymaps                                              *gitsigns-config-keymaps*
         the top level of the table to define default options for all mappings.
 
 watch_index                                      *gitsigns-config-watch_index*
-        Type: `boolean`, Default: `true`
-
+        Type: `table`, Default:
+>
+        { interval = 1000 }
+<
         When opening a file, a libuv watcher is placed on the respective
         `.git/index` file to detect when changes happen to use as a trigger to
         update signs.
@@ -193,17 +195,17 @@ numhl                                                  *gitsigns-config-numhl*
         the highlight group does not exist, then it is automatically defined
         and linked to the corresponding highlight group in `signs.*.hl`.
 
-
 diff_algorithm                                *gitsigns-config-diff_algorithm*
         Type: `string`, Default: taken from 'diffopt'
 
         Diff algorithm to pass to `git diff` .
 
 count_chars                                      *gitsigns-config-count_chars*
-        Type: `boolean`, Default:
+        Type: `table`, Default:
 >
-            { [1] = '1', [2] = '2', [3] = '3', [4] = '4', [5] = '5',
-              [6] = '6', [7] = '7', [8] = '8', [9] = '9', ['+'] = '>' }
+        { "1", "2", "3", "4", "5", "6", "7", "8", "9",
+          ["+"] = ">"
+        }
 <
         The count characters used when `signs.*.show_count` is enabled. The
         `+` entry is used as a fallback. With the default, any count outside
@@ -216,14 +218,14 @@ count_chars                                      *gitsigns-config-count_chars*
 status_formatter                            *gitsigns-config-status_formatter*
         Type: `function`, Default:
 >
-            function(status)
-              local added, changed, removed = status.added, status.changed, status.removed
-              local status_txt = {}
-              if added   > 0 then table.insert(status_txt, '+'..added  ) end
-              if changed > 0 then table.insert(status_txt, '~'..changed) end
-              if removed > 0 then table.insert(status_txt, '-'..removed) end
-              return table.concat(status_txt, ' ')
-            end
+        function(status)
+          local added, changed, removed = status.added, status.changed, status.removed
+          local status_txt = {}
+          if added   > 0 then table.insert(status_txt, '+'..added  ) end
+          if changed > 0 then table.insert(status_txt, '~'..changed) end
+          if removed > 0 then table.insert(status_txt, '-'..removed) end
+          return table.concat(status_txt, ' ')
+        end
 <
         Function used to format `b:gitsigns_status`.
 

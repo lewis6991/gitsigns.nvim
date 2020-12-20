@@ -18,7 +18,7 @@ local debounce_trailing = gs_debounce.debounce_trailing
 local gs_popup    = require('gitsigns/popup')
 
 local sign_define    = require('gitsigns/signs').sign_define
-local apply_config   = require('gitsigns/config')
+local process_config = require('gitsigns/config').process
 local mk_repeatable  = require('gitsigns/repeat').mk_repeatable
 local apply_mappings = require('gitsigns/mappings')
 
@@ -628,7 +628,7 @@ local attach = throttle_leading(100, async('attach', function()
 end))
 
 local function setup(cfg)
-  config = apply_config(cfg)
+  config = process_config(cfg)
 
   -- TODO: Attach to all open buffers
 
