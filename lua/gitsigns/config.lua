@@ -3,55 +3,27 @@ local schema = {
   signs = {
     type = 'table',
     deep_extend = true,
-    default = {
+    default = [[{
       add          = {hl = 'DiffAdd'   , text = '│', numhl='GitSignsAddNr'},
       change       = {hl = 'DiffChange', text = '│', numhl='GitSignsChangeNr'},
       delete       = {hl = 'DiffDelete', text = '_', numhl='GitSignsDeleteNr'},
       topdelete    = {hl = 'DiffDelete', text = '‾', numhl='GitSignsDeleteNr'},
       changedelete = {hl = 'DiffChange', text = '~', numhl='GitSignsChangeNr'},
-    }
-  },
-
-  numhl = {
-    type = 'boolean',
-    default = false
-  },
-
-  watch_index = {
-    type = 'table',
-    default = {
-      interval = 1000
-    }
-  },
-
-  debug_mode = {
-    type = 'boolean',
-    default = false
-  },
-
-  sign_priority = {
-    type = 'number',
-    default = 6
-  },
-
-  diff_algorithm = {
-    type = 'string',
-
-    -- Get algorithm from 'diffopt'
-    default = function()
-      local algo = 'myers'
-      for o in vim.gsplit(vim.o.diffopt, ',') do
-        if vim.startswith(o, 'algorithm:') then
-          algo = string.sub(o, 11)
-        end
-      end
-      return algo
-    end
+    }]],
+    description = [[
+        Configuration for signs:
+          • `hl` specifies the highlight group to use for the sign.
+          • `text` specifies the character to use for the sign.
+          • `numhl` specifies the highlight group to use for the number column (see
+            |gitsigns-config.numhl|).
+          • `show_count` to enable showing count of hunk, e.g. number of deleted
+            lines.
+    ]]
   },
 
   keymaps = {
     type = 'table',
-    default = {
+    default = [[{
       -- Default keymap options
       noremap = true,
       buffer = true,
@@ -64,19 +36,67 @@ local schema = {
       ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
       ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
       ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line()<CR>',
-    }
+    }]],
+    description = [[
+        Keymaps to set up when attaching to a buffer.
+
+        Each key in the table defines the mode and key (whitespace delimited)
+        for the mapping and the value defines what the key maps to. The value
+        can be a table which can contain keys matching the options defined in
+        |map-arguments| which are: `expr`, `noremap`, `nowait`, `script`,
+        `silent`, `unique` and `buffer`.  These options can also be used in
+        the top level of the table to define default options for all mappings.
+    ]]
   },
 
-  status_formatter = {
-    type = 'function',
-    default = function(status)
-      local added, changed, removed = status.added, status.changed, status.removed
-      local status_txt = {}
-      if added   > 0 then table.insert(status_txt, '+'..added  ) end
-      if changed > 0 then table.insert(status_txt, '~'..changed) end
-      if removed > 0 then table.insert(status_txt, '-'..removed) end
-      return table.concat(status_txt, ' ')
-    end
+  watch_index = {
+    type = 'table',
+    default = [[{ interval = 1000 }]],
+    description = [[
+        When opening a file, a libuv watcher is placed on the respective
+        `.git/index` file to detect when changes happen to use as a trigger to
+        update signs.
+    ]]
+  },
+
+  sign_priority = {
+    type = 'number',
+    default = 6,
+    description = [[
+        Priority to use for signs.
+    ]]
+  },
+
+  numhl = {
+    type = 'boolean',
+    default = false,
+    description = [[
+        Enable/disable line number highlights.
+
+        When enabled the highlights defined in `signs.*.numhl` are used. If
+        the highlight group does not exist, then it is automatically defined
+        and linked to the corresponding highlight group in `signs.*.hl`.
+    ]]
+  },
+
+  diff_algorithm = {
+    type = 'string',
+
+    -- Get algorithm from 'diffopt'
+    default = [[function()
+      local algo = 'myers'
+      for o in vim.gsplit(vim.o.diffopt, ',') do
+        if vim.startswith(o, 'algorithm:') then
+          algo = string.sub(o, 11)
+        end
+      end
+    print('dwqdqwwqdqw: '..algo)
+      return algo
+    end]],
+    default_help = "taken from 'diffopt'",
+    description = [[
+        Diff algorithm to pass to `git diff` .
+    ]]
   },
 
   count_chars = {
@@ -92,7 +112,39 @@ local schema = {
       [8]   = '8', -- '₈',
       [9]   = '9', -- '₉',
       ['+'] = '>', -- '₊',
-    }
+    },
+    description = [[
+        The count characters used when `signs.*.show_count` is enabled. The
+        `+` entry is used as a fallback. With the default, any count outside
+        of 1-9 uses the `>` character in the sign.
+
+        Possible use cases for this field:
+          • to specify unicode characters for the counts instead of 1-9.
+          • to define characters to be used for counts greater than 9.
+    ]]
+  },
+
+  status_formatter = {
+    type = 'function',
+    default = [[function(status)
+      local added, changed, removed = status.added, status.changed, status.removed
+      local status_txt = {}
+      if added   > 0 then table.insert(status_txt, '+'..added  ) end
+      if changed > 0 then table.insert(status_txt, '~'..changed) end
+      if removed > 0 then table.insert(status_txt, '-'..removed) end
+      return table.concat(status_txt, ' ')
+    end]],
+    description = [[
+        Function used to format `b:gitsigns_status`.
+    ]]
+  },
+
+  debug_mode = {
+    type = 'boolean',
+    default = false,
+    description = [[
+        Print diagnostic messages.
+    ]]
   }
 }
 
@@ -108,27 +160,43 @@ local function validate_config(config)
   end
 end
 
-return function(user_config)
-  user_config = user_config or {}
-
-  validate_config(user_config)
-
-  local config = {}
-  for k, v in pairs(schema) do
-    if user_config[k] ~= nil then
-      if v.deep_extend then
-        config[k] = vim.tbl_deep_extend('force', v.default, user_config[k])
-      else
-        config[k] = user_config[k]
-      end
+local function resolve_default(schema_elem)
+  local v = schema_elem
+  if type(v.default) == 'string' and vim.startswith(v.default, 'function(') then
+    local d = loadstring('return '..v.default)()
+    if v.type == 'function' then
+      return d
     else
-      if type(v.default) == 'function' and v.type ~= 'function' then
-        config[k] = v.default()
+      return d()
+    end
+  elseif type(v.default) == 'string' and vim.startswith(v.default, '{') then
+    return loadstring('return '..v.default)()
+  else
+    return v.default
+  end
+end
+
+return {
+  process = function(user_config)
+    user_config = user_config or {}
+
+    validate_config(user_config)
+
+    local config = {}
+    for k, v in pairs(schema) do
+      if user_config[k] ~= nil then
+        if v.deep_extend then
+          local d = resolve_default(v)
+          config[k] = vim.tbl_deep_extend('force', d, user_config[k])
+        else
+          config[k] = user_config[k]
+        end
       else
-        config[k] = v.default
+        config[k] = resolve_default(v)
       end
     end
-  end
 
-  return config
-end
+    return config
+  end,
+  schema = schema
+}
