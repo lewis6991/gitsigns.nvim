@@ -90,7 +90,6 @@ local schema = {
           algo = string.sub(o, 11)
         end
       end
-    print('dwqdqwwqdqw: '..algo)
       return algo
     end]],
     default_help = "taken from 'diffopt'",
