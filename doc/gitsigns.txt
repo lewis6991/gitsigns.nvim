@@ -87,13 +87,25 @@ setup({config})                                             *gitsigns.setup()*
                     {config} Table object containing configuration for
                     Gitsigns. See |gitsigns-usage| for more details.
 
-next_hunk()                                             *gitsigns.next_hunk()*
+next_hunk({opts})                                           *gitsigns.next_hunk()*
                 Jump to the next hunk in the current buffer. Respects
                 |wrapscan|.
 
-prev_hunk()                                             *gitsigns.prev_hunk()*
+                Parameters: ~
+                    {opts}  table|nil Configuration table. Keys:
+                            • {wrap}: (boolean)
+                              Whether to loop around file or not. Defaults
+                              to the value 'wrapscan'
+
+prev_hunk({opts})                                       *gitsigns.prev_hunk()*
                 Jump to the previous hunk in the current buffer. Respects
                 |wrapscan|.
+
+                Parameters: ~
+                    {opts}  table|nil Configuration table. Keys:
+                            • {wrap}: (boolean)
+                              Whether to loop around file or not. Defaults
+                              to the value 'wrapscan'
 
 stage_hunk()                                           *gitsigns.stage_hunk()*
                 Stage the hunk at the cursor position.

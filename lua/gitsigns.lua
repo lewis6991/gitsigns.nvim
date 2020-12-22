@@ -450,7 +450,8 @@ local undo_stage_hunk = async('undo_stage_hunk', function()
   add_signs(bufnr, signs)
 end)
 
-local function nav_hunk(forwards)
+local function nav_hunk(options)
+  local forwards = options.forwards
   local bcache = get_cache_opt(current_buf())
   if not bcache then
     return
@@ -479,7 +480,8 @@ local function nav_hunk(forwards)
     end
   end
   -- wrap around
-  if not row and vim.o.wrapscan then
+  local wrap = vim.F.if_nil(options.wrap, vim.o.wrapscan)
+  if not row and wrap then
     row = math.max(hunks[forwards and 1 or #hunks].start, 1)
   end
   if row then
@@ -487,8 +489,13 @@ local function nav_hunk(forwards)
   end
 end
 
-local function next_hunk() nav_hunk(true)  end
-local function prev_hunk() nav_hunk(false) end
+local function next_hunk(options)
+  nav_hunk(vim.tbl_extend('keep', { forwards = true }, (options or {})))
+end
+
+local function prev_hunk(options)
+  nav_hunk(vim.tbl_extend('keep', { forwards = false }, (options or {})))
+end
 
 local detach = function(bufnr)
   dprint('Detached', bufnr)
