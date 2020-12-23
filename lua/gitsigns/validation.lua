@@ -325,7 +325,7 @@ local function validate_table(data, schema, tolerant)
     end
   end
 
-   -- Iterates over the keys of the data table.
+  -- Iterates over the keys of the data table.
   for key in pairs(schema) do
     -- Calls a function in the table and validates it.
     local result, err = schema[key](data[key], key, data)
