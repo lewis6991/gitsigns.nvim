@@ -234,9 +234,9 @@ local add_signs = function(bufnr, signs, reset)
       local count_char   = cc[count]           or cc['+']            or ''
       type = type..count_suffix
       sign_define(type, {
-          texthl = cs.hl,
-          text   = cs.text..count_char,
-          numhl  = config.numhl and cs.numhl
+        texthl = cs.hl,
+        text   = cs.text..count_char,
+        numhl  = config.numhl and cs.numhl
       })
     end
 
@@ -402,15 +402,15 @@ local reset_hunk = function()
   end
 
   local orig_lines = vim.tbl_map(function(l)
-      return string.sub(l, 2, -1)
-    end, vim.tbl_filter(function(l)
+    return string.sub(l, 2, -1)
+  end, vim.tbl_filter(function(l)
       return vim.startswith(l, '-')
     end, hunk.lines))
 
   local lstart, lend
   if hunk.type == 'delete' then
-      lstart = hunk.start
-      lend = hunk.start
+    lstart = hunk.start
+    lend = hunk.start
   else
     local length = vim.tbl_count(vim.tbl_filter(function(l)
       return vim.startswith(l, '+')
@@ -549,8 +549,8 @@ local attach = throttle_leading(100, async('attach', function()
 
   for _, p in ipairs(vim.split(file, '/')) do
     if p == '.git' then
-        dprint('In git dir', cbuf, 'attach')
-        return
+      dprint('In git dir', cbuf, 'attach')
+      return
     end
   end
 
@@ -604,14 +604,14 @@ local attach = throttle_leading(100, async('attach', function()
       await_main()
       local _, object_name0, mode_bits0 = await(git_relative, file, toplevel)
       if object_name0 == bcache.object_name then
-         dprint('File not changed', cbuf, 'watcher_cb')
-         return
+        dprint('File not changed', cbuf, 'watcher_cb')
+        return
       end
       bcache.object_name = object_name0
       bcache.mode_bits = mode_bits0
       local res0 = await(get_staged, cbuf, bcache.staged, toplevel, relpath)
       if not res0 then
-         return
+        return
       end
       await(update, cbuf)
     end)
