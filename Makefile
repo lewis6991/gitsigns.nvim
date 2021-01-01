@@ -2,7 +2,7 @@
 lint:
 	luacheck lua
 
-PJ_ROOT=$(PWD)
+export PJ_ROOT=$(PWD)
 
 BUSTED_ARGS = \
     --lpath=$(PJ_ROOT)/lua/?.lua \
@@ -19,7 +19,6 @@ plenary.nvim:
 
 .PHONY: test
 test: neovim plenary.nvim
-	@git reset test/dummy.txt > /dev/null
 	make -C neovim functionaltest \
 		BUSTED_ARGS="$(BUSTED_ARGS)" \
 		TEST_FILE="$(TEST_FILE)"
