@@ -1,5 +1,4 @@
 local Job = require('plenary/job')
-local Path = require('plenary/path')
 
 local pln_cm = require('plenary/context_manager')
 local with = pln_cm.with
@@ -32,6 +31,8 @@ local find_hunk       = gs_hunks.find_hunk
 local gs_objs = require("gitsigns/objects")
 local validate = gs_objs.validate
 
+local Status = require("gitsigns/status")
+
 local api = vim.api
 local uv = vim.loop
 local current_buf = api.nvim_get_current_buf
@@ -56,12 +57,6 @@ local function dirname(file)
   return file:match("(.*/)")
 end
 
-local function set_buf_var(bufnr, name, value)
-  vim.schedule(function()
-    api.nvim_buf_set_var(bufnr, name, value)
-  end)
-end
-
 local function write_to_file(file, content)
   with(open(file, 'w'), function(writer)
     for _, l in pairs(content) do
@@ -70,8 +65,8 @@ local function write_to_file(file, content)
   end)
 end
 
-local path_exists = function(p)
-  return Path:new(p):exists()
+local function path_exists(path)
+  return uv.fs_stat(path) and true or false
 end
 
 local job_cnt = 0
@@ -91,13 +86,24 @@ local function git_relative(file, toplevel, callback)
   local mode_bits
   run_job {
     command = 'git',
-    args = {'--no-pager', 'ls-files', '--stage', file},
+    args = {
+      '--no-pager',
+      'ls-files',
+      '--stage',
+      '--others',
+      '--exclude-standard',
+      file
+    },
     cwd = toplevel,
     on_stdout = function(_, line)
       local parts = vim.split(line, ' +')
-      mode_bits   = parts[1]
-      object_name = parts[2]
-      relpath = vim.split(parts[3], '\t', true)[2]
+      if #parts > 1 then
+        mode_bits   = parts[1]
+        object_name = parts[2]
+        relpath = vim.split(parts[3], '\t', true)[2]
+      else
+        relpath = parts[1]
+      end
     end,
     on_exit = function(_, _)
       callback(relpath, object_name, mode_bits)
@@ -185,6 +191,8 @@ local function process_abbrev_head(gitdir, head_str)
     if path_exists(gitdir..'/rebase-merge')
       or path_exists(gitdir..'/rebase-apply') then
       return '(rebasing)'
+    elseif config.debug_mode then
+      return head_str
     else
       return ''
     end
@@ -280,19 +288,18 @@ local update = debounce_trailing(100, async('update', function(bufnr)
     return
   end
 
-  local relpath, toplevel, staged = bcache.relpath, bcache.toplevel, bcache.staged
+  local relpath, toplevel, staged =
+    bcache.relpath, bcache.toplevel, bcache.staged
 
   if not path_exists(staged) then
-    local res = await(get_staged, bufnr, staged, toplevel, relpath)
-    if not res then
-      return
-    end
+    -- TODO: Not sure if this is needed
+    await(get_staged, bufnr, staged, toplevel, relpath)
   end
 
   await_main()
 
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  bcache.hunks = await(run_diff, staged, buftext)
+  bcache.hunks = await(run_diff, bcache.staged, buftext)
 
   local status = get_summary(bcache.hunks)
   status.head = bcache.abbrev_head
@@ -303,8 +310,7 @@ local update = debounce_trailing(100, async('update', function(bufnr)
 
   add_signs(bufnr, signs, true)
 
-  set_buf_var(bufnr, 'gitsigns_status_dict', status)
-  set_buf_var(bufnr, 'gitsigns_status', config.status_formatter(status))
+  Status:update_vars(bufnr, status)
 
   update_cnt = update_cnt + 1
   dprint(string.format('updates: %s, jobs: %s', update_cnt, job_cnt), bufnr, 'update')
@@ -354,6 +360,39 @@ local stage_lines = function(toplevel, lines, callback)
   }
 end
 
+local add_file = function(toplevel, file, callback)
+  local status = true
+  local err = {}
+  run_job {
+    command = 'git',
+    args = {'add', '--intent-to-add', file},
+    cwd = toplevel,
+    on_stderr = function(_, line)
+      status = false
+      table.insert(err, line)
+    end,
+    on_exit = function()
+      if not status then
+        local s = table.concat(err, '\n')
+        error('Cannot add file. Command stderr:\n\n'..s)
+      end
+      callback()
+    end
+  }
+end
+
+local add_to_index = async('add_to_index', function(bcache)
+  local relpath, toplevel = bcache.relpath, bcache.toplevel
+
+  await_main()
+  await(add_file, toplevel, relpath)
+
+  -- Update the cache
+  await_main()
+  _, bcache.object_name, bcache.mode_bits =
+    await(git_relative, relpath, toplevel)
+end)
+
 local stage_hunk = async('stage_hunk', function()
   local bufnr = current_buf()
 
@@ -365,6 +404,16 @@ local stage_hunk = async('stage_hunk', function()
   local hunk = get_hunk(bufnr, bcache.hunks)
   if not hunk then
     return
+  end
+
+  if not path_exists(bcache.file) then
+    print("Error: Cannot stage lines. Please add the file to the working tree.")
+    return
+  end
+
+  if not bcache.object_name then
+    -- If there is no object_name then it is not yet in the index so add it
+    await(add_to_index, bcache)
   end
 
   local lines = create_patch(bcache.relpath, hunk, bcache.mode_bits)
@@ -529,8 +578,12 @@ local function apply_keymaps(bufonly)
 end
 
 local function get_buf_path(bufnr)
-  local file = api.nvim_buf_get_name(bufnr)
-  return uv.fs_realpath(file)
+  return
+    uv.fs_realpath(api.nvim_buf_get_name(bufnr))
+    or
+    api.nvim_buf_call(bufnr, function()
+      return vim.fn.expand('%:p')
+    end)
 end
 
 local attach = throttle_leading(100, async('attach', function()
@@ -540,12 +593,8 @@ local attach = throttle_leading(100, async('attach', function()
     return
   end
   dprint('Attaching', cbuf, 'attach')
-  local file = get_buf_path(cbuf)
 
-  if not path_exists(file) or Path:new(file):is_dir() then
-    dprint('Not a file', cbuf, 'attach')
-    return
-  end
+  local file = get_buf_path(cbuf)
 
   for _, p in ipairs(vim.split(file, '/')) do
     if p == '.git' then
@@ -561,22 +610,24 @@ local attach = throttle_leading(100, async('attach', function()
     return
   end
 
-  set_buf_var(cbuf, 'gitsigns_head', abbrev_head)
+  Status:update_head_var(cbuf, abbrev_head)
+
+  if not path_exists(file) or uv.fs_stat(file).type == 'directory' then
+    dprint('Not a file', cbuf, 'attach')
+    return
+  end
 
   await_main()
   local relpath, object_name, mode_bits = await(git_relative, file, toplevel)
 
   if not relpath then
-    dprint('File not tracked', cbuf, 'attach')
+    dprint('Cannot resolve file in repo', cbuf, 'attach')
     return
   end
 
   local staged = os.tmpname()
 
-  local res = await(get_staged, cbuf, staged, toplevel, relpath)
-  if not res then
-    return
-  end
+  await(get_staged, cbuf, staged, toplevel, relpath)
 
   cache[cbuf] = {
     file         = file,
@@ -598,8 +649,7 @@ local attach = throttle_leading(100, async('attach', function()
 
       await_main()
       local _, _, abbrev_head0 = await(get_repo_info, file)
-      bcache.abbrev_head = abbrev_head0
-      set_buf_var(cbuf, 'gitsigns_head', abbrev_head0)
+      Status:update_head_var(cbuf, abbrev_head0)
 
       await_main()
       local _, object_name0, mode_bits0 = await(git_relative, file, toplevel)
@@ -641,6 +691,8 @@ local function setup(cfg)
 
   gs_objs.init(config.debug_mode)
 
+  Status.formatter = config.status_formatter
+
   -- Define signs
   for t, sign_name in pairs(sign_map) do
     local cs = config.signs[t]
@@ -664,7 +716,8 @@ local function setup(cfg)
 
   -- This seems to be triggered twice on the first buffer so we have throttled
   -- the attach function with throttle_leading
-  vim.cmd('autocmd BufRead * lua require("gitsigns").attach()')
+  vim.cmd('autocmd BufRead,BufNewFile,BufWritePost '..
+    '* lua require("gitsigns").attach()')
 
   vim.cmd('autocmd VimLeavePre * lua require("gitsigns").detach_all()')
 end

@@ -69,8 +69,8 @@ end
 local cache_entry_schema = v.is_table {
   file          = v.is_string(),           -- Full filename
   relpath       = v.is_string(),           -- Relative path to toplevel
-  object_name   = v.is_string(),           -- Object name of file in index
-  mode_bits     = v.is_string(),
+  object_name   = v.optional(v.is_string()), -- Object name of file in index
+  mode_bits     = v.optional(v.is_string()),
   toplevel      = v.is_string(),           -- Top level git directory
   gitdir        = v.is_string(),           -- Path to git directory
   staged        = v.is_string(),           -- Path to staged contents
