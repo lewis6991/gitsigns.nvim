@@ -301,6 +301,22 @@ describe('gitsigns', function()
 
   end)
 
+  it('doesn\'t attach to non-existent files with non-existent sub-dirs', function()
+    exec_lua('require("gitsigns").setup(...)', test_config)
+
+    command_fmt("edit %s/does/not/exist", pj_root)
+    sleep(100)
+
+    local res = split(exec_capture('messages'), '\n')
+
+    eq(res[1], "attach(1): Attaching")
+    eq(res[3], "attach(1): Not a path")
+
+    helpers.pcall_err(get_buf_var, 'gitsigns_head')
+    helpers.pcall_err(get_buf_var, "gitsigns_status_dict")
+
+  end)
+
   it('attaches to newly created files', function()
     screen:try_resize(4, 4)
     exec_lua('require("gitsigns").setup(...)', test_config)
