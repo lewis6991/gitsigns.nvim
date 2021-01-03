@@ -200,7 +200,7 @@ local function process_abbrev_head(gitdir, head_str)
   return head_str
 end
 
-local get_repo_info = function(file, callback)
+local get_repo_info = function(path, callback)
   local out = {}
   run_job {
     command = 'git',
@@ -209,7 +209,7 @@ local get_repo_info = function(file, callback)
       '--absolute-git-dir',
       '--abbrev-ref', 'HEAD',
     },
-    cwd = dirname(file),
+    cwd = path,
     on_stdout = function(_, line)
       table.insert(out, line)
     end,
@@ -603,7 +603,14 @@ local attach = throttle_leading(100, async('attach', function()
     end
   end
 
-  local toplevel, gitdir, abbrev_head = await(get_repo_info, file)
+  local file_dir = dirname(file)
+
+  if not path_exists(file_dir) then
+    dprint('Not a path', cbuf, 'attach')
+    return
+  end
+
+  local toplevel, gitdir, abbrev_head = await(get_repo_info, file_dir)
 
   if not gitdir then
     dprint('Not in git repo', cbuf, 'attach')
@@ -648,7 +655,7 @@ local attach = throttle_leading(100, async('attach', function()
       local bcache = get_cache(cbuf)
 
       await_main()
-      local _, _, abbrev_head0 = await(get_repo_info, file)
+      local _, _, abbrev_head0 = await(get_repo_info, file_dir)
       Status:update_head_var(cbuf, abbrev_head0)
 
       await_main()
