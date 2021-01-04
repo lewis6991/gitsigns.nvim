@@ -71,6 +71,33 @@ local function command_fmt(str, ...)
   command(str:format(...))
 end
 
+local function match_lines(lines, spec)
+  local i = 1
+  for _, line in ipairs(lines) do
+    if line ~= '' then
+      local s = spec[i]
+      if s then
+        if s.pattern then
+          matches(s.text, line)
+        else
+          eq(s, line)
+        end
+      else
+        error('Unexpected extra text: '..line)
+      end
+      i = i + 1
+    end
+  end
+end
+
+local function match_messages(spec)
+  local res = split(exec_capture('messages'), '\n')
+  match_lines(res, spec)
+end
+
+local function p(str)
+  return {text=str, pattern=true}
+end
 
 describe('gitsigns', function()
   local screen
@@ -115,7 +142,7 @@ describe('gitsigns', function()
     table.sort(res)
 
     -- Check all keymaps get set
-    eq(res, {'',
+    match_lines(res, {
       'n  mhp         *@<Cmd>lua require"gitsigns".preview_hunk()<CR>',
       'n  mhr         *@<Cmd>lua require"gitsigns".reset_hunk()<CR>',
       'n  mhs         *@<Cmd>lua require"gitsigns".stage_hunk()<CR>',
@@ -220,9 +247,10 @@ describe('gitsigns', function()
     command_fmt("edit %s/.git/index", pj_root)
     sleep(200)
 
-    local res = split(exec_capture('messages'), '\n')
-
-    eq(res[#res-1], 'attach(1): In git dir')
+    match_messages {
+      'attach(1): Attaching',
+      'attach(1): In git dir'
+    }
   end)
 
   it('numhl works', function()
@@ -273,12 +301,12 @@ describe('gitsigns', function()
     command_fmt("edit %s/scratch/dummy_ignored.txt", pj_root)
     sleep(200)
 
-    local res = split(exec_capture('messages'), '\n')
-
-    eq(res[1], "attach(1): Attaching")
-    eq(res[3], "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD")
-    matches("Running: git .* ls%-files .*/dummy_ignored.txt", res[5])
-    eq(res[7], "attach(1): Cannot resolve file in repo")
+    match_messages {
+      "attach(1): Attaching",
+      "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+      p"Running: git .* ls%-files .*/dummy_ignored.txt",
+      "attach(1): Cannot resolve file in repo",
+    }
 
     check_status {head=branch}
   end)
@@ -291,11 +319,11 @@ describe('gitsigns', function()
     command_fmt("edit %s/scratch/newfile.txt", pj_root)
     sleep(100)
 
-    local res = split(exec_capture('messages'), '\n')
-
-    eq(res[1], "attach(1): Attaching")
-    eq(res[3], "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD")
-    eq(res[5], "attach(1): Not a file")
+    match_messages {
+      "attach(1): Attaching",
+      "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+      "attach(1): Not a file",
+    }
 
     check_status {head=branch}
 
@@ -307,10 +335,10 @@ describe('gitsigns', function()
     command_fmt("edit %s/does/not/exist", pj_root)
     sleep(100)
 
-    local res = split(exec_capture('messages'), '\n')
-
-    eq(res[1], "attach(1): Attaching")
-    eq(res[3], "attach(1): Not a path")
+    match_messages {
+      "attach(1): Attaching",
+      "attach(1): Not a path",
+    }
 
     helpers.pcall_err(get_buf_var, 'gitsigns_head')
     helpers.pcall_err(get_buf_var, "gitsigns_status_dict")
@@ -328,17 +356,17 @@ describe('gitsigns', function()
     command("write")
     sleep(200)
 
-    local res = split(exec_capture('messages'), '\n')
-
-    matches('".*scratch/newfile.txt" %[New] 0L, 0C written', res[1])
-    eq(res[2], "attach(1): Attaching")
-    eq(res[4], "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD")
-    matches("Running: git .* ls%-files .*/newfile.txt", res[6])
-    eq(res[8], "dprint(nil): Running: git --no-pager show :scratch/newfile.txt")
-    eq(res[10], "get_staged(1): File not in index")
-    eq(res[12], "watch_index(1): Watching index")
-    matches('Running: git .* diff .* /tmp/lua_.* %-', res[14])
-    eq(res[16], "update(1): updates: 1, jobs: 5")
+    match_messages {
+      p'".*scratch/newfile.txt" %[New] 0L, 0C written',
+      "attach(1): Attaching",
+      "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+      p"Running: git .* ls%-files .*/newfile.txt",
+      "dprint(nil): Running: git --no-pager show :scratch/newfile.txt",
+      "get_staged(1): File not in index",
+      "watch_index(1): Watching index",
+      p'Running: git .* diff .* /tmp/lua_.* %-',
+      "update(1): updates: 1, jobs: 5"
+    }
 
     check_status {head=branch, added=1, changed=0, removed=0}
 
@@ -387,9 +415,11 @@ describe('gitsigns', function()
     exec_lua('require("gitsigns").setup(...)', test_config)
 
     command("copen")
-    local res = split(exec_capture('messages'), '\n')
-    eq(res[1], "attach(2): Attaching")
-    eq(res[3], "attach(2): Not a path")
+
+    match_messages {
+      "attach(2): Attaching",
+      "attach(2): Not a path",
+    }
 
   end)
 
