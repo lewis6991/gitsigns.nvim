@@ -605,7 +605,7 @@ local attach = throttle_leading(100, async('attach', function()
 
   local file_dir = dirname(file)
 
-  if not path_exists(file_dir) then
+  if not file_dir or not path_exists(file_dir) then
     dprint('Not a path', cbuf, 'attach')
     return
   end

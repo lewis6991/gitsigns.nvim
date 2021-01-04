@@ -383,4 +383,14 @@ describe('gitsigns', function()
 
   end)
 
+  it('run copen', function()
+    exec_lua('require("gitsigns").setup(...)', test_config)
+
+    command("copen")
+    local res = split(exec_capture('messages'), '\n')
+    eq(res[1], "attach(2): Attaching")
+    eq(res[3], "attach(2): Not a path")
+
+  end)
+
 end)
