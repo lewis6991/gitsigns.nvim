@@ -310,7 +310,7 @@ local update = debounce_trailing(100, async('update', function(bufnr)
 
   add_signs(bufnr, signs, true)
 
-  Status:update_vars(bufnr, status)
+  Status:update(bufnr, status)
 
   update_cnt = update_cnt + 1
   dprint(string.format('updates: %s, jobs: %s', update_cnt, job_cnt), bufnr, 'update')
@@ -617,7 +617,7 @@ local attach = throttle_leading(100, async('attach', function()
     return
   end
 
-  Status:update_head_var(cbuf, abbrev_head)
+  Status:update_head(cbuf, abbrev_head)
 
   if not path_exists(file) or uv.fs_stat(file).type == 'directory' then
     dprint('Not a file', cbuf, 'attach')
@@ -656,7 +656,8 @@ local attach = throttle_leading(100, async('attach', function()
 
       await_main()
       local _, _, abbrev_head0 = await(get_repo_info, file_dir)
-      Status:update_head_var(cbuf, abbrev_head0)
+      Status:update_head(cbuf, abbrev_head0)
+      bcache.abbrev_head = abbrev_head0
 
       await_main()
       local _, object_name0, mode_bits0 = await(git_relative, file, toplevel)
@@ -668,6 +669,8 @@ local attach = throttle_leading(100, async('attach', function()
       bcache.mode_bits = mode_bits0
       local res0 = await(get_staged, cbuf, bcache.staged, toplevel, relpath)
       if not res0 then
+        -- Cannot get staged file, must not exist in the index so detach
+        detach(cbuf)
         return
       end
       await(update, cbuf)
@@ -681,6 +684,10 @@ local attach = throttle_leading(100, async('attach', function()
 
   api.nvim_buf_attach(cbuf, false, {
     on_lines = function(_, buf)
+      if not get_cache_opt(buf) then
+        dprint('Cache for buffer '..buf..' was nil. Detaching', 'on_lines')
+        return true
+      end
       update(buf)
     end,
     on_detach = function(_, buf)
