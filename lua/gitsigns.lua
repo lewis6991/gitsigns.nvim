@@ -745,6 +745,16 @@ local function preview_hunk()
   api.nvim_win_set_option(winid, 'relativenumber', false)
 end
 
+local function text_object()
+  local hunk = get_hunk()
+
+  if not hunk then
+    return
+  end
+
+  vim.cmd('normal! '..hunk.start..'GV'..hunk.dend..'G')
+end
+
 local function run_blame(file, toplevel, lines, lnum, callback)
   local results = {}
   run_job {
@@ -835,5 +845,6 @@ return {
   attach          = attach,
   detach_all      = detach_all,
   setup           = setup,
-  dump_cache      = dump_cache
+  dump_cache      = dump_cache,
+  text_object     = text_object
 }
