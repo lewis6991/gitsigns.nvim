@@ -22,6 +22,7 @@ Expect things to break sometimes but please don't hesitate to raise an issue.
 - Customisable (signs, highlights, mappings, etc)
 - Status bar integration
 - Git blame a specific line
+- Hunk text object
 
 ## Requirements
 Neovim >= 0.5.0
@@ -134,7 +135,7 @@ For the current branch use the variable `b:gitsigns_head`.
 - [ ] Folding of text around hunks
 - [ ] Diff against working tree instead of index, or diff against any SHA.
 - [ ] Line highlighting
-- [ ] Hunk text object
+- [x] Hunk text object
 - [ ] Open diff mode of buffer against what gitsigns is comparing to (currently the index)
 - [ ] Share index watchers for files in the same repo
 - [ ] Show messages when navigating hunks similar to '/' search
