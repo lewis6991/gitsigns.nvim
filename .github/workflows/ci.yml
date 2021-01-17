@@ -46,15 +46,20 @@ jobs:
             lua-bitop \
             lua-lpeg \
             lua-mpack \
-            luarocks \
-            lua5.1 \
             ninja-build \
             pkg-config \
             unzip
-          sudo luarocks install luacheck
 
-      - name: Lint
-        run: make lint
+      - uses: leafo/gh-actions-lua@v8
+        with:
+          luaVersion: "luajit-2.1.0-beta3"
+      - uses: leafo/gh-actions-luarocks@v4
+
+      - name: Install teal
+        run: luarocks install tl
+
+      - name: Check lua files are built from latest teal
+        run: make tl-ensure
 
       - name: Build Neovim
         run: make neovim

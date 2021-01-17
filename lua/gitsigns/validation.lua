@@ -1,9 +1,9 @@
--- @file        validation.lua
--- @author      Théo Brigitte <theo.brigitte@gmail.com>
+-- @file      validation.lua
+-- @author    Théo Brigitte <theo.brigitte@gmail.com>
 -- @contributor Henrique Silva <hensansi@gmail.com>
--- @date        Thu May 28 16:05:15 2015
+-- @date      Thu May 28 16:05:15 2015
 --
--- @brief       Lua schema validation library.
+-- @brief  Lua schema validation library.
 --
 -- Validation is achieved by matching data against a schema.
 --
@@ -23,7 +23,6 @@ local format = string.format
 local insert = table.insert
 local next = next
 
-
 local M = { _NAME = 'validation' }
 
 --- Generate error message for validators.
@@ -38,7 +37,7 @@ local M = { _NAME = 'validation' }
 ---
 local function error_message(data, expected_type)
   if data then
-    return format('is not %s.', expected_type)
+  return format('is not %s.', expected_type)
   end
 
   return format('is missing and should be %s.', expected_type)
@@ -62,13 +61,13 @@ function M.print_err(error_list, parents)
   if not error_list then return false end
   -- Iterates over the list of messages.
   for key, err in pairs(error_list) do
-    -- If it is a node, print it.
-    if type(err) == 'string' then
-      error_output = format('%s\n%s%s %s', error_output, parents ,key, err)
-    else
-      -- If it is a table, recurse it.
-      error_output = format('%s%s', error_output, M.print_err(err, format('%s%s.', parents, key)))
-    end
+  -- If it is a node, print it.
+  if type(err) == 'string' then
+  error_output = format('%s\n%s%s %s', error_output, parents ,key, err)
+  else
+  -- If it is a table, recurse it.
+  error_output = format('%s%s', error_output, M.print_err(err, format('%s%s.', parents, key)))
+  end
   end
 
   return error_output
@@ -76,10 +75,10 @@ end
 
 local function validator_gen(ty)
   return function(value)
-    if type(value) ~= ty then
-      return false, error_message(value, 'a '..ty)
-    end
-    return true
+  if type(value) ~= ty then
+  return false, error_message(value, 'a '..ty)
+  end
+  return true
   end
 end
 
@@ -97,7 +96,6 @@ end
 --   true on success, false and message describing the error
 ---
 
-
 --- Generates string validator.
 --
 -- @return
@@ -114,10 +112,10 @@ end
 ---
 function M.is_integer()
   return function(value)
-    if type(value) ~= 'number' or value%1 ~= 0 then
-      return false, error_message(value, 'an integer')
-    end
-    return true
+  if type(value) ~= 'number' or value%1 ~= 0 then
+  return false, error_message(value, 'an integer')
+  end
+  return true
   end
 end
 
@@ -164,29 +162,29 @@ end
 ---
 function M.is_array(child_validator, is_object)
   return function(value, _, _)
-    local err_array = {}
+  local err_array = {}
 
-    -- Iterate the array and validate them.
-    if type(value) == 'table' then
-      for index in pairs(value) do
-        if not is_object and type(index) ~= 'number' then
-          insert(err_array, error_message(value, 'an array') )
-        else
-          local result, err = child_validator(value[index], index, value)
-          if not result then
-            err_array[index] = err
-          end
-        end
-      end
-    else
-      insert(err_array, error_message(value, 'an array') )
-    end
+  -- Iterate the array and validate them.
+  if type(value) == 'table' then
+  for index in pairs(value) do
+  if not is_object and type(index) ~= 'number' then
+  insert(err_array, error_message(value, 'an array') )
+  else
+  local result, err = child_validator(value[index], index, value)
+  if not result then
+  err_array[index] = err
+  end
+  end
+  end
+  else
+  insert(err_array, error_message(value, 'an array') )
+  end
 
-    if next(err_array) == nil then
-      return true
-    else
-      return false, err_array
-    end
+  if next(err_array) == nil then
+  return true
+  else
+  return false, err_array
+  end
   end
 end
 
@@ -203,11 +201,11 @@ end
 ---
 function M.optional(validator)
   return function(value, key, data)
-    if not value then
-      return true
-    else
-      return validator(value, key, data)
-    end
+  if not value then
+  return true
+  else
+  return validator(value, key, data)
+  end
   end
 end
 
@@ -227,20 +225,20 @@ end
 ---
 function M.or_op(validator_a, validator_b)
   return function(value, key, data)
-    local err_b
-    if not value then
-      return true
-    else
-      local valid, err_a = validator_a(value, key, data)
-      if not valid then
-        valid, err_b = validator_b(value, key, data)
-      end
-      if not valid then
-        return valid, err_a .. " OR " .. err_b
-      else
-        return valid, nil
-      end
-    end
+  local err_b
+  if not value then
+  return true
+  else
+  local valid, err_a = validator_a(value, key, data)
+  if not valid then
+  valid, err_b = validator_b(value, key, data)
+  end
+  if not valid then
+  return valid, err_a .. " OR " .. err_b
+  else
+  return valid, nil
+  end
+  end
   end
 end
 
@@ -263,11 +261,11 @@ end
 ---
 function M.assert(key_check, match, validator)
   return function(value, key, data)
-    if data[key_check] == match then
-      return validator(value, key, data)
-    else
-      return true
-    end
+  if data[key_check] == match then
+  return validator(value, key, data)
+  else
+  return true
+  end
   end
 end
 
@@ -287,16 +285,16 @@ end
 ---
 function M.in_list(list)
   return function(value)
-    local printed_list = "["
-    for _, word in pairs(list) do
-      if word == value then
-        return true
-      end
-      printed_list = printed_list .. " '" .. word .. "'"
-    end
+  local printed_list = "["
+  for _, word in pairs(list) do
+  if word == value then
+  return true
+  end
+  printed_list = printed_list .. " '" .. word .. "'"
+  end
 
-    printed_list = printed_list .. " ]"
-    return false, { error_message(value, 'in list ' .. printed_list) }
+  printed_list = printed_list .. " ]"
+  return false, { error_message(value, 'in list ' .. printed_list) }
   end
 end
 
@@ -318,28 +316,28 @@ local function validate_table(data, schema, tolerant)
 
   -- Check if all data keys are present in the schema.
   if not tolerant then
-    for key in pairs(data) do
-      if schema[key] == nil then
-        errs[key] = 'is not allowed.'
-      end
-    end
+  for key in pairs(data) do
+  if schema[key] == nil then
+  errs[key] = 'is not allowed.'
+  end
+  end
   end
 
   -- Iterates over the keys of the data table.
   for key in pairs(schema) do
-    -- Calls a function in the table and validates it.
-    local result, err = schema[key](data[key], key, data)
+  -- Calls a function in the table and validates it.
+  local result, err = schema[key](data[key], key, data)
 
-    -- If validation fails, print the result and return it.
-    if not result then
-      errs[key] = err
-    end
+  -- If validation fails, print the result and return it.
+  if not result then
+  errs[key] = err
+  end
   end
 
   -- Lua does not give size of table holding only string as keys.
   -- Despite the use of #table we have to manually loop over it.
   for _ in pairs(errs) do -- luacheck: ignore
-    return false, errs
+  return false, errs
   end
 
   return true
@@ -359,23 +357,24 @@ end
 ---
 function M.is_table(schema, tolerant)
   return function(value)
-    local result, err
+  local result, err
 
-    if type(value) ~= 'table' then
-      -- Enforce errors of childs value.
-      _, err = validate_table({}, schema, tolerant)
-      if not err then
-        err = {}
-      end
-      result = false
-      insert(err, error_message(value, 'a table') )
-    else
-      result, err = validate_table(value, schema, tolerant)
-    end
+  if type(value) ~= 'table' then
+  -- Enforce errors of childs value.
+  _, err = validate_table({}, schema, tolerant)
+  if not err then
+  err = {}
+  end
+  result = false
+  insert(err, error_message(value, 'a table') )
+  else
+  result, err = validate_table(value, schema, tolerant)
+  end
 
-    return result, err
+  return result, err
   end
 end
 
 return M
+
 

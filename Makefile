@@ -1,7 +1,4 @@
 
-lint:
-	luacheck lua
-
 export PJ_ROOT=$(PWD)
 
 BUSTED_ARGS = \
@@ -23,3 +20,20 @@ test: neovim plenary.nvim
 		BUSTED_ARGS="$(BUSTED_ARGS)" \
 		TEST_FILE="$(TEST_FILE)"
 
+.PHONY: tl-check
+tl-check:
+	eval $$(luarocks path) && tl check \
+		--skip-compat53 \
+		--werror all \
+		-I types \
+		-I teal \
+		--preload types \
+		teal/**/*.tl
+
+.PHONY: tl-build
+tl-build: tlconfig.lua
+	eval $$(luarocks path) && tl build
+
+.PHONY: tl-ensure
+tl-ensure: tl-build
+	git diff --exit-code --quiet -- lua
