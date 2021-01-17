@@ -1,24 +1,24 @@
 
-local SchemaElem = {}
+local record SchemaElem
+    type: string
+    deep_extend: boolean
+    default: any
+    default_help: string
+    description: string
+end
 
-
-
-
-
-
-
-local schema = {
-   signs = {
-      type = 'table',
-      deep_extend = true,
-      default = [[{
+local schema: {string:SchemaElem} = {
+  signs = {
+    type = 'table',
+    deep_extend = true,
+    default = [[{
       add          = {hl = 'DiffAdd'   , text = '│', numhl='GitSignsAddNr'},
       change       = {hl = 'DiffChange', text = '│', numhl='GitSignsChangeNr'},
       delete       = {hl = 'DiffDelete', text = '_', numhl='GitSignsDeleteNr'},
       topdelete    = {hl = 'DiffDelete', text = '‾', numhl='GitSignsDeleteNr'},
       changedelete = {hl = 'DiffChange', text = '~', numhl='GitSignsChangeNr'},
     }]],
-      description = [[
+    description = [[
         Configuration for signs:
           • `hl` specifies the highlight group to use for the sign.
           • `text` specifies the character to use for the sign.
@@ -26,12 +26,12 @@ local schema = {
             |gitsigns-config.numhl|).
           • `show_count` to enable showing count of hunk, e.g. number of deleted
             lines.
-    ]],
-   },
+    ]]
+  },
 
-   keymaps = {
-      type = 'table',
-      default = [[{
+  keymaps = {
+    type = 'table',
+    default = [[{
       -- Default keymap options
       noremap = true,
       buffer = true,
@@ -48,7 +48,7 @@ local schema = {
       ['o ih'] = ':<C-U>lua require"gitsigns".text_object()<CR>',
       ['x ih'] = ':<C-U>lua require"gitsigns".text_object()<CR>'
     }]],
-      description = [[
+    description = [[
         Keymaps to set up when attaching to a buffer.
 
         Each key in the table defines the mode and key (whitespace delimited)
@@ -57,44 +57,44 @@ local schema = {
         |map-arguments| which are: `expr`, `noremap`, `nowait`, `script`,
         `silent`, `unique` and `buffer`.  These options can also be used in
         the top level of the table to define default options for all mappings.
-    ]],
-   },
+    ]]
+  },
 
-   watch_index = {
-      type = 'table',
-      default = [[{ interval = 1000 }]],
-      description = [[
+  watch_index = {
+    type = 'table',
+    default = [[{ interval = 1000 }]],
+    description = [[
         When opening a file, a libuv watcher is placed on the respective
         `.git/index` file to detect when changes happen to use as a trigger to
         update signs.
-    ]],
-   },
+    ]]
+  },
 
-   sign_priority = {
-      type = 'number',
-      default = 6,
-      description = [[
+  sign_priority = {
+    type = 'number',
+    default = 6,
+    description = [[
         Priority to use for signs.
-    ]],
-   },
+    ]]
+  },
 
-   numhl = {
-      type = 'boolean',
-      default = false,
-      description = [[
+  numhl = {
+    type = 'boolean',
+    default = false,
+    description = [[
         Enable/disable line number highlights.
 
         When enabled the highlights defined in `signs.*.numhl` are used. If
         the highlight group does not exist, then it is automatically defined
         and linked to the corresponding highlight group in `signs.*.hl`.
-    ]],
-   },
+    ]]
+  },
 
-   diff_algorithm = {
-      type = 'string',
+  diff_algorithm = {
+    type = 'string',
 
-
-      default = [[function()
+    -- Get algorithm from 'diffopt'
+    default = [[function()
       local algo = 'myers'
       for o in vim.gsplit(vim.o.diffopt, ',') do
         if vim.startswith(o, 'algorithm:') then
@@ -103,27 +103,27 @@ local schema = {
       end
       return algo
     end]],
-      default_help = "taken from 'diffopt'",
-      description = [[
+    default_help = "taken from 'diffopt'",
+    description = [[
         Diff algorithm to pass to `git diff` .
-    ]],
-   },
+    ]]
+  },
 
-   count_chars = {
-      type = 'table',
-      default = {
-         [1] = '1',
-         [2] = '2',
-         [3] = '3',
-         [4] = '4',
-         [5] = '5',
-         [6] = '6',
-         [7] = '7',
-         [8] = '8',
-         [9] = '9',
-         ['+'] = '>',
-      },
-      description = [[
+  count_chars = {
+    type = 'table',
+    default = {
+      [1]   = '1', -- '₁',
+      [2]   = '2', -- '₂',
+      [3]   = '3', -- '₃',
+      [4]   = '4', -- '₄',
+      [5]   = '5', -- '₅',
+      [6]   = '6', -- '₆',
+      [7]   = '7', -- '₇',
+      [8]   = '8', -- '₈',
+      [9]   = '9', -- '₉',
+      ['+'] = '>', -- '₊',
+    },
+    description = [[
         The count characters used when `signs.*.show_count` is enabled. The
         `+` entry is used as a fallback. With the default, any count outside
         of 1-9 uses the `>` character in the sign.
@@ -131,12 +131,12 @@ local schema = {
         Possible use cases for this field:
           • to specify unicode characters for the counts instead of 1-9.
           • to define characters to be used for counts greater than 9.
-    ]],
-   },
+    ]]
+  },
 
-   status_formatter = {
-      type = 'function',
-      default = [[function(status)
+  status_formatter = {
+    type = 'function',
+    default = [[function(status)
       local added, changed, removed = status.added, status.changed, status.removed
       local status_txt = {}
       if added   and added   > 0 then table.insert(status_txt, '+'..added  ) end
@@ -144,70 +144,70 @@ local schema = {
       if removed and removed > 0 then table.insert(status_txt, '-'..removed) end
       return table.concat(status_txt, ' ')
     end]],
-      description = [[
+    description = [[
         Function used to format `b:gitsigns_status`.
-    ]],
-   },
+    ]]
+  },
 
-   debug_mode = {
-      type = 'boolean',
-      default = false,
-      description = [[
+  debug_mode = {
+    type = 'boolean',
+    default = false,
+    description = [[
         Print diagnostic messages.
-    ]],
-   },
+    ]]
+  }
 }
 
-local function validate_config(config)
-   for k, v in pairs(config) do
-      if schema[k] == nil then
-         print(("gitsigns: Ignoring invalid configuration field '%s'"):format(k))
-      else
-         vim.validate({
-            [k] = { v, schema[k].type },
-         })
-      end
-   end
+local function validate_config(config: {string:any})
+  for k, v in pairs(config) do
+    if schema[k] == nil then
+      print(("gitsigns: Ignoring invalid configuration field '%s'"):format(k))
+    else
+      vim.validate {
+        [k] = { v, schema[k].type } as {any};
+      }
+    end
+  end
 end
 
-local function resolve_default(schema_elem)
-   local v = schema_elem
-   local default = v.default
-   if type(default) == "string" and vim.startswith(default, 'function(') then
-      local d = loadstring('return ' .. default)()
-      if v.type == 'function' then
-         return d
-      else
-         return d()
-      end
-   elseif type(default) == "string" and vim.startswith(default, '{') then
-      return loadstring('return ' .. default)()
-   else
-      return default
-   end
+local function resolve_default(schema_elem: SchemaElem): any
+  local v = schema_elem
+  local default = v.default
+  if default is string and vim.startswith(default, 'function(') then
+    local d = loadstring('return '..default)() as function
+    if v.type == 'function' then
+      return d
+    else
+      return d()
+    end
+  elseif default is string and vim.startswith(default, '{') then
+    return loadstring('return '..default)()
+  else
+    return default
+  end
 end
 
 return {
-   process = function(user_config)
-      user_config = user_config or {}
+  process = function(user_config: {string:any}): {string: any}
+    user_config = user_config or {}
 
-      validate_config(user_config)
+    validate_config(user_config)
 
-      local config = {}
-      for k, v in pairs(schema) do
-         if user_config[k] ~= nil then
-            if v.deep_extend then
-               local d = resolve_default(v)
-               config[k] = vim.tbl_deep_extend('force', d, user_config[k])
-            else
-               config[k] = user_config[k]
-            end
-         else
-            config[k] = resolve_default(v)
-         end
+    local config: {string:any} = {}
+    for k, v in pairs(schema) do
+      if user_config[k] ~= nil then
+        if v.deep_extend then
+          local d = resolve_default(v)
+          config[k] = vim.tbl_deep_extend('force', d as table, user_config[k] as table)
+        else
+          config[k] = user_config[k]
+        end
+      else
+        config[k] = resolve_default(v)
       end
+    end
 
-      return config
-   end,
-   schema = schema,
+    return config
+  end,
+  schema = schema
 }
