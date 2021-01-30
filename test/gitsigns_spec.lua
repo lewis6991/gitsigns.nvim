@@ -201,6 +201,15 @@ describe('gitsigns', function()
     feed("EDIT<esc>")
     sleep(100)
 
+    screen:expect{grid=[[
+      {1:  }This              |
+      {1:  }is                |
+      {1:  }a                 |
+      {2:~ }EDI^T              |
+      {1:  }used              |
+                          |
+    ]]}
+
     -- Stage
     feed("mhs")
     sleep(100)
@@ -361,9 +370,10 @@ describe('gitsigns', function()
       "attach(1): Attaching",
       "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
       p"Running: git .* ls%-files .*/newfile.txt",
+      "watch_index(1): Watching index",
       "dprint(nil): Running: git --no-pager show :scratch/newfile.txt",
       "get_staged(1): File not in index",
-      "watch_index(1): Watching index",
+      "get_staged(1): Updated staged file",
       p'Running: git .* diff .* /tmp/lua_.* %-',
       "update(1): updates: 1, jobs: 5"
     }
@@ -420,6 +430,48 @@ describe('gitsigns', function()
       "attach(2): Attaching",
       "attach(2): Not a path",
     }
+
+  end)
+
+  it('tracks files in new repos', function()
+    screen:try_resize(10, 4)
+    exec_lua('require("gitsigns").setup(...)', test_config)
+    local d = '/tmp/sample_proj'
+    system{"rm", "-rf", d}
+    system{"mkdir", "-p", d}
+    system{"git", "-C", d, "init"}
+    system{"touch", d.."/a"}
+    command("edit "..d.."/a")
+
+    feed("iEDIT<esc>")
+    command("write")
+
+    screen:expect{grid=[[
+      {3:+ }EDI^T      |
+      {6:~           }|
+      {6:~           }|
+                  |
+    ]]}
+
+    -- Stage
+    system{"git", "-C", d, "add", "a"}
+
+    screen:expect{grid=[[
+      EDI^T        |
+      {6:~           }|
+      {6:~           }|
+                  |
+    ]]}
+
+    -- -- Reset
+    system{"git", "-C", d, "reset"}
+
+    screen:expect{grid=[[
+      {3:+ }EDI^T      |
+      {6:~           }|
+      {6:~           }|
+                  |
+    ]]}
 
   end)
 

@@ -249,18 +249,16 @@ local get_staged = async('get_staged', function(bufnr, staged_path, toplevel, re
 
    if not staged_txt then
       dprint('File not in index', bufnr, 'get_staged')
-      return false
+      staged_txt = {}
    end
 
    await_main()
 
    write_to_file(staged_path, staged_txt)
    dprint('Updated staged file', bufnr, 'get_staged')
-   return true
 end)
 
 local update_cnt = 0
-
 
 local update = debounce_trailing(100, async('update', function(bufnr)
    local bcache = get_cache_opt(bufnr)
@@ -272,12 +270,7 @@ local update = debounce_trailing(100, async('update', function(bufnr)
    local relpath, toplevel, staged = 
 bcache.relpath, bcache.toplevel, bcache.staged
 
-   if not path_exists(staged) then
-
-      await(get_staged, bufnr, staged, toplevel, relpath)
-   end
-
-   await_main()
+   await(get_staged, bufnr, staged, toplevel, relpath)
 
    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
    bcache.hunks = await(run_diff, bcache.staged, buftext)
@@ -298,15 +291,10 @@ bcache.relpath, bcache.toplevel, bcache.staged
 end))
 
 local watch_index = async('watch_index', function(bufnr, gitdir, on_change)
-   local index = gitdir .. '/index'
-   if not path_exists(index) then
-      error('Cannot find index file: ' .. index)
-      return
-   end
-
 
    dprint('Watching index', bufnr, 'watch_index')
 
+   local index = gitdir .. '/index'
    local w = uv.new_fs_poll()
    w:start(index, config.watch_index.interval, on_change)
 
@@ -575,10 +563,7 @@ uv.fs_realpath(api.nvim_buf_get_name(bufnr)) or
    end)
 end
 
-local attach = throttle_leading(100,
-async(
-'attach',
-function()
+local attach = throttle_leading(100, async('attach', function()
    local cbuf = current_buf()
    if cache[cbuf] ~= nil then
       dprint('Already attached', cbuf, 'attach')
@@ -626,10 +611,6 @@ await(git_relative, file, toplevel)
       return
    end
 
-   local staged = os.tmpname()
-
-   await(get_staged, cbuf, staged, toplevel, relpath)
-
    cache[cbuf] = {
       file = file,
       relpath = relpath,
@@ -638,7 +619,7 @@ await(git_relative, file, toplevel)
       toplevel = toplevel,
       gitdir = gitdir,
       abbrev_head = abbrev_head,
-      staged = staged,
+      staged = os.tmpname(),
       hunks = {},
       staged_diffs = {},
    }
@@ -663,12 +644,6 @@ await(git_relative, file, toplevel)
       end
       bcache.object_name = object_name0
       bcache.mode_bits = mode_bits0
-      local res0 = await(get_staged, cbuf, bcache.staged, toplevel, relpath)
-      if not res0 then
-
-         detach(cbuf)
-         return
-      end
       await(update, cbuf)
    end))
 
