@@ -135,6 +135,9 @@ attach()                                                   *gitsigns.attach()*
 detach_all()                                           *gitsigns.detach_all()*
                 Detach Gitsigns from all buffers it is attached to.
 
+text_object()                                         *gitsigns.text_object()*
+                Select the hunk under the cursor.
+
 ==============================================================================
 CONFIGURATION                                                *gitsigns-config*
 
@@ -265,6 +268,13 @@ Example:
                                                              *b:gitsigns_head*
 Use `b:gitsigns_head` to return the name of the current branch. If the current
 HEAD is detached then this will be an empty string.
+
+==============================================================================
+TEXT OBJECTS                                             *gitsigns-textobject*
+
+Since text objects are defined via keymaps, these are exposed and configurable
+via the config, see |gitsigns-config-keymaps|. The lua implementation is
+exposed through |gitsigns.text_object()|.
 
 ------------------------------------------------------------------------------
 vim:tw=78:ts=8:ft=help:norl:

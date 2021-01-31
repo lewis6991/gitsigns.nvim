@@ -42,7 +42,7 @@ local function get_ordered_schema_keys()
     if startswith(l, '}') then
       break
     end
-    if l:find('^  (%w+).*') then
+    if l:find('^   (%w+).*') then
       local lc = l:gsub('^%s*([%w_]+).*', '%1')
       table.insert(keys, lc)
     end
