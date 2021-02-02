@@ -586,6 +586,11 @@ local attach = throttle_leading(100, sync(function()
    end
    dprint('Attaching', cbuf, 'attach')
 
+   if api.nvim_buf_get_option(cbuf, 'buftype') ~= '' then
+      dprint('Non-normal buffer', cbuf, 'attach')
+      return
+   end
+
    local file = get_buf_path(cbuf)
 
    for _, p in ipairs(vim.split(file, '/')) do
