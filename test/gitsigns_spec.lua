@@ -428,7 +428,7 @@ describe('gitsigns', function()
 
     match_messages {
       "attach(2): Attaching",
-      "attach(2): Not a path",
+      "attach(2): Non-normal buffer",
     }
 
   end)
