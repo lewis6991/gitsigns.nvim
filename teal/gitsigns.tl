@@ -1,5 +1,3 @@
-local Job = require('plenary/job')
-
 local pln_cm = require('plenary/context_manager')
 local with = pln_cm.with
 local open = pln_cm.open
@@ -22,12 +20,17 @@ local process_config = require('gitsigns/config').process
 local mk_repeatable  = require('gitsigns/repeat').mk_repeatable
 local apply_mappings = require('gitsigns/mappings')
 
+local git = require('gitsigns/git')
+local util = require('gitsigns/util')
+
 local gs_hunks = require("gitsigns/hunks")
-local create_patch    = gs_hunks.create_patch
-local process_hunks   = gs_hunks.process_hunks
-local parse_diff_line = gs_hunks.parse_diff_line
-local get_summary     = gs_hunks.get_summary
-local find_hunk       = gs_hunks.find_hunk
+local create_patch  = gs_hunks.create_patch
+local process_hunks = gs_hunks.process_hunks
+local get_summary   = gs_hunks.get_summary
+local find_hunk     = gs_hunks.find_hunk
+
+local gsd = require("gitsigns/debug")
+local dprint = gsd.dprint
 
 local Status = require("gitsigns/status")
 
@@ -45,12 +48,6 @@ local sign_map: {SignType:SignName} = {
 
 local config: Config
 
-local function dprint(...: any)
-  if config.debug_mode then
-    require('gitsigns/debug').dprint(... as string)
-  end
-end
-
 local function dirname(file: string): string
   return file:match("(.*/)")
 end
@@ -61,106 +58,6 @@ local function write_to_file(file: string, content: {string})
       writer:write(l..'\n')
     end
   end)
-end
-
-local function path_exists(path: string): boolean
-  return uv.fs_stat(path) and true or false
-end
-
-local job_cnt = 0
-
-local function run_job(job_spec: Job.JobSpec)
-  if config.debug_mode then
-    local cmd: string = job_spec.command..' '..table.concat(job_spec.args, ' ')
-    dprint('Running: '..cmd)
-  end
-  Job:new(job_spec):start()
-  job_cnt = job_cnt + 1
-end
-
-local function git_relative(file: string, toplevel: string): cb_function
-  return function(callback: function(string, string, string))
-    local relpath: string
-    local object_name: string
-    local mode_bits: string
-    run_job {
-      command = 'git',
-      args = {
-        '--no-pager',
-        'ls-files',
-        '--stage',
-        '--others',
-        '--exclude-standard',
-        file
-      },
-      cwd = toplevel,
-      on_stdout = function(_, line: string)
-        local parts = vim.split(line, ' +')
-        if #parts > 1 then
-          mode_bits   = parts[1]
-          object_name = parts[2]
-          relpath = vim.split(parts[3], '\t', true)[2]
-        else
-          relpath = parts[1]
-        end
-      end,
-      on_exit = function(_, _)
-        callback(relpath, object_name, mode_bits)
-      end
-    }
-  end
-end
-
-local get_staged_txt = function(toplevel: string, relpath: string): cb_function
-  return function(callback: function({string}))
-    local content: {string} = {}
-    run_job {
-      command = 'git',
-      args = {'--no-pager', 'show', ':'..relpath},
-      cwd = toplevel,
-      on_stdout = function(_, line: string)
-        table.insert(content, line)
-      end,
-      on_exit = function(_, code: number)
-        callback(code == 0 and content or nil)
-      end
-    }
-  end
-end
-
-local run_diff = function(staged: string, text: {string}): cb_function
-  return function(callback: function)
-    local results: {Hunk} = {}
-    run_job {
-      command = 'git',
-      args = {
-        '--no-pager',
-        'diff',
-        '--color=never',
-        '--diff-algorithm='..config.diff_algorithm,
-        '--patch-with-raw',
-        '--unified=0',
-        staged,
-        '-'
-      },
-      writer = text,
-      on_stdout = function(_, line: string)
-        if vim.startswith(line, '@@') then
-          table.insert(results, parse_diff_line(line))
-        else
-          if #results > 0 then
-            table.insert(results[#results].lines, line)
-          end
-        end
-      end,
-      on_stderr = function(_, line: string)
-        print('error: '..line, 'NA', 'run_diff')
-      end,
-      on_exit = function()
-        callback(results)
-      end
-    }
-  end
 end
 
 local cache: {number:CacheEntry} = {}
@@ -181,48 +78,7 @@ local function get_hunk(bufnr: number, hunks: {Hunk}): Hunk
   return find_hunk(lnum, hunks)
 end
 
-local function process_abbrev_head(gitdir: string, head_str: string): string
-  if not gitdir then
-    return head_str
-  end
-  if head_str == 'HEAD' then
-    if path_exists(gitdir..'/rebase-merge')
-      or path_exists(gitdir..'/rebase-apply') then
-      return '(rebasing)'
-    elseif config.debug_mode then
-      return head_str
-    else
-      return ''
-    end
-  end
-  return head_str
-end
-
-local get_repo_info = function(path: string): cb_function
-  return function(callback: function)
-    local out = {}
-    run_job {
-      command = 'git',
-      args = {'rev-parse',
-      '--show-toplevel',
-      '--absolute-git-dir',
-      '--abbrev-ref', 'HEAD',
-    },
-    cwd = path,
-    on_stdout = function(_, line: string)
-      table.insert(out, line)
-    end,
-    on_exit = vim.schedule_wrap(function()
-      local toplevel = out[1]
-      local gitdir = out[2]
-      local abbrev_head = process_abbrev_head(gitdir, out[3])
-      callback(toplevel, gitdir, abbrev_head)
-    end)
-  }
-end
-end
-
-local add_signs = function(bufnr: number, signs: {Sign}, reset: boolean)
+local function add_signs(bufnr: number, signs: {Sign}, reset: boolean)
   reset = reset or false
 
   if reset then
@@ -254,7 +110,7 @@ end
 
 local get_staged = async(function(bufnr: number, staged_path: string, toplevel: string, relpath: string): boolean
   await_main()
-  local staged_txt = await(get_staged_txt, toplevel, relpath) as {string}
+  local staged_txt = await(git.get_staged_txt, toplevel, relpath) as {string}
 
   if not staged_txt then
     dprint('File not in index', bufnr, 'get_staged')
@@ -282,7 +138,7 @@ local update = async(function(bufnr: number)
   await(get_staged, bufnr, staged, toplevel, relpath)
 
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  bcache.hunks = await(run_diff, bcache.staged, buftext) as {Hunk}
+  bcache.hunks = await(git.run_diff, bcache.staged, buftext, config.diff_algorithm) as {Hunk}
 
   local status: StatusObj = get_summary(bcache.hunks)
   status.head = bcache.abbrev_head
@@ -296,7 +152,7 @@ local update = async(function(bufnr: number)
   Status:update(bufnr, status)
 
   update_cnt = update_cnt + 1
-  dprint(string.format('updates: %s, jobs: %s', update_cnt, job_cnt), bufnr, 'update')
+  dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt), bufnr, 'update')
 end)
 
 local update_debounced = debounce_trailing(100, arun(update))
@@ -312,63 +168,16 @@ local watch_index = async(function(bufnr: number, gitdir: string, on_change: fun
   return w
 end)
 
-local stage_lines = function(toplevel: string, lines: {string}): cb_function
-  return function(callback: function())
-    local status = true
-    local err = {}
-    run_job {
-      command = 'git',
-      args = {'apply', '--cached', '--unidiff-zero', '-'},
-      cwd = toplevel,
-      writer = lines,
-      on_stderr = function(_, line: string)
-        status = false
-        table.insert(err, line)
-      end,
-      on_exit = function()
-        if not status then
-          local s = table.concat(err, '\n')
-          error('Cannot stage lines. Command stderr:\n\n'..s)
-        end
-        callback()
-      end
-    }
-  end
-end
-
-local add_file = function(toplevel: string, file: string): cb_function
-  return function(callback: function())
-    local status = true
-    local err = {}
-    run_job {
-      command = 'git',
-      args = {'add', '--intent-to-add', file},
-      cwd = toplevel,
-      on_stderr = function(_, line: string)
-        status = false
-        table.insert(err, line)
-      end,
-      on_exit = function()
-        if not status then
-          local s = table.concat(err, '\n')
-          error('Cannot add file. Command stderr:\n\n'..s)
-        end
-        callback()
-      end
-    }
-  end
-end
-
 local add_to_index = async(function(bcache: CacheEntry)
   local relpath, toplevel = bcache.relpath, bcache.toplevel
 
   await_main()
-  await(add_file, toplevel, relpath)
+  await(git.add_file, toplevel, relpath)
 
   -- Update the cache
   await_main()
   _, bcache.object_name, bcache.mode_bits =
-    await(git_relative, relpath, toplevel) as (string, string, string)
+    await(git.file_info, relpath, toplevel) as (string, string, string)
 end)
 
 local stage_hunk = sync(function()
@@ -384,7 +193,7 @@ local stage_hunk = sync(function()
     return
   end
 
-  if not path_exists(bcache.file) then
+  if not util.path_exists(bcache.file) then
     print("Error: Cannot stage lines. Please add the file to the working tree.")
     return
   end
@@ -397,7 +206,7 @@ local stage_hunk = sync(function()
   local lines = create_patch(bcache.relpath, hunk, bcache.mode_bits)
 
   await_main()
-  await(stage_lines, bcache.toplevel, lines)
+  await(git.stage_lines, bcache.toplevel, lines)
 
   table.insert(bcache.staged_diffs, hunk)
 
@@ -415,7 +224,7 @@ local stage_hunk = sync(function()
   end
 end)
 
-local reset_hunk = function()
+local function reset_hunk()
   local bufnr = current_buf()
 
   local bcache = get_cache_opt(bufnr)
@@ -467,7 +276,7 @@ local undo_stage_hunk = sync(function()
   local lines = create_patch(bcache.relpath, hunk, bcache.mode_bits, true)
 
   await_main()
-  await(stage_lines, bcache.toplevel, lines)
+  await(git.stage_lines, bcache.toplevel, lines)
 
   table.remove(bcache.staged_diffs)
 
@@ -478,12 +287,36 @@ local undo_stage_hunk = sync(function()
 end)
 
 local record NavHunkOpts
-    forwards: boolean
-    wrap: boolean
+  forwards: boolean
+  wrap: boolean
+end
+
+local function get_nearest_hunk_loc(lnum: number, hunks: {Hunk}, forwards: boolean, wrap: boolean): number
+  local row: number
+  if forwards then
+    for i = 1, #hunks do
+      local hunk = hunks[i]
+      if hunk.start > lnum then
+        row = hunk.start
+        break
+      end
+    end
+  else
+    for i = #hunks, 1, -1 do
+      local hunk = hunks[i]
+      if hunk.dend < lnum then
+        row = hunk.start
+        break
+      end
+    end
+  end
+  if not row and wrap then
+    row = math.max(hunks[forwards and 1 or #hunks].start, 1)
+  end
+  return row
 end
 
 local function nav_hunk(options: NavHunkOpts)
-  local forwards = options.forwards
   local bcache = get_cache_opt(current_buf())
   if not bcache then
     return
@@ -493,34 +326,9 @@ local function nav_hunk(options: NavHunkOpts)
     return
   end
   local line = api.nvim_win_get_cursor(0)[1]
-  local row: number
-  if forwards then
-    for i = 1, #hunks do
-      local hunk = hunks[i]
-      if hunk.start > line then
-        row = hunk.start
-        break
-      end
-    end
-  else
-    for i = #hunks, 1, -1 do
-      local hunk = hunks[i]
-      if hunk.dend < line then
-        row = hunk.start
-        break
-      end
-    end
-  end
   -- wrap around
-  local wrap: boolean
-  if options.wrap ~= nil then
-    wrap = options.wrap
-  else
-    wrap = vim.o.wrapscan
-  end
-  if not row and wrap then
-    row = math.max(hunks[forwards and 1 or #hunks].start, 1)
-  end
+  local wrap = options.wrap ~= nil and options.wrap or vim.o.wrapscan
+  local row = get_nearest_hunk_loc(line, hunks, options.forwards, wrap)
   if row then
     api.nvim_win_set_cursor(0, {row, 0})
   end
@@ -538,7 +346,7 @@ local function prev_hunk(options: NavHunkOpts)
   nav_hunk(options)
 end
 
-local detach = function(bufnr: number)
+local function detach(bufnr: number)
   dprint('Detached', bufnr)
 
   local bcache = get_cache_opt(bufnr)
@@ -559,7 +367,7 @@ local detach = function(bufnr: number)
   cache[bufnr] = nil
 end
 
-local detach_all = function()
+local function detach_all()
   for k, _ in pairs(cache) do
     detach(k)
   end
@@ -578,6 +386,54 @@ local function get_buf_path(bufnr: number): string
     end)
 end
 
+local function index_update_handler(cbuf: number): function
+  return sync(function()
+    dprint('Index update', cbuf, 'watcher_cb')
+    local bcache = get_cache(cbuf)
+    local file_dir = dirname(bcache.file)
+
+    await_main()
+
+    local _, _, abbrev_head0 =
+      await(git.get_repo_info, file_dir) as (string, string, string)
+
+    Status:update_head(cbuf, abbrev_head0)
+    bcache.abbrev_head = abbrev_head0
+
+    await_main()
+
+    local _, object_name0, mode_bits0 =
+      await(git.file_info, file_dir, bcache.toplevel) as (string, string, string)
+
+    if object_name0 == bcache.object_name then
+      dprint('File not changed', cbuf, 'watcher_cb')
+      return
+    end
+
+    bcache.object_name = object_name0
+    bcache.mode_bits = mode_bits0
+
+    await(update, cbuf)
+  end)
+end
+
+local function in_git_dir(file: string): boolean
+  for _, p in ipairs(vim.split(file, '/')) do
+    if p == '.git' then
+      return true
+    end
+  end
+  return false
+end
+
+local function on_lines(buf: number): boolean
+  if not get_cache_opt(buf) then
+    dprint('Cache for buffer '..buf..' was nil. Detaching')
+    return true
+  end
+  update_debounced(buf)
+end
+
 local attach = throttle_leading(100, sync(function()
   local cbuf = current_buf()
   if cache[cbuf] ~= nil then
@@ -593,22 +449,20 @@ local attach = throttle_leading(100, sync(function()
 
   local file = get_buf_path(cbuf)
 
-  for _, p in ipairs(vim.split(file, '/')) do
-    if p == '.git' then
-      dprint('In git dir', cbuf, 'attach')
-      return
-    end
+  if in_git_dir(file) then
+    dprint('In git dir', cbuf, 'attach')
+    return
   end
 
   local file_dir = dirname(file)
 
-  if not file_dir or not path_exists(file_dir) then
+  if not file_dir or not util.path_exists(file_dir) then
     dprint('Not a path', cbuf, 'attach')
     return
   end
 
   local toplevel, gitdir, abbrev_head =
-    await(get_repo_info, file_dir) as (string, string, string)
+    await(git.get_repo_info, file_dir) as (string, string, string)
 
   if not gitdir then
     dprint('Not in git repo', cbuf, 'attach')
@@ -617,14 +471,14 @@ local attach = throttle_leading(100, sync(function()
 
   Status:update_head(cbuf, abbrev_head)
 
-  if not path_exists(file) or uv.fs_stat(file).type == 'directory' then
+  if not util.path_exists(file) or uv.fs_stat(file).type == 'directory' then
     dprint('Not a file', cbuf, 'attach')
     return
   end
 
   await_main()
   local relpath, object_name, mode_bits =
-    await(git_relative, file, toplevel) as (string, string, string)
+    await(git.file_info, file, toplevel) as (string, string, string)
 
   if not relpath then
     dprint('Cannot resolve file in repo', cbuf, 'attach')
@@ -641,32 +495,10 @@ local attach = throttle_leading(100, sync(function()
     abbrev_head  = abbrev_head,
     staged       = os.tmpname(), -- Temp filename of staged file
     hunks        = {},
-    staged_diffs = {}
+    staged_diffs = {},
+    index_watcher = await(watch_index, cbuf, gitdir, index_update_handler(cbuf))
+      as vim.loop.FSPollObj
   }
-
-  cache[cbuf].index_watcher = await(watch_index, cbuf, gitdir,
-    sync(function()
-      dprint('Index update', cbuf, 'watcher_cb')
-      local bcache = get_cache(cbuf)
-
-      await_main()
-      local _, _, abbrev_head0 =
-        await(get_repo_info, file_dir) as (string, string, string)
-      Status:update_head(cbuf, abbrev_head0)
-      bcache.abbrev_head = abbrev_head0
-
-      await_main()
-      local _, object_name0, mode_bits0 =
-        await(git_relative, file, toplevel) as (string, string, string)
-      if object_name0 == bcache.object_name then
-        dprint('File not changed', cbuf, 'watcher_cb')
-        return
-      end
-      bcache.object_name = object_name0
-      bcache.mode_bits = mode_bits0
-      await(update, cbuf)
-    end)
-  ) as vim.loop.FSPollObj
 
   -- Initial update
   await(update, cbuf)
@@ -674,12 +506,8 @@ local attach = throttle_leading(100, sync(function()
   await_main()
 
   api.nvim_buf_attach(cbuf, false, {
-    on_lines = function(_, buf: number): boolean
-      if not get_cache_opt(buf) then
-        dprint('Cache for buffer '..buf..' was nil. Detaching', 'on_lines')
-        return true
-      end
-      update_debounced(buf)
+    on_lines = function(_, buf: number)
+      on_lines(buf)
     end,
     on_detach = function(_, buf: number)
       detach(buf)
@@ -689,11 +517,12 @@ local attach = throttle_leading(100, sync(function()
   apply_keymaps(true)
 end))
 
-
 local function setup(cfg: Config)
   config = process_config(cfg) as Config
 
   -- TODO: Attach to all open buffers
+
+  gsd.debug_mode = config.debug_mode
 
   Status.formatter = config.status_formatter
 
@@ -750,44 +579,6 @@ local function text_object()
   vim.cmd('normal! '..hunk.start..'GV'..hunk.dend..'G')
 end
 
-local function run_blame(file: string, toplevel: string, lines: {string}, lnum: number): cb_function
-  return function(callback: function({string:string}))
-    local results: {string} = {}
-    run_job {
-      command = 'git',
-      args = {
-        '--no-pager',
-        'blame',
-        '--contents', '-',
-        '-L', lnum..',+1',
-        '--line-porcelain',
-        file
-      },
-      writer = lines,
-      cwd = toplevel,
-      on_stdout = function(_, line: string)
-        table.insert(results, line)
-      end,
-      on_exit = function()
-        local ret: {string:string} = {}
-        local header = vim.split(table.remove(results, 1), ' ')
-        ret.sha = header[1]
-        ret.abbrev_sha = string.sub(ret.sha, 1, 8)
-        ret.orig_lnum = header[2]
-        ret.final_lnum = header[3]
-        for _, l in ipairs(results) do
-          if not vim.startswith(l, '\t') then
-            local cols = vim.split(l, ' ')
-            local key = table.remove(cols, 1)
-            ret[key] = table.concat(cols, ' ')
-          end
-        end
-        callback(ret)
-      end
-    }
-  end
-end
-
 local blame_line = sync(function()
   local bufnr = current_buf()
 
@@ -798,7 +589,7 @@ local blame_line = sync(function()
 
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = await(run_blame, bcache.file, bcache.toplevel, buftext, lnum) as {string:string}
+  local result = await(git.run_blame, bcache.file, bcache.toplevel, buftext, lnum) as {string:string}
 
   local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author-time']))
   local lines = {
