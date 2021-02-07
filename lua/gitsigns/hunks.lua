@@ -131,7 +131,7 @@ function M.find_hunk(lnum, hunks)
       end
 
       local dend = 
-hunk.type == 'change' and hunk.added.count > hunk.removed.count and
+      hunk.type == 'change' and hunk.added.count > hunk.removed.count and
       (hunk.dend + hunk.added.count - hunk.removed.count) or
       hunk.dend
 

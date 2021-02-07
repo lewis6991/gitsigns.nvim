@@ -119,9 +119,9 @@ function M.get_repo_info(path)
       run_job({
          command = 'git',
          args = { 'rev-parse',
-            '--show-toplevel',
-            '--absolute-git-dir',
-            '--abbrev-ref', 'HEAD',
+'--show-toplevel',
+'--absolute-git-dir',
+'--abbrev-ref', 'HEAD',
          },
          cwd = path,
          on_stdout = function(_, line)

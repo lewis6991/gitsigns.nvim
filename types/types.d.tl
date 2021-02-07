@@ -1,3 +1,13 @@
+  -- tl is a bit broken and won't accept code like:
+  --
+  -- local a: any = ...
+  -- if a is string then
+  --    [use a as string]
+  -- end
+  --
+  -- Forcing any into a union type works around this issue.
+global type uany = (string | any)
+
 global loadstring: function(string): (function(): any)
 
 global unpack: function<T>({T}, number, number): T...

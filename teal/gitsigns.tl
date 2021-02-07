@@ -374,7 +374,7 @@ local function detach_all()
 end
 
 local function apply_keymaps(bufonly: boolean)
-  apply_mappings(config.keymaps, bufonly)
+  apply_mappings(config.keymaps as {string:uany}, bufonly)
 end
 
 local function get_buf_path(bufnr: number): string
