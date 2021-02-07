@@ -133,7 +133,7 @@ local update = async(function(bufnr)
    end
 
    local relpath, toplevel, staged = 
-bcache.relpath, bcache.toplevel, bcache.staged
+   bcache.relpath, bcache.toplevel, bcache.staged
 
    await(get_staged, bufnr, staged, toplevel, relpath)
 
@@ -177,7 +177,7 @@ local add_to_index = async(function(bcache)
 
    await_main()
    _, bcache.object_name, bcache.mode_bits = 
-await(git.file_info, relpath, toplevel)
+   await(git.file_info, relpath, toplevel)
 end)
 
 local stage_hunk = sync(function()
@@ -395,7 +395,7 @@ local function index_update_handler(cbuf)
       await_main()
 
       local _, _, abbrev_head0 = 
-await(git.get_repo_info, file_dir)
+      await(git.get_repo_info, file_dir)
 
       Status:update_head(cbuf, abbrev_head0)
       bcache.abbrev_head = abbrev_head0
@@ -403,7 +403,7 @@ await(git.get_repo_info, file_dir)
       await_main()
 
       local _, object_name0, mode_bits0 = 
-await(git.file_info, file_dir, bcache.toplevel)
+      await(git.file_info, file_dir, bcache.toplevel)
 
       if object_name0 == bcache.object_name then
          dprint('File not changed', cbuf, 'watcher_cb')
@@ -462,7 +462,7 @@ local attach = throttle_leading(100, sync(function()
    end
 
    local toplevel, gitdir, abbrev_head = 
-await(git.get_repo_info, file_dir)
+   await(git.get_repo_info, file_dir)
 
    if not gitdir then
       dprint('Not in git repo', cbuf, 'attach')
@@ -478,7 +478,7 @@ await(git.get_repo_info, file_dir)
 
    await_main()
    local relpath, object_name, mode_bits = 
-await(git.file_info, file, toplevel)
+   await(git.file_info, file, toplevel)
 
    if not relpath then
       dprint('Cannot resolve file in repo', cbuf, 'attach')

@@ -172,7 +172,7 @@ end
 
 local function resolve_default(schema_elem: SchemaElem): any
   local v = schema_elem
-  local default = v.default
+  local default = v.default as uany
   if default is string and vim.startswith(default, 'function(') then
     local d = loadstring('return '..default)() as function
     if v.type == 'function' then

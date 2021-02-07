@@ -31,7 +31,7 @@ local function validate_option_keywords(options: table)
   end
 end
 
-local function apply_mappings(mappings: {string:any}, bufonly: boolean)
+local function apply_mappings(mappings: {string:uany}, bufonly: boolean)
   validate {
     mappings = { mappings, 'table' };
   }
