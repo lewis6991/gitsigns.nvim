@@ -122,6 +122,24 @@ set statusline+=%{get(b:,'gitsigns_status','')}
 
 For the current branch use the variable `b:gitsigns_head`.
 
+## FAQ
+
+#### The default signs set the background and not the foreground. How do I get my signs to look like the GIF?
+By default Gitsigns uses the highlight groups `DiffAdd`, `DiffChange` and `DiffDelete` for signs as these are the most appropriate highlights that are builtin to Neovim. In many colorschemes, these default highlights set the background but not the foreground. To make the signs looks more like the GIF then you need to set the highlights appropriately. Many colorschemes have specific highlights for Gitgutter (`GitGutterAdd`, `GitGutterChange` and `GitGutterDelete`), so you may use these highlights instead if you have them.
+
+The following configuration will make Gitsigns look like GitGutters defaults:
+```lua
+require('gitsigns').setup {
+  signs = {
+    add          = {hl = 'GitGutterAdd'   , text = '+'},
+    change       = {hl = 'GitGutterChange', text = '~'},
+    delete       = {hl = 'GitGutterDelete', text = '_'},
+    topdelete    = {hl = 'GitGutterDelete', text = '‾'},
+    changedelete = {hl = 'GitGutterChange', text = '~'},
+  }
+}
+```
+
 ## TODO
 
 - [x] Add action for undoing a stage of a hunk
