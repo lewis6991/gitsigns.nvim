@@ -108,9 +108,9 @@ local function add_signs(bufnr, signs, reset)
    end
 end
 
-local get_staged = async(function(bufnr, staged_path, toplevel, relpath)
+local get_staged = async(function(bufnr, staged_path, toplevel, relpath, stage)
    await_main()
-   local staged_txt = await(git.get_staged_txt, toplevel, relpath)
+   local staged_txt = await(git.get_staged_txt, toplevel, relpath, stage)
 
    if not staged_txt then
       dprint('File not in index', bufnr, 'get_staged')
@@ -132,10 +132,8 @@ local update = async(function(bufnr)
       return
    end
 
-   local relpath, toplevel, staged = 
-   bcache.relpath, bcache.toplevel, bcache.staged
-
-   await(get_staged, bufnr, staged, toplevel, relpath)
+   local stage = bcache.has_conflicts and 1 or 0
+   await(get_staged, bufnr, bcache.staged, bcache.toplevel, bcache.relpath, stage)
 
    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
    bcache.hunks = await(git.run_diff, bcache.staged, buftext, config.diff_algorithm)
@@ -176,7 +174,7 @@ local add_to_index = async(function(bcache)
 
 
    await_main()
-   _, bcache.object_name, bcache.mode_bits = 
+   _, bcache.object_name, bcache.mode_bits, bcache.has_conflicts = 
    await(git.file_info, relpath, toplevel)
 end)
 
@@ -402,7 +400,7 @@ local function index_update_handler(cbuf)
 
       await_main()
 
-      local _, object_name0, mode_bits0 = 
+      local _, object_name0, mode_bits0, has_conflicts = 
       await(git.file_info, bcache.file, bcache.toplevel)
 
       if object_name0 == bcache.object_name then
@@ -412,6 +410,7 @@ local function index_update_handler(cbuf)
 
       bcache.object_name = object_name0
       bcache.mode_bits = mode_bits0
+      bcache.has_conflicts = has_conflicts
 
       await(update, cbuf)
    end)
@@ -477,7 +476,7 @@ local attach = throttle_leading(100, sync(function()
    end
 
    await_main()
-   local relpath, object_name, mode_bits = 
+   local relpath, object_name, mode_bits, has_conflicts = 
    await(git.file_info, file, toplevel)
 
    if not relpath then
@@ -493,6 +492,7 @@ local attach = throttle_leading(100, sync(function()
       toplevel = toplevel,
       gitdir = gitdir,
       abbrev_head = abbrev_head,
+      has_conflicts = has_conflicts,
       staged = os.tmpname(),
       hunks = {},
       staged_diffs = {},

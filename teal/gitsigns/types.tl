@@ -10,6 +10,7 @@ global record CacheEntry
   gitdir        : string
   staged        : string
   abbrev_head   : string
+  has_conflicts : boolean
   hunks         : {Hunk}
   staged_diffs  : {Hunk}
   index_watcher : vim.loop.FSPollObj          -- Timer object watching the files index
