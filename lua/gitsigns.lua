@@ -403,7 +403,7 @@ local function index_update_handler(cbuf)
       await_main()
 
       local _, object_name0, mode_bits0 = 
-      await(git.file_info, file_dir, bcache.toplevel)
+      await(git.file_info, bcache.file, bcache.toplevel)
 
       if object_name0 == bcache.object_name then
          dprint('File not changed', cbuf, 'watcher_cb')
