@@ -108,9 +108,9 @@ local function add_signs(bufnr: number, signs: {Sign}, reset: boolean)
   end
 end
 
-local get_staged = async(function(bufnr: number, staged_path: string, toplevel: string, relpath: string): boolean
+local get_staged = async(function(bufnr: number, staged_path: string, toplevel: string, relpath: string, stage: number): boolean
   await_main()
-  local staged_txt = await(git.get_staged_txt, toplevel, relpath) as {string}
+  local staged_txt = await(git.get_staged_txt, toplevel, relpath, stage) as {string}
 
   if not staged_txt then
     dprint('File not in index', bufnr, 'get_staged')
@@ -132,10 +132,8 @@ local update = async(function(bufnr: number)
     return
   end
 
-  local relpath, toplevel, staged =
-    bcache.relpath, bcache.toplevel, bcache.staged
-
-  await(get_staged, bufnr, staged, toplevel, relpath)
+  local stage = bcache.has_conflicts and 1 or 0
+  await(get_staged, bufnr, bcache.staged, bcache.toplevel, bcache.relpath, stage)
 
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   bcache.hunks = await(git.run_diff, bcache.staged, buftext, config.diff_algorithm) as {Hunk}
@@ -176,8 +174,8 @@ local add_to_index = async(function(bcache: CacheEntry)
 
   -- Update the cache
   await_main()
-  _, bcache.object_name, bcache.mode_bits =
-    await(git.file_info, relpath, toplevel) as (string, string, string)
+  _, bcache.object_name, bcache.mode_bits, bcache.has_conflicts =
+    await(git.file_info, relpath, toplevel) as (string, string, string, boolean)
 end)
 
 local stage_hunk = sync(function()
@@ -402,8 +400,8 @@ local function index_update_handler(cbuf: number): function
 
     await_main()
 
-    local _, object_name0, mode_bits0 =
-      await(git.file_info, bcache.file, bcache.toplevel) as (string, string, string)
+    local _, object_name0, mode_bits0, has_conflicts =
+      await(git.file_info, bcache.file, bcache.toplevel) as (string, string, string, boolean)
 
     if object_name0 == bcache.object_name then
       dprint('File not changed', cbuf, 'watcher_cb')
@@ -412,6 +410,7 @@ local function index_update_handler(cbuf: number): function
 
     bcache.object_name = object_name0
     bcache.mode_bits = mode_bits0
+    bcache.has_conflicts = has_conflicts
 
     await(update, cbuf)
   end)
@@ -477,8 +476,8 @@ local attach = throttle_leading(100, sync(function()
   end
 
   await_main()
-  local relpath, object_name, mode_bits =
-    await(git.file_info, file, toplevel) as (string, string, string)
+  local relpath, object_name, mode_bits, has_conflicts =
+    await(git.file_info, file, toplevel) as (string, string, string, boolean)
 
   if not relpath then
     dprint('Cannot resolve file in repo', cbuf, 'attach')
@@ -486,16 +485,17 @@ local attach = throttle_leading(100, sync(function()
   end
 
   cache[cbuf] = {
-    file         = file,
-    relpath      = relpath,
-    object_name  = object_name,
-    mode_bits    = mode_bits,
-    toplevel     = toplevel,
-    gitdir       = gitdir,
-    abbrev_head  = abbrev_head,
-    staged       = os.tmpname(), -- Temp filename of staged file
-    hunks        = {},
-    staged_diffs = {},
+    file          = file,
+    relpath       = relpath,
+    object_name   = object_name,
+    mode_bits     = mode_bits,
+    toplevel      = toplevel,
+    gitdir        = gitdir,
+    abbrev_head   = abbrev_head,
+    has_conflicts = has_conflicts,
+    staged        = os.tmpname(), -- Temp filename of staged file
+    hunks         = {},
+    staged_diffs  = {},
     index_watcher = await(watch_index, cbuf, gitdir, index_update_handler(cbuf))
       as vim.loop.FSPollObj
   }

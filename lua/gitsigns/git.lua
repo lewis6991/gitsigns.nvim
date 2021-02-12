@@ -13,6 +13,8 @@ function M.file_info(file, toplevel)
       local relpath
       local object_name
       local mode_bits
+      local stage
+      local has_conflict = false
       run_job({
          command = 'git',
          args = {
@@ -25,28 +27,33 @@ function M.file_info(file, toplevel)
          },
          cwd = toplevel,
          on_stdout = function(_, line)
-            local parts = vim.split(line, ' +')
+            local parts = vim.split(line, '%s+')
             if #parts > 1 then
-               mode_bits = parts[1]
-               object_name = parts[2]
-               relpath = vim.split(parts[3], '\t', true)[2]
+               stage = tonumber(parts[3])
+               if stage <= 1 then
+                  mode_bits = parts[1]
+                  object_name = parts[2]
+                  relpath = parts[4]
+               else
+                  has_conflict = true
+               end
             else
                relpath = parts[1]
             end
          end,
          on_exit = function(_, _)
-            callback(relpath, object_name, mode_bits)
+            callback(relpath, object_name, mode_bits, has_conflict)
          end,
       })
    end
 end
 
-function M.get_staged_txt(toplevel, relpath)
+function M.get_staged_txt(toplevel, relpath, stage)
    return function(callback)
       local content = {}
       run_job({
          command = 'git',
-         args = { '--no-pager', 'show', ':' .. relpath },
+         args = { '--no-pager', 'show', ':' .. tostring(stage) .. ':' .. relpath },
          cwd = toplevel,
          on_stdout = function(_, line)
             table.insert(content, line)
