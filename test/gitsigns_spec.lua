@@ -371,7 +371,7 @@ describe('gitsigns', function()
       "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
       p"Running: git .* ls%-files .*/newfile.txt",
       "watch_index(1): Watching index",
-      "dprint(nil): Running: git --no-pager show :scratch/newfile.txt",
+      "dprint(nil): Running: git --no-pager show :0:scratch/newfile.txt",
       "get_staged(1): File not in index",
       "get_staged(1): Updated staged file",
       p'Running: git .* diff .* /tmp/lua_.* %-',

@@ -9,10 +9,12 @@ local parse_diff_line = require("gitsigns/hunks").parse_diff_line
 local M = {}
 
 function M.file_info(file: string, toplevel: string): cb_function
-  return function(callback: function(string, string, string))
+  return function(callback: function(string, string, string, boolean))
     local relpath: string
     local object_name: string
     local mode_bits: string
+    local stage: number
+    local has_conflict: boolean = false
     run_job {
       command = 'git',
       args = {
@@ -25,28 +27,33 @@ function M.file_info(file: string, toplevel: string): cb_function
       },
       cwd = toplevel,
       on_stdout = function(_, line: string)
-        local parts = vim.split(line, ' +')
+        local parts = vim.split(line, '%s+')
         if #parts > 1 then
-          mode_bits   = parts[1]
-          object_name = parts[2]
-          relpath = vim.split(parts[3], '\t', true)[2]
+          stage = tonumber(parts[3])
+          if stage <= 1 then
+              mode_bits   = parts[1]
+              object_name = parts[2]
+              relpath     = parts[4]
+          else
+              has_conflict = true
+          end
         else
           relpath = parts[1]
         end
       end,
       on_exit = function(_, _)
-        callback(relpath, object_name, mode_bits)
+        callback(relpath, object_name, mode_bits, has_conflict)
       end
     }
   end
 end
 
-function M.get_staged_txt(toplevel: string, relpath: string): cb_function
+function M.get_staged_txt(toplevel: string, relpath: string, stage: number): cb_function
   return function(callback: function({string}))
     local content: {string} = {}
     run_job {
       command = 'git',
-      args = {'--no-pager', 'show', ':'..relpath},
+      args = {'--no-pager', 'show', ':'..tostring(stage)..':'..relpath},
       cwd = toplevel,
       on_stdout = function(_, line: string)
         table.insert(content, line)
