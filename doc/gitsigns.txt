@@ -132,6 +132,13 @@ update()                                                   *gitsigns.update()*
 attach()                                                   *gitsigns.attach()*
                 Attach Gitsigns to the current buffer.
 
+detach({bufnr})                                            *gitsigns.detach()*
+                Detach Gitsigns from the buffer {bufnr}. If {bufnr} is not
+                provided then the current buffer is used.
+
+                Parameters: ~
+                    {bufnr}  (number): Buffer number
+
 detach_all()                                           *gitsigns.detach_all()*
                 Detach Gitsigns from all buffers it is attached to.
 
