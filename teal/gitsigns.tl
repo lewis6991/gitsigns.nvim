@@ -345,6 +345,7 @@ local function prev_hunk(options: NavHunkOpts)
 end
 
 local function detach(bufnr: number)
+  bufnr = bufnr or current_buf()
   dprint('Detached', bufnr)
 
   local bcache = get_cache_opt(bufnr)
@@ -631,6 +632,7 @@ return {
   preview_hunk    = preview_hunk,
   blame_line      = blame_line,
   attach          = attach,
+  detach          = detach,
   detach_all      = detach_all,
   setup           = setup,
   text_object     = text_object,
