@@ -18,6 +18,7 @@ local gs_popup = require('gitsigns/popup')
 local sign_define = require('gitsigns/signs').sign_define
 local process_config = require('gitsigns/config').process
 local mk_repeatable = require('gitsigns/repeat').mk_repeatable
+
 local apply_mappings = require('gitsigns/mappings')
 
 local git = require('gitsigns/git')
@@ -26,8 +27,6 @@ local util = require('gitsigns/util')
 local gs_hunks = require("gitsigns/hunks")
 local create_patch = gs_hunks.create_patch
 local process_hunks = gs_hunks.process_hunks
-local get_summary = gs_hunks.get_summary
-local find_hunk = gs_hunks.find_hunk
 
 local gsd = require("gitsigns/debug")
 local dprint = gsd.dprint
@@ -83,12 +82,12 @@ local function get_cache_opt(bufnr)
    return cache[bufnr]
 end
 
-local function get_hunk(bufnr, hunks)
+local function get_cursor_hunk(bufnr, hunks)
    bufnr = bufnr or current_buf()
    hunks = hunks or cache[bufnr].hunks
 
    local lnum = api.nvim_win_get_cursor(0)[1]
-   return find_hunk(lnum, hunks)
+   return gs_hunks.find_hunk(lnum, hunks)
 end
 
 local function add_signs(bufnr, signs, reset)
@@ -151,7 +150,7 @@ local update = async(function(bufnr)
    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
    bcache.hunks = await(git.run_diff, bcache.staged, buftext, config.diff_algorithm)
 
-   local status = get_summary(bcache.hunks)
+   local status = gs_hunks.get_summary(bcache.hunks)
    status.head = bcache.abbrev_head
 
    local signs = process_hunks(bcache.hunks)
@@ -199,7 +198,7 @@ local stage_hunk = sync(function()
       return
    end
 
-   local hunk = get_hunk(bufnr, bcache.hunks)
+   local hunk = get_cursor_hunk(bufnr, bcache.hunks)
    if not hunk then
       return
    end
@@ -243,16 +242,10 @@ local function reset_hunk()
       return
    end
 
-   local hunk = get_hunk(bufnr, bcache.hunks)
+   local hunk = get_cursor_hunk(bufnr, bcache.hunks)
    if not hunk then
       return
    end
-
-   local orig_lines = vim.tbl_map(function(l)
-      return string.sub(l, 2, -1)
-   end, vim.tbl_filter(function(l)
-      return vim.startswith(l, '-')
-   end, hunk.lines))
 
    local lstart, lend
    if hunk.type == 'delete' then
@@ -266,7 +259,7 @@ local function reset_hunk()
       lstart = hunk.start - 1
       lend = hunk.start - 1 + length
    end
-   api.nvim_buf_set_lines(bufnr, lstart, lend, false, orig_lines)
+   api.nvim_buf_set_lines(bufnr, lstart, lend, false, gs_hunks.extract_removed(hunk))
 end
 
 local undo_stage_hunk = sync(function()
@@ -302,31 +295,6 @@ local NavHunkOpts = {}
 
 
 
-local function get_nearest_hunk_loc(lnum, hunks, forwards, wrap)
-   local row
-   if forwards then
-      for i = 1, #hunks do
-         local hunk = hunks[i]
-         if hunk.start > lnum then
-            row = hunk.start
-            break
-         end
-      end
-   else
-      for i = #hunks, 1, -1 do
-         local hunk = hunks[i]
-         if hunk.dend < lnum then
-            row = hunk.start
-            break
-         end
-      end
-   end
-   if not row and wrap then
-      row = math.max(hunks[forwards and 1 or #hunks].start, 1)
-   end
-   return row
-end
-
 local function nav_hunk(options)
    local bcache = get_cache_opt(current_buf())
    if not bcache then
@@ -339,7 +307,8 @@ local function nav_hunk(options)
    local line = api.nvim_win_get_cursor(0)[1]
 
    local wrap = options.wrap ~= nil and options.wrap or vim.o.wrapscan
-   local row = get_nearest_hunk_loc(line, hunks, options.forwards, wrap)
+   local hunk = gs_hunks.find_nearest_hunk(line, hunks, options.forwards, wrap)
+   local row = options.forwards and hunk.start or hunk.dend
    if row then
       api.nvim_win_set_cursor(0, { row, 0 })
    end
@@ -576,7 +545,7 @@ local function setup(cfg)
 end
 
 local function preview_hunk()
-   local hunk = get_hunk()
+   local hunk = get_cursor_hunk()
 
    if not hunk then
       return
@@ -590,7 +559,7 @@ local function preview_hunk()
 end
 
 local function text_object()
-   local hunk = get_hunk()
+   local hunk = get_cursor_hunk()
    if not hunk then
       return
    end
