@@ -591,12 +591,13 @@ end
 
 local function text_object()
    local hunk = get_hunk()
-
    if not hunk then
       return
    end
 
-   vim.cmd('normal! ' .. hunk.start .. 'GV' .. hunk.dend .. 'G')
+   local start, dend = gs_hunks.get_range(hunk)
+
+   vim.cmd('normal! ' .. start .. 'GV' .. dend .. 'G')
 end
 
 local blame_line = sync(function()
