@@ -16,6 +16,14 @@ function Status:update(bufnr, status)
    end)
 end
 
+function Status:clear(bufnr)
+   vim.schedule(function()
+      api.nvim_buf_del_var(bufnr, 'gitsigns_head')
+      api.nvim_buf_del_var(bufnr, 'gitsigns_status_dict')
+      api.nvim_buf_del_var(bufnr, 'gitsigns_status')
+   end)
+end
+
 function Status:update_head(bufnr, head)
    self.status.head = head
    Status:update(bufnr)

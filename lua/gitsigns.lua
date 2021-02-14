@@ -354,6 +354,12 @@ local function detach(bufnr)
       return
    end
 
+
+   vim.fn.sign_unplace('gitsigns_ns', { buffer = bufnr })
+
+
+   Status:clear(bufnr)
+
    os.remove(bcache.staged)
 
    local w = bcache.index_watcher
