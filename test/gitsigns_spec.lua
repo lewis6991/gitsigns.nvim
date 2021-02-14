@@ -71,6 +71,10 @@ local function command_fmt(str, ...)
   command(str:format(...))
 end
 
+local function buf_var_exists(name)
+  return pcall(get_buf_var, name)
+end
+
 local function match_lines(lines, spec)
   local i = 1
   for _, line in ipairs(lines) do
@@ -473,6 +477,74 @@ describe('gitsigns', function()
                   |
     ]]}
 
+  end)
+
+  it('can detach from buffers', function()
+    exec_lua('require("gitsigns").setup(...)', test_config)
+    command_fmt("edit %s/scratch/dummy.txt", pj_root)
+    command("set signcolumn=yes")
+
+    feed("dd") -- Top delete
+    feed("j")
+    feed("o<esc>") -- Add
+    feed("2j")
+    feed("x") -- Change
+    feed("3j")
+    feed("dd") -- Delete
+    feed("j")
+    feed("ddx") -- Change delete
+    sleep(100)
+
+    screen:expect{grid=[[
+      {4:^ }is                |
+      {1:  }a                 |
+      {3:+ }                  |
+      {1:  }file              |
+      {2:~ }sed               |
+      {1:  }for               |
+      {4:_ }testing           |
+      {1:  }The               |
+      {2:% }^oesn't            |
+      {1:  }matter,           |
+      {1:  }it                |
+      {1:  }just              |
+      {1:  }needs             |
+      {1:  }to                |
+      {1:  }be                |
+      {1:  }static.           |
+                          |
+    ]]}
+
+    exec_lua('require("gitsigns").detach()')
+
+    screen:expect{grid=[[
+      {1:  }is                |
+      {1:  }a                 |
+      {1:  }                  |
+      {1:  }file              |
+      {1:  }sed               |
+      {1:  }for               |
+      {1:  }testing           |
+      {1:  }The               |
+      {1:  }^oesn't            |
+      {1:  }matter,           |
+      {1:  }it                |
+      {1:  }just              |
+      {1:  }needs             |
+      {1:  }to                |
+      {1:  }be                |
+      {1:  }static.           |
+                          |
+    ]]}
+
+    assert(not buf_var_exists('gitsigns_head'),
+      'gitsigns_status_dict should not be defined')
+
+    assert(not buf_var_exists('gitsigns_status_dict'),
+      'gitsigns_head should not be defined')
+
+    assert(not buf_var_exists('gitsigns_status'),
+      'gitsigns_status should not be defined')
   end)
 
 end)
