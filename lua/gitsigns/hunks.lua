@@ -37,6 +37,17 @@ function M.parse_diff_line(line)
    return hunk
 end
 
+function M.get_range(hunk)
+   local dend = hunk.dend
+   if hunk.type == "change" then
+      local add, remove = hunk.added.count, hunk.removed.count
+      if add > remove then
+         dend = dend + add - remove
+      end
+   end
+   return hunk.start, dend
+end
+
 function M.process_hunks(hunks)
    local signs = {}
    for _, hunk in ipairs(hunks) do
