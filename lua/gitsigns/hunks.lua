@@ -64,8 +64,8 @@ function M.process_hunks(hunks)
       if hunk.type == "change" then
          local add, remove = hunk.added.count, hunk.removed.count
          if add > remove then
-            for i = 1, add - remove do
-               local count = add - remove
+            local count = add - remove
+            for i = 1, count do
                table.insert(signs, {
                   type = 'add',
                   lnum = hunk.dend + i,
@@ -81,18 +81,18 @@ end
 
 function M.create_patch(relpath, hunk, mode_bits, invert)
    invert = invert or false
-   local type_, added, removed = hunk.type, hunk.added, hunk.removed
 
-   local ps, pc, ns, nc = unpack(({
-      add = { removed.start + 1, 0, removed.start + 1, added.count },
-      delete = { removed.start, removed.count, removed.start, 0 },
-      change = { removed.start, removed.count, removed.start, added.count },
-   })[type_])
+   local start, pre_count, now_count = 
+   hunk.removed.start, hunk.removed.count, hunk.added.count
+
+   if hunk.type == 'add' then
+      start = start + 1
+   end
 
    local lines = hunk.lines
 
    if invert then
-      ps, pc, ns, nc = ns, nc, ps, pc
+      pre_count, now_count = now_count, pre_count
 
       lines = vim.tbl_map(function(l)
          if vim.startswith(l, '+') then
@@ -109,7 +109,7 @@ function M.create_patch(relpath, hunk, mode_bits, invert)
       'index 000000..000000 ' .. mode_bits,
       '--- a/' .. relpath,
       '+++ b/' .. relpath,
-      string.format('@@ -%s,%s +%s,%s @@', ps, pc, ns, nc),
+      string.format('@@ -%s,%s +%s,%s @@', start, pre_count, start, now_count),
       unpack(lines),
    }
 end
@@ -135,21 +135,50 @@ function M.get_summary(hunks)
 end
 
 function M.find_hunk(lnum, hunks)
-
    for _, hunk in ipairs(hunks) do
       if lnum == 1 and hunk.start == 0 and hunk.dend == 0 then
          return hunk
       end
 
-      local dend = 
-      hunk.type == 'change' and hunk.added.count > hunk.removed.count and
-      (hunk.dend + hunk.added.count - hunk.removed.count) or
-      hunk.dend
+      local start, dend = M.get_range(hunk)
 
-      if hunk.start <= lnum and dend >= lnum then
+      if start <= lnum and dend >= lnum then
          return hunk
       end
    end
+end
+
+function M.find_nearest_hunk(lnum, hunks, forwards, wrap)
+   local ret
+   if forwards then
+      for i = 1, #hunks do
+         local hunk = hunks[i]
+         if hunk.start > lnum then
+            ret = hunk
+            break
+         end
+      end
+   else
+      for i = #hunks, 1, -1 do
+         local hunk = hunks[i]
+         if hunk.dend < lnum then
+            ret = hunk
+            break
+         end
+      end
+   end
+   if not ret and wrap then
+      ret = hunks[forwards and 1 or #hunks]
+   end
+   return ret
+end
+
+function M.extract_removed(hunk)
+   return vim.tbl_map(function(l)
+      return string.sub(l, 2, -1)
+   end, vim.tbl_filter(function(l)
+      return vim.startswith(l, '-')
+   end, hunk.lines))
 end
 
 return M
