@@ -48,8 +48,21 @@ local sign_map: {SignType:SignName} = {
 
 local config: Config
 
+local path_sep = (function(): string
+  if jit then
+    local jit_os = jit.os:lower()
+    if jit_os == 'linux' or jit_os == 'osx' then
+      return '/'
+    else
+      return '\\'
+    end
+  else
+    return package.config:sub(1, 1)
+  end
+end)()
+
 local function dirname(file: string): string
-  return file:match("(.*/)")
+  return file:match(string.format('^(.+)%s[^%s]+', path_sep, path_sep))
 end
 
 local function write_to_file(file: string, content: {string})
@@ -159,7 +172,7 @@ local watch_index = async(function(bufnr: number, gitdir: string, on_change: fun
   -- TODO: Buffers of the same git repo can share an index watcher
   dprint('Watching index', bufnr, 'watch_index')
 
-  local index = gitdir..'/index'
+  local index = gitdir..path_sep..'index'
   local w = uv.new_fs_poll()
   w:start(index, config.watch_index.interval, on_change)
 
@@ -424,7 +437,7 @@ local function index_update_handler(cbuf: number): function
 end
 
 local function in_git_dir(file: string): boolean
-  for _, p in ipairs(vim.split(file, '/')) do
+  for _, p in ipairs(vim.split(file, path_sep)) do
     if p == '.git' then
       return true
     end
