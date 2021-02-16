@@ -12,6 +12,13 @@ global loadstring: function(string): (function(): any)
 
 global unpack: function<T>({T}, number, number): T...
 
+global record jit
+    arch: string
+    os: string
+    version: string
+    version_num: number
+end
+
 local record api
   nvim_buf_add_highlight: function(number, number, string, number, number, number): number
   nvim_buf_attach: function(number, boolean, {string:any}): boolean
