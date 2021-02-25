@@ -504,6 +504,7 @@ local attach = throttle_leading(100, sync(function()
     return
   end
 
+  await_main()
   cache[cbuf] = {
     file          = file,
     relpath       = relpath,
