@@ -504,7 +504,9 @@ local attach = throttle_leading(100, sync(function()
     return
   end
 
+  -- On windows os.tmpname() crashes in callback threads
   await_main()
+
   cache[cbuf] = {
     file          = file,
     relpath       = relpath,

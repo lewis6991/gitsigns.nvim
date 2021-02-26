@@ -203,6 +203,7 @@ function M.run_diff(staged: string, text: {string}, diff_algo: string): cb_funct
         '--diff-algorithm='..diff_algo,
         '--patch-with-raw',
         '--unified=0',
+        -- Prevent diff of whole file if staged use \r\n instead of \n
         '--ignore-space-at-eol',
         staged,
         '-'

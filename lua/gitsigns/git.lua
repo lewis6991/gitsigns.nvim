@@ -203,6 +203,7 @@ function M.run_diff(staged, text, diff_algo)
             '--diff-algorithm=' .. diff_algo,
             '--patch-with-raw',
             '--unified=0',
+
             '--ignore-space-at-eol',
             staged,
             '-',
