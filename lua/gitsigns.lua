@@ -465,6 +465,11 @@ local attach = throttle_leading(100, sync(function()
    end
 
    await_main()
+
+
+
+   local staged = os.tmpname()
+
    local relpath, object_name, mode_bits, has_conflicts = 
    await(git.file_info, file, toplevel)
 
@@ -482,7 +487,7 @@ local attach = throttle_leading(100, sync(function()
       gitdir = gitdir,
       abbrev_head = abbrev_head,
       has_conflicts = has_conflicts,
-      staged = os.tmpname(),
+      staged = staged,
       hunks = {},
       staged_diffs = {},
       index_watcher = await(watch_index, cbuf, gitdir, index_update_handler(cbuf)),
