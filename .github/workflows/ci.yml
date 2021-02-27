@@ -56,7 +56,7 @@ jobs:
       - uses: leafo/gh-actions-luarocks@v4
 
       - name: Install teal
-        run: luarocks install tl 0.11.2
+        run: luarocks install tl 0.12.0
 
       - name: Check lua files are built from latest teal
         run: make tl-ensure
