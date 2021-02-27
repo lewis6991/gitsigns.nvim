@@ -7,6 +7,8 @@ BUSTED_ARGS = \
 
 TEST_FILE = $(PJ_ROOT)/test/gitsigns_spec.lua
 
+INIT_LUAROCKS := eval $$(luarocks --lua-version=5.1 path) &&
+
 neovim:
 	git clone --depth 1 https://github.com/neovim/neovim
 	make -C $@
@@ -22,7 +24,7 @@ test: neovim plenary.nvim
 
 .PHONY: tl-check
 tl-check:
-	eval $$(luarocks path) && tl check \
+	$(INIT_LUAROCKS) tl check \
 		--skip-compat53 \
 		--werror all \
 		-I types \
@@ -32,8 +34,8 @@ tl-check:
 
 .PHONY: tl-build
 tl-build: tlconfig.lua
-	eval $$(luarocks path) && tl build
+	$(INIT_LUAROCKS) tl build
 
 .PHONY: tl-ensure
 tl-ensure: tl-build
-	git diff --exit-code --quiet -- lua
+	git diff --exit-code -- lua
