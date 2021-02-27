@@ -254,6 +254,11 @@ status_formatter                            *gitsigns-config-status_formatter*
 <
         Function used to format `b:gitsigns_status`.
 
+max_file_length                              *gitsigns-config-max_file_length*
+        Type: `number`, Default: `40000`
+
+      Max file length to attach to.
+
 debug_mode                                        *gitsigns-config-debug_mode*
         Type: `boolean`, Default: `false`
 
