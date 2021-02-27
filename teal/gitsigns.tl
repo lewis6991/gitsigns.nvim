@@ -430,6 +430,12 @@ local attach = throttle_leading(100, sync(function()
   end
   dprint('Attaching', cbuf, 'attach')
 
+  local lc = api.nvim_buf_line_count(cbuf)
+  if lc > config.max_file_length then
+    dprint('Exceeds max_file_length', cbuf, 'attach')
+    return
+  end
+
   if api.nvim_buf_get_option(cbuf, 'buftype') ~= '' then
     dprint('Non-normal buffer', cbuf, 'attach')
     return

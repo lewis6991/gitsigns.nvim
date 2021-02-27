@@ -149,6 +149,14 @@ local schema: {string:SchemaElem} = {
     ]]
   },
 
+  max_file_length = {
+    type = 'number',
+    default = 40000,
+    description = [[
+      Max file length to attach to.
+    ]]
+  },
+
   debug_mode = {
     type = 'boolean',
     default = false,

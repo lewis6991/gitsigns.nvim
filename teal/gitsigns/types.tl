@@ -50,6 +50,7 @@ global record Config
     record watch_index
         interval: number
     end
+    max_file_length: number
     status_formatter: function(StatusObj): string
 end
 
