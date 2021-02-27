@@ -1,3 +1,7 @@
+#!/bin/sh
+_=[[
+exec lua "$0" "$@"
+]]
 -- Simple script to update the help doc by reading the config schema.
 
 inspect = require('inspect')
@@ -24,7 +28,7 @@ end
 
 -- To makw sure the output is consistent between runs (to minimise diffs), we
 -- need to iterate through the schema keys in a deterministic way. To do this we
--- do a simple scan over the file the schema is defined in and collect the keys
+-- do a smple scan over the file the schema is defined in and collect the keys
 -- in the order they are defined.
 local function get_ordered_schema_keys()
   local c = read_file('lua/gitsigns/config.lua')
@@ -106,3 +110,4 @@ local function main()
 end
 
 main()
+-- helo
