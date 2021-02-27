@@ -13,6 +13,7 @@ global record CacheEntry
   has_conflicts : boolean
   hunks         : {Hunk}
   staged_diffs  : {Hunk}
+  pending_signs : {number:Sign}
   index_watcher : vim.loop.FSPollObj          -- Timer object watching the files index
 end
 
@@ -56,6 +57,7 @@ global record Config
     update_debounce: number
     status_formatter: function(StatusObj): string
     _use_internal_diff: boolean
+    use_decoration_api: boolean
 end
 
 global enum SignType
@@ -68,7 +70,6 @@ end
 
 global record Sign
   type: SignType
-  lnum: number
   count: number
 end
 

@@ -110,6 +110,7 @@ local record api
   nvim_set_current_line: function(string)
   nvim_set_current_tabpage: function(any)
   nvim_set_current_win: function(number)
+  nvim_set_decoration_provider: function(number, {string:function})
   nvim_set_keymap: function(string, string, string, {string:any})
   nvim_set_option: function(string, any)
   nvim_set_var: function(string, any)
@@ -151,12 +152,16 @@ local record api
   nvim_win_set_option: function(number, string, any)
   nvim_win_set_var: function(number, string, any)
   nvim_win_set_width: function(number, number)
+
+  nvim__buf_redraw_range: function(number, number, number)
 end
 
 global record vim
   api: api
   record fn
+    line: function(string): number
     expand: function(string): string
+    line: function(string): string
     sign_unplace: function(string, {string:any})
     sign_place: function(number, string, string, string | number, {string:any})
     sign_getdefined: function(string): table
@@ -235,6 +240,8 @@ global record vim
     new_tcp: function()
   end
 
+  in_fast_event: function(): boolean
+
   split: function(string, string): {string}
   split: function(string, string, boolean): {string}
 
@@ -269,7 +276,9 @@ global record vim
     indent: string
     process: function
   end
-  inspect: function(any)
-  inspect: function(any, InspectOptions)
+  inspect: function(any): string
+  inspect: function(any, InspectOptions): string
+
+  wait: function(number, function, number, boolean)
 
 end

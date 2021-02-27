@@ -275,6 +275,15 @@ update_debounce                              *gitsigns-config-update_debounce*
 
       Debounce time for updates (in milliseconds).
 
+use_decoration_api                        *gitsigns-config-use_decoration_api*
+        Type: `boolean`, Default: `false`
+
+        Experimental
+
+        Use Neovim's decoration API to apply signs. This should improve
+        performance on large files since signs will only be applied to drawn
+        lines as opposed to all lines in the buffer.
+
 debug_mode                                        *gitsigns-config-debug_mode*
         Type: `boolean`, Default: `false`
 

@@ -191,6 +191,18 @@ local schema: {string:SchemaElem} = {
     ]]
   },
 
+  use_decoration_api = {
+    type = 'boolean',
+    default = false,
+    description = [[
+        Experimental
+
+        Use Neovim's decoration API to apply signs. This should improve
+        performance on large files since signs will only be applied to drawn
+        lines as opposed to all lines in the buffer.
+    ]]
+  },
+
   debug_mode = {
     type = 'boolean',
     default = false,

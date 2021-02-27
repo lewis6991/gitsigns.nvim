@@ -80,14 +80,12 @@ local function get_cursor_hunk(bufnr: number, hunks: {Hunk}): Hunk
   return gs_hunks.find_hunk(lnum, hunks)
 end
 
-local function add_signs(bufnr: number, signs: {Sign}, reset: boolean)
-  reset = reset or false
+local function remove_sign(bufnr: number, lnum: number)
+  vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr, id = lnum})
+end
 
-  if reset then
-    vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr})
-  end
-
-  for _, s in ipairs(signs) do
+local function add_signs(bufnr: number, signs: {number:Sign})
+  for lnum, s in pairs(signs) do
     local stype: string = sign_map[s.type]
     local count = s.count
 
@@ -105,10 +103,30 @@ local function add_signs(bufnr: number, signs: {Sign}, reset: boolean)
       })
     end
 
-    vim.fn.sign_place(s.lnum, 'gitsigns_ns', stype, bufnr, {
-      lnum = s.lnum, priority = config.sign_priority
+    vim.fn.sign_place(lnum, 'gitsigns_ns', stype, bufnr, {
+      lnum = lnum, priority = config.sign_priority
     })
   end
+end
+
+local function apply_win_signs(bufnr: number, signs: {number:Sign}, top: number, bot: number)
+  if config.use_decoration_api then
+    -- Just apply to signs visible in window
+    top = top or tonumber(vim.fn.line('w0'))
+    bot = bot or tonumber(vim.fn.line('w$'))
+  else
+    top = top or 0
+    bot = bot or tonumber(vim.fn.line('$'))
+  end
+
+  local s: {number:Sign} = {}
+  for lnum = top, bot do
+    if signs[lnum] then
+      s[lnum] = signs[lnum]
+      signs[lnum] = nil
+    end
+  end
+  add_signs(bufnr, s)
 end
 
 local update_cnt = 0
@@ -120,10 +138,10 @@ local update = async(function(bufnr: number)
     return
   end
 
-  local stage = bcache.has_conflicts and 1 or 0
-
   await_main()
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local stage = bcache.has_conflicts and 1 or 0
+
   if config._use_internal_diff then
     local staged_text = await(git.get_staged_text, bcache.toplevel, bcache.relpath, stage) as {string}
     bcache.hunks = diff.run_diff(staged_text, buftext, config.diff_algorithm)
@@ -131,15 +149,19 @@ local update = async(function(bufnr: number)
     await(git.get_staged, bcache.toplevel, bcache.relpath, stage, bcache.staged)
     bcache.hunks = await(git.run_diff, bcache.staged, buftext, config.diff_algorithm) as {Hunk}
   end
+  bcache.pending_signs = process_hunks(bcache.hunks)
 
   local status: StatusObj = gs_hunks.get_summary(bcache.hunks)
   status.head = bcache.abbrev_head
 
-  local signs: {Sign} = process_hunks(bcache.hunks)
-
   await_main()
 
-  add_signs(bufnr, signs, true)
+  -- Remove all signs
+  remove_sign(bufnr)
+
+  -- Apply signs to the window. Other signs will be added by the decoration
+  -- provider as they are drawn.
+  apply_win_signs(bufnr, bcache.pending_signs)
 
   Status:update(bufnr, status)
 
@@ -209,8 +231,8 @@ local stage_hunk = sync(function()
   -- running a full diff.
   --
   -- We cannot update the status bar as that requires a full diff.
-  for _, s in ipairs(signs) do
-    vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr, id = s.lnum})
+  for lnum, _ in pairs(signs) do
+    remove_sign(bufnr, lnum)
   end
 end)
 
@@ -393,11 +415,20 @@ local function in_git_dir(file: string): boolean
   return false
 end
 
-local function on_lines(buf: number): boolean
+local function on_lines(buf: number, last_orig: number, last_new: number): boolean
   if not get_cache_opt(buf) then
     dprint('Cache for buffer '..buf..' was nil. Detaching')
     return true
   end
+
+  -- If lines are removed, make sure to immediately remove the signs
+  -- This is only has noticeable effect on large files
+  if last_new < last_orig then
+    for i = last_new+1, last_orig do
+      remove_sign(buf, i)
+    end
+  end
+
   update_debounced(buf)
 end
 
@@ -484,8 +515,8 @@ local attach = throttle_leading(100, sync(function()
   await_main()
 
   api.nvim_buf_attach(cbuf, false, {
-    on_lines = function(_, buf: number)
-      on_lines(buf)
+    on_lines = function(_, buf: number, _, _, last_orig: number, last_new: number)
+      on_lines(buf, last_orig, last_new)
     end,
     on_detach = function(_, buf: number)
       detach(buf)
@@ -546,6 +577,20 @@ local function setup(cfg: Config)
     '* lua vim.schedule(require("gitsigns").attach)')
 
   vim.cmd('autocmd VimLeavePre * lua require("gitsigns").detach_all()')
+
+  if config.use_decoration_api then
+    local ns = api.nvim_create_namespace('gitsigns')
+    api.nvim_set_decoration_provider(ns, {
+      on_win = function(_, _, bufnr: number, top: number, bot: number)
+        local bcache = get_cache_opt(bufnr)
+        if not bcache or not bcache.pending_signs then
+          return
+        end
+        apply_win_signs(bufnr, bcache.pending_signs, top, bot)
+      end
+    })
+  end
+
 end
 
 local function preview_hunk()
