@@ -65,22 +65,22 @@ function M.process_hunks(hunks)
          local topdelete = hunk.type == 'delete' and i == 0
          local changedelete = hunk.type == 'change' and hunk.removed.count > hunk.added.count and i == hunk.dend
          local count = hunk.type == 'add' and hunk.added.count or hunk.removed.count
-         table.insert(signs, {
+         local lnum = topdelete and 1 or i
+         signs[lnum] = {
             type = topdelete and 'topdelete' or changedelete and 'changedelete' or hunk.type,
-            lnum = topdelete and 1 or i,
             count = i == hunk.start and count,
-         })
+         }
       end
       if hunk.type == "change" then
          local add, remove = hunk.added.count, hunk.removed.count
          if add > remove then
             local count = add - remove
             for i = 1, count do
-               table.insert(signs, {
+               local lnum = hunk.dend + i
+               signs[lnum] = {
                   type = 'add',
-                  lnum = hunk.dend + i,
                   count = i == 1 and count,
-               })
+               }
             end
          end
       end
