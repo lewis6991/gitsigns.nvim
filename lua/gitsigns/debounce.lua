@@ -11,7 +11,7 @@ function M.debounce_trailing(ms, fn)
       local argv = { ... }
       timer:start(ms, 0, function()
          timer:stop()
-         vim.schedule_wrap(fn)(unpack(argv))
+         fn(unpack(argv))
       end)
    end
 end
@@ -32,7 +32,7 @@ function M.throttle_leading(ms, fn)
             timer:stop()
          end)
          running = true
-         vim.schedule_wrap(fn)(...)
+         fn(...)
       end
    end
 end
