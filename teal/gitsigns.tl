@@ -65,7 +65,8 @@ local function dirname(file: string): string
 end
 
 local function write_to_file(file: string, content: {string})
-  with(open(file, 'w'), function(writer: FILE)
+  -- On windows 'w' mode use \r\n instead of \n, see: https://stackoverflow.com/a/43967013
+  with(open(file, 'wb'), function(writer: FILE)
     for _, l in ipairs(content) do
       writer:write(l..'\n')
     end

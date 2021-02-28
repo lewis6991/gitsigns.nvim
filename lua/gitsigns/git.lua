@@ -203,7 +203,6 @@ function M.run_diff(staged, text, diff_algo)
             '--diff-algorithm=' .. diff_algo,
             '--patch-with-raw',
             '--unified=0',
-            '--ignore-space-at-eol',
             staged,
             '-',
          },
@@ -218,7 +217,10 @@ function M.run_diff(staged, text, diff_algo)
             end
          end,
          on_stderr = function(_, line)
-            print('error: ' .. line, 'NA', 'run_diff')
+
+            vim.schedule(function()
+               print('error: ' .. line, 'NA', 'run_diff')
+            end)
          end,
          on_exit = function()
             callback(results)
