@@ -65,7 +65,8 @@ local function dirname(file)
 end
 
 local function write_to_file(file, content)
-   with(open(file, 'w'), function(writer)
+
+   with(open(file, 'wb'), function(writer)
       for _, l in ipairs(content) do
          writer:write(l .. '\n')
       end

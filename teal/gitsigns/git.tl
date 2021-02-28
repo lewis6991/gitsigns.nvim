@@ -203,7 +203,6 @@ function M.run_diff(staged: string, text: {string}, diff_algo: string): cb_funct
         '--diff-algorithm='..diff_algo,
         '--patch-with-raw',
         '--unified=0',
-        '--ignore-space-at-eol', -- On windows 'staged' has \r\n instead of \n
         staged,
         '-'
       },
@@ -218,7 +217,10 @@ function M.run_diff(staged: string, text: {string}, diff_algo: string): cb_funct
         end
       end,
       on_stderr = function(_, line: string)
-        print('error: '..line, 'NA', 'run_diff')
+           -- On windows print() crashes in callback threads
+           vim.schedule(function()
+              print('error: ' .. line, 'NA', 'run_diff')
+           end)
       end,
       on_exit = function()
         callback(results)
