@@ -1,6 +1,6 @@
 local M = {}
 
---- Debounces a function on the trailing edge. Automatically 'schedule_wrap()'s
+--- Debounces a function on the trailing edge.
 ---
 --@param ms (number) Timeout in ms
 --@param fn (function) Function to debounce
@@ -11,13 +11,13 @@ function M.debounce_trailing(ms: number, fn: function): function
     local argv = {...}
     timer:start(ms, 0, function()
       timer:stop()
-      vim.schedule_wrap(fn)(unpack(argv))
+      fn(unpack(argv))
     end)
   end
 end
 
 
---- Throttles a function on the leading edge. Automatically `schedule_wrap()`s.
+--- Throttles a function on the leading edge.
 ---
 --@param ms (number) Timeout in ms
 --@param fn (function) Function to throttle
@@ -32,7 +32,7 @@ function M.throttle_leading(ms: number, fn: function): function
         timer:stop()
       end)
       running = true
-      vim.schedule_wrap(fn)(...)
+      fn(...)
     end
   end
 end
