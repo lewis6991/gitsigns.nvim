@@ -216,11 +216,18 @@ function M.run_diff(staged, text, diff_algo)
                end
             end
          end,
-         on_stderr = function(_, line)
+         on_stderr = function(err, line)
+            if err then
 
-            vim.schedule(function()
-               print('error: ' .. line, 'NA', 'run_diff')
-            end)
+               vim.schedule(function()
+                  print('error: ' .. err, 'NA', 'run_diff')
+               end)
+            elseif line then
+
+               vim.schedule(function()
+                  print('error: ' .. line, 'NA', 'run_diff')
+               end)
+            end
          end,
          on_exit = function()
             callback(results)
