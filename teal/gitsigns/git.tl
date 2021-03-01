@@ -216,11 +216,18 @@ function M.run_diff(staged: string, text: {string}, diff_algo: string): cb_funct
           end
         end
       end,
-      on_stderr = function(_, line: string)
+      on_stderr = function(err: string, line: string)
+        if err then
+           -- On windows print() crashes in callback threads
+           vim.schedule(function()
+              print('error: ' .. err, 'NA', 'run_diff')
+           end)
+        elseif line then
            -- On windows print() crashes in callback threads
            vim.schedule(function()
               print('error: ' .. line, 'NA', 'run_diff')
            end)
+         end
       end,
       on_exit = function()
         callback(results)
