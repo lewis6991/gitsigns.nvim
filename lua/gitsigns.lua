@@ -306,6 +306,10 @@ local function nav_hunk(options)
    local hunk = gs_hunks.find_nearest_hunk(line, hunks, options.forwards, wrap)
    local row = options.forwards and hunk.start or hunk.dend
    if row then
+
+      if row == 0 then
+         row = 1
+      end
       api.nvim_win_set_cursor(0, { row, 0 })
    end
 end
