@@ -7,7 +7,9 @@ function M.dprint(msg, bufnr, caller)
       return
    end
    local name = caller or debug.getinfo(1, 'n').name or ''
-   print(string.format('%s(%s): %s\n', name, bufnr, msg))
+   vim.schedule(function()
+      print(string.format('%s(%s): %s\n', name, bufnr, msg))
+   end)
 end
 
 return M
