@@ -12,18 +12,20 @@ local schema: {string:SchemaElem} = {
     type = 'table',
     deep_extend = true,
     default = [[{
-      add          = {hl = 'DiffAdd'   , text = '│', numhl='GitSignsAddNr'},
-      change       = {hl = 'DiffChange', text = '│', numhl='GitSignsChangeNr'},
-      delete       = {hl = 'DiffDelete', text = '_', numhl='GitSignsDeleteNr'},
-      topdelete    = {hl = 'DiffDelete', text = '‾', numhl='GitSignsDeleteNr'},
-      changedelete = {hl = 'DiffChange', text = '~', numhl='GitSignsChangeNr'},
+      add          = {hl = 'DiffAdd'   , text = '│', numhl='GitSignsAddNr'   , linehl='GitSignsAddLr'    },
+      change       = {hl = 'DiffChange', text = '│', numhl='GitSignsChangeNr', linehl='GitSignsChangeLr' },
+      delete       = {hl = 'DiffDelete', text = '_', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLr' },
+      topdelete    = {hl = 'DiffDelete', text = '‾', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLr' },
+      changedelete = {hl = 'DiffChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLr' },
     }]],
     description = [[
         Configuration for signs:
           • `hl` specifies the highlight group to use for the sign.
           • `text` specifies the character to use for the sign.
-          • `numhl` specifies the highlight group to use for the number column (see
-            |gitsigns-config.numhl|).
+          • `numhl` specifies the highlight group to use for the number column
+            (see |gitsigns-config.numhl|).
+          • `linehl` specifies the highlight group to use for the line
+            (see |gitsigns-config.linehl|).
           • `show_count` to enable showing count of hunk, e.g. number of deleted
             lines.
     ]]
@@ -85,6 +87,18 @@ local schema: {string:SchemaElem} = {
         Enable/disable line number highlights.
 
         When enabled the highlights defined in `signs.*.numhl` are used. If
+        the highlight group does not exist, then it is automatically defined
+        and linked to the corresponding highlight group in `signs.*.hl`.
+    ]]
+  },
+
+  linehl = {
+    type = 'boolean',
+    default = false,
+    description = [[
+        Enable/disable line highlights.
+
+        When enabled the highlights defined in `signs.*.linehl` are used. If
         the highlight group does not exist, then it is automatically defined
         and linked to the corresponding highlight group in `signs.*.hl`.
     ]]

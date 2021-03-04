@@ -29,6 +29,7 @@ global record SignsConfig
   hl: string
   text: string
   numhl: string
+  linehl: string
   keymaps: {string:string}
 end
 
@@ -45,6 +46,7 @@ global record Config
     signs: {SignType: SignsConfig}
     count_chars: {string|number:string}
     numhl: boolean
+    linehl: boolean
     sign_priority: number
     keymaps: {string:any}
     record watch_index
