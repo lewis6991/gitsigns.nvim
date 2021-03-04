@@ -58,7 +58,8 @@ local test_config = {
     ['n mhu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
     ['n mhr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
     ['n mhp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
-  }
+  },
+  update_debounce = 10
 }
 
 local function cleanup()
@@ -140,7 +141,7 @@ describe('gitsigns', function()
   it('load a file', function()
     exec_lua('require("gitsigns").setup(...)', test_config)
     command_fmt("edit %s/scratch/dummy.txt", pj_root)
-    sleep(200)
+    sleep(20)
 
     local res = split(exec_capture('nmap <buffer>'), '\n')
     table.sort(res)
@@ -168,7 +169,7 @@ describe('gitsigns', function()
     feed("dd") -- Delete
     feed("j")
     feed("ddx") -- Change delete
-    sleep(100)
+    sleep(10)
 
     -- screen:snapshot_util()
     screen:expect{grid=[[
@@ -201,9 +202,9 @@ describe('gitsigns', function()
 
     feed("jjj")
     feed("cc")
-    sleep(200)
+    sleep(20)
     feed("EDIT<esc>")
-    sleep(100)
+    sleep(10)
 
     screen:expect{grid=[[
       {1:  }This              |
@@ -216,7 +217,7 @@ describe('gitsigns', function()
 
     -- Stage
     feed("mhs")
-    sleep(100)
+    sleep(10)
 
     screen:expect{grid=[[
       {1:  }This              |
@@ -229,7 +230,7 @@ describe('gitsigns', function()
 
     -- Undo stage
     feed("mhu")
-    sleep(100)
+    sleep(10)
 
     screen:expect{grid=[[
       {1:  }This              |
@@ -242,7 +243,7 @@ describe('gitsigns', function()
 
     -- Reset
     feed("mhr")
-    sleep(100)
+    sleep(10)
 
     screen:expect{grid=[[
       {1:  }This              |
@@ -258,7 +259,7 @@ describe('gitsigns', function()
   it('does not attach inside .git', function()
     exec_lua('require("gitsigns").setup(...)', test_config)
     command_fmt("edit %s/.git/index", pj_root)
-    sleep(200)
+    sleep(20)
 
     match_messages {
       'attach(1): Attaching',
@@ -283,7 +284,7 @@ describe('gitsigns', function()
     feed("dd") -- Delete
     feed("j")
     feed("ddx") -- Change delete
-    sleep(100)
+    sleep(20)
 
     -- screen:snapshot_util()
     screen:expect{grid=[[
@@ -312,7 +313,7 @@ describe('gitsigns', function()
 
     system{"touch", pj_root.."/scratch/dummy_ignored.txt"}
     command_fmt("edit %s/scratch/dummy_ignored.txt", pj_root)
-    sleep(200)
+    sleep(20)
 
     match_messages {
       "attach(1): Attaching",
@@ -330,7 +331,7 @@ describe('gitsigns', function()
     system{"rm", pj_root.."/scratch/newfile.txt"}
 
     command_fmt("edit %s/scratch/newfile.txt", pj_root)
-    sleep(100)
+    sleep(10)
 
     match_messages {
       "attach(1): Attaching",
@@ -346,7 +347,7 @@ describe('gitsigns', function()
     exec_lua('require("gitsigns").setup(...)', test_config)
 
     command_fmt("edit %s/does/not/exist", pj_root)
-    sleep(100)
+    sleep(10)
 
     match_messages {
       "attach(1): Attaching",
@@ -367,7 +368,7 @@ describe('gitsigns', function()
     sleep(100)
     command("messages clear")
     command("write")
-    sleep(200)
+    sleep(20)
 
     match_messages {
       p'".*scratch/newfile.txt" %[New] 0L, 0C written',
@@ -402,7 +403,7 @@ describe('gitsigns', function()
     command_fmt("edit %s/scratch/newfile2.txt", pj_root)
     feed("iline<esc>")
     command("write")
-    sleep(200)
+    sleep(20)
     command("messages clear")
 
     -- screen:snapshot_util()
@@ -414,7 +415,7 @@ describe('gitsigns', function()
     ]]}
 
     feed('mhs') -- Stage the file (add file to index)
-    sleep(200)
+    sleep(20)
 
     screen:expect{grid=[[
       lin^e        |
@@ -493,7 +494,7 @@ describe('gitsigns', function()
     feed("dd") -- Delete
     feed("j")
     feed("ddx") -- Change delete
-    sleep(100)
+    sleep(10)
 
     screen:expect{grid=[[
       {4:^ }is                |
