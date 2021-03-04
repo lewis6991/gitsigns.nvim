@@ -156,7 +156,7 @@ require('gitsigns').setup {
 - [ ] Allow extra options to be passed to `git diff`
 - [ ] Folding of text around hunks
 - [ ] Diff against working tree instead of index, or diff against any SHA.
-- [ ] Line highlighting
+- [x] Line highlighting
 - [x] Hunk text object
 - [ ] Open diff mode of buffer against what gitsigns is comparing to (currently the index)
 - [ ] Share index watchers for files in the same repo
