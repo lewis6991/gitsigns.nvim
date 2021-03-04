@@ -167,6 +167,7 @@ global record vim
 
   record o
     wrapscan: boolean
+    updatetime: number
   end
 
   record lsp
