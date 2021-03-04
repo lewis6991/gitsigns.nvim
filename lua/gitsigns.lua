@@ -122,15 +122,12 @@ local function add_signs(bufnr, signs, reset)
 end
 
 local get_staged = async(function(bufnr, staged_path, toplevel, relpath, stage)
-   await_main()
    local staged_txt = await(git.get_staged_txt, toplevel, relpath, stage)
 
    if not staged_txt then
       dprint('File not in index', bufnr, 'get_staged')
       staged_txt = {}
    end
-
-   await_main()
 
    write_to_file(staged_path, staged_txt)
    dprint('Updated staged file', bufnr, 'get_staged')
@@ -148,6 +145,7 @@ local update = async(function(bufnr)
    local stage = bcache.has_conflicts and 1 or 0
    await(get_staged, bufnr, bcache.staged, bcache.toplevel, bcache.relpath, stage)
 
+   await_main()
    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
    bcache.hunks = await(git.run_diff, bcache.staged, buftext, config.diff_algorithm)
 
@@ -182,11 +180,9 @@ end)
 local add_to_index = async(function(bcache)
    local relpath, toplevel = bcache.relpath, bcache.toplevel
 
-   await_main()
    await(git.add_file, toplevel, relpath)
 
 
-   await_main()
    _, bcache.object_name, bcache.mode_bits, bcache.has_conflicts = 
    await(git.file_info, relpath, toplevel)
 end)
@@ -216,7 +212,6 @@ local stage_hunk = sync(function()
 
    local lines = create_patch(bcache.relpath, hunk, bcache.mode_bits)
 
-   await_main()
    await(git.stage_lines, bcache.toplevel, lines)
 
    table.insert(bcache.staged_diffs, hunk)
@@ -280,7 +275,6 @@ local undo_stage_hunk = sync(function()
 
    local lines = create_patch(bcache.relpath, hunk, bcache.mode_bits, true)
 
-   await_main()
    await(git.stage_lines, bcache.toplevel, lines)
 
    table.remove(bcache.staged_diffs)
@@ -380,15 +374,11 @@ local function index_update_handler(cbuf)
       local bcache = get_cache(cbuf)
       local file_dir = dirname(bcache.file)
 
-      await_main()
-
       local _, _, abbrev_head0 = 
       await(git.get_repo_info, file_dir)
 
       Status:update_head(cbuf, abbrev_head0)
       bcache.abbrev_head = abbrev_head0
-
-      await_main()
 
       local _, object_name0, mode_bits0, has_conflicts = 
       await(git.file_info, bcache.file, bcache.toplevel)
@@ -471,10 +461,9 @@ local attach = throttle_leading(100, sync(function()
       return
    end
 
+
+
    await_main()
-
-
-
    local staged = os.tmpname()
 
    local relpath, object_name, mode_bits, has_conflicts = 
