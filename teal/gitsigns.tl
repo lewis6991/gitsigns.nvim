@@ -164,7 +164,8 @@ local update = async(function(bufnr: number)
   dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt), bufnr, 'update')
 end)
 
-local update_debounced = debounce_trailing(100, arun(update))
+-- Define in setup so it can be debounced on updatetime
+local update_debounced: function(number)
 
 local watch_index = async(function(bufnr: number, gitdir: string, on_change: function): uv.FSPollObj
   -- TODO: Buffers of the same git repo can share an index watcher
@@ -536,6 +537,9 @@ local function setup(cfg: Config)
   end
 
   apply_keymaps(false)
+
+  update_debounced = debounce_trailing(vim.o.updatetime, arun(update))
+    as function(number)
 
   -- This seems to be triggered twice on the first buffer so we have throttled
   -- the attach function with throttle_leading

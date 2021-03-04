@@ -164,7 +164,8 @@ local update = async(function(bufnr)
    dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt), bufnr, 'update')
 end)
 
-local update_debounced = debounce_trailing(100, arun(update))
+
+local update_debounced
 
 local watch_index = async(function(bufnr, gitdir, on_change)
 
@@ -536,6 +537,9 @@ local function setup(cfg)
    end
 
    apply_keymaps(false)
+
+   update_debounced = debounce_trailing(vim.o.updatetime, arun(update))
+
 
 
 
