@@ -48,18 +48,26 @@ function M.file_info(file: string, toplevel: string): cb_function
   end
 end
 
-function M.get_staged_txt(toplevel: string, relpath: string, stage: number): cb_function
-  return function(callback: function({string}))
-    local content: {string} = {}
+function M.get_staged(toplevel: string, relpath: string, stage: number, output: string): cb_function
+  return function(callback: function())
+    -- On windows 'w' mode use \r\n instead of \n, see:
+    -- https://stackoverflow.com/a/43967013
+    local outf = io.open(output , 'wb')
     run_job {
       command = 'git',
-      args = {'--no-pager', 'show', ':'..tostring(stage)..':'..relpath},
+      args = {
+        '--no-pager',
+        'show',
+        ':'..tostring(stage)..':'..relpath,
+      },
       cwd = toplevel,
       on_stdout = function(_, line: string)
-        table.insert(content, line)
+        outf:write(line)
+        outf:write('\n')
       end,
-      on_exit = function(_, code: number)
-        callback(code == 0 and content or nil)
+      on_exit = function()
+        outf:close()
+        callback()
       end
     }
   end
