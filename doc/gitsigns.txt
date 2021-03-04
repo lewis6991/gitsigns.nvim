@@ -259,6 +259,11 @@ max_file_length                              *gitsigns-config-max_file_length*
 
       Max file length to attach to.
 
+update_debounce                              *gitsigns-config-update_debounce*
+        Type: `number`, Default: `200`
+
+      Debounce time for updates (in milliseconds).
+
 debug_mode                                        *gitsigns-config-debug_mode*
         Type: `boolean`, Default: `false`
 

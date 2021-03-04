@@ -157,6 +157,14 @@ local schema: {string:SchemaElem} = {
     ]]
   },
 
+  update_debounce = {
+    type = 'number',
+    default = 200,
+    description = [[
+      Debounce time for updates (in milliseconds).
+    ]]
+  },
+
   debug_mode = {
     type = 'boolean',
     default = false,

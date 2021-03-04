@@ -538,7 +538,7 @@ local function setup(cfg: Config)
 
   apply_keymaps(false)
 
-  update_debounced = debounce_trailing(vim.o.updatetime, arun(update))
+  update_debounced = debounce_trailing(config.update_debounce, arun(update))
     as function(number)
 
   -- This seems to be triggered twice on the first buffer so we have throttled

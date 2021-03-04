@@ -538,7 +538,7 @@ local function setup(cfg)
 
    apply_keymaps(false)
 
-   update_debounced = debounce_trailing(vim.o.updatetime, arun(update))
+   update_debounced = debounce_trailing(config.update_debounce, arun(update))
 
 
 

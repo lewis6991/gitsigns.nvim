@@ -51,6 +51,7 @@ global record Config
         interval: number
     end
     max_file_length: number
+    update_debounce: number
     status_formatter: function(StatusObj): string
 end
 
