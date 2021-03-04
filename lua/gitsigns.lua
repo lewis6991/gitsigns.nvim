@@ -99,6 +99,7 @@ local function add_signs(bufnr, signs, reset)
             texthl = cs.hl,
             text = cs.text .. count_char,
             numhl = config.numhl and cs.numhl,
+            linehl = config.linehl and cs.linehl,
          })
       end
 
@@ -500,10 +501,14 @@ local function setup(cfg)
    for t, sign_name in pairs(sign_map) do
       local cs = config.signs[t]
 
-      if config.numhl then
-         local hl_exists, _ = pcall(api.nvim_get_hl_by_name, cs.numhl, false)
-         if not hl_exists then
-            vim.cmd(('highlight link %s %s'):format(cs.numhl, cs.hl))
+      local HlTy = {}
+
+      for _, hl in ipairs({ 'numhl', 'linehl' }) do
+         if config[hl] then
+            local hl_exists, _ = pcall(api.nvim_get_hl_by_name, cs[hl], false)
+            if not hl_exists then
+               vim.cmd(('highlight link %s %s'):format(cs[hl], cs.hl))
+            end
          end
       end
 
@@ -511,6 +516,7 @@ local function setup(cfg)
          texthl = cs.hl,
          text = cs.text,
          numhl = config.numhl and cs.numhl,
+         linehl = config.linehl and cs.linehl,
       })
 
    end

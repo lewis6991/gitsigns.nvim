@@ -98,7 +98,8 @@ local function add_signs(bufnr: number, signs: {Sign}, reset: boolean)
       sign_define(stype, {
         texthl = cs.hl,
         text   = cs.text..count_char,
-        numhl  = config.numhl and cs.numhl
+        numhl  = config.numhl  and cs.numhl,
+        linehl = config.linehl and cs.linehl
       })
     end
 
@@ -500,17 +501,22 @@ local function setup(cfg: Config)
   for t, sign_name in pairs(sign_map) do
     local cs = config.signs[t]
 
-    if config.numhl then
-      local hl_exists, _ = pcall(api.nvim_get_hl_by_name, cs.numhl, false)
-      if not hl_exists then
-        vim.cmd(('highlight link %s %s'):format(cs.numhl, cs.hl))
+    local enum HlTy 'numhl' 'linehl' end
+
+    for _, hl in ipairs({'numhl', 'linehl'} as {HlTy}) do
+      if config[hl] then
+        local hl_exists, _ = pcall(api.nvim_get_hl_by_name, cs[hl], false)
+        if not hl_exists then
+          vim.cmd(('highlight link %s %s'):format(cs[hl], cs.hl))
+        end
       end
     end
 
     sign_define(sign_name, {
       texthl = cs.hl,
       text   = cs.text,
-      numhl  = config.numhl and cs.numhl
+      numhl  = config.numhl  and cs.numhl,
+      linehl = config.linehl and cs.linehl
     })
 
   end
