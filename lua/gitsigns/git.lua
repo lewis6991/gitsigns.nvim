@@ -48,18 +48,26 @@ function M.file_info(file, toplevel)
    end
 end
 
-function M.get_staged_txt(toplevel, relpath, stage)
+function M.get_staged(toplevel, relpath, stage, output)
    return function(callback)
-      local content = {}
+
+
+      local outf = io.open(output, 'wb')
       run_job({
          command = 'git',
-         args = { '--no-pager', 'show', ':' .. tostring(stage) .. ':' .. relpath },
+         args = {
+            '--no-pager',
+            'show',
+            ':' .. tostring(stage) .. ':' .. relpath,
+         },
          cwd = toplevel,
          on_stdout = function(_, line)
-            table.insert(content, line)
+            outf:write(line)
+            outf:write('\n')
          end,
-         on_exit = function(_, code)
-            callback(code == 0 and content or nil)
+         on_exit = function()
+            outf:close()
+            callback()
          end,
       })
    end

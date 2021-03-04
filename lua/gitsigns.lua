@@ -1,7 +1,3 @@
-local pln_cm = require('plenary/context_manager')
-local with = pln_cm.with
-local open = pln_cm.open
-
 local gs_async = require('gitsigns/async')
 local async = gs_async.async
 local sync = gs_async.sync
@@ -64,15 +60,6 @@ local function dirname(file)
    return file:match(string.format('^(.+)%s[^%s]+', path_sep, path_sep))
 end
 
-local function write_to_file(file, content)
-
-   with(open(file, 'wb'), function(writer)
-      for _, l in ipairs(content) do
-         writer:write(l .. '\n')
-      end
-   end)
-end
-
 local cache = {}
 
 local function get_cache(bufnr)
@@ -121,18 +108,6 @@ local function add_signs(bufnr, signs, reset)
    end
 end
 
-local get_staged = async(function(bufnr, staged_path, toplevel, relpath, stage)
-   local staged_txt = await(git.get_staged_txt, toplevel, relpath, stage)
-
-   if not staged_txt then
-      dprint('File not in index', bufnr, 'get_staged')
-      staged_txt = {}
-   end
-
-   write_to_file(staged_path, staged_txt)
-   dprint('Updated staged file', bufnr, 'get_staged')
-end)
-
 local update_cnt = 0
 
 local update = async(function(bufnr)
@@ -143,7 +118,7 @@ local update = async(function(bufnr)
    end
 
    local stage = bcache.has_conflicts and 1 or 0
-   await(get_staged, bufnr, bcache.staged, bcache.toplevel, bcache.relpath, stage)
+   await(git.get_staged, bcache.toplevel, bcache.relpath, stage, bcache.staged)
 
    await_main()
    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
