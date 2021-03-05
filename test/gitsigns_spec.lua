@@ -377,7 +377,7 @@ describe('gitsigns', function()
       p"Running: git .* ls%-files .*/newfile.txt",
       "watch_index(1): Watching index",
       "dprint(nil): Running: git --no-pager show :0:scratch/newfile.txt",
-      p'Running: git .* diff .* /tmp/lua_.* %-',
+      p'Running: git .* diff .* /tmp/lua_.* /tmp/lua_.*',
       "update(1): updates: 1, jobs: 5"
     }
 
