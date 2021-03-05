@@ -199,9 +199,22 @@ function M.add_file(toplevel: string, file: string): cb_function
   end
 end
 
+local function write_to_file(path: string, text: {string})
+  local f = io.open(path, 'wb')
+  for _, l in ipairs(text) do
+    f:write(l)
+    f:write('\n')
+  end
+  f:close()
+end
+
 function M.run_diff(staged: string, text: {string}, diff_algo: string): cb_function
   return function(callback: function)
     local results: {Hunk} = {}
+
+    local buffile = staged..'_buf'
+    write_to_file(buffile, text)
+
     run_job {
       command = 'git',
       args = {
@@ -212,9 +225,8 @@ function M.run_diff(staged: string, text: {string}, diff_algo: string): cb_funct
         '--patch-with-raw',
         '--unified=0',
         staged,
-        '-'
+        buffile,
       },
-      writer = text,
       on_stdout = function(_, line: string)
         if vim.startswith(line, '@@') then
           table.insert(results, parse_diff_line(line))
@@ -238,6 +250,7 @@ function M.run_diff(staged: string, text: {string}, diff_algo: string): cb_funct
          end
       end,
       on_exit = function()
+        os.remove(buffile)
         callback(results)
       end
     }
