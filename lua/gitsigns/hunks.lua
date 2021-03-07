@@ -1,21 +1,12 @@
 
 local M = {}
 
-function M.parse_diff_line(line)
-   local diffkey = vim.trim(vim.split(line, '@@', true)[2])
-
-
-
-   local pre, now = unpack(vim.tbl_map(function(s)
-      return vim.split(string.sub(s, 2), ',')
-   end, vim.split(diffkey, ' ')))
-
-   local removed = { start = tonumber(pre[1]), count = tonumber(pre[2]) or 1 }
-   local added = { start = tonumber(now[1]), count = tonumber(now[2]) or 1 }
+function M.create_hunk(start_a, count_a, start_b, count_b)
+   local removed = { start = start_a, count = count_a }
+   local added = { start = start_b, count = count_b }
 
    local hunk = {
       start = added.start,
-      head = line,
       lines = {},
       removed = removed,
       added = added,
@@ -34,6 +25,25 @@ function M.parse_diff_line(line)
       hunk.dend = added.start + math.min(added.count, removed.count) - 1
       hunk.type = "change"
    end
+
+   return hunk
+end
+
+function M.parse_diff_line(line)
+   local diffkey = vim.trim(vim.split(line, '@@', true)[2])
+
+
+
+   local pre, now = unpack(vim.tbl_map(function(s)
+      return vim.split(string.sub(s, 2), ',')
+   end, vim.split(diffkey, ' ')))
+
+   local hunk = M.create_hunk(
+   tonumber(pre[1]), tonumber(pre[2]) or 1,
+   tonumber(now[1]), tonumber(now[2]) or 1)
+
+   hunk.head = line
+
    return hunk
 end
 

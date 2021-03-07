@@ -179,6 +179,18 @@ local schema: {string:SchemaElem} = {
     ]]
   },
 
+  _use_internal_diff = {
+    type = 'boolean',
+    default = false,
+    description = [[
+        Experimental
+
+        Use Neovim's built in xdiff library for running diffs.
+
+        This uses LuaJIT's FFI interface.
+    ]]
+  },
+
   debug_mode = {
     type = 'boolean',
     default = false,
