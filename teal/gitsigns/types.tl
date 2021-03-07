@@ -55,6 +55,7 @@ global record Config
     max_file_length: number
     update_debounce: number
     status_formatter: function(StatusObj): string
+    _use_internal_diff: boolean
 end
 
 global enum SignType
