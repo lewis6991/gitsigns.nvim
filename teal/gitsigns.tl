@@ -24,6 +24,8 @@ local gs_hunks = require("gitsigns/hunks")
 local create_patch  = gs_hunks.create_patch
 local process_hunks = gs_hunks.process_hunks
 
+local diff = require('gitsigns.diff')
+
 local gsd = require("gitsigns/debug")
 local dprint = gsd.dprint
 
@@ -119,11 +121,16 @@ local update = async(function(bufnr: number)
   end
 
   local stage = bcache.has_conflicts and 1 or 0
-  await(git.get_staged, bcache.toplevel, bcache.relpath, stage, bcache.staged)
 
   await_main()
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  bcache.hunks = await(git.run_diff, bcache.staged, buftext, config.diff_algorithm) as {Hunk}
+  if config._use_internal_diff then
+    local staged_text = await(git.get_staged_text, bcache.toplevel, bcache.relpath, stage) as {string}
+    bcache.hunks = diff.run_diff(staged_text, buftext, config.diff_algorithm)
+  else
+    await(git.get_staged, bcache.toplevel, bcache.relpath, stage, bcache.staged)
+    bcache.hunks = await(git.run_diff, bcache.staged, buftext, config.diff_algorithm) as {Hunk}
+  end
 
   local status: StatusObj = gs_hunks.get_summary(bcache.hunks)
   status.head = bcache.abbrev_head

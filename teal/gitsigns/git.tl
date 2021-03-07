@@ -73,6 +73,27 @@ function M.get_staged(toplevel: string, relpath: string, stage: number, output: 
   end
 end
 
+function M.get_staged_text(toplevel: string, relpath: string, stage: number): cb_function
+  return function(callback: function({string}))
+    local result = {}
+    run_job {
+      command = 'git',
+      args = {
+        '--no-pager',
+        'show',
+        ':'..tostring(stage)..':'..relpath,
+      },
+      cwd = toplevel,
+      on_stdout = function(_, line: string)
+        table.insert(result, line)
+      end,
+      on_exit = function()
+        callback(result)
+      end
+    }
+  end
+end
+
 function M.run_blame(file: string, toplevel: string, lines: {string}, lnum: number): cb_function
   return function(callback: function({string:string}))
     local results: {string} = {}
