@@ -110,11 +110,17 @@ function M.run_diff(fa: {string}, fb: {string}, diff_algo: string): {Hunk}
     start_a: Long, count_a: Long,
     start_b: Long, count_b: Long
   ): number
-    table.insert(results, create_hunk(
-      tonumber(start_a)+1, tonumber(count_a),
-      tonumber(start_b)+1, tonumber(count_b)
-    ))
+    local ca = tonumber(count_a)
+    local cb = tonumber(count_b)
+    local sa = tonumber(start_a)
+    local sb = tonumber(start_b)
 
+    -- Not fully sure why this offset is needed but xdiff does it too
+    -- (see neovim/src/nvim/xdiff/xutils.c:356,368)
+    if ca > 0 then sa = sa + 1 end
+    if cb > 0 then sb = sb + 1 end
+
+    table.insert(results, create_hunk(sa, ca, sb, cb))
     return 0
   end)
 
@@ -134,17 +140,19 @@ function M.run_diff(fa: {string}, fb: {string}, diff_algo: string): {Hunk}
   hunk_func:free()
 
   for _, hunk in ipairs(results) do
-    hunk.head = ('@@ -%d,%d +%d,%d @@'):format(
-      hunk.removed.start, hunk.removed.count,
-      hunk.added.start  , hunk.added.count
+    local rs, as = hunk.removed.start, hunk.added.start
+    local rc, ac = hunk.removed.count, hunk.added.count
+    hunk.head = ('@@ -%d%s +%d%s @@'):format(
+      rs, rc > 0 and ','..rc or '',
+      as, ac > 0 and ','..ac or ''
     )
-    if hunk.removed.count > 0 then
-      for i = hunk.removed.start, hunk.removed.start+hunk.removed.count-1 do
+    if rc > 0 then
+      for i = rs, rs+rc-1 do
         table.insert(hunk.lines, '-'..(fa[i] or ''))
       end
     end
-    if hunk.added.count > 0 then
-      for i = hunk.added.start, hunk.added.start+hunk.added.count-1 do
+    if ac > 0 then
+      for i = as, as+ac-1 do
         table.insert(hunk.lines, '+'..(fb[i] or ''))
       end
     end
