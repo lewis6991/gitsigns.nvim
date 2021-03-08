@@ -604,10 +604,6 @@ local blame_line = sync(function()
    add_highlight('Label', 0, p1 + p2 + 2, p3 + 2)
 end)
 
-local function dump_cache()
-   print(vim.inspect(cache))
-end
-
 return {
    update = update_debounced,
    stage_hunk = mk_repeatable(stage_hunk),
@@ -622,5 +618,20 @@ return {
    detach_all = detach_all,
    setup = setup,
    text_object = text_object,
-   dump_cache = dump_cache,
+
+
+   dump_cache = function()
+      print(vim.inspect(cache))
+   end,
+
+   debug_messages = function()
+      for _, m in ipairs(gsd.messages) do
+         print(m)
+      end
+      return gsd.messages
+   end,
+
+   clear_debug = function()
+      gsd.messages = {}
+   end,
 }

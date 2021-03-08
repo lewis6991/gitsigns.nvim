@@ -1,5 +1,6 @@
 local M = {
-  debug_mode = false
+  debug_mode = false,
+  messages: {string} = {}
 }
 
 function M.dprint(msg: string, bufnr: number, caller: string)
@@ -7,9 +8,7 @@ function M.dprint(msg: string, bufnr: number, caller: string)
     return
   end
   local name = caller or debug.getinfo(1, 'n').name or ''
-  vim.schedule(function()
-    print(string.format('%s(%s): %s\n', name, bufnr, msg))
-  end)
+  table.insert(M.messages, string.format('%s(%s): %s', name, bufnr, msg))
 end
 
 return M

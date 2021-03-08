@@ -93,10 +93,13 @@ local function match_lines(lines, spec)
       i = i + 1
     end
   end
+  if i < #spec then
+    error(('Did not match pattern \'%s\''):format(spec[i]))
+  end
 end
 
-local function match_messages(spec)
-  local res = split(exec_capture('messages'), '\n')
+local function match_debug_messages(spec)
+  local res = exec_lua("return require'gitsigns'.debug_messages()")
   match_lines(res, spec)
 end
 
@@ -261,7 +264,7 @@ describe('gitsigns', function()
     command_fmt("edit %s/.git/index", pj_root)
     sleep(20)
 
-    match_messages {
+    match_debug_messages {
       'attach(1): Attaching',
       'attach(1): In git dir'
     }
@@ -315,7 +318,7 @@ describe('gitsigns', function()
     command_fmt("edit %s/scratch/dummy_ignored.txt", pj_root)
     sleep(20)
 
-    match_messages {
+    match_debug_messages {
       "attach(1): Attaching",
       "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
       p"Running: git .* ls%-files .*/dummy_ignored.txt",
@@ -333,7 +336,7 @@ describe('gitsigns', function()
     command_fmt("edit %s/scratch/newfile.txt", pj_root)
     sleep(10)
 
-    match_messages {
+    match_debug_messages {
       "attach(1): Attaching",
       "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
       "attach(1): Not a file",
@@ -349,7 +352,7 @@ describe('gitsigns', function()
     command_fmt("edit %s/does/not/exist", pj_root)
     sleep(10)
 
-    match_messages {
+    match_debug_messages {
       "attach(1): Attaching",
       "attach(1): Not a path",
     }
@@ -366,12 +369,11 @@ describe('gitsigns', function()
     system{"rm", pj_root.."/scratch/newfile.txt"}
     command_fmt("edit %s/scratch/newfile.txt", pj_root)
     sleep(100)
-    command("messages clear")
+    exec_lua('require("gitsigns").clear_debug()')
     command("write")
     sleep(20)
 
-    match_messages {
-      p'".*scratch/newfile.txt" %[New] 0L, 0C written',
+    match_debug_messages {
       "attach(1): Attaching",
       "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
       p"Running: git .* ls%-files .*/newfile.txt",
@@ -387,7 +389,7 @@ describe('gitsigns', function()
       {3:+ }^          |
       {6:~           }|
       {6:~           }|
-                  |
+      upda...s: 5 |
     ]]}
 
   end)
@@ -402,14 +404,13 @@ describe('gitsigns', function()
     feed("iline<esc>")
     command("write")
     sleep(20)
-    command("messages clear")
 
     -- screen:snapshot_util()
     screen:expect{grid=[[
       {3:+ }lin^e      |
       {6:~           }|
       {6:~           }|
-                  |
+      <5C written |
     ]]}
 
     feed('mhs') -- Stage the file (add file to index)
@@ -419,7 +420,7 @@ describe('gitsigns', function()
       lin^e        |
       {6:~           }|
       {6:~           }|
-                  |
+      <5C written |
     ]]}
 
   end)
@@ -429,7 +430,7 @@ describe('gitsigns', function()
 
     command("copen")
 
-    match_messages {
+    match_debug_messages {
       "attach(2): Attaching",
       "attach(2): Non-normal buffer",
     }
@@ -453,7 +454,7 @@ describe('gitsigns', function()
       {3:+ }EDI^T      |
       {6:~           }|
       {6:~           }|
-                  |
+      <5C written |
     ]]}
 
     -- Stage
@@ -463,7 +464,7 @@ describe('gitsigns', function()
       EDI^T        |
       {6:~           }|
       {6:~           }|
-                  |
+      <5C written |
     ]]}
 
     -- -- Reset
@@ -473,7 +474,7 @@ describe('gitsigns', function()
       {3:+ }EDI^T      |
       {6:~           }|
       {6:~           }|
-                  |
+      <5C written |
     ]]}
 
   end)
