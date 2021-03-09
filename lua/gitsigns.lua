@@ -535,8 +535,15 @@ local function setup(cfg)
 
 
 
+
+
+
+
+
+
+
    vim.cmd('autocmd BufRead,BufNewFile,BufWritePost ' ..
-   '* lua require("gitsigns").attach()')
+   '* lua vim.schedule(require("gitsigns").attach)')
 
    vim.cmd('autocmd VimLeavePre * lua require("gitsigns").detach_all()')
 end
