@@ -535,8 +535,15 @@ local function setup(cfg: Config)
 
   -- This seems to be triggered twice on the first buffer so we have throttled
   -- the attach function with throttle_leading
+  --
+  -- Fix #80: we need to run attach() on the main thread. Not too sure on the
+  -- specifics, but the issue occurs when a buffer is unloaded during the
+  -- execution of attach(), this can happen because it is an async function
+  -- which suspends itself when it needs to get back onto the main thread in
+  -- order to call an API function.
+  -- TODO: Figure how to test this.
   vim.cmd('autocmd BufRead,BufNewFile,BufWritePost '..
-    '* lua require("gitsigns").attach()')
+    '* lua vim.schedule(require("gitsigns").attach)')
 
   vim.cmd('autocmd VimLeavePre * lua require("gitsigns").detach_all()')
 end
