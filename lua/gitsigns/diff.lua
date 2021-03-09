@@ -56,7 +56,7 @@ local MMBuffer = {}
 
 
 local function mmbuffer(lines)
-   local text = table.concat(lines, '\n') .. '\n'
+   local text = vim.tbl_isempty(lines) and '' or table.concat(lines, '\n') .. '\n'
    return ffi.new('mmbuffer_t', text, #text)
 end
 
