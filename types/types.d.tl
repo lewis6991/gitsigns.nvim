@@ -60,6 +60,7 @@ local record api
   nvim_del_current_line: function()
   nvim_del_keymap: function(string, string)
   nvim_del_var: function(string)
+  nvim_echo: function({{string}}, boolean, {string:any})
   nvim_err_write: function(string)
   nvim_err_writeln: function(string)
   nvim_eval: function(string): any

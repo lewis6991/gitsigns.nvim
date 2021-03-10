@@ -678,7 +678,7 @@ return {
 
   debug_messages = function(): {string}
     for _, m in ipairs(gsd.messages) do
-      print(m)
+      api.nvim_echo({{m}}, false, {})
     end
     return gsd.messages
   end,
