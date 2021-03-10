@@ -399,10 +399,9 @@ local function index_update_handler(cbuf)
    return sync(function()
       dprint('Index update', cbuf, 'watcher_cb')
       local bcache = get_cache(cbuf)
-      local file_dir = dirname(bcache.file)
 
       local _, _, abbrev_head0 = 
-      await(git.get_repo_info, file_dir)
+      await(git.get_repo_info, bcache.toplevel)
 
       Status:update_head(cbuf, abbrev_head0)
       bcache.abbrev_head = abbrev_head0
