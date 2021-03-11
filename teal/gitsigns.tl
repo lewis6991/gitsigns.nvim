@@ -184,16 +184,6 @@ local watch_index = async(function(bufnr: number, gitdir: string, on_change: fun
   return w
 end)
 
-local add_to_index = async(function(bcache: CacheEntry)
-  local relpath, toplevel = bcache.relpath, bcache.toplevel
-
-  await(git.add_file, toplevel, relpath)
-
-  -- Update the cache
-  _, bcache.object_name, bcache.mode_bits, bcache.has_conflicts =
-    await(git.file_info, relpath, toplevel) as (string, string, string, boolean)
-end)
-
 local stage_hunk = sync(function()
   local bufnr = current_buf()
 
@@ -212,9 +202,19 @@ local stage_hunk = sync(function()
     return
   end
 
-  if not bcache.object_name then
-    -- If there is no object_name then it is not yet in the index so add it
-    await(add_to_index, bcache)
+  if not bcache.object_name or bcache.has_conflicts then
+    if not bcache.object_name then
+      -- If there is no object_name then it is not yet in the index so add it
+      await(git.add_file, bcache.toplevel, bcache.relpath)
+    else
+      -- Update the index with the common ancestor (stage 1) which is what bcache
+      -- stores
+      await(git.update_index, bcache.toplevel, bcache.mode_bits, bcache.object_name, bcache.relpath)
+    end
+
+    -- Update the cache
+    _, bcache.object_name, bcache.mode_bits, bcache.has_conflicts =
+      await(git.file_info, bcache.relpath, bcache.toplevel) as (string, string, string, boolean)
   end
 
   local lines = create_patch(bcache.relpath, hunk, bcache.mode_bits)

@@ -220,6 +220,30 @@ function M.add_file(toplevel, file)
    end
 end
 
+function M.update_index(toplevel, mode_bits, object_name, file)
+   return function(callback)
+      local status = true
+      local err = {}
+      local cacheinfo = table.concat({ mode_bits, object_name, file }, ',')
+      run_job({
+         command = 'git',
+         args = { 'update-index', '--add', '--cacheinfo', cacheinfo },
+         cwd = toplevel,
+         on_stderr = function(_, line)
+            status = false
+            table.insert(err, line)
+         end,
+         on_exit = function()
+            if not status then
+               local s = table.concat(err, '\n')
+               error('Cannot update index. Command stderr:\n\n' .. s)
+            end
+            callback()
+         end,
+      })
+   end
+end
+
 local function write_to_file(path, text)
    local f = io.open(path, 'wb')
    for _, l in ipairs(text) do
