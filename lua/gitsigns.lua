@@ -184,16 +184,6 @@ local watch_index = async(function(bufnr, gitdir, on_change)
    return w
 end)
 
-local add_to_index = async(function(bcache)
-   local relpath, toplevel = bcache.relpath, bcache.toplevel
-
-   await(git.add_file, toplevel, relpath)
-
-
-   _, bcache.object_name, bcache.mode_bits, bcache.has_conflicts = 
-   await(git.file_info, relpath, toplevel)
-end)
-
 local stage_hunk = sync(function()
    local bufnr = current_buf()
 
@@ -212,9 +202,19 @@ local stage_hunk = sync(function()
       return
    end
 
-   if not bcache.object_name then
+   if not bcache.object_name or bcache.has_conflicts then
+      if not bcache.object_name then
 
-      await(add_to_index, bcache)
+         await(git.add_file, bcache.toplevel, bcache.relpath)
+      else
+
+
+         await(git.update_index, bcache.toplevel, bcache.mode_bits, bcache.object_name, bcache.relpath)
+      end
+
+
+      _, bcache.object_name, bcache.mode_bits, bcache.has_conflicts = 
+      await(git.file_info, bcache.relpath, bcache.toplevel)
    end
 
    local lines = create_patch(bcache.relpath, hunk, bcache.mode_bits)
