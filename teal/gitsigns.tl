@@ -236,15 +236,18 @@ local stage_hunk = sync(function()
   end
 end)
 
-local function reset_hunk()
-  local bufnr = current_buf()
+local function reset_hunk(bufnr: number, hunk: Hunk)
+  bufnr = bufnr or current_buf()
 
-  local bcache = get_cache_opt(bufnr)
-  if not bcache then
-    return
+  if not hunk then
+    local bcache = get_cache_opt(bufnr)
+    if not bcache then
+      return
+    end
+
+    hunk = get_cursor_hunk(bufnr, bcache.hunks)
   end
 
-  local hunk = get_cursor_hunk(bufnr, bcache.hunks)
   if not hunk then
     return
   end
@@ -262,6 +265,19 @@ local function reset_hunk()
     lend = hunk.start - 1 + length
   end
   api.nvim_buf_set_lines(bufnr, lstart, lend, false, gs_hunks.extract_removed(hunk))
+end
+
+local function reset_buffer()
+  local bufnr = current_buf()
+
+  local bcache = get_cache_opt(bufnr)
+  if not bcache then
+    return
+  end
+
+  for _, hunk in ipairs(bcache.hunks) do
+    reset_hunk(bufnr, hunk)
+  end
 end
 
 local undo_stage_hunk = sync(function()
@@ -665,6 +681,7 @@ return {
   prev_hunk       = prev_hunk,
   preview_hunk    = preview_hunk,
   blame_line      = blame_line,
+  reset_buffer    = reset_buffer,
   attach          = attach,
   detach          = detach,
   detach_all      = detach_all,
