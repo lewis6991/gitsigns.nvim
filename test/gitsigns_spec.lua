@@ -136,7 +136,6 @@ local function match_lines2(lines, spec)
     for j = i, #spec do
       table.insert(unmatched, spec[j].text or spec[j])
     end
-    print(require'inspect'(unmatched))
     error(('Did not match patterns:\n    - %s'):format(table.concat(unmatched, '\n    - ')))
   end
 end
@@ -203,6 +202,7 @@ local function testsuite(variant, advanced_features)
         [4] = {background = Screen.colors.LightCyan1, bold = true, foreground = Screen.colors.Blue1};
         [5] = {foreground = Screen.colors.Brown};
         [6] = {foreground = Screen.colors.Blue1, bold = true};
+        [7] = {bold = true}
       })
 
       -- Make gitisigns available
@@ -221,7 +221,7 @@ local function testsuite(variant, advanced_features)
 
     it('load a file', function()
       exec_lua('gs.setup(...)', test_config)
-      command_fmt("edit %s", test_file)
+      edit(test_file)
       sleep(50)
 
       local res = split(exec_capture('nmap <buffer>'), '\n')
@@ -669,6 +669,64 @@ local function testsuite(variant, advanced_features)
 
       assert(not buf_var_exists('gitsigns_status'),
         'gitsigns_status should not be defined')
+    end)
+
+    it('can stages file with merge conflicts', function()
+      screen:try_resize(40, 8)
+      exec_lua('gs.setup(...)', test_config)
+      command("set signcolumn=yes")
+
+      -- Edit a file and commit it on main branch
+      edit(test_file)
+      feed('iedit')
+      sleep(20)
+      command("write")
+      sleep(20)
+      command("bdelete")
+      sleep(20)
+      git{'add', test_file}
+      git{"commit", "-m", "commit on main"}
+
+      -- Create a branch, remove last commit, edit file again
+      git{'checkout', '-B', 'abranch'}
+      git{'reset', '--hard', 'HEAD~1'}
+      edit(test_file)
+      feed('idiff')
+      command("write")
+      command("bdelete")
+      git{'add', test_file}
+      git{"commit", "-m", "commit on branch"}
+      sleep(20)
+
+      git{"rebase", "master"}
+      sleep(20)
+
+      -- test_file should have a conflict
+      edit(test_file)
+      screen:expect{grid=[[
+        {2:~ }^<<<<<<< HEAD                          |
+        {3:+ }editThis                              |
+        {3:+ }=======                               |
+        {3:+ }idiffThis                             |
+        {3:+ }>>>>>>> {MATCH:.......} (commit on branch)    |
+        {1:  }is                                    |
+        {1:  }a                                     |
+        {7:-- INSERT --}                            |
+      ]]}
+
+      exec_lua('gs.stage_hunk()')
+
+      screen:expect{grid=[[
+        {1:  }^<<<<<<< HEAD                          |
+        {1:  }editThis                              |
+        {1:  }=======                               |
+        {1:  }idiffThis                             |
+        {1:  }>>>>>>> {MATCH:.......} (commit on branch)    |
+        {1:  }is                                    |
+        {1:  }a                                     |
+        {7:-- INSERT --}                            |
+      ]]}
+
     end)
 
   end)
