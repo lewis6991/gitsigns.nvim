@@ -13,29 +13,9 @@ local split         = helpers.split
 local get_buf_var   = helpers.curbufmeths.get_var
 local system        = helpers.funcs.system
 
-local pj_root = os.getenv('PJ_ROOT')
-
-local function setup_git()
-  -- Always force color to test settings don't interfere with gitsigns systems
-  -- commands (addresses #23)
-  for k, v in ipairs({
-    branch      = 'always',
-    ui          = 'always',
-    diff        = 'always',
-    interactive = 'always',
-    status      = 'always',
-    grep        = 'always',
-    pager       = 'true',
-    decorate    = 'always',
-    showbranch  = 'always'
-  }) do
-    os.execute(string.format('git config color.%s %s', k, v))
-  end
-end
-
 local function check_status(status)
-  eq(get_buf_var('gitsigns_head'), status.head)
-  eq(get_buf_var("gitsigns_status_dict"), status)
+  eq(status.head, get_buf_var('gitsigns_head'))
+  eq(status, get_buf_var("gitsigns_status_dict"))
 end
 
 local test_config = {
@@ -50,22 +30,69 @@ local test_config = {
   keymaps = {
     noremap = true,
     buffer = true,
-
-    -- ['n ]c'] = { expr = true, "&diff ? ']c' : '<cmd>lua require\"gitsigns\".next_hunk()<CR>'"},
-    -- ['n [c'] = { expr = true, "&diff ? '[c' : '<cmd>lua require\"gitsigns\".prev_hunk()<CR>'"},
-
     ['n mhs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
     ['n mhu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
     ['n mhr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
     ['n mhp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
   },
-  update_debounce = 10
+  update_debounce = 5
 }
 
+local scratch = os.getenv('PJ_ROOT')..'/scratch'
+local test_file = scratch..'/dummy.txt'
+local newfile = scratch.."/newfile.txt"
+
+local test_file_text = {
+  'This', 'is', 'a', 'file', 'used', 'for', 'testing', 'gitsigns.', 'The',
+  'content', 'doesn\'t', 'matter,', 'it', 'just', 'needs', 'to', 'be', 'static.'
+}
+
+local function write_to_file(path, text)
+  local f = io.open(path, 'wb')
+  for _, l in ipairs(text) do
+    f:write(l)
+    f:write('\n')
+  end
+  f:close()
+end
+
+local function git(args)
+  system{"git", "-C", scratch, unpack(args)}
+end
+
 local function cleanup()
-  system{"git", "reset"   , "--"  , "scratch"}
-  system{"git", "checkout", "--"  , "scratch"}
-  system{"git", "clean"   , "-xfd", "scratch"}
+  system{"rm", "-rf", scratch}
+end
+
+local function setup_git()
+  git{"init"}
+
+  -- Always force color to test settings don't interfere with gitsigns systems
+  -- commands (addresses #23)
+  git{'config', 'color.branch'     , 'always'}
+  git{'config', 'color.ui'         , 'always'}
+  git{'config', 'color.diff'       , 'always'}
+  git{'config', 'color.interactive', 'always'}
+  git{'config', 'color.status'     , 'always'}
+  git{'config', 'color.grep'       , 'always'}
+  git{'config', 'color.pager'      , 'true'}
+  git{'config', 'color.decorate'   , 'always'}
+  git{'config', 'color.showbranch' , 'always'}
+
+  git{'config', 'user.email', 'tester@com.com'}
+  git{'config', 'user.name' , 'tester'}
+
+  git{'config', 'init.defaultBranch', 'master'}
+end
+
+local function init()
+  cleanup()
+  system{"mkdir", scratch}
+  setup_git()
+  system{"touch", test_file}
+  write_to_file(test_file, test_file_text)
+  git{"add", test_file}
+  git{"commit", "-m", "init commit"}
 end
 
 local function command_fmt(str, ...)
@@ -108,17 +135,14 @@ local function p(str)
 end
 
 describe('gitsigns', function()
-  local screen
-  local branch
 
-  setup_git()
+  local screen
 
   before_each(function()
     clear()
+    init()
     screen = Screen.new(20, 17)
     screen:attach()
-    command('cd '..pj_root)
-    branch = helpers.trim(system{"git", "rev-parse", "--abbrev-ref", "HEAD"})
 
     screen:set_default_attr_ids({
       [1] = {foreground = Screen.colors.DarkBlue, background = Screen.colors.WebGray};
@@ -129,22 +153,24 @@ describe('gitsigns', function()
       [6] = {foreground = Screen.colors.Blue1, bold = true};
     })
 
+    -- Make gitisigns available
     exec_lua('package.path = ...', package.path)
+    exec_lua('gs = require("gitsigns")')
   end)
 
   after_each(function()
-    screen:detach()
     cleanup()
+    screen:detach()
   end)
 
   it('setup', function()
-    exec_lua('require("gitsigns").setup()')
+    exec_lua('gs.setup()')
   end)
 
   it('load a file', function()
-    exec_lua('require("gitsigns").setup(...)', test_config)
-    command_fmt("edit %s/scratch/dummy.txt", pj_root)
-    sleep(20)
+    exec_lua('gs.setup(...)', test_config)
+    command_fmt("edit %s", test_file)
+    sleep(50)
 
     local res = split(exec_capture('nmap <buffer>'), '\n')
     table.sort(res)
@@ -158,9 +184,13 @@ describe('gitsigns', function()
     })
   end)
 
+  local function edit(path)
+    command_fmt("edit %s", path)
+  end
+
   it('basic signs', function()
-    exec_lua('require("gitsigns").setup(...)', test_config)
-    command_fmt("edit %s/scratch/dummy.txt", pj_root)
+    exec_lua('gs.setup(...)', test_config)
+    edit(test_file)
     command("set signcolumn=yes")
 
     feed("dd") -- Top delete
@@ -199,8 +229,8 @@ describe('gitsigns', function()
 
   it('actions', function()
     screen:try_resize(20,6)
-    exec_lua('require("gitsigns").setup(...)', test_config)
-    command_fmt("edit %s/scratch/dummy.txt", pj_root)
+    exec_lua('gs.setup(...)', test_config)
+    edit(test_file)
     command("set signcolumn=yes")
 
     feed("jjj")
@@ -260,8 +290,8 @@ describe('gitsigns', function()
   end)
 
   it('does not attach inside .git', function()
-    exec_lua('require("gitsigns").setup(...)', test_config)
-    command_fmt("edit %s/.git/index", pj_root)
+    exec_lua('gs.setup(...)', test_config)
+    edit(scratch..'/.git/index')
     sleep(20)
 
     match_debug_messages {
@@ -273,8 +303,8 @@ describe('gitsigns', function()
   it('numhl works', function()
     local cfg = helpers.deepcopy(test_config)
     cfg.numhl = true
-    exec_lua('require("gitsigns").setup(...)', cfg)
-    command_fmt("edit %s/scratch/dummy.txt", pj_root)
+    exec_lua('gs.setup(...)', cfg)
+    edit(test_file)
     command("set signcolumn=no")
     command("set number")
 
@@ -286,8 +316,9 @@ describe('gitsigns', function()
     feed("3j")
     feed("dd") -- Delete
     feed("j")
+    sleep(40)
     feed("ddx") -- Change delete
-    sleep(20)
+    sleep(100)
 
     -- screen:snapshot_util()
     screen:expect{grid=[[
@@ -312,10 +343,14 @@ describe('gitsigns', function()
   end)
 
   it('doesn\'t attach to ignored files', function()
-    exec_lua('require("gitsigns").setup(...)', test_config)
+    exec_lua('gs.setup(...)', test_config)
 
-    system{"touch", pj_root.."/scratch/dummy_ignored.txt"}
-    command_fmt("edit %s/scratch/dummy_ignored.txt", pj_root)
+    write_to_file(scratch..'/.gitignore', {'dummy_ignored.txt'})
+
+    local ignored_file = scratch.."/dummy_ignored.txt"
+
+    system{"touch", ignored_file}
+    edit(ignored_file)
     sleep(20)
 
     match_debug_messages {
@@ -325,15 +360,12 @@ describe('gitsigns', function()
       "attach(1): Cannot resolve file in repo",
     }
 
-    check_status {head=branch}
+    check_status {head='master'}
   end)
 
   it('doesn\'t attach to non-existent files', function()
-    exec_lua('require("gitsigns").setup(...)', test_config)
-
-    system{"rm", pj_root.."/scratch/newfile.txt"}
-
-    command_fmt("edit %s/scratch/newfile.txt", pj_root)
+    exec_lua('gs.setup(...)', test_config)
+    edit(newfile)
     sleep(10)
 
     match_debug_messages {
@@ -342,14 +374,13 @@ describe('gitsigns', function()
       "attach(1): Not a file",
     }
 
-    check_status {head=branch}
+    check_status {head='master'}
 
   end)
 
   it('doesn\'t attach to non-existent files with non-existent sub-dirs', function()
-    exec_lua('require("gitsigns").setup(...)', test_config)
-
-    command_fmt("edit %s/does/not/exist", pj_root)
+    exec_lua('gs.setup(...)', test_config)
+    edit(scratch..'/does/not/exist')
     sleep(10)
 
     match_debug_messages {
@@ -358,32 +389,30 @@ describe('gitsigns', function()
     }
 
     helpers.pcall_err(get_buf_var, 'gitsigns_head')
-    helpers.pcall_err(get_buf_var, "gitsigns_status_dict")
+    helpers.pcall_err(get_buf_var, 'gitsigns_status_dict')
 
   end)
 
   it('attaches to newly created files', function()
     screen:try_resize(4, 4)
-    exec_lua('require("gitsigns").setup(...)', test_config)
-
-    system{"rm", pj_root.."/scratch/newfile.txt"}
-    command_fmt("edit %s/scratch/newfile.txt", pj_root)
+    exec_lua('gs.setup(...)', test_config)
+    edit(newfile)
     sleep(100)
-    exec_lua('require("gitsigns").clear_debug()')
+    exec_lua('gs.clear_debug()')
     command("write")
-    sleep(20)
+    sleep(40)
 
     match_debug_messages {
       "attach(1): Attaching",
       "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
       p"Running: git .* ls%-files .*/newfile.txt",
       "watch_index(1): Watching index",
-      "dprint(nil): Running: git --no-pager show :0:scratch/newfile.txt",
+      "dprint(nil): Running: git --no-pager show :0:newfile.txt",
       p'Running: git .* diff .* /tmp/lua_.* /tmp/lua_.*',
       "update(1): updates: 1, jobs: 5"
     }
 
-    check_status {head=branch, added=1, changed=0, removed=0}
+    check_status {head='master', added=1, changed=0, removed=0}
 
     screen:expect{grid=[[
       {3:+ }^          |
@@ -396,11 +425,9 @@ describe('gitsigns', function()
 
   it('can add untracked files to the index', function()
     screen:try_resize(10, 4)
-    exec_lua('require("gitsigns").setup(...)', test_config)
+    exec_lua('gs.setup(...)', test_config)
 
-    system{"git", "rm", "-f", pj_root.."/scratch/newfile2.txt"}
-
-    command_fmt("edit %s/scratch/newfile2.txt", pj_root)
+    edit(newfile)
     feed("iline<esc>")
     command("write")
     sleep(20)
@@ -426,26 +453,19 @@ describe('gitsigns', function()
   end)
 
   it('run copen', function()
-    exec_lua('require("gitsigns").setup(...)', test_config)
-
+    exec_lua('gs.setup(...)', test_config)
     command("copen")
-
     match_debug_messages {
       "attach(2): Attaching",
       "attach(2): Non-normal buffer",
     }
-
   end)
 
   it('tracks files in new repos', function()
     screen:try_resize(10, 4)
-    exec_lua('require("gitsigns").setup(...)', test_config)
-    local d = '/tmp/sample_proj'
-    system{"rm", "-rf", d}
-    system{"mkdir", "-p", d}
-    system{"git", "-C", d, "init"}
-    system{"touch", d.."/a"}
-    command("edit "..d.."/a")
+    exec_lua('gs.setup(...)', test_config)
+    system{"touch", newfile}
+    edit(newfile)
 
     feed("iEDIT<esc>")
     command("write")
@@ -458,7 +478,7 @@ describe('gitsigns', function()
     ]]}
 
     -- Stage
-    system{"git", "-C", d, "add", "a"}
+    git{"add", newfile}
 
     screen:expect{grid=[[
       EDI^T        |
@@ -468,7 +488,7 @@ describe('gitsigns', function()
     ]]}
 
     -- -- Reset
-    system{"git", "-C", d, "reset"}
+    git{"reset"}
 
     screen:expect{grid=[[
       {3:+ }EDI^T      |
@@ -480,8 +500,8 @@ describe('gitsigns', function()
   end)
 
   it('can detach from buffers', function()
-    exec_lua('require("gitsigns").setup(...)', test_config)
-    command_fmt("edit %s/scratch/dummy.txt", pj_root)
+    exec_lua('gs.setup(...)', test_config)
+    edit(test_file)
     command("set signcolumn=yes")
 
     feed("dd") -- Top delete
@@ -515,7 +535,7 @@ describe('gitsigns', function()
                           |
     ]]}
 
-    exec_lua('require("gitsigns").detach()')
+    exec_lua('gs.detach()')
 
     screen:expect{grid=[[
       {1:  }is                |
