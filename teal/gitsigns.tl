@@ -10,6 +10,7 @@ local throttle_leading  = gs_debounce.throttle_leading
 local debounce_trailing = gs_debounce.debounce_trailing
 
 local gs_popup = require('gitsigns/popup')
+local gs_hl = require('gitsigns/highlight')
 
 local sign_define    = require('gitsigns/signs').sign_define
 local process_config = require('gitsigns/config').process
@@ -555,14 +556,12 @@ local function setup(cfg: Config)
   for t, sign_name in pairs(sign_map) do
     local cs = config.signs[t]
 
-    local enum HlTy 'numhl' 'linehl' end
+    gs_hl.setup_highlight(cs.hl)
 
-    for _, hl in ipairs({'numhl', 'linehl'} as {HlTy}) do
-      if config[hl] then
-        local hl_exists, _ = pcall(api.nvim_get_hl_by_name, cs[hl], false)
-        if not hl_exists then
-          vim.cmd(('highlight link %s %s'):format(cs[hl], cs.hl))
-        end
+    local enum HlTy 'numhl' 'linehl' end
+    for _, hlty in ipairs({'numhl', 'linehl'} as {HlTy}) do
+      if config[hlty] then
+        gs_hl.setup_other_highlight(cs[hlty], cs.hl)
       end
     end
 
