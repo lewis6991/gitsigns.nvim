@@ -12,11 +12,11 @@ local schema: {string:SchemaElem} = {
     type = 'table',
     deep_extend = true,
     default = [[{
-      add          = {hl = 'DiffAdd'   , text = '│', numhl='GitSignsAddNr'   , linehl='GitSignsAddLr'    },
-      change       = {hl = 'DiffChange', text = '│', numhl='GitSignsChangeNr', linehl='GitSignsChangeLr' },
-      delete       = {hl = 'DiffDelete', text = '_', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLr' },
-      topdelete    = {hl = 'DiffDelete', text = '‾', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLr' },
-      changedelete = {hl = 'DiffChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLr' },
+      add          = {hl = 'GitSignsAdd'   , text = '│', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
+      change       = {hl = 'GitSignsChange', text = '│', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
+      delete       = {hl = 'GitSignsDelete', text = '_', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
+      topdelete    = {hl = 'GitSignsDelete', text = '‾', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
+      changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
     }]],
     description = [[
         Configuration for signs:
@@ -28,6 +28,18 @@ local schema: {string:SchemaElem} = {
             (see |gitsigns-config.linehl|).
           • `show_count` to enable showing count of hunk, e.g. number of deleted
             lines.
+
+        Note if `hl`, `numhl` or `linehl` use a `GitSigns*` highlight and it is
+        not defined, it will be automatically derived by searching for other
+        defined highlights in the following order:
+          • `GitGutter*`
+          • `Signify*`
+          • `Diff*`
+
+        For example if `signs.add.hl = GitSignsAdd` and `GitSignsAdd` is not
+        defined but `GitGutterAdd` is defined, then `GitSignsAdd` will be linked
+        to `GitGutterAdd`.
+
     ]]
   },
 
