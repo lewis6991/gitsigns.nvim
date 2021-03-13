@@ -270,6 +270,8 @@ global record vim
 
   tbl_isempty: function(table): boolean
 
+  tbl_contains: function(table, any): boolean
+
   record InspectOptions
     depth: number
     newline: string

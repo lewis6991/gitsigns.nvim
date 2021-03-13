@@ -73,13 +73,14 @@ the default settings:
 ```lua
 require('gitsigns').setup {
   signs = {
-    add          = {hl = 'DiffAdd'   , text = '│', numhl='GitSignsAddNr'},
-    change       = {hl = 'DiffChange', text = '│', numhl='GitSignsChangeNr'},
-    delete       = {hl = 'DiffDelete', text = '_', numhl='GitSignsDeleteNr'},
-    topdelete    = {hl = 'DiffDelete', text = '‾', numhl='GitSignsDeleteNr'},
-    changedelete = {hl = 'DiffChange', text = '~', numhl='GitSignsChangeNr'},
+    add          = {hl = 'GitSignsAdd'   , text = '│', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn},
+    change       = {hl = 'GitSignsChange', text = '│', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn},
+    delete       = {hl = 'GitSignsDelete', text = '_', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn},
+    topdelete    = {hl = 'GitSignsDelete', text = '‾', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn},
+    changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn},
   },
   numhl = false,
+  linehl = false,
   keymaps = {
     -- Default keymap options
     noremap = true,
@@ -102,7 +103,9 @@ require('gitsigns').setup {
     interval = 1000
   },
   sign_priority = 6,
+  update_debounce = 200,
   status_formatter = nil, -- Use default
+  use_decoration_api = false
 }
 ```
 
@@ -121,24 +124,6 @@ set statusline+=%{get(b:,'gitsigns_status','')}
 ```
 
 For the current branch use the variable `b:gitsigns_head`.
-
-## FAQ
-
-#### The default signs set the background and not the foreground. How do I get my signs to look like the GIF?
-By default Gitsigns uses the highlight groups `DiffAdd`, `DiffChange` and `DiffDelete` for signs as these are the most appropriate highlights that are builtin to Neovim. In many colorschemes, these default highlights set the background but not the foreground. To make the signs looks more like the GIF then you need to set the highlights appropriately. Many colorschemes have specific highlights for Gitgutter (`GitGutterAdd`, `GitGutterChange` and `GitGutterDelete`), so you may use these highlights instead if you have them.
-
-The following configuration will make Gitsigns look like GitGutters defaults:
-```lua
-require('gitsigns').setup {
-  signs = {
-    add          = {hl = 'GitGutterAdd'   , text = '+'},
-    change       = {hl = 'GitGutterChange', text = '~'},
-    delete       = {hl = 'GitGutterDelete', text = '_'},
-    topdelete    = {hl = 'GitGutterDelete', text = '‾'},
-    changedelete = {hl = 'GitGutterChange', text = '~'},
-  }
-}
-```
 
 ## TODO
 

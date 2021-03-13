@@ -18,7 +18,6 @@ local function check_status(status)
   eq(status, get_buf_var("gitsigns_status_dict"))
 end
 
-
 local scratch = os.getenv('PJ_ROOT')..'/scratch'
 local test_file = scratch..'/dummy.txt'
 local newfile = scratch.."/newfile.txt"
@@ -80,6 +79,10 @@ local function command_fmt(str, ...)
   command(str:format(...))
 end
 
+local function edit(path)
+  command_fmt("edit %s", path)
+end
+
 local function buf_var_exists(name)
   return pcall(get_buf_var, name)
 end
@@ -106,24 +109,69 @@ local function match_lines(lines, spec)
   end
 end
 
+local function match_lines2(lines, spec)
+  local i = 1
+  for _, line in ipairs(lines) do
+    if line ~= '' then
+      local s = spec[i]
+      if s then
+        if s.pattern then
+          if string.match(line, s.text) then
+            i = i + 1
+          end
+        elseif s.next then
+          eq(s.text, line)
+          i = i + 1
+        else
+          if s == line then
+            i = i + 1
+          end
+        end
+      end
+    end
+  end
+
+  if i < #spec + 1 then
+    local unmatched = {}
+    for j = i, #spec do
+      table.insert(unmatched, spec[j].text or spec[j])
+    end
+    print(require'inspect'(unmatched))
+    error(('Did not match patterns:\n    - %s'):format(table.concat(unmatched, '\n    - ')))
+  end
+end
+
+local function debug_messages()
+  return exec_lua("return require'gitsigns'.debug_messages()")
+end
+
 local function match_debug_messages(spec)
-  local res = exec_lua("return require'gitsigns'.debug_messages()")
-  match_lines(res, spec)
+  match_lines(debug_messages(), spec)
+end
+
+local function match_dag(lines, spec)
+  for _, s in ipairs(spec) do
+    match_lines2(lines, {s})
+  end
 end
 
 local function p(str)
   return {text=str, pattern=true}
 end
 
+local function n(str)
+  return {text=str, next=true}
+end
+
 local function testsuite(variant, advanced_features)
   local test_config = {
     debug_mode = true,
     signs = {
-      add          = {text = '+'},
-      delete       = {text = '_'},
-      change       = {text = '~'},
-      topdelete    = {text = '^'},
-      changedelete = {text = '%'},
+      add          = {hl = 'DiffAdd'   , text = '+'},
+      delete       = {hl = 'DiffDelete', text = '_'},
+      change       = {hl = 'DiffChange', text = '~'},
+      topdelete    = {hl = 'DiffDelete', text = '^'},
+      changedelete = {hl = 'DiffChange', text = '%'},
     },
     keymaps = {
       noremap = true,
@@ -188,9 +236,47 @@ local function testsuite(variant, advanced_features)
       })
     end)
 
-    local function edit(path)
-      command_fmt("edit %s", path)
-    end
+    it('sets up highlights', function()
+      command("set termguicolors")
+
+      local test_config2 = helpers.deepcopy(test_config)
+      test_config2.signs.add.hl = nil
+      test_config2.signs.change.hl = nil
+      test_config2.signs.delete.hl = nil
+      test_config2.signs.changedelete.hl = nil
+      test_config2.signs.topdelete.hl = nil
+      test_config2.numhl = true
+      test_config2.linehl = true
+
+      exec_lua('gs.setup(...)', test_config2)
+
+      local d = debug_messages()
+
+
+      match_dag(d, {
+        p'Deriving GitSignsChangeNr from GitSignsChange',
+        p'Deriving GitSignsChangeLn from GitSignsChange',
+        p'Deriving GitSignsDelete from DiffDelete',
+        p'Deriving GitSignsDeleteNr from GitSignsDelete',
+        p'Deriving GitSignsDeleteLn from GitSignsDelete',
+        p'Deriving GitSignsAdd from DiffAdd',
+        p'Deriving GitSignsAddNr from GitSignsAdd',
+        p'Deriving GitSignsAddLn from GitSignsAdd',
+        p'Deriving GitSignsDeleteNr from GitSignsDelete',
+        p'Deriving GitSignsDeleteLn from GitSignsDelete',
+        p'Deriving GitSignsChangeNr from GitSignsChange',
+        p'Deriving GitSignsChangeLn from GitSignsChange'
+      })
+
+      eq('GitSignsChange xxx gui=reverse guibg=#ffbbff',
+        exec_capture('hi GitSignsChange'))
+
+      eq('GitSignsDelete xxx gui=reverse guifg=#0000ff guibg=#e0ffff',
+        exec_capture('hi GitSignsDelete'))
+
+      eq('GitSignsAdd    xxx gui=reverse guibg=#add8e6',
+        exec_capture('hi GitSignsAdd'))
+    end)
 
     it('basic signs', function()
       exec_lua('gs.setup(...)', test_config)
