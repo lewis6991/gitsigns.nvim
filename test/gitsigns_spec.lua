@@ -181,7 +181,7 @@ local function testsuite(variant, advanced_features)
       ['n mhp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
     },
     update_debounce = 5,
-    _use_internal_diff = advanced_features,
+    use_internal_diff = advanced_features,
     use_decoration_api = advanced_features
   }
 
@@ -703,6 +703,7 @@ local function testsuite(variant, advanced_features)
 
       -- test_file should have a conflict
       edit(test_file)
+      sleep(50)
       screen:expect{grid=[[
         {2:~ }^<<<<<<< HEAD                          |
         {3:+ }editThis                              |

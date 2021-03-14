@@ -186,18 +186,19 @@ local schema: {string:SchemaElem} = {
 
   update_debounce = {
     type = 'number',
-    default = 200,
+    default = 100,
     description = [[
       Debounce time for updates (in milliseconds).
     ]]
   },
 
-  _use_internal_diff = {
+  use_internal_diff = {
     type = 'boolean',
-    default = false,
+    default = [[function()
+      return jit ~= nil
+    end]],
+    default_help = "true if luajit is present",
     description = [[
-        Experimental
-
         Use Neovim's built in xdiff library for running diffs.
 
         This uses LuaJIT's FFI interface.
@@ -206,10 +207,8 @@ local schema: {string:SchemaElem} = {
 
   use_decoration_api = {
     type = 'boolean',
-    default = false,
+    default = true,
     description = [[
-        Experimental
-
         Use Neovim's decoration API to apply signs. This should improve
         performance on large files since signs will only be applied to drawn
         lines as opposed to all lines in the buffer.

@@ -287,14 +287,19 @@ max_file_length                              *gitsigns-config-max_file_length*
       Max file length to attach to.
 
 update_debounce                              *gitsigns-config-update_debounce*
-        Type: `number`, Default: `200`
+        Type: `number`, Default: `100`
 
       Debounce time for updates (in milliseconds).
 
-use_decoration_api                        *gitsigns-config-use_decoration_api*
-        Type: `boolean`, Default: `false`
+use_internal_diff                          *gitsigns-config-use_internal_diff*
+        Type: `boolean`, Default: true if luajit is present
 
-        Experimental
+        Use Neovim's built in xdiff library for running diffs.
+
+        This uses LuaJIT's FFI interface.
+
+use_decoration_api                        *gitsigns-config-use_decoration_api*
+        Type: `boolean`, Default: `true`
 
         Use Neovim's decoration API to apply signs. This should improve
         performance on large files since signs will only be applied to drawn
