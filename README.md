@@ -92,6 +92,7 @@ require('gitsigns').setup {
     ['n <leader>hs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
     ['n <leader>hu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
     ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
+    ['n <leader>hR'] = '<cmd>lua require"gitsigns".reset_buffer()<CR>',
     ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
     ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line()<CR>',
 
@@ -103,9 +104,10 @@ require('gitsigns').setup {
     interval = 1000
   },
   sign_priority = 6,
-  update_debounce = 200,
+  update_debounce = 100,
   status_formatter = nil, -- Use default
-  use_decoration_api = false
+  use_decoration_api = true,
+  use_internal_diff = true,  -- If luajit is present
 }
 ```
 
@@ -132,7 +134,7 @@ For the current branch use the variable `b:gitsigns_head`.
 - [x] Add action for showing diff (or original text) in a floating window
 - [ ] Add ability to show staged hunks with different signs (maybe in a different sign column?)
 - [x] Add support for repeat.vim
-- [ ] Apply buffer updates incrementally
+- [x] Apply buffer updates incrementally
 - [x] Add tests
 - [x] Respect algorithm in diffopt
 - [x] When detecting index changes, also check if the file of the buffer changed
