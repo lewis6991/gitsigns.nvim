@@ -143,7 +143,7 @@ local update = async(function(bufnr)
    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
    local stage = bcache.has_conflicts and 1 or 0
 
-   if config._use_internal_diff then
+   if config.use_internal_diff then
       local staged_text = await(git.get_staged_text, bcache.toplevel, bcache.relpath, stage)
       bcache.hunks = diff.run_diff(staged_text, buftext, config.diff_algorithm)
    else
