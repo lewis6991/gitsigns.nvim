@@ -260,10 +260,27 @@ function M.run_diff(staged, text, diff_algo)
       local buffile = staged .. '_buf'
       write_to_file(buffile, text)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       run_job({
          command = 'git',
          args = {
             '--no-pager',
+            '-c', 'core.safecrlf=false',
             'diff',
             '--color=never',
             '--diff-algorithm=' .. diff_algo,
