@@ -292,7 +292,7 @@ update_debounce                              *gitsigns-config-update_debounce*
       Debounce time for updates (in milliseconds).
 
 use_internal_diff                          *gitsigns-config-use_internal_diff*
-        Type: `boolean`, Default: true if luajit is present
+        Type: `boolean`, Default: true if luajit is present (windows unsupported)
 
         Use Neovim's built in xdiff library for running diffs.
 

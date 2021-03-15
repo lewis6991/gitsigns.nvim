@@ -195,9 +195,13 @@ local schema = {
    use_internal_diff = {
       type = 'boolean',
       default = [[function()
-      return jit ~= nil
+      if not jit or jit.os == "Windows" then
+        return false
+      else
+        return true
+      end
     end]],
-      default_help = "true if luajit is present",
+      default_help = "true if luajit is present (windows unsupported)",
       description = [[
         Use Neovim's built in xdiff library for running diffs.
 
