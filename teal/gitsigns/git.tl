@@ -260,10 +260,27 @@ function M.run_diff(staged: string, text: {string}, diff_algo: string): cb_funct
     local buffile = staged..'_buf'
     write_to_file(buffile, text)
 
+    -- Taken from gitgutter, diff.vim:
+    --
+    -- If a file has CRLF line endings and git's core.autocrlf is true, the file
+    -- in git's object store will have LF line endings. Writing it out via
+    -- git-show will produce a file with LF line endings.
+    --
+    -- If this last file is one of the files passed to git-diff, git-diff will
+    -- convert its line endings to CRLF before diffing -- which is what we want
+    -- but also by default outputs a warning on stderr.
+    --
+    --   warning: LF will be replace by CRLF in <temp file>.
+    --   The file will have its original line endings in your working directory.
+    --
+    -- We can safely ignore the warning, we turn it off by passing the '-c
+    -- "core.safecrlf=false"' argument to git-diff.
+
     run_job {
       command = 'git',
       args = {
         '--no-pager',
+        '-c', 'core.safecrlf=false',
         'diff',
         '--color=never',
         '--diff-algorithm='..diff_algo,
