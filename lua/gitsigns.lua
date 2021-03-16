@@ -110,7 +110,11 @@ local function add_signs(bufnr, signs)
    end
 end
 
-local function apply_win_signs(bufnr, signs, top, bot)
+local function apply_win_signs(bufnr, pending, top, bot)
+
+
+   local first_apply = top == nil
+
    if config.use_decoration_api then
 
       top = top or tonumber(vim.fn.line('w0'))
@@ -120,14 +124,28 @@ local function apply_win_signs(bufnr, signs, top, bot)
       bot = bot or tonumber(vim.fn.line('$'))
    end
 
-   local s = {}
-   for lnum = top, bot do
-      if signs[lnum] then
-         s[lnum] = signs[lnum]
-         signs[lnum] = nil
+   local scheduled = {}
+
+   local function schedule_sign(n, _)
+      if n and pending[n] then
+         scheduled[n] = pending[n]
+         pending[n] = nil
       end
    end
-   add_signs(bufnr, s)
+
+   for lnum = top, bot do
+      schedule_sign(lnum)
+   end
+
+
+
+
+
+   if first_apply and config.use_decoration_api then
+      schedule_sign(next(pending))
+   end
+
+   add_signs(bufnr, scheduled)
 end
 
 local update_cnt = 0
@@ -348,7 +366,13 @@ local function prev_hunk(options)
    nav_hunk(options)
 end
 
-local function detach(bufnr)
+
+
+
+
+
+
+local function detach(bufnr, keep_signs)
    bufnr = bufnr or current_buf()
    dprint('Detached', bufnr)
 
@@ -358,8 +382,10 @@ local function detach(bufnr)
       return
    end
 
+   if not keep_signs then
 
-   vim.fn.sign_unplace('gitsigns_ns', { buffer = bufnr })
+      vim.fn.sign_unplace('gitsigns_ns', { buffer = bufnr })
+   end
 
 
    Status:clear(bufnr)
@@ -535,7 +561,7 @@ local attach = throttle_leading(100, sync(function()
          on_lines(buf, last_orig, last_new)
       end,
       on_detach = function(_, buf)
-         detach(buf)
+         detach(buf, true)
       end,
    })
 
