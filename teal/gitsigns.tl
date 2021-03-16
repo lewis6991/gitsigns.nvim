@@ -110,7 +110,11 @@ local function add_signs(bufnr: number, signs: {number:Sign})
   end
 end
 
-local function apply_win_signs(bufnr: number, signs: {number:Sign}, top: number, bot: number)
+local function apply_win_signs(bufnr: number, pending: {number:Sign}, top: number, bot: number)
+  -- If called without top or bot, then assume this is the first call after
+  -- clearing all the signs
+  local first_apply = top == nil
+
   if config.use_decoration_api then
     -- Just apply to signs visible in window
     top = top or tonumber(vim.fn.line('w0'))
@@ -120,14 +124,28 @@ local function apply_win_signs(bufnr: number, signs: {number:Sign}, top: number,
     bot = bot or tonumber(vim.fn.line('$'))
   end
 
-  local s: {number:Sign} = {}
-  for lnum = top, bot do
-    if signs[lnum] then
-      s[lnum] = signs[lnum]
-      signs[lnum] = nil
+  local scheduled: {number:Sign} = {}
+
+  local function schedule_sign(n: number, _: any)
+    if n and pending[n] then
+      scheduled[n] = pending[n]
+      pending[n] = nil
     end
   end
-  add_signs(bufnr, s)
+
+  for lnum = top, bot do
+    schedule_sign(lnum)
+  end
+
+  -- To stop the sign column width changing too much, if there are signs to be
+  -- added but none of them are visible in the window, then make sure to add at
+  -- least one sign. Only do this on the first call after an update when we all
+  -- the signs have been cleared.
+  if first_apply and config.use_decoration_api then
+    schedule_sign(next(pending))
+  end
+
+  add_signs(bufnr, scheduled)
 end
 
 local update_cnt = 0
@@ -348,7 +366,13 @@ local function prev_hunk(options: NavHunkOpts)
   nav_hunk(options)
 end
 
-local function detach(bufnr: number)
+-- When this is called interactively (with no arguments) we want to remove all
+-- the signs, however if called via a detach event (due to nvim_buf_attach) then
+-- we don't want to clear the signs in case the buffer is just being updated due
+-- to the file externally changeing. When this happens a detach and attach event
+-- happen in sequence and so we keep the old signs to stop the sign column width
+-- moving about between updates.
+local function detach(bufnr: number, keep_signs: boolean)
   bufnr = bufnr or current_buf()
   dprint('Detached', bufnr)
 
@@ -358,8 +382,10 @@ local function detach(bufnr: number)
     return
   end
 
-  -- Remove all the signs
-  vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr})
+  if not keep_signs then
+    -- Remove all the signs
+    vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr})
+  end
 
   -- Clear status variables
   Status:clear(bufnr)
@@ -535,7 +561,7 @@ local attach = throttle_leading(100, sync(function()
       on_lines(buf, last_orig, last_new)
     end,
     on_detach = function(_, buf: number)
-      detach(buf)
+      detach(buf, true)
     end
   })
 
