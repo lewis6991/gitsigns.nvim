@@ -27,21 +27,22 @@ function M.file_info(file: string, toplevel: string): cb_function
       },
       cwd = toplevel,
       on_stdout = function(_, line: string)
-        local parts = vim.split(line, '%s+')
-        if #parts > 1 then
-          stage = tonumber(parts[3])
+        local parts = vim.split(line, '\t')
+        if #parts > 1 then -- tracked file
+          relpath = parts[2]
+          local attrs = vim.split(parts[1], '%s+')
+          stage = tonumber(attrs[3])
           if stage <= 1 then
-              mode_bits   = parts[1]
-              object_name = parts[2]
-              relpath     = parts[4]
+              mode_bits   = attrs[1]
+              object_name = attrs[2]
           else
               has_conflict = true
           end
-        else
+        else -- untracked file
           relpath = parts[1]
         end
       end,
-      on_exit = function(_, _)
+      on_exit = function()
         callback(relpath, object_name, mode_bits, has_conflict)
       end
     }

@@ -27,13 +27,14 @@ function M.file_info(file, toplevel)
          },
          cwd = toplevel,
          on_stdout = function(_, line)
-            local parts = vim.split(line, '%s+')
+            local parts = vim.split(line, '\t')
             if #parts > 1 then
-               stage = tonumber(parts[3])
+               relpath = parts[2]
+               local attrs = vim.split(parts[1], '%s+')
+               stage = tonumber(attrs[3])
                if stage <= 1 then
-                  mode_bits = parts[1]
-                  object_name = parts[2]
-                  relpath = parts[4]
+                  mode_bits = attrs[1]
+                  object_name = attrs[2]
                else
                   has_conflict = true
                end
@@ -41,7 +42,7 @@ function M.file_info(file, toplevel)
                relpath = parts[1]
             end
          end,
-         on_exit = function(_, _)
+         on_exit = function()
             callback(relpath, object_name, mode_bits, has_conflict)
          end,
       })
