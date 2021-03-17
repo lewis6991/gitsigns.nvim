@@ -730,6 +730,41 @@ local function testsuite(variant, advanced_features)
 
     end)
 
+    it('handle files with spaces', function()
+      screen:try_resize(20,6)
+      exec_lua('gs.setup(...)', test_config)
+      command("set signcolumn=yes")
+
+      local spacefile = scratch..'/a b c d'
+
+      write_to_file(spacefile, {'spaces', 'in', 'file'})
+
+      edit(spacefile)
+
+      screen:expect{grid=[[
+        {3:+ }^spaces            |
+        {3:+ }in                |
+        {3:+ }file              |
+        {6:~                   }|
+        {6:~                   }|
+                            |
+      ]]}
+
+      git{'add', spacefile}
+      sleep(100)
+      edit(spacefile)
+
+      screen:expect{grid=[[
+        {1:  }^spaces            |
+        {1:  }in                |
+        {1:  }file              |
+        {6:~                   }|
+        {6:~                   }|
+                            |
+      ]]}
+
+    end)
+
   end)
 end
 
