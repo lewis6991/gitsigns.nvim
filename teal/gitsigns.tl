@@ -91,16 +91,16 @@ local function add_signs(bufnr: number, signs: {number:Sign})
     local count = s.count
 
     local cs = config.signs[s.type]
-    if cs.show_count and count then
+    if config.signcolumn and cs.show_count and count then
       local cc = config.count_chars
       local count_suffix: string = cc[count] and (count as string) or (cc['+'] and 'Plus') or ''
       local count_char   = cc[count]           or cc['+']            or ''
       stype = stype..count_suffix
       sign_define(stype, {
         texthl = cs.hl,
-        text   = cs.text..count_char,
-        numhl  = config.numhl  and cs.numhl,
-        linehl = config.linehl and cs.linehl
+        text   = config.signcolumn and cs.text..count_char or '',
+        numhl  = config.numhl      and cs.numhl,
+        linehl = config.linehl     and cs.linehl
       })
     end
 
@@ -568,15 +568,7 @@ local attach = throttle_leading(100, sync(function()
   apply_keymaps(true)
 end))
 
-local function setup(cfg: Config)
-  config = process_config(cfg) as Config
-
-  -- TODO: Attach to all open buffers
-
-  gsd.debug_mode = config.debug_mode
-
-  Status.formatter = config.status_formatter
-
+local function setup_signs(redefine: boolean)
   -- Define signs
   for t, sign_name in pairs(sign_map) do
     local cs = config.signs[t]
@@ -592,12 +584,24 @@ local function setup(cfg: Config)
 
     sign_define(sign_name, {
       texthl = cs.hl,
-      text   = cs.text,
-      numhl  = config.numhl  and cs.numhl,
-      linehl = config.linehl and cs.linehl
-    })
+      text   = config.signcolumn and cs.text or nil,
+      numhl  = config.numhl      and cs.numhl,
+      linehl = config.linehl     and cs.linehl
+    }, redefine)
 
   end
+end
+
+local function setup(cfg: Config)
+  config = process_config(cfg) as Config
+
+  -- TODO: Attach to all open buffers
+
+  gsd.debug_mode = config.debug_mode
+
+  Status.formatter = config.status_formatter
+
+  setup_signs()
 
   apply_keymaps(false)
 
@@ -696,6 +700,13 @@ local blame_line = sync(function()
   add_highlight('Label'    , 0, p1+p2+2, p3+2)
 end)
 
+local function refresh()
+  setup_signs(true)
+  for k, _ in pairs(cache) do
+    arun(update)(k)
+  end
+end
+
 return {
   update          = update_debounced,
   stage_hunk      = mk_repeatable(stage_hunk),
@@ -726,5 +737,20 @@ return {
 
   clear_debug = function()
     gsd.messages = {}
+  end,
+
+  toggle_signs = function()
+    config.signcolumn = not config.signcolumn
+    refresh()
+  end,
+
+  toggle_numhl = function()
+    config.numhl = not config.numhl
+    refresh()
+  end,
+
+  toggle_linehl = function()
+    config.linehl = not config.linehl
+    refresh()
   end
 }
