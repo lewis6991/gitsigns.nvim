@@ -166,6 +166,7 @@ global record vim
     sign_place: function(number, string, string, string | number, {string:any})
     sign_getdefined: function(string): table
     sign_define: function(string, table): number
+    sign_undefine: function(string): number
   end
 
   cmd: function(string): any

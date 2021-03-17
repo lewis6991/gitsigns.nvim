@@ -148,6 +148,15 @@ detach_all()                                           *gitsigns.detach_all()*
 text_object()                                         *gitsigns.text_object()*
                 Select the hunk under the cursor.
 
+toggle_signs()                                       *gitsigns.toggle_numhl()*
+                Toggle |gitsigns-config-signcolumn|
+
+toggle_numhl()                                       *gitsigns.toggle_numhl()*
+                Toggle |gitsigns-config-numhl|
+
+toggle_linehl()                                     *gitsigns.toggle_linehl()*
+                Toggle |gitsigns-config-linehl|
+
 ==============================================================================
 CONFIGURATION                                                *gitsigns-config*
 
@@ -228,6 +237,14 @@ sign_priority                                  *gitsigns-config-sign_priority*
         Type: `number`, Default: `6`
 
         Priority to use for signs.
+
+signcolumn                                        *gitsigns-config-signcolumn*
+        Type: `boolean`, Default: `true`
+
+        Enable/disable symbols in the sign column.
+
+        When enabled the highlights defined in `signs.*.hl` and symbols defined
+        in `signs.*.text` are used.
 
 numhl                                                  *gitsigns-config-numhl*
         Type: `boolean`, Default: `false`
@@ -336,3 +353,9 @@ exposed through |gitsigns.text_object()|.
 
 ------------------------------------------------------------------------------
 vim:tw=78:ts=8:ft=help:norl:
+
+
+
+
+
+

@@ -46,6 +46,7 @@ global record Config
     diff_algorithm: string
     signs: {SignType: SignsConfig}
     count_chars: {string|number:string}
+    signcolumn: boolean
     numhl: boolean
     linehl: boolean
     sign_priority: number
