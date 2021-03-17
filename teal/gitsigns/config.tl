@@ -93,6 +93,17 @@ local schema: {string:SchemaElem} = {
     ]]
   },
 
+  signcolumn = {
+    type = 'boolean',
+    default = true,
+    description = [[
+        Enable/disable symbols in the sign column.
+
+        When enabled the highlights defined in `signs.*.hl` and symbols defined
+        in `signs.*.text` are used.
+    ]]
+  },
+
   numhl = {
     type = 'boolean',
     default = false,

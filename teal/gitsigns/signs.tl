@@ -13,8 +13,12 @@ local function sign_get(name: string): table
   return sign_define_cache[name]
 end
 
-function M.sign_define(name: string, opts: {string:any})
-  if not sign_get(name) then
+function M.sign_define(name: string, opts: {string:any}, redefine: boolean)
+  if redefine then
+    sign_define_cache[name] = nil
+    vim.fn.sign_undefine(name)
+    vim.fn.sign_define(name, opts)
+  elseif not sign_get(name) then
     vim.fn.sign_define(name, opts)
   end
 end
