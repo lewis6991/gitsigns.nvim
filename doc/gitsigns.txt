@@ -148,7 +148,7 @@ detach_all()                                           *gitsigns.detach_all()*
 text_object()                                         *gitsigns.text_object()*
                 Select the hunk under the cursor.
 
-toggle_signs()                                       *gitsigns.toggle_numhl()*
+toggle_signs()                                       *gitsigns.toggle_signs()*
                 Toggle |gitsigns-config-signcolumn|
 
 toggle_numhl()                                       *gitsigns.toggle_numhl()*
