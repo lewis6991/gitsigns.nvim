@@ -162,8 +162,10 @@ local update = async(function(bufnr)
    local stage = bcache.has_conflicts and 1 or 0
 
    if config.use_internal_diff then
-      local staged_text = await(git.get_staged_text, bcache.toplevel, bcache.relpath, stage)
-      bcache.hunks = diff.run_diff(staged_text, buftext, config.diff_algorithm)
+      if not bcache.staged_text or not config._refresh_staged_on_update then
+         bcache.staged_text = await(git.get_staged_text, bcache.toplevel, bcache.relpath, stage)
+      end
+      bcache.hunks = diff.run_diff(bcache.staged_text, buftext, config.diff_algorithm)
    else
       await(git.get_staged, bcache.toplevel, bcache.relpath, stage, bcache.staged)
       bcache.hunks = await(git.run_diff, bcache.staged, buftext, config.diff_algorithm)
@@ -443,6 +445,7 @@ local function index_update_handler(cbuf)
       bcache.object_name = object_name0
       bcache.mode_bits = mode_bits0
       bcache.has_conflicts = has_conflicts
+      bcache.staged_text = nil
 
       await(update, cbuf)
    end)
@@ -545,6 +548,7 @@ local attach = throttle_leading(100, sync(function()
       abbrev_head = abbrev_head,
       has_conflicts = has_conflicts,
       staged = staged,
+      staged_text = nil,
       hunks = {},
       staged_diffs = {},
       index_watcher = await(watch_index, cbuf, gitdir, index_update_handler(cbuf)),
@@ -702,7 +706,8 @@ end)
 
 local function refresh()
    setup_signs(true)
-   for k, _ in pairs(cache) do
+   for k, v in pairs(cache) do
+      v.staged_text = nil
       arun(update)(k)
    end
 end
@@ -738,6 +743,8 @@ return {
    clear_debug = function()
       gsd.messages = {}
    end,
+
+   refresh = refresh,
 
    toggle_signs = function()
       config.signcolumn = not config.signcolumn

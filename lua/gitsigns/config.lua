@@ -230,6 +230,16 @@ local schema = {
     ]],
    },
 
+   _refresh_staged_on_update = {
+      type = 'boolean',
+      default = true,
+      description = [[
+        Always refresh the staged file on each update. Disabling this will cause
+        the staged file to only be refreshed when an update to the index is
+        detected.
+    ]],
+   },
+
    debug_mode = {
       type = 'boolean',
       default = false,
