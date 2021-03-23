@@ -14,7 +14,7 @@ global record CacheEntry
   has_conflicts : boolean
   hunks         : {Hunk}
   staged_diffs  : {Hunk}
-  pending_signs : {number:Sign}
+  pending_signs : {integer:Sign}
   index_watcher : vim.loop.FSPollObj          -- Timer object watching the files index
 end
 
@@ -36,27 +36,27 @@ global record SignsConfig
 end
 
 global record StatusObj
-    added: number
-    removed: number
-    changed: number
-    head: string
+    added   : integer
+    removed : integer
+    changed : integer
+    head    : string
 end
 
 global record Config
     debug_mode: boolean
     diff_algorithm: string
     signs: {SignType: SignsConfig}
-    count_chars: {string|number:string}
+    count_chars: {string|integer:string}
     signcolumn: boolean
     numhl: boolean
     linehl: boolean
-    sign_priority: number
+    sign_priority: integer
     keymaps: {string:any}
     record watch_index
-        interval: number
+        interval: integer
     end
-    max_file_length: number
-    update_debounce: number
+    max_file_length: integer
+    update_debounce: integer
     status_formatter: function(StatusObj): string
     use_internal_diff: boolean
     use_decoration_api: boolean
@@ -75,7 +75,7 @@ end
 
 global record Sign
   type: SignType
-  count: number
+  count: integer
 end
 
 global record Hunk
@@ -88,12 +88,12 @@ global record Hunk
   type: Type
   head: string
   lines: {string}
-  start: number
-  dend: number
+  start: integer
+  dend: integer
 
   record Node
-    start: number
-    count: number
+    start: integer
+    count: integer
   end
 
   added: Node

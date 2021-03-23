@@ -29,13 +29,7 @@ test: neovim plenary.nvim
 
 .PHONY: tl-check
 tl-check:
-	$(INIT_LUAROCKS) tl check \
-		--skip-compat53 \
-		--werror all \
-		-I types \
-		-I teal \
-		--preload types \
-		teal/**/*.tl
+	$(INIT_LUAROCKS) tl check teal/**/*.tl
 
 .PHONY: tl-build
 tl-build: tlconfig.lua

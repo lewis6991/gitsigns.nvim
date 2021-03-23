@@ -110,10 +110,10 @@ function M.run_diff(fa: {string}, fb: {string}, diff_algo: string): {Hunk}
     start_a: Long, count_a: Long,
     start_b: Long, count_b: Long
   ): number
-    local ca = tonumber(count_a)
-    local cb = tonumber(count_b)
-    local sa = tonumber(start_a)
-    local sb = tonumber(start_b)
+    local ca = tonumber(count_a) as integer
+    local cb = tonumber(count_b) as integer
+    local sa = tonumber(start_a) as integer
+    local sb = tonumber(start_b) as integer
 
     -- Not fully sure why this offset is needed but xdiff does it too
     -- (see neovim/src/nvim/xdiff/xutils.c:356,368)

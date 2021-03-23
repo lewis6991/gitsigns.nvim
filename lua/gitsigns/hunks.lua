@@ -1,3 +1,4 @@
+require('gitsigns/types')
 
 local M = {}
 
@@ -39,8 +40,8 @@ function M.parse_diff_line(line)
    end, vim.split(diffkey, ' ')))
 
    local hunk = M.create_hunk(
-   tonumber(pre[1]), tonumber(pre[2]) or 1,
-   tonumber(now[1]), tonumber(now[2]) or 1)
+   tonumber(pre[1]), (tonumber(pre[2]) or 1),
+   tonumber(now[1]), (tonumber(now[2]) or 1))
 
    hunk.head = line
 
