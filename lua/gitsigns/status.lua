@@ -12,22 +12,18 @@ function Status:update(bufnr, status)
    if status then
       self.status = status
    end
-   vim.schedule(function()
-      api.nvim_buf_set_var(bufnr, 'gitsigns_head', self.status.head or '')
-      api.nvim_buf_set_var(bufnr, 'gitsigns_status_dict', self.status)
-      api.nvim_buf_set_var(bufnr, 'gitsigns_status', self.formatter(self.status))
-   end)
+   api.nvim_buf_set_var(bufnr, 'gitsigns_head', self.status.head or '')
+   api.nvim_buf_set_var(bufnr, 'gitsigns_status_dict', self.status)
+   api.nvim_buf_set_var(bufnr, 'gitsigns_status', self.formatter(self.status))
 end
 
 function Status:clear(bufnr)
    if not api.nvim_buf_is_loaded(bufnr) then
       return
    end
-   vim.schedule(function()
-      api.nvim_buf_del_var(bufnr, 'gitsigns_head')
-      api.nvim_buf_del_var(bufnr, 'gitsigns_status_dict')
-      api.nvim_buf_del_var(bufnr, 'gitsigns_status')
-   end)
+   api.nvim_buf_del_var(bufnr, 'gitsigns_head')
+   api.nvim_buf_del_var(bufnr, 'gitsigns_status_dict')
+   api.nvim_buf_del_var(bufnr, 'gitsigns_status')
 end
 
 function Status:update_head(bufnr, head)
