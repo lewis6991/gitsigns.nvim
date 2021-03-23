@@ -72,7 +72,7 @@ local record api
   nvim_get_color_map: function(): {string:any}
   nvim_get_commands: function({string:any}): {string:any}
   nvim_get_context: function({string:any}): {string:any}
-  nvim_get_current_buf: function(): number
+  nvim_get_current_buf: function(): integer
   nvim_get_current_line: function(): string
   nvim_get_current_tabpage: function(): any
   nvim_get_current_win: function(): number
@@ -267,7 +267,7 @@ global record vim
 
   tbl_filter: function((function(any): boolean), table): table
 
-  tbl_count: function(table): number
+  tbl_count: function(table): integer
 
   tbl_isempty: function(table): boolean
 

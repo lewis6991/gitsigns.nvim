@@ -1,3 +1,4 @@
+require('gitsigns/types')
 local api = vim.api
 
 local Status = {

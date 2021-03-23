@@ -1,3 +1,4 @@
+require('gitsigns/types')
 local gs_async = require('gitsigns/async')
 local async = gs_async.async
 local sync = gs_async.sync
