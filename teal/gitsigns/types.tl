@@ -9,6 +9,7 @@ global record CacheEntry
   toplevel      : string
   gitdir        : string
   staged        : string
+  staged_text   : {string}
   abbrev_head   : string
   has_conflicts : boolean
   hunks         : {Hunk}
@@ -59,6 +60,9 @@ global record Config
     status_formatter: function(StatusObj): string
     use_internal_diff: boolean
     use_decoration_api: boolean
+
+    -- Undocumented
+    _refresh_staged_on_update: boolean
 end
 
 global enum SignType

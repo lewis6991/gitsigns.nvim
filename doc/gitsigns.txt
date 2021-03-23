@@ -145,6 +145,9 @@ detach({bufnr})                                            *gitsigns.detach()*
 detach_all()                                           *gitsigns.detach_all()*
                 Detach Gitsigns from all buffers it is attached to.
 
+refresh()                                                 *gitsigns.refresh()*
+                Refresh all buffers.
+
 text_object()                                         *gitsigns.text_object()*
                 Select the hunk under the cursor.
 
