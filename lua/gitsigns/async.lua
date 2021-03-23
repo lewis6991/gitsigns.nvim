@@ -93,7 +93,9 @@ function M.await(defer, ...)
 end
 
 function M.await_main()
-   co.yield(vim.schedule)
+   if vim.in_fast_event() then
+      co.yield(vim.schedule)
+   end
 end
 
 return M
