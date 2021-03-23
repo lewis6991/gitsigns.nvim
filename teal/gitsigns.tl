@@ -137,12 +137,16 @@ local function apply_win_signs(bufnr: number, pending: {number:Sign}, top: numbe
     schedule_sign(lnum)
   end
 
-  -- To stop the sign column width changing too much, if there are signs to be
-  -- added but none of them are visible in the window, then make sure to add at
-  -- least one sign. Only do this on the first call after an update when we all
-  -- the signs have been cleared.
-  if first_apply and config.use_decoration_api then
-    schedule_sign(next(pending))
+  if first_apply then
+    remove_sign(bufnr)  -- Remove all signs
+
+    -- To stop the sign column width changing too much, if there are signs to be
+    -- added but none of them are visible in the window, then make sure to add at
+    -- least one sign. Only do this on the first call after an update when we all
+    -- the signs have been cleared.
+    if config.use_decoration_api then
+      schedule_sign(next(pending))
+    end
   end
 
   add_signs(bufnr, scheduled)
@@ -172,19 +176,13 @@ local update = async(function(bufnr: number, bcache: CacheEntry)
   end
   bcache.pending_signs = process_hunks(bcache.hunks)
 
-  local status: StatusObj = gs_hunks.get_summary(bcache.hunks)
-  status.head = bcache.abbrev_head
-
   await_main()
-
-  -- Remove all signs
-  remove_sign(bufnr)
 
   -- Apply signs to the window. Other signs will be added by the decoration
   -- provider as they are drawn.
   apply_win_signs(bufnr, bcache.pending_signs)
 
-  Status:update(bufnr, status)
+  Status:update(bufnr, gs_hunks.get_summary(bcache.hunks, bcache.abbrev_head))
 
   update_cnt = update_cnt + 1
   dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt), bufnr, 'update')

@@ -137,12 +137,16 @@ local function apply_win_signs(bufnr, pending, top, bot)
       schedule_sign(lnum)
    end
 
+   if first_apply then
+      remove_sign(bufnr)
 
 
 
 
-   if first_apply and config.use_decoration_api then
-      schedule_sign(next(pending))
+
+      if config.use_decoration_api then
+         schedule_sign(next(pending))
+      end
    end
 
    add_signs(bufnr, scheduled)
@@ -172,19 +176,13 @@ local update = async(function(bufnr, bcache)
    end
    bcache.pending_signs = process_hunks(bcache.hunks)
 
-   local status = gs_hunks.get_summary(bcache.hunks)
-   status.head = bcache.abbrev_head
-
    await_main()
-
-
-   remove_sign(bufnr)
 
 
 
    apply_win_signs(bufnr, bcache.pending_signs)
 
-   Status:update(bufnr, status)
+   Status:update(bufnr, gs_hunks.get_summary(bcache.hunks, bcache.abbrev_head))
 
    update_cnt = update_cnt + 1
    dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt), bufnr, 'update')
