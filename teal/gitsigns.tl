@@ -1,3 +1,4 @@
+require('gitsigns/types')
 local gs_async = require('gitsigns/async')
 local async      = gs_async.async
 local sync       = gs_async.sync
@@ -63,17 +64,17 @@ local function dirname(file: string): string
   return file:match(string.format('^(.+)%s[^%s]+', path_sep, path_sep))
 end
 
-local cache: {number:CacheEntry} = {}
+local cache: {integer:CacheEntry} = {}
 
-local function get_cache(bufnr: number): CacheEntry
+local function get_cache(bufnr: integer): CacheEntry
   return cache[bufnr]
 end
 
-local function get_cache_opt(bufnr: number): CacheEntry
+local function get_cache_opt(bufnr: integer): CacheEntry
   return cache[bufnr]
 end
 
-local function get_cursor_hunk(bufnr: number, hunks: {Hunk}): Hunk
+local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk
   bufnr = bufnr or current_buf()
   hunks = hunks or cache[bufnr].hunks
 
@@ -81,11 +82,11 @@ local function get_cursor_hunk(bufnr: number, hunks: {Hunk}): Hunk
   return gs_hunks.find_hunk(lnum, hunks)
 end
 
-local function remove_sign(bufnr: number, lnum: number)
+local function remove_sign(bufnr: integer, lnum: integer)
   vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr, id = lnum})
 end
 
-local function add_signs(bufnr: number, signs: {number:Sign})
+local function add_signs(bufnr: integer, signs: {integer:Sign})
   for lnum, s in pairs(signs) do
     local stype: string = sign_map[s.type]
     local count = s.count
@@ -110,23 +111,23 @@ local function add_signs(bufnr: number, signs: {number:Sign})
   end
 end
 
-local function apply_win_signs(bufnr: number, pending: {number:Sign}, top: number, bot: number)
+local function apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: integer, bot: integer)
   -- If called without top or bot, then assume this is the first call after
   -- clearing all the signs
   local first_apply = top == nil
 
   if config.use_decoration_api then
     -- Just apply to signs visible in window
-    top = top or tonumber(vim.fn.line('w0'))
-    bot = bot or tonumber(vim.fn.line('w$'))
+    top = top or tonumber(vim.fn.line('w0')) as integer
+    bot = bot or tonumber(vim.fn.line('w$')) as integer
   else
     top = top or 0
-    bot = bot or tonumber(vim.fn.line('$'))
+    bot = bot or tonumber(vim.fn.line('$')) as integer
   end
 
-  local scheduled: {number:Sign} = {}
+  local scheduled: {integer:Sign} = {}
 
-  local function schedule_sign(n: number, _: any)
+  local function schedule_sign(n: integer, _: any)
     if n and pending[n] then
       scheduled[n] = pending[n]
       pending[n] = nil
@@ -154,7 +155,7 @@ end
 
 local update_cnt = 0
 
-local update = async(function(bufnr: number, bcache: CacheEntry)
+local update = async(function(bufnr: integer, bcache: CacheEntry)
   bcache = bcache or get_cache_opt(bufnr)
   if not bcache then
     error('Cache for buffer '..bufnr..' was nil')
@@ -189,9 +190,9 @@ local update = async(function(bufnr: number, bcache: CacheEntry)
 end)
 
 -- Define in setup so it can be debounced on updatetime
-local update_debounced: function(number)
+local update_debounced: function(integer)
 
-local watch_index = async(function(bufnr: number, gitdir: string, on_change: function): uv.FSPollObj
+local watch_index = async(function(bufnr: integer, gitdir: string, on_change: function): uv.FSPollObj
   -- TODO: Buffers of the same git repo can share an index watcher
   dprint('Watching index', bufnr, 'watch_index')
 
@@ -255,7 +256,7 @@ local stage_hunk = sync(function()
   end
 end)
 
-local function reset_hunk(bufnr: number, hunk: Hunk)
+local function reset_hunk(bufnr: integer, hunk: Hunk)
   bufnr = bufnr or current_buf()
 
   if not hunk then
@@ -271,7 +272,7 @@ local function reset_hunk(bufnr: number, hunk: Hunk)
     return
   end
 
-  local lstart, lend: number, number
+  local lstart, lend: integer, integer
   if hunk.type == 'delete' then
     lstart = hunk.start
     lend = hunk.start
@@ -372,7 +373,7 @@ end
 -- to the file externally changeing. When this happens a detach and attach event
 -- happen in sequence and so we keep the old signs to stop the sign column width
 -- moving about between updates.
-local function detach(bufnr: number, keep_signs: boolean)
+local function detach(bufnr: integer, keep_signs: boolean)
   bufnr = bufnr or current_buf()
   dprint('Detached', bufnr)
 
@@ -412,7 +413,7 @@ local function apply_keymaps(bufonly: boolean)
   apply_mappings(config.keymaps as {string:uany}, bufonly)
 end
 
-local function get_buf_path(bufnr: number): string
+local function get_buf_path(bufnr: integer): string
   return
     uv.fs_realpath(api.nvim_buf_get_name(bufnr))
     or
@@ -421,7 +422,7 @@ local function get_buf_path(bufnr: number): string
     end)
 end
 
-local function index_update_handler(cbuf: number): function
+local function index_update_handler(cbuf: integer): function
   return sync(function()
     dprint('Index update', cbuf, 'watcher_cb')
     local bcache = get_cache(cbuf)
@@ -458,7 +459,7 @@ local function in_git_dir(file: string): boolean
   return false
 end
 
-local function on_lines(buf: number, last_orig: number, last_new: number): boolean
+local function on_lines(buf: integer, last_orig: integer, last_new: integer): boolean
   if not get_cache_opt(buf) then
     dprint('Cache for buffer '..buf..' was nil. Detaching')
     return true
@@ -559,10 +560,10 @@ local attach = throttle_leading(100, sync(function()
   await_main()
 
   api.nvim_buf_attach(cbuf, false, {
-    on_lines = function(_, buf: number, _, _, last_orig: number, last_new: number)
+    on_lines = function(_, buf: integer, _, _, last_orig: integer, last_new: integer)
       on_lines(buf, last_orig, last_new)
     end,
-    on_detach = function(_, buf: number)
+    on_detach = function(_, buf: integer)
       detach(buf, true)
     end
   })
@@ -608,7 +609,7 @@ local function setup(cfg: Config)
   apply_keymaps(false)
 
   update_debounced = debounce_trailing(config.update_debounce, arun(update))
-    as function(number)
+    as function(integer)
 
   -- This seems to be triggered twice on the first buffer so we have throttled
   -- the attach function with throttle_leading
@@ -627,7 +628,7 @@ local function setup(cfg: Config)
   if config.use_decoration_api then
     local ns = api.nvim_create_namespace('gitsigns')
     api.nvim_set_decoration_provider(ns, {
-      on_win = function(_, _, bufnr: number, top: number, bot: number)
+      on_win = function(_, _, bufnr: integer, top: integer, bot: integer)
         local bcache = get_cache_opt(bufnr)
         if not bcache or not bcache.pending_signs then
           return
@@ -693,7 +694,7 @@ local blame_line = sync(function()
   local p2 = #result.author
   local p3 = #date
 
-  local function add_highlight(hlgroup: string, line: number, start: number, length: number)
+  local function add_highlight(hlgroup: string, line: integer, start: integer, length: integer)
     api.nvim_buf_add_highlight(pbufnr, -1, hlgroup, line, start, start+length)
   end
 

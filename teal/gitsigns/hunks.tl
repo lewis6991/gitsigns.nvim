@@ -1,7 +1,8 @@
+require('gitsigns/types')
 
 local M = {}
 
-function M.create_hunk(start_a: number, count_a: number, start_b: number, count_b: number): Hunk
+function M.create_hunk(start_a: integer, count_a: integer, start_b: integer, count_b: integer): Hunk
   local removed = { start = start_a, count = count_a }
   local added   = { start = start_b, count = count_b }
 
@@ -39,8 +40,8 @@ function M.parse_diff_line(line: string): Hunk
   end, vim.split(diffkey, ' ')) as {{string}})
 
   local hunk = M.create_hunk(
-    tonumber(pre[1]), tonumber(pre[2]) or 1,
-    tonumber(now[1]), tonumber(now[2]) or 1
+    tonumber(pre[1]) as integer, (tonumber(pre[2]) or 1) as integer,
+    tonumber(now[1]) as integer, (tonumber(now[2]) or 1) as integer
   )
   hunk.head = line
 
@@ -58,7 +59,7 @@ function M.get_range(hunk: Hunk): number, number
   return hunk.start, dend
 end
 
-function M.process_hunks(hunks: {Hunk}): {number:Sign}
+function M.process_hunks(hunks: {Hunk}): {integer:Sign}
   local signs = {}
   for _, hunk in ipairs(hunks) do
     for i = hunk.start, hunk.dend do
