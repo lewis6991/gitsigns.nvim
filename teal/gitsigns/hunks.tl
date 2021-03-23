@@ -124,8 +124,8 @@ function M.create_patch(relpath: string, hunk: Hunk, mode_bits: string, invert: 
   }
 end
 
-function M.get_summary(hunks: {Hunk}): StatusObj
-  local status = { added = 0, changed = 0, removed = 0 }
+function M.get_summary(hunks: {Hunk}, head: string): StatusObj
+  local status = { added = 0, changed = 0, removed = 0, head = head }
 
   for _, hunk in ipairs(hunks) do
     if hunk.type == 'add' then
