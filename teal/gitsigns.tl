@@ -150,8 +150,8 @@ end
 
 local update_cnt = 0
 
-local update = async(function(bufnr: number)
-  local bcache = get_cache_opt(bufnr)
+local update = async(function(bufnr: number, bcache: CacheEntry)
+  bcache = bcache or get_cache_opt(bufnr)
   if not bcache then
     error('Cache for buffer '..bufnr..' was nil')
     return
@@ -447,7 +447,7 @@ local function index_update_handler(cbuf: number): function
     bcache.has_conflicts = has_conflicts
     bcache.staged_text   = nil -- Invalidate
 
-    await(update, cbuf)
+    await(update, cbuf, bcache)
   end)
 end
 
@@ -556,7 +556,7 @@ local attach = throttle_leading(100, sync(function()
   }
 
   -- Initial update
-  await(update, cbuf)
+  await(update, cbuf, cache[cbuf])
 
   await_main()
 
@@ -708,7 +708,7 @@ local function refresh()
   setup_signs(true)
   for k, v in pairs(cache) do
     v.staged_text = nil  -- Invalidate
-    arun(update)(k)
+    arun(update)(k, v)
   end
 end
 
