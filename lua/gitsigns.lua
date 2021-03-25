@@ -208,13 +208,10 @@ end)
 local update_debounced
 
 local watch_index = async(function(bufnr, gitdir, on_change)
-
    dprint('Watching index', bufnr, 'watch_index')
-
    local index = gitdir .. path_sep .. 'index'
    local w = uv.new_fs_poll()
    w:start(index, config.watch_index.interval, on_change)
-
    return w
 end)
 
@@ -438,15 +435,17 @@ uv.fs_realpath(api.nvim_buf_get_name(bufnr)) or
 end
 
 local function index_update_handler(cbuf)
-   return sync(function()
+   return sync(function(err)
+      if err then
+         error(('Error detected in index watcher for buffer %d:\n%s'):format(cbuf, err))
+      end
       dprint('Index update', cbuf, 'watcher_cb')
       local bcache = get_cache(cbuf)
 
-      local _, _, abbrev_head0 = 
+      _, _, bcache.abbrev_head = 
       await(git.get_repo_info, bcache.toplevel)
 
-      Status:update_head(cbuf, abbrev_head0)
-      bcache.abbrev_head = abbrev_head0
+      Status:update_head(cbuf, bcache.abbrev_head)
 
       local _, object_name0, mode_bits0, has_conflicts = 
       await(git.file_info, bcache.file, bcache.toplevel)
