@@ -148,7 +148,7 @@ detach_all()                                           *gitsigns.detach_all()*
 refresh()                                                 *gitsigns.refresh()*
                 Refresh all buffers.
 
-text_object()                                         *gitsigns.text_object()*
+select_hunk()                                         *gitsigns.select_hunk()*
                 Select the hunk under the cursor.
 
 toggle_signs()                                       *gitsigns.toggle_signs()*
@@ -214,8 +214,8 @@ keymaps                                              *gitsigns-config-keymaps*
           ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
           ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line()<CR>',
 
-          ['o ih'] = ':<C-U>lua require"gitsigns".text_object()<CR>',
-          ['x ih'] = ':<C-U>lua require"gitsigns".text_object()<CR>'
+          ['o ih'] = ':<C-U>lua require"gitsigns".select_hunk()<CR>',
+          ['x ih'] = ':<C-U>lua require"gitsigns".select_hunk()<CR>'
         }
 <
         Keymaps to set up when attaching to a buffer.
@@ -352,7 +352,7 @@ TEXT OBJECTS                                             *gitsigns-textobject*
 
 Since text objects are defined via keymaps, these are exposed and configurable
 via the config, see |gitsigns-config-keymaps|. The lua implementation is
-exposed through |gitsigns.text_object()|.
+exposed through |gitsigns.select_hunk()|.
 
 ------------------------------------------------------------------------------
 vim:tw=78:ts=8:ft=help:norl:

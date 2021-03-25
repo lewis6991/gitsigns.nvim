@@ -97,8 +97,8 @@ require('gitsigns').setup {
     ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line()<CR>',
 
     -- Text objects
-    ['o ih'] = ':<C-U>lua require"gitsigns".text_object()<CR>',
-    ['x ih'] = ':<C-U>lua require"gitsigns".text_object()<CR>'
+    ['o ih'] = ':<C-U>lua require"gitsigns".select_hunk()<CR>',
+    ['x ih'] = ':<C-U>lua require"gitsigns".select_hunk()<CR>'
   },
   watch_index = {
     interval = 1000
