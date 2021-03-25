@@ -21,6 +21,7 @@ set runtimepath^=$PLUGIN_DIRECTORY/gitsigns.nvim
 
 lua << EOF
 require('gitsigns').setup {
+  debug_mode = true, -- Add this to enable debug messages
   -- config
 }
 EOF
@@ -29,16 +30,17 @@ EOF
 
 Steps to reproduce the behavior:
 1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+2. Run '....'
+3. See error
 
 **Observed output**
 Error messages, logs, etc
+
+Include the output of `:lua require('gitsigns').debug_messages()`.
 
 **Screenshots**
 If applicable, add screenshots to help explain your problem or to capture error messages.
 
 **Additional context**
-System: Mac, Linux, Windows
+System: Mac, Linux (including dist), Windows
 Neovim version: xxx
