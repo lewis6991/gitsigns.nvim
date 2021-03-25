@@ -235,6 +235,7 @@ global record vim
 
   in_fast_event: function(): boolean
 
+  list_extend: function({any}, {any}, integer, integer)
   split: function(string, string): {string}
   split: function(string, string, boolean): {string}
 
@@ -256,6 +257,8 @@ global record vim
   tbl_extend: function(ExtendBehavior, table, table, ...: table): table
 
   tbl_map: function(function, table): table
+
+  tbl_keys: function(table): table
 
   tbl_filter: function((function(any): boolean), table): table
 

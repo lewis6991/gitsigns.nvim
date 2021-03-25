@@ -41,6 +41,8 @@ local api = vim.api
 local uv = vim.loop
 local current_buf = api.nvim_get_current_buf
 
+local M: {string:function}
+
 local config: Config
 
 local path_sep = (function(): string
@@ -608,6 +610,51 @@ local function setup_signs(redefine: boolean)
   end
 end
 
+local function add_debug_functions()
+  M.dump_cache = function()
+    print(vim.inspect(cache))
+  end
+
+  M.debug_messages = function(): {string}
+    for _, m in ipairs(gs_debug.messages) do
+      print(m)
+    end
+    return gs_debug.messages
+  end
+
+  M.clear_debug = function()
+    gs_debug.messages = {}
+  end
+end
+
+-- Needs to be global so can be accessed from v:lua
+function gitsigns_complete(arglead: string, line: string): {string}
+  local n: integer = #vim.split(line, '%s+')
+
+  local matches: {string} = {}
+  if n == 2 then
+    for func, _ in pairs(M) do
+      if vim.startswith(func, '_') then
+        -- exclude
+      elseif vim.startswith(func, arglead) then
+        table.insert(matches, func)
+      end
+    end
+  end
+  return matches
+end
+
+
+local function setup_command()
+  vim.cmd(table.concat({
+    'command!',
+    '-nargs=+',
+    '-complete=customlist,v:lua.gitsigns_complete',
+    'Gitsigns',
+    'lua require("gitsigns")._run_func(<f-args>)'
+  }, ' '))
+end
+
 local function setup(cfg: Config)
   config = gs_config.process(cfg) as Config
 
@@ -615,10 +662,14 @@ local function setup(cfg: Config)
 
   gs_debug.debug_mode = config.debug_mode
 
+  if config.debug_mode then
+    add_debug_functions()
+  end
+
   Status.formatter = config.status_formatter
 
   setup_signs()
-
+  setup_command()
   apply_keymaps(false)
 
   update_debounced = debounce_trailing(config.update_debounce, arun(update))
@@ -729,13 +780,29 @@ local function refresh()
   end
 end
 
-return {
+local function toggle_signs()
+  config.signcolumn = not config.signcolumn
+  refresh()
+end
+
+local function toggle_numhl()
+  config.numhl = not config.numhl
+  refresh()
+end
+
+local function toggle_linehl()
+  config.linehl = not config.linehl
+  refresh()
+end
+
+M = {
   update          = update_debounced,
   stage_hunk      = mk_repeatable(stage_hunk),
   undo_stage_hunk = mk_repeatable(undo_stage_hunk),
   reset_hunk      = mk_repeatable(reset_hunk),
   next_hunk       = next_hunk,
   prev_hunk       = prev_hunk,
+  select_hunk     = select_hunk,
   preview_hunk    = preview_hunk,
   blame_line      = blame_line,
   reset_buffer    = reset_buffer,
@@ -743,42 +810,17 @@ return {
   detach          = detach,
   detach_all      = detach_all,
   setup           = setup,
-  select_hunk     = select_hunk,
-
-  -- Debug
-  dump_cache = function()
-    print(vim.inspect(cache))
-  end,
-
-  debug_messages = function(): {string}
-    for _, m in ipairs(gs_debug.messages) do
-      print(m)
-    end
-    return gs_debug.messages
-  end,
-
-  clear_debug = function()
-    gs_debug.messages = {}
-  end,
-
-  refresh = refresh,
-
-  toggle_signs = function()
-    config.signcolumn = not config.signcolumn
-    refresh()
-  end,
-
-  toggle_numhl = function()
-    config.numhl = not config.numhl
-    refresh()
-  end,
-
-  toggle_linehl = function()
-    config.linehl = not config.linehl
-    refresh()
-  end,
+  refresh         = refresh,
+  toggle_signs    = toggle_signs,
+  toggle_linehl   = toggle_linehl,
+  toggle_numhl    = toggle_numhl,
 
   _update_highlights = function()
     setup_signs()
+  end,
+  _run_func = function(func: string, ...: any)
+    M[func](...)
   end
 }
+
+return M
