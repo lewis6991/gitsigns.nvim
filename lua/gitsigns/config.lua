@@ -98,8 +98,8 @@ M.schema = {
       ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
       ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line()<CR>',
 
-      ['o ih'] = ':<C-U>lua require"gitsigns".text_object()<CR>',
-      ['x ih'] = ':<C-U>lua require"gitsigns".text_object()<CR>'
+      ['o ih'] = ':<C-U>lua require"gitsigns".select_hunk()<CR>',
+      ['x ih'] = ':<C-U>lua require"gitsigns".select_hunk()<CR>'
     }]],
       description = [[
         Keymaps to set up when attaching to a buffer.

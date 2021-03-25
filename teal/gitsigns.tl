@@ -672,7 +672,7 @@ local function preview_hunk()
   api.nvim_win_set_option(winid, 'relativenumber', false)
 end
 
-local function text_object()
+local function select_hunk()
   local hunk = get_cursor_hunk()
   if not hunk then
     return
@@ -743,7 +743,7 @@ return {
   detach          = detach,
   detach_all      = detach_all,
   setup           = setup,
-  text_object     = text_object,
+  select_hunk     = select_hunk,
 
   -- Debug
   dump_cache = function()
