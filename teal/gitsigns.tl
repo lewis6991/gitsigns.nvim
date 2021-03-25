@@ -167,7 +167,7 @@ local update = async(function(bufnr: integer, bcache: CacheEntry)
   local stage = bcache.has_conflicts and 1 or 0
 
   if config.use_internal_diff then
-    if not bcache.staged_text or not config._refresh_staged_on_update then
+    if not bcache.staged_text or config._refresh_staged_on_update then
       bcache.staged_text = await(git.get_staged_text, bcache.toplevel, bcache.relpath, stage) as {string}
     end
     bcache.hunks = diff.run_diff(bcache.staged_text, buftext, config.diff_algorithm)
