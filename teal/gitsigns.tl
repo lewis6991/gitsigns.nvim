@@ -208,13 +208,10 @@ end)
 local update_debounced: function(integer)
 
 local watch_index = async(function(bufnr: integer, gitdir: string, on_change: function): uv.FSPollObj
-  -- TODO: Buffers of the same git repo can share an index watcher
   dprint('Watching index', bufnr, 'watch_index')
-
   local index = gitdir..path_sep..'index'
   local w = uv.new_fs_poll()
   w:start(index, config.watch_index.interval, on_change)
-
   return w
 end)
 
@@ -438,15 +435,17 @@ local function get_buf_path(bufnr: integer): string
 end
 
 local function index_update_handler(cbuf: integer): function
-  return sync(function()
+  return sync(function(err: string)
+    if err then
+      error(('Error detected in index watcher for buffer %d:\n%s'):format(cbuf, err))
+    end
     dprint('Index update', cbuf, 'watcher_cb')
     local bcache = get_cache(cbuf)
 
-    local _, _, abbrev_head0 =
+    _, _, bcache.abbrev_head =
       await(git.get_repo_info, bcache.toplevel) as (string, string, string)
 
-    Status:update_head(cbuf, abbrev_head0)
-    bcache.abbrev_head = abbrev_head0
+    Status:update_head(cbuf, bcache.abbrev_head)
 
     local _, object_name0, mode_bits0, has_conflicts =
       await(git.file_info, bcache.file, bcache.toplevel) as (string, string, string, boolean)
