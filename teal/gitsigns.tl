@@ -628,6 +628,8 @@ local function setup(cfg: Config)
 
   vim.cmd('autocmd gitsigns VimLeavePre * lua require("gitsigns").detach_all()')
 
+  vim.cmd('autocmd gitsigns ColorScheme * lua require("gitsigns")._update_highlights()')
+
   if config.use_decoration_api then
     local ns = api.nvim_create_namespace('gitsigns')
     api.nvim_set_decoration_provider(ns, {
@@ -761,5 +763,9 @@ return {
   toggle_linehl = function()
     config.linehl = not config.linehl
     refresh()
+  end,
+
+  _update_highlights = function()
+    setup_signs()
   end
 }

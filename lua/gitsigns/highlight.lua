@@ -17,9 +17,15 @@ local hls = {
    GitSignsDelete = { 'GitGutterDelete', 'SignifySignDelete', 'DiffDelete' },
 }
 
+local function is_hl_set(hl_name)
+
+   local exists, hl = pcall(api.nvim_get_hl_by_name, hl_name, true)
+   local color = hl.foreground or hl.background
+   return exists and color ~= nil
+end
+
 local function hl_link(to, from, reverse)
-   local to_exists, _ = pcall(api.nvim_get_hl_by_name, to, false)
-   if to_exists then
+   if is_hl_set(to) then
       return
    end
 
@@ -59,22 +65,15 @@ function M.setup_highlight(hl_name0)
 
    local hl_name = hl_name0
 
-   local exists, hl = pcall(api.nvim_get_hl_by_name, hl_name, true)
-   if exists and (hl.foreground or hl.background) then
+   if is_hl_set(hl_name) then
 
       return
    end
 
    for _, d in ipairs(hls[hl_name]) do
-      local _, dhl = pcall(api.nvim_get_hl_by_name, d, true)
-      local color = dhl.foreground or dhl.background
-      if color then
+      if is_hl_set(d) then
          dprint(('Deriving %s from %s'):format(hl_name, d))
-         if isStdHl(d) then
-            hl_link(hl_name, d, true)
-         else
-            hl_link(hl_name, d)
-         end
+         hl_link(hl_name, d, isStdHl(d))
          return
       end
    end
