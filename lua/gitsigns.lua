@@ -612,6 +612,7 @@ local function setup(cfg)
 
 
 
+   vim.cmd('augroup gitsigns | autocmd! | augroup END')
 
 
 
@@ -620,10 +621,12 @@ local function setup(cfg)
 
 
 
-   vim.cmd('autocmd BufRead,BufNewFile,BufWritePost ' ..
+
+
+   vim.cmd('autocmd gitsigns BufRead,BufNewFile,BufWritePost ' ..
    '* lua vim.schedule(require("gitsigns").attach)')
 
-   vim.cmd('autocmd VimLeavePre * lua require("gitsigns").detach_all()')
+   vim.cmd('autocmd gitsigns VimLeavePre * lua require("gitsigns").detach_all()')
 
    if config.use_decoration_api then
       local ns = api.nvim_create_namespace('gitsigns')
