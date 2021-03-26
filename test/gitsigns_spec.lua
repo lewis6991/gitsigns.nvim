@@ -765,6 +765,45 @@ local function testsuite(variant, advanced_features)
 
     end)
 
+    it('updates highlights when colorscheme changes', function()
+      command("set termguicolors")
+
+      local test_config2 = helpers.deepcopy(test_config)
+      test_config2.signs.add.hl = nil
+      test_config2.signs.change.hl = nil
+      test_config2.signs.delete.hl = nil
+      test_config2.signs.changedelete.hl = nil
+      test_config2.signs.topdelete.hl = nil
+      test_config2.linehl = true
+
+      exec_lua('gs.setup(...)', test_config2)
+
+      eq('GitSignsChange xxx gui=reverse guibg=#ffbbff',
+        exec_capture('hi GitSignsChange'))
+
+      eq('GitSignsDelete xxx gui=reverse guifg=#0000ff guibg=#e0ffff',
+        exec_capture('hi GitSignsDelete'))
+
+      eq('GitSignsAdd    xxx gui=reverse guibg=#add8e6',
+        exec_capture('hi GitSignsAdd'))
+
+      eq('GitSignsAddLn  xxx gui=reverse guibg=#add8e6',
+        exec_capture('hi GitSignsAddLn'))
+
+      command('colorscheme blue')
+
+      eq('GitSignsChange xxx gui=reverse guifg=#000000 guibg=#006400',
+        exec_capture('hi GitSignsChange'))
+
+      eq('GitSignsDelete xxx gui=reverse guifg=#000000 guibg=#ff7f50',
+        exec_capture('hi GitSignsDelete'))
+
+      eq('GitSignsAdd    xxx gui=reverse guifg=#000000 guibg=#6a5acd',
+        exec_capture('hi GitSignsAdd'))
+
+      eq('GitSignsAddLn  xxx gui=reverse guifg=#000000 guibg=#6a5acd',
+        exec_capture('hi GitSignsAddLn'))
+    end)
   end)
 end
 
