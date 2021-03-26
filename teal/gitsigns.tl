@@ -611,6 +611,9 @@ local function setup(cfg: Config)
   update_debounced = debounce_trailing(config.update_debounce, arun(update))
     as function(integer)
 
+  -- set up augroup, clear it if setup is run twice.
+  vim.cmd('augroup gitsigns | autocmd! | augroup END')
+
   -- This seems to be triggered twice on the first buffer so we have throttled
   -- the attach function with throttle_leading
   --
@@ -620,10 +623,10 @@ local function setup(cfg: Config)
   -- which suspends itself when it needs to get back onto the main thread in
   -- order to call an API function.
   -- TODO: Figure how to test this.
-  vim.cmd('autocmd BufRead,BufNewFile,BufWritePost '..
+  vim.cmd('autocmd gitsigns BufRead,BufNewFile,BufWritePost '..
     '* lua vim.schedule(require("gitsigns").attach)')
 
-  vim.cmd('autocmd VimLeavePre * lua require("gitsigns").detach_all()')
+  vim.cmd('autocmd gitsigns VimLeavePre * lua require("gitsigns").detach_all()')
 
   if config.use_decoration_api then
     local ns = api.nvim_create_namespace('gitsigns')
