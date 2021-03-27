@@ -29,7 +29,7 @@ test: neovim plenary.nvim
 
 .PHONY: tl-check
 tl-check:
-	$(INIT_LUAROCKS) tl check teal/**/*.tl
+	$(INIT_LUAROCKS) tl check teal/*.tl teal/**/*.tl
 
 .PHONY: tl-build
 tl-build: tlconfig.lua

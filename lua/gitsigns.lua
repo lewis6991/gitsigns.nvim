@@ -1,4 +1,3 @@
-require('gitsigns/types')
 local gs_async = require('gitsigns/async')
 local async = gs_async.async
 local sync = gs_async.sync
@@ -13,8 +12,12 @@ local debounce_trailing = gs_debounce.debounce_trailing
 local gs_popup = require('gitsigns/popup')
 local gs_hl = require('gitsigns/highlight')
 
-local sign_define = require('gitsigns/signs').sign_define
-local process_config = require('gitsigns/config').process
+local gs_signs = require('gitsigns/signs')
+local Sign = gs_signs.Sign
+
+local gs_config = require('gitsigns/config')
+local Config = gs_config.Config
+
 local mk_repeatable = require('gitsigns/repeat').mk_repeatable
 
 local apply_mappings = require('gitsigns/mappings')
@@ -25,25 +28,18 @@ local util = require('gitsigns/util')
 local gs_hunks = require("gitsigns/hunks")
 local create_patch = gs_hunks.create_patch
 local process_hunks = gs_hunks.process_hunks
+local Hunk = gs_hunks.Hunk
 
 local diff = require('gitsigns.diff')
 
-local gsd = require("gitsigns/debug")
-local dprint = gsd.dprint
+local gs_debug = require("gitsigns/debug")
+local dprint = gs_debug.dprint
 
 local Status = require("gitsigns/status")
 
 local api = vim.api
 local uv = vim.loop
 local current_buf = api.nvim_get_current_buf
-
-local sign_map = {
-   add = "GitSignsAdd",
-   delete = "GitSignsDelete",
-   change = "GitSignsChange",
-   topdelete = "GitSignsTopDelete",
-   changedelete = "GitSignsChangeDelete",
-}
 
 local config
 
@@ -63,6 +59,23 @@ end)()
 local function dirname(file)
    return file:match(string.format('^(.+)%s[^%s]+', path_sep, path_sep))
 end
+
+local CacheEntry = {}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 local cache = {}
 
@@ -88,7 +101,7 @@ end
 
 local function add_signs(bufnr, signs)
    for lnum, s in pairs(signs) do
-      local stype = sign_map[s.type]
+      local stype = gs_signs.sign_map[s.type]
       local count = s.count
 
       local cs = config.signs[s.type]
@@ -97,7 +110,7 @@ local function add_signs(bufnr, signs)
          local count_suffix = cc[count] and (count) or (cc['+'] and 'Plus') or ''
          local count_char = cc[count] or cc['+'] or ''
          stype = stype .. count_suffix
-         sign_define(stype, {
+         gs_signs.sign_define(stype, {
             texthl = cs.hl,
             text = config.signcolumn and cs.text .. count_char or '',
             numhl = config.numhl and cs.numhl,
@@ -573,7 +586,7 @@ end))
 
 local function setup_signs(redefine)
 
-   for t, sign_name in pairs(sign_map) do
+   for t, sign_name in pairs(gs_signs.sign_map) do
       local cs = config.signs[t]
 
       gs_hl.setup_highlight(cs.hl)
@@ -585,7 +598,7 @@ local function setup_signs(redefine)
          end
       end
 
-      sign_define(sign_name, {
+      gs_signs.sign_define(sign_name, {
          texthl = cs.hl,
          text = config.signcolumn and cs.text or nil,
          numhl = config.numhl and cs.numhl,
@@ -596,11 +609,11 @@ local function setup_signs(redefine)
 end
 
 local function setup(cfg)
-   config = process_config(cfg)
+   config = gs_config.process(cfg)
 
 
 
-   gsd.debug_mode = config.debug_mode
+   gs_debug.debug_mode = config.debug_mode
 
    Status.formatter = config.status_formatter
 
@@ -738,14 +751,14 @@ return {
    end,
 
    debug_messages = function()
-      for _, m in ipairs(gsd.messages) do
+      for _, m in ipairs(gs_debug.messages) do
          print(m)
       end
-      return gsd.messages
+      return gs_debug.messages
    end,
 
    clear_debug = function()
-      gsd.messages = {}
+      gs_debug.messages = {}
    end,
 
    refresh = refresh,
