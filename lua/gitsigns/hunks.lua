@@ -1,6 +1,31 @@
-require('gitsigns/types')
+local Sign = require('gitsigns/signs').Sign
+local StatusObj = require('gitsigns/status').StatusObj
 
-local M = {}
+local M = {Hunk = {Node = {}, }, }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+local Hunk = M.Hunk
 
 function M.create_hunk(start_a, count_a, start_b, count_b)
    local removed = { start = start_a, count = count_a }

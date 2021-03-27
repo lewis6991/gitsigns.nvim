@@ -1,5 +1,35 @@
+local record M
+  enum SignName
+    "GitSignsAdd"
+    "GitSignsDelete"
+    "GitSignsChange"
+    "GitSignsTopDelete"
+    "GitSignsChangeDelete"
+  end
 
-local M = {}
+  enum SignType
+    "add"
+    "delete"
+    "change"
+    "topdelete"
+    "changedelete"
+  end
+
+  record Sign
+    type: SignType
+    count: integer
+  end
+
+  sign_map: {SignType:SignName}
+end
+
+M.sign_map = {
+  add          = "GitSignsAdd",
+  delete       = "GitSignsDelete",
+  change       = "GitSignsChange",
+  topdelete    = "GitSignsTopDelete",
+  changedelete = "GitSignsChangeDelete",
+}
 
 local sign_define_cache = {}
 

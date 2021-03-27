@@ -1,7 +1,14 @@
-require('gitsigns/types')
 local api = vim.api
 
+local record StatusObj
+  added   : integer
+  removed : integer
+  changed : integer
+  head    : string
+end
+
 local Status = {
+  StatusObj = StatusObj,
   status: StatusObj = {},
   formatter: function(StatusObj): string = nil
 }

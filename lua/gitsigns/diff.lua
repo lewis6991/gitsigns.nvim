@@ -1,4 +1,5 @@
 local create_hunk = require("gitsigns/hunks").create_hunk
+local Hunk = require('gitsigns/hunks').Hunk
 
 local ffi = require("ffi")
 
