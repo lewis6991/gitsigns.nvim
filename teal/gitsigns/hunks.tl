@@ -1,6 +1,31 @@
-require('gitsigns/types')
+local Sign = require('gitsigns/signs').Sign
+local StatusObj = require('gitsigns/status').StatusObj
 
-local M = {}
+local record M
+  record Hunk
+    enum Type
+      "add"
+      "change"
+      "delete"
+    end
+
+    type: Type
+    head: string
+    lines: {string}
+    start: integer
+    dend: integer
+
+    record Node
+      start: integer
+      count: integer
+    end
+
+    added: Node
+    removed: Node
+  end
+end
+
+local Hunk = M.Hunk
 
 function M.create_hunk(start_a: integer, count_a: integer, start_b: integer, count_b: integer): Hunk
   local removed = { start = start_a, count = count_a }

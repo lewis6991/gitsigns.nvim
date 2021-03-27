@@ -1,13 +1,51 @@
+local StatusObj = require('gitsigns/status').StatusObj
+local SignType = require('gitsigns/signs').SignType
 
 local record SchemaElem
-    type: string
-    deep_extend: boolean
-    default: any
-    default_help: string
-    description: string
+  type: string
+  deep_extend: boolean
+  default: any
+  default_help: string
+  description: string
 end
 
-local schema: {string:SchemaElem} = {
+local record M
+  record Config
+    debug_mode: boolean
+    diff_algorithm: string
+
+    record SignsConfig
+      show_count: boolean
+      hl: string
+      text: string
+      numhl: string
+      linehl: string
+      keymaps: {string:string}
+    end
+    signs: {SignType: SignsConfig}
+
+    count_chars: {string|integer:string}
+    signcolumn: boolean
+    numhl: boolean
+    linehl: boolean
+    sign_priority: integer
+    keymaps: {string:any}
+    record watch_index
+        interval: integer
+    end
+    max_file_length: integer
+    update_debounce: integer
+    status_formatter: function(StatusObj): string
+    use_internal_diff: boolean
+    use_decoration_api: boolean
+
+    -- Undocumented
+    _refresh_staged_on_update: boolean
+  end
+  schema: {string:SchemaElem}
+end
+
+M.schema = {
   signs = {
     type = 'table',
     deep_extend = true,
@@ -251,11 +289,11 @@ local schema: {string:SchemaElem} = {
 
 local function validate_config(config: {string:any})
   for k, v in pairs(config) do
-    if schema[k] == nil then
+    if M.schema[k] == nil then
       print(("gitsigns: Ignoring invalid configuration field '%s'"):format(k))
     else
       vim.validate {
-        [k] = { v, schema[k].type } as {any};
+        [k] = { v, M.schema[k].type } as {any};
       }
     end
   end
@@ -263,7 +301,7 @@ end
 
 local function resolve_default(schema_elem: SchemaElem): any
   local v = schema_elem
-  local default = v.default as uany
+  local default = v.default
   if default is string and vim.startswith(default, 'function(') then
     local d = loadstring('return '..default)() as function
     if v.type == 'function' then
@@ -278,27 +316,26 @@ local function resolve_default(schema_elem: SchemaElem): any
   end
 end
 
-return {
-  process = function(user_config: {string:any}): {string: any}
-    user_config = user_config or {}
+function M.process(user_config: {string:any}): {string: any}
+  user_config = user_config or {}
 
-    validate_config(user_config)
+  validate_config(user_config)
 
-    local config: {string:any} = {}
-    for k, v in pairs(schema) do
-      if user_config[k] ~= nil then
-        if v.deep_extend then
-          local d = resolve_default(v)
-          config[k] = vim.tbl_deep_extend('force', d as table, user_config[k] as table)
-        else
-          config[k] = user_config[k]
-        end
+  local config: {string:any} = {}
+  for k, v in pairs(M.schema) do
+    if user_config[k] ~= nil then
+      if v.deep_extend then
+        local d = resolve_default(v)
+        config[k] = vim.tbl_deep_extend('force', d as table, user_config[k] as table)
       else
-        config[k] = resolve_default(v)
+        config[k] = user_config[k]
       end
+    else
+      config[k] = resolve_default(v)
     end
+  end
 
-    return config
-  end,
-  schema = schema
-}
+  return config
+end
+
+return M

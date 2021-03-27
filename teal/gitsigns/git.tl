@@ -5,6 +5,7 @@ local util = require('gitsigns/util')
 local run_job = util.run_job
 
 local parse_diff_line = require("gitsigns/hunks").parse_diff_line
+local Hunk            = require('gitsigns/hunks').Hunk
 
 local M = {}
 

@@ -1,5 +1,35 @@
+local M = {Sign = {}, }
 
-local M = {}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+M.sign_map = {
+   add = "GitSignsAdd",
+   delete = "GitSignsDelete",
+   change = "GitSignsChange",
+   topdelete = "GitSignsTopDelete",
+   changedelete = "GitSignsChangeDelete",
+}
 
 local sign_define_cache = {}
 
