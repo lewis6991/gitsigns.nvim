@@ -11,4 +11,15 @@ function M.dprint(msg, bufnr, caller)
    table.insert(M.messages, string.format('%s(%s): %s', name, bufnr, msg))
 end
 
+function M.eprint(msg)
+
+   if vim.in_fast_event() then
+      vim.schedule(function()
+         print('error: ' .. msg)
+      end)
+   else
+      print('error: ' .. msg)
+   end
+end
+
 return M

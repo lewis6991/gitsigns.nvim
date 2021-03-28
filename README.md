@@ -25,7 +25,9 @@ Expect things to break sometimes but please don't hesitate to raise an issue.
 - Hunk text object
 
 ## Requirements
-Neovim >= 0.5.0
+
+- Neovim >= 0.5.0
+- Newish version of git. Older versions may not work with some features.
 
 ## Installation
 

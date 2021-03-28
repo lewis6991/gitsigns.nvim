@@ -7,7 +7,41 @@ local run_job = util.run_job
 local parse_diff_line = require("gitsigns/hunks").parse_diff_line
 local Hunk            = require('gitsigns/hunks').Hunk
 
-local M = {}
+local uv = vim.loop
+local startswith = vim.startswith
+
+local record M
+  record Version
+    major: integer
+    minor: integer
+    patch: integer
+  end
+  version: Version
+end
+
+local function parse_version(version: string): M.Version
+  assert(version:match('%d+%.%d+%.%d+'), 'Invalid git version: '..version)
+  local ret: M.Version = {}
+  local parts = vim.split(version, '%.')
+  ret.major = tonumber(parts[1]) as integer
+  ret.minor = tonumber(parts[2]) as integer
+  ret.patch = tonumber(parts[3]) as integer
+  return ret
+end
+
+-- Usage: check_version{2,3}
+local function check_version(version: {number,number,number}): boolean
+  if M.version.major < version[1] then
+    return false
+  end
+  if version[2] and M.version.minor < version[2] then
+    return false
+  end
+  if version[3] and M.version.patch < version[3] then
+    return false
+  end
+  return true
+end
 
 function M.file_info(file: string, toplevel: string): cb_function
   return function(callback: function(string, string, string, boolean))
@@ -122,7 +156,7 @@ function M.run_blame(file: string, toplevel: string, lines: {string}, lnum: numb
         ret.orig_lnum = header[2]
         ret.final_lnum = header[3]
         for _, l in ipairs(results) do
-          if not vim.startswith(l, '\t') then
+          if not startswith(l, '\t') then
             local cols = vim.split(l, ' ')
             local key = table.remove(cols, 1)
             ret[key] = table.concat(cols, ' ')
@@ -154,15 +188,24 @@ end
 function M.get_repo_info(path: string): cb_function
   return function(callback: function)
     local out = {}
+
+    -- Does git rev-parse have --absolute-git-dir, added in 2.13:
+    --   https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
+    local has_abs_gd = check_version{2,13}
+    local git_dir_opt = has_abs_gd and '--absolute-git-dir' or '--git-dir'
+
     run_job {
       command = 'git',
       args = {'rev-parse',
         '--show-toplevel',
-        '--absolute-git-dir',
+        git_dir_opt,
         '--abbrev-ref', 'HEAD',
       },
       cwd = path,
       on_stdout = function(_, line: string)
+        if not has_abs_gd and #out == 1 then
+          line = uv.fs_realpath(line)
+        end
         table.insert(out, line)
       end,
       on_exit = vim.schedule_wrap(function()
@@ -292,7 +335,7 @@ function M.run_diff(staged: string, text: {string}, diff_algo: string): cb_funct
         buffile,
       },
       on_stdout = function(_, line: string)
-        if vim.startswith(line, '@@') then
+        if startswith(line, '@@') then
           table.insert(results, parse_diff_line(line))
         else
           if #results > 0 then
@@ -302,20 +345,44 @@ function M.run_diff(staged: string, text: {string}, diff_algo: string): cb_funct
       end,
       on_stderr = function(err: string, line: string)
         if err then
-           -- On windows print() crashes in callback threads
-           vim.schedule(function()
-              print('error: ' .. err, 'NA', 'run_diff')
-           end)
-        elseif line then
-           -- On windows print() crashes in callback threads
-           vim.schedule(function()
-              print('error: ' .. line, 'NA', 'run_diff')
-           end)
-         end
+          gsd.eprint(err)
+        end
+        if line then
+          gsd.eprint(line)
+        end
       end,
       on_exit = function()
         os.remove(buffile)
         callback(results)
+      end
+    }
+  end
+end
+
+function M.set_version(version: string): cb_function
+  return function(callback: function())
+    if version ~= 'auto' then
+      M.version = parse_version(version)
+      callback()
+      return
+    end
+    run_job {
+      command = 'git', args = {'--version'},
+      on_stdout = function(_, line: string)
+        assert(startswith(line, 'git version'), 'Unexpected output: '..line)
+        local parts = vim.split(line, '%s+')
+        M.version = parse_version(parts[3])
+      end,
+      on_stderr = function(err: string, line: string)
+        if err then
+          gsd.eprint(err)
+        end
+        if line then
+          gsd.eprint(line)
+        end
+      end,
+      on_exit = function()
+        callback()
       end
     }
   end

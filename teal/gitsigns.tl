@@ -45,23 +45,6 @@ local M: {string:function}
 
 local config: Config
 
-local path_sep = (function(): string
-  if jit then
-    local jit_os = jit.os:lower()
-    if jit_os == 'linux' or jit_os == 'osx' then
-      return '/'
-    else
-      return '\\'
-    end
-  else
-    return package.config:sub(1, 1)
-  end
-end)()
-
-local function dirname(file: string): string
-  return file:match(string.format('^(.+)%s[^%s]+', path_sep, path_sep))
-end
-
 local record CacheEntry
   file          : string
   relpath       : string
@@ -209,7 +192,7 @@ local update_debounced: function(integer)
 
 local watch_index = async(function(bufnr: integer, gitdir: string, on_change: function): uv.FSPollObj
   dprint('Watching index', bufnr, 'watch_index')
-  local index = gitdir..path_sep..'index'
+  local index = gitdir..util.path_sep..'index'
   local w = uv.new_fs_poll()
   w:start(index, config.watch_index.interval, on_change)
   return w
@@ -465,7 +448,7 @@ local function index_update_handler(cbuf: integer): function
 end
 
 local function in_git_dir(file: string): boolean
-  for _, p in ipairs(vim.split(file, path_sep)) do
+  for _, p in ipairs(vim.split(file, util.path_sep)) do
     if p == '.git' then
       return true
     end
@@ -516,7 +499,7 @@ local attach = throttle_leading(100, sync(function()
     return
   end
 
-  local file_dir = dirname(file)
+  local file_dir = util.dirname(file)
 
   if not file_dir or not util.path_exists(file_dir) then
     dprint('Not a path', cbuf, 'attach')
@@ -654,8 +637,11 @@ local function setup_command()
   }, ' '))
 end
 
-local function setup(cfg: Config)
+local setup = sync(function(cfg: Config)
   config = gs_config.process(cfg) as Config
+
+  await(git.set_version, config._git_version)
+  await_main()
 
   -- TODO: Attach to all open buffers
 
@@ -706,7 +692,7 @@ local function setup(cfg: Config)
     })
   end
 
-end
+end)
 
 local function preview_hunk()
   local hunk = get_cursor_hunk()

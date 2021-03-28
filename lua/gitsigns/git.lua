@@ -7,7 +7,41 @@ local run_job = util.run_job
 local parse_diff_line = require("gitsigns/hunks").parse_diff_line
 local Hunk = require('gitsigns/hunks').Hunk
 
-local M = {}
+local uv = vim.loop
+local startswith = vim.startswith
+
+local M = {Version = {}, }
+
+
+
+
+
+
+
+
+local function parse_version(version)
+   assert(version:match('%d+%.%d+%.%d+'), 'Invalid git version: ' .. version)
+   local ret = {}
+   local parts = vim.split(version, '%.')
+   ret.major = tonumber(parts[1])
+   ret.minor = tonumber(parts[2])
+   ret.patch = tonumber(parts[3])
+   return ret
+end
+
+
+local function check_version(version)
+   if M.version.major < version[1] then
+      return false
+   end
+   if version[2] and M.version.minor < version[2] then
+      return false
+   end
+   if version[3] and M.version.patch < version[3] then
+      return false
+   end
+   return true
+end
 
 function M.file_info(file, toplevel)
    return function(callback)
@@ -122,7 +156,7 @@ function M.run_blame(file, toplevel, lines, lnum)
             ret.orig_lnum = header[2]
             ret.final_lnum = header[3]
             for _, l in ipairs(results) do
-               if not vim.startswith(l, '\t') then
+               if not startswith(l, '\t') then
                   local cols = vim.split(l, ' ')
                   local key = table.remove(cols, 1)
                   ret[key] = table.concat(cols, ' ')
@@ -154,15 +188,24 @@ end
 function M.get_repo_info(path)
    return function(callback)
       local out = {}
+
+
+
+      local has_abs_gd = check_version({ 2, 13 })
+      local git_dir_opt = has_abs_gd and '--absolute-git-dir' or '--git-dir'
+
       run_job({
          command = 'git',
          args = { 'rev-parse',
 '--show-toplevel',
-'--absolute-git-dir',
+git_dir_opt,
 '--abbrev-ref', 'HEAD',
          },
          cwd = path,
          on_stdout = function(_, line)
+            if not has_abs_gd and #out == 1 then
+               line = uv.fs_realpath(line)
+            end
             table.insert(out, line)
          end,
          on_exit = vim.schedule_wrap(function()
@@ -292,7 +335,7 @@ function M.run_diff(staged, text, diff_algo)
             buffile,
          },
          on_stdout = function(_, line)
-            if vim.startswith(line, '@@') then
+            if startswith(line, '@@') then
                table.insert(results, parse_diff_line(line))
             else
                if #results > 0 then
@@ -302,20 +345,44 @@ function M.run_diff(staged, text, diff_algo)
          end,
          on_stderr = function(err, line)
             if err then
-
-               vim.schedule(function()
-                  print('error: ' .. err, 'NA', 'run_diff')
-               end)
-            elseif line then
-
-               vim.schedule(function()
-                  print('error: ' .. line, 'NA', 'run_diff')
-               end)
+               gsd.eprint(err)
+            end
+            if line then
+               gsd.eprint(line)
             end
          end,
          on_exit = function()
             os.remove(buffile)
             callback(results)
+         end,
+      })
+   end
+end
+
+function M.set_version(version)
+   return function(callback)
+      if version ~= 'auto' then
+         M.version = parse_version(version)
+         callback()
+         return
+      end
+      run_job({
+         command = 'git', args = { '--version' },
+         on_stdout = function(_, line)
+            assert(startswith(line, 'git version'), 'Unexpected output: ' .. line)
+            local parts = vim.split(line, '%s+')
+            M.version = parse_version(parts[3])
+         end,
+         on_stderr = function(err, line)
+            if err then
+               gsd.eprint(err)
+            end
+            if line then
+               gsd.eprint(line)
+            end
+         end,
+         on_exit = function()
+            callback()
          end,
       })
    end
