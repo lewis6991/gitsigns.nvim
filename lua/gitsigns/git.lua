@@ -1,4 +1,4 @@
-require('gitsigns/async')
+local cb_function = require('gitsigns/async').cb_function
 
 local gsd = require("gitsigns/debug")
 local util = require('gitsigns/util')

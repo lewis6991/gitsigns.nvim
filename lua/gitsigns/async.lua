@@ -36,12 +36,15 @@
 
 
 
- cb_function = {}
- async_function = {}
+local cb_function = {}
+local async_function = {}
 
 local co = coroutine
 
-local M = {}
+local M = {
+   cb_function = cb_function,
+   async_function = async_function,
+}
 
 function M.async(func)
    return function(...)
