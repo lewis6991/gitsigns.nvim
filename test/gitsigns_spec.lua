@@ -249,11 +249,9 @@ local function testsuite(variant, advanced_features)
       test_config2.linehl = true
 
       exec_lua('gs.setup(...)', test_config2)
+      sleep(10)
 
-      local d = debug_messages()
-
-
-      match_dag(d, {
+      match_dag(debug_messages(), {
         p'Deriving GitSignsChangeNr from GitSignsChange',
         p'Deriving GitSignsChangeLn from GitSignsChange',
         p'Deriving GitSignsDelete from DiffDelete',
@@ -492,6 +490,7 @@ local function testsuite(variant, advanced_features)
       command("write")
       sleep(40)
 
+      local jobs = advanced_features and 5 or 6
 
       if advanced_features then
         match_debug_messages {
@@ -500,7 +499,7 @@ local function testsuite(variant, advanced_features)
         p"Running: git .* ls%-files .*/newfile.txt",
         "watch_index(1): Watching index",
         "dprint(nil): Running: git --no-pager show :0:newfile.txt",
-          "update(1): updates: 1, jobs: 4"
+          "update(1): updates: 1, jobs: "..jobs
         }
       else
         match_debug_messages {
@@ -510,13 +509,11 @@ local function testsuite(variant, advanced_features)
         "watch_index(1): Watching index",
         "dprint(nil): Running: git --no-pager show :0:newfile.txt",
           p'Running: git .* diff .* /tmp/lua_.* /tmp/lua_.*',
-          "update(1): updates: 1, jobs: 5"
+          "update(1): updates: 1, jobs: "..jobs
         }
       end
 
       check_status {head='master', added=1, changed=0, removed=0}
-
-      local jobs = advanced_features and 4 or 5
 
       screen:expect{grid=([[
         {3:+ }^          |
@@ -558,6 +555,7 @@ local function testsuite(variant, advanced_features)
 
     it('run copen', function()
       exec_lua('gs.setup(...)', test_config)
+      sleep(10)
       command("copen")
       match_debug_messages {
         "attach(2): Attaching",
@@ -777,6 +775,7 @@ local function testsuite(variant, advanced_features)
       test_config2.linehl = true
 
       exec_lua('gs.setup(...)', test_config2)
+      sleep(10)
 
       eq('GitSignsChange xxx gui=reverse guibg=#ffbbff',
         exec_capture('hi GitSignsChange'))
