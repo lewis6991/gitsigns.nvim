@@ -45,6 +45,9 @@ local M = {Config = {SignsConfig = {}, watch_index = {}, }, }
 
 
 
+
+
+
 M.schema = {
    signs = {
       type = 'table',
@@ -265,6 +268,14 @@ M.schema = {
         Use Neovim's decoration API to apply signs. This should improve
         performance on large files since signs will only be applied to drawn
         lines as opposed to all lines in the buffer.
+    ]],
+   },
+
+   _git_version = {
+      type = 'string',
+      default = 'auto',
+      description = [[
+        Version of git available. Set to 'auto' to automatically detect.
     ]],
    },
 
