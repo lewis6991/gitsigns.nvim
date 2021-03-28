@@ -6,7 +6,6 @@ local await = gs_async.await
 local await_main = gs_async.await_main
 
 local gs_debounce = require('gitsigns/debounce')
-local throttle_leading = gs_debounce.throttle_leading
 local debounce_trailing = gs_debounce.debounce_trailing
 
 local gs_popup = require('gitsigns/popup')
@@ -473,8 +472,8 @@ local function on_lines(buf, last_orig, last_new)
    update_debounced(buf)
 end
 
-local attach = throttle_leading(100, sync(function()
-   local cbuf = current_buf()
+local attach = async(function(cbuf)
+   cbuf = cbuf or current_buf()
    if cache[cbuf] ~= nil then
       dprint('Already attached', cbuf, 'attach')
       return
@@ -566,7 +565,9 @@ local attach = throttle_leading(100, sync(function()
    })
 
    apply_keymaps(true)
-end))
+end)
+
+local attach_throttled = arun(attach)
 
 local function setup_signs(redefine)
 
@@ -643,8 +644,6 @@ local setup = sync(function(cfg)
    await(git.set_version, config._git_version)
    await_main()
 
-
-
    gs_debug.debug_mode = config.debug_mode
 
    if config.debug_mode then
@@ -690,6 +689,15 @@ local setup = sync(function(cfg)
             apply_win_signs(bufnr, bcache.pending_signs, top, bot)
          end,
       })
+   end
+
+
+   for _, buf in ipairs(api.nvim_list_bufs()) do
+      if api.nvim_buf_is_valid(buf) and
+         api.nvim_buf_is_loaded(buf) and
+         api.nvim_buf_get_name(buf) ~= '' then
+         await(attach, buf)
+      end
    end
 
 end)
@@ -791,7 +799,7 @@ M = {
    preview_hunk = preview_hunk,
    blame_line = blame_line,
    reset_buffer = reset_buffer,
-   attach = attach,
+   attach = attach_throttled,
    detach = detach,
    detach_all = detach_all,
    setup = setup,
