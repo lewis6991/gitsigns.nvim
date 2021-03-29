@@ -228,12 +228,12 @@ describe('gitsigns', function()
     edit(test_file)
     sleep(10)
     match_debug_messages {
-      "dprint(nil): Running: git --version",
+      "run_job: git --version",
       'attach(1): Attaching',
-      'dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
-      'dprint(nil): Running: git --no-pager ls-files --stage --others --exclude-standard '..test_file,
+      'run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+      'run_job: git --no-pager ls-files --stage --others --exclude-standard '..test_file,
       'watch_index(1): Watching index',
-      'dprint(nil): Running: git --no-pager show :0:dummy.txt',
+      'run_job: git --no-pager show :0:dummy.txt',
       'watcher_cb(1): Index update error: ENOENT',
       'update(1): updates: 1, jobs: 4'
     }
@@ -289,7 +289,7 @@ describe('gitsigns', function()
       sleep(20)
 
       match_debug_messages {
-        "dprint(nil): Running: git --version",
+        "run_job: git --version",
         'attach(1): Attaching',
         'attach(1): In git dir'
       }
@@ -305,10 +305,10 @@ describe('gitsigns', function()
       sleep(20)
 
       match_debug_messages {
-        "dprint(nil): Running: git --version",
+        "run_job: git --version",
         "attach(1): Attaching",
-        "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
-        p"Running: git .* ls%-files .*/dummy_ignored.txt",
+        "run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+        p"run_job: git .* ls%-files .*/dummy_ignored.txt",
         "attach(1): Cannot resolve file in repo",
       }
 
@@ -320,9 +320,9 @@ describe('gitsigns', function()
       sleep(10)
 
       match_debug_messages {
-        "dprint(nil): Running: git --version",
+        "run_job: git --version",
         "attach(1): Attaching",
-        "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+        "run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
         "attach(1): Not a file",
       }
 
@@ -334,7 +334,7 @@ describe('gitsigns', function()
       edit(scratch..'/does/not/exist')
 
       match_debug_messages {
-        "dprint(nil): Running: git --version",
+        "run_job: git --version",
         "attach(1): Attaching",
         "attach(1): Not a path",
       }
@@ -347,7 +347,7 @@ describe('gitsigns', function()
     it('can run copen', function()
       command("copen")
       match_debug_messages {
-        "dprint(nil): Running: git --version",
+        "run_job: git --version",
         "attach(2): Attaching",
         "attach(2): Non-normal buffer",
       }
@@ -599,21 +599,21 @@ describe('gitsigns', function()
         if advanced_features then
           match_debug_messages {
           "attach(1): Attaching",
-          "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
-          p"Running: git .* ls%-files .*/newfile.txt",
+          "run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+          p"run_job: git .* ls%-files .*/newfile.txt",
           "watch_index(1): Watching index",
-          "dprint(nil): Running: git --no-pager show :0:newfile.txt",
+          "run_job: git --no-pager show :0:newfile.txt",
             "update(1): updates: 1, jobs: "..jobs
           }
         else
           match_debug_messages {
           "attach(1): Attaching",
-          "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
-          p"Running: git .* ls%-files .*/newfile.txt",
+          "run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+          p"run_job: git .* ls%-files .*/newfile.txt",
           "watch_index(1): Watching index",
-          "dprint(nil): Running: git --no-pager show :0:newfile.txt",
-            p'Running: git .* diff .* /tmp/lua_.* /tmp/lua_.*',
-            "update(1): updates: 1, jobs: "..jobs
+          "run_job: git --no-pager show :0:newfile.txt",
+          p'run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*',
+          "update(1): updates: 1, jobs: "..jobs
           }
         end
 

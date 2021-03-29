@@ -7,8 +7,14 @@ function M.dprint(msg, bufnr, caller)
    if not M.debug_mode then
       return
    end
-   local name = caller or debug.getinfo(1, 'n').name or ''
-   table.insert(M.messages, string.format('%s(%s): %s', name, bufnr, msg))
+   local name = caller or debug.getinfo(2, 'n').name or ''
+   local msg2
+   if bufnr then
+      msg2 = string.format('%s(%s): %s', name, bufnr, msg)
+   else
+      msg2 = string.format('%s: %s', name, msg)
+   end
+   table.insert(M.messages, msg2)
 end
 
 function M.eprint(msg)

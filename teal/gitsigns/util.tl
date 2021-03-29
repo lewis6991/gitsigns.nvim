@@ -16,7 +16,7 @@ end
 function M.run_job(job_spec: Job.JobSpec)
   if gsd.debug_mode then
     local cmd: string = job_spec.command..' '..table.concat(job_spec.args, ' ')
-    gsd.dprint('Running: '..cmd)
+    gsd.dprint(cmd)
   end
   Job:new(job_spec):start()
   M.job_cnt = M.job_cnt + 1
