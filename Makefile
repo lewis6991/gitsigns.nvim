@@ -24,6 +24,7 @@ plenary.nvim:
 .PHONY: test
 test: neovim plenary.nvim
 	make -C neovim functionaltest \
+		CMAKE_BUILD_TYPE=Release \
 		BUSTED_ARGS="$(BUSTED_ARGS)" \
 		TEST_FILE="$(TEST_FILE)"
 
