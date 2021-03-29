@@ -145,7 +145,7 @@ local function match_lines2(lines, spec)
 end
 
 local function debug_messages()
-  return exec_lua("return require'gitsigns'.debug_messages()")
+  return exec_lua("return require'gitsigns'.debug_messages(true)")
 end
 
 local function match_debug_messages(spec)
@@ -244,7 +244,7 @@ describe('gitsigns', function()
       {3:+ }a                 |
       {3:+ }file              |
       {3:+ }used              |
-      update(1... jobs: 4 |
+                          |
     ]]}
 
     git{"add", test_file}
@@ -256,7 +256,7 @@ describe('gitsigns', function()
       a                   |
       file                |
       used                |
-      update(1... jobs: 4 |
+                          |
     ]]}
 
   end)
@@ -623,7 +623,7 @@ describe('gitsigns', function()
           {3:+ }^          |
           {6:~           }|
           {6:~           }|
-          upda...s: %s |
+          <0C written |
         ]]):format(jobs)}
 
       end)
