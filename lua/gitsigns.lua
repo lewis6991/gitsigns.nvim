@@ -419,7 +419,8 @@ end
 local function index_update_handler(cbuf)
    return sync(function(err)
       if err then
-         error(('Error detected in index watcher for buffer %d:\n%s'):format(cbuf, err))
+         dprint('Index update error: ' .. err, cbuf, 'watcher_cb')
+         return
       end
       dprint('Index update', cbuf, 'watcher_cb')
       local bcache = get_cache(cbuf)
