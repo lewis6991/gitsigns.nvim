@@ -473,6 +473,7 @@ local function on_lines(buf, last_orig, last_new)
 end
 
 local attach = async(function(cbuf)
+   await_main()
    cbuf = cbuf or current_buf()
    if cache[cbuf] ~= nil then
       dprint('Already attached', cbuf, 'attach')
@@ -638,11 +639,21 @@ local function setup_command()
    }, ' '))
 end
 
+local function setup_decoration_provider()
+   local ns = api.nvim_create_namespace('gitsigns')
+   api.nvim_set_decoration_provider(ns, {
+      on_win = function(_, _, bufnr, top, bot)
+         local bcache = get_cache_opt(bufnr)
+         if not bcache or not bcache.pending_signs then
+            return
+         end
+         apply_win_signs(bufnr, bcache.pending_signs, top, bot)
+      end,
+   })
+end
+
 local setup = sync(function(cfg)
    config = gs_config.process(cfg)
-
-   await(git.set_version, config._git_version)
-   await_main()
 
    gs_debug.debug_mode = config.debug_mode
 
@@ -659,37 +670,14 @@ local setup = sync(function(cfg)
    update_debounced = debounce_trailing(config.update_debounce, arun(update))
 
 
-
-   vim.cmd('augroup gitsigns | autocmd! | augroup END')
-
-
-
-
-
-
-
-
-
-
-   vim.cmd('autocmd gitsigns BufRead,BufNewFile,BufWritePost ' ..
-   '* lua vim.schedule(require("gitsigns").attach)')
-
-   vim.cmd('autocmd gitsigns VimLeavePre * lua require("gitsigns").detach_all()')
-
-   vim.cmd('autocmd gitsigns ColorScheme * lua require("gitsigns")._update_highlights()')
-
    if config.use_decoration_api then
-      local ns = api.nvim_create_namespace('gitsigns')
-      api.nvim_set_decoration_provider(ns, {
-         on_win = function(_, _, bufnr, top, bot)
-            local bcache = get_cache_opt(bufnr)
-            if not bcache or not bcache.pending_signs then
-               return
-            end
-            apply_win_signs(bufnr, bcache.pending_signs, top, bot)
-         end,
-      })
+
+
+      setup_decoration_provider()
    end
+
+   await(git.set_version, config._git_version)
+   await_main()
 
 
    for _, buf in ipairs(api.nvim_list_bufs()) do
@@ -698,6 +686,17 @@ local setup = sync(function(cfg)
          api.nvim_buf_get_name(buf) ~= '' then
          await(attach, buf)
       end
+   end
+
+
+   vim.cmd('augroup gitsigns | autocmd! | augroup END')
+
+   for func, events in pairs({
+         attach = 'BufRead,BufNewFile,BufWritePost',
+         detach_all = 'VimLeavePre',
+         _update_highlights = 'ColorScheme',
+      }) do
+      vim.cmd('autocmd gitsigns ' .. events .. ' * lua require("gitsigns").' .. func .. '()')
    end
 
 end)

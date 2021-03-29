@@ -383,6 +383,7 @@ local function testsuite(variant, advanced_features)
       sleep(20)
 
       match_debug_messages {
+        "dprint(nil): Running: git --version",
         'attach(1): Attaching',
         'attach(1): In git dir'
       }
@@ -442,6 +443,7 @@ local function testsuite(variant, advanced_features)
       sleep(20)
 
       match_debug_messages {
+        "dprint(nil): Running: git --version",
         "attach(1): Attaching",
         "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
         p"Running: git .* ls%-files .*/dummy_ignored.txt",
@@ -457,6 +459,7 @@ local function testsuite(variant, advanced_features)
       sleep(10)
 
       match_debug_messages {
+        "dprint(nil): Running: git --version",
         "attach(1): Attaching",
         "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
         "attach(1): Not a file",
@@ -472,6 +475,7 @@ local function testsuite(variant, advanced_features)
       sleep(10)
 
       match_debug_messages {
+        "dprint(nil): Running: git --version",
         "attach(1): Attaching",
         "attach(1): Not a path",
       }
@@ -558,6 +562,7 @@ local function testsuite(variant, advanced_features)
       sleep(10)
       command("copen")
       match_debug_messages {
+        "dprint(nil): Running: git --version",
         "attach(2): Attaching",
         "attach(2): Non-normal buffer",
       }
@@ -690,6 +695,7 @@ local function testsuite(variant, advanced_features)
       git{'reset', '--hard', 'HEAD~1'}
       edit(test_file)
       feed('idiff')
+      sleep(20)
       command("write")
       command("bdelete")
       git{'add', test_file}
