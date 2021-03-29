@@ -717,6 +717,7 @@ local function preview_hunk()
    api.nvim_buf_set_option(bufnr, 'filetype', 'diff')
    api.nvim_win_set_option(winid, 'number', false)
    api.nvim_win_set_option(winid, 'relativenumber', false)
+   api.nvim_win_set_option(winid, 'signcolumn', 'no')
 end
 
 local function select_hunk()
