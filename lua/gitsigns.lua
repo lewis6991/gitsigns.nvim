@@ -686,6 +686,7 @@ local setup = sync(function(cfg)
          api.nvim_buf_is_loaded(buf) and
          api.nvim_buf_get_name(buf) ~= '' then
          await(attach, buf)
+         await_main()
       end
    end
 
