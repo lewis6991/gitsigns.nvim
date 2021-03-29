@@ -1,3 +1,5 @@
+-- vim: foldnestmax=5:
+
 local helpers = require('test.functional.helpers')(after_each)
 local Screen = require('test.functional.ui.screen')
 
@@ -65,14 +67,16 @@ local function setup_git()
   git{'config', 'init.defaultBranch', 'master'}
 end
 
-local function init()
+local function init(no_add)
   cleanup()
   system{"mkdir", scratch}
   setup_git()
   system{"touch", test_file}
   write_to_file(test_file, test_file_text)
-  git{"add", test_file}
-  git{"commit", "-m", "init commit"}
+  if not no_add then
+    git{"add", test_file}
+    git{"commit", "-m", "init commit"}
+  end
 end
 
 local function command_fmt(str, ...)
@@ -162,67 +166,111 @@ local function n(str)
   return {text=str, next=true}
 end
 
-local function testsuite(variant, advanced_features)
-  local test_config = {
-    debug_mode = true,
-    signs = {
-      add          = {hl = 'DiffAdd'   , text = '+'},
-      delete       = {hl = 'DiffDelete', text = '_'},
-      change       = {hl = 'DiffChange', text = '~'},
-      topdelete    = {hl = 'DiffDelete', text = '^'},
-      changedelete = {hl = 'DiffChange', text = '%'},
-    },
-    keymaps = {
-      noremap = true,
-      buffer = true,
-      ['n mhs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
-      ['n mhu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
-      ['n mhr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
-      ['n mhp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
-    },
-    update_debounce = 5,
-    use_internal_diff = advanced_features,
-    use_decoration_api = advanced_features
-  }
+local test_config = {
+  debug_mode = true,
+  signs = {
+    add          = {hl = 'DiffAdd'   , text = '+'},
+    delete       = {hl = 'DiffDelete', text = '_'},
+    change       = {hl = 'DiffChange', text = '~'},
+    topdelete    = {hl = 'DiffDelete', text = '^'},
+    changedelete = {hl = 'DiffChange', text = '%'},
+  },
+  keymaps = {
+    noremap = true,
+    buffer = true,
+    ['n mhs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
+    ['n mhu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
+    ['n mhr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
+    ['n mhp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
+  },
+  update_debounce = 5,
+}
 
-  describe(('gitsigns (%s)'):format(variant), function()
+describe('gitsigns', function()
+  local screen
+  local config
 
-    local screen
+  before_each(function()
+    clear()
+    screen = Screen.new(20, 17)
+    screen:attach()
 
+    screen:set_default_attr_ids({
+      [1] = {foreground = Screen.colors.DarkBlue, background = Screen.colors.WebGray};
+      [2] = {background = Screen.colors.LightMagenta};
+      [3] = {background = Screen.colors.LightBlue};
+      [4] = {background = Screen.colors.LightCyan1, bold = true, foreground = Screen.colors.Blue1};
+      [5] = {foreground = Screen.colors.Brown};
+      [6] = {foreground = Screen.colors.Blue1, bold = true};
+      [7] = {bold = true}
+    })
+
+    -- Make gitisigns available
+    exec_lua('package.path = ...', package.path)
+    exec_lua('gs = require("gitsigns")')
+    config = helpers.deepcopy(test_config)
+  end)
+
+  after_each(function()
+    cleanup()
+    screen:detach()
+  end)
+
+  it('can run basic setup', function()
+    exec_lua('gs.setup()')
+  end)
+
+  it('index watcher works on a fresh repo', function()
+    screen:try_resize(20,6)
+    init(true)
+    config.watch_index = {interval = 5}
+    exec_lua('gs.setup(...)', config)
+    edit(test_file)
+    sleep(10)
+    match_debug_messages {
+      "dprint(nil): Running: git --version",
+      'attach(1): Attaching',
+      'dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+      'dprint(nil): Running: git --no-pager ls-files --stage --others --exclude-standard '..test_file,
+      'watch_index(1): Watching index',
+      'dprint(nil): Running: git --no-pager show :0:dummy.txt',
+      'watcher_cb(1): Index update error: ENOENT',
+      'update(1): updates: 1, jobs: 4'
+    }
+
+    screen:expect{grid=[[
+      {3:+ }^This              |
+      {3:+ }is                |
+      {3:+ }a                 |
+      {3:+ }file              |
+      {3:+ }used              |
+      update(1... jobs: 4 |
+    ]]}
+
+    git{"add", test_file}
+    sleep(20)
+
+    screen:expect{grid=[[
+      ^This                |
+      is                  |
+      a                   |
+      file                |
+      used                |
+      update(1... jobs: 4 |
+    ]]}
+
+  end)
+
+  describe('when attaching', function()
     before_each(function()
-      clear()
       init()
-      screen = Screen.new(20, 17)
-      screen:attach()
-
-      screen:set_default_attr_ids({
-        [1] = {foreground = Screen.colors.DarkBlue, background = Screen.colors.WebGray};
-        [2] = {background = Screen.colors.LightMagenta};
-        [3] = {background = Screen.colors.LightBlue};
-        [4] = {background = Screen.colors.LightCyan1, bold = true, foreground = Screen.colors.Blue1};
-        [5] = {foreground = Screen.colors.Brown};
-        [6] = {foreground = Screen.colors.Blue1, bold = true};
-        [7] = {bold = true}
-      })
-
-      -- Make gitisigns available
-      exec_lua('package.path = ...', package.path)
-      exec_lua('gs = require("gitsigns")')
+      exec_lua('gs.setup(...)', config)
+      sleep(10)
     end)
 
-    after_each(function()
-      cleanup()
-      screen:detach()
-    end)
-
-    it('setup', function()
-      exec_lua('gs.setup()')
-    end)
-
-    it('load a file', function()
-      exec_lua('gs.setup(...)', test_config)
+    it('can setup mappings', function()
       edit(test_file)
-      sleep(50)
+      sleep(20)
 
       local res = split(exec_capture('nmap <buffer>'), '\n')
       table.sort(res)
@@ -236,19 +284,89 @@ local function testsuite(variant, advanced_features)
       })
     end)
 
-    it('sets up highlights', function()
+    it('does not attach inside .git', function()
+      edit(scratch..'/.git/index')
+      sleep(20)
+
+      match_debug_messages {
+        "dprint(nil): Running: git --version",
+        'attach(1): Attaching',
+        'attach(1): In git dir'
+      }
+    end)
+
+    it('doesn\'t attach to ignored files', function()
+      write_to_file(scratch..'/.gitignore', {'dummy_ignored.txt'})
+
+      local ignored_file = scratch.."/dummy_ignored.txt"
+
+      system{"touch", ignored_file}
+      edit(ignored_file)
+      sleep(20)
+
+      match_debug_messages {
+        "dprint(nil): Running: git --version",
+        "attach(1): Attaching",
+        "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+        p"Running: git .* ls%-files .*/dummy_ignored.txt",
+        "attach(1): Cannot resolve file in repo",
+      }
+
+      check_status {head='master'}
+    end)
+
+    it('doesn\'t attach to non-existent files', function()
+      edit(newfile)
+      sleep(10)
+
+      match_debug_messages {
+        "dprint(nil): Running: git --version",
+        "attach(1): Attaching",
+        "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+        "attach(1): Not a file",
+      }
+
+      check_status {head='master'}
+
+    end)
+
+    it('doesn\'t attach to non-existent files with non-existent sub-dirs', function()
+      edit(scratch..'/does/not/exist')
+
+      match_debug_messages {
+        "dprint(nil): Running: git --version",
+        "attach(1): Attaching",
+        "attach(1): Not a path",
+      }
+
+      helpers.pcall_err(get_buf_var, 'gitsigns_head')
+      helpers.pcall_err(get_buf_var, 'gitsigns_status_dict')
+
+    end)
+
+    it('can run copen', function()
+      command("copen")
+      match_debug_messages {
+        "dprint(nil): Running: git --version",
+        "attach(2): Attaching",
+        "attach(2): Non-normal buffer",
+      }
+    end)
+  end)
+
+  describe('highlights', function()
+    it('get set up correctly', function()
       command("set termguicolors")
 
-      local test_config2 = helpers.deepcopy(test_config)
-      test_config2.signs.add.hl = nil
-      test_config2.signs.change.hl = nil
-      test_config2.signs.delete.hl = nil
-      test_config2.signs.changedelete.hl = nil
-      test_config2.signs.topdelete.hl = nil
-      test_config2.numhl = true
-      test_config2.linehl = true
+      config.signs.add.hl = nil
+      config.signs.change.hl = nil
+      config.signs.delete.hl = nil
+      config.signs.changedelete.hl = nil
+      config.signs.topdelete.hl = nil
+      config.numhl = true
+      config.linehl = true
 
-      exec_lua('gs.setup(...)', test_config2)
+      exec_lua('gs.setup(...)', config)
       sleep(10)
 
       match_dag(debug_messages(), {
@@ -276,511 +394,17 @@ local function testsuite(variant, advanced_features)
         exec_capture('hi GitSignsAdd'))
     end)
 
-    it('basic signs', function()
-      exec_lua('gs.setup(...)', test_config)
-      edit(test_file)
-      command("set signcolumn=yes")
-
-      feed("dd") -- Top delete
-      feed("j")
-      feed("o<esc>") -- Add
-      feed("2j")
-      feed("x") -- Change
-      feed("3j")
-      feed("dd") -- Delete
-      feed("j")
-      feed("ddx") -- Change delete
-      sleep(10)
-
-      -- screen:snapshot_util()
-      screen:expect{grid=[[
-        {4:^ }is                |
-        {1:  }a                 |
-        {3:+ }                  |
-        {1:  }file              |
-        {2:~ }sed               |
-        {1:  }for               |
-        {4:_ }testing           |
-        {1:  }The               |
-        {2:% }^oesn't            |
-        {1:  }matter,           |
-        {1:  }it                |
-        {1:  }just              |
-        {1:  }needs             |
-        {1:  }to                |
-        {1:  }be                |
-        {1:  }static.           |
-                            |
-      ]]}
-
-    end)
-
-    it('actions', function()
-      screen:try_resize(20,6)
-      exec_lua('gs.setup(...)', test_config)
-      edit(test_file)
-      command("set signcolumn=yes")
-
-      feed("jjj")
-      feed("cc")
-      sleep(20)
-      feed("EDIT<esc>")
-      sleep(10)
-
-      screen:expect{grid=[[
-        {1:  }This              |
-        {1:  }is                |
-        {1:  }a                 |
-        {2:~ }EDI^T              |
-        {1:  }used              |
-                            |
-      ]]}
-
-      -- Stage
-      feed("mhs")
-      sleep(10)
-
-      screen:expect{grid=[[
-        {1:  }This              |
-        {1:  }is                |
-        {1:  }a                 |
-        {1:  }EDI^T              |
-        {1:  }used              |
-                            |
-      ]]}
-
-      -- Undo stage
-      feed("mhu")
-      sleep(10)
-
-      screen:expect{grid=[[
-        {1:  }This              |
-        {1:  }is                |
-        {1:  }a                 |
-        {2:~ }EDI^T              |
-        {1:  }used              |
-                            |
-      ]]}
-
-      -- Reset
-      feed("mhr")
-      sleep(10)
-
-      screen:expect{grid=[[
-        {1:  }This              |
-        {1:  }is                |
-        {1:  }a                 |
-        {1:  }fil^e              |
-        {1:  }used              |
-                            |
-      ]]}
-
-    end)
-
-    it('does not attach inside .git', function()
-      exec_lua('gs.setup(...)', test_config)
-      edit(scratch..'/.git/index')
-      sleep(20)
-
-      match_debug_messages {
-        "dprint(nil): Running: git --version",
-        'attach(1): Attaching',
-        'attach(1): In git dir'
-      }
-    end)
-
-    it('numhl works', function()
-      local cfg = helpers.deepcopy(test_config)
-      cfg.numhl = true
-      exec_lua('gs.setup(...)', cfg)
-      edit(test_file)
-      command("set signcolumn=no")
-      command("set number")
-
-      feed("dd") -- Top delete
-      feed("j")
-      feed("o<esc>") -- Add
-      feed("2j")
-      feed("x") -- Change
-      feed("3j")
-      feed("dd") -- Delete
-      feed("j")
-      sleep(40)
-      feed("ddx") -- Change delete
-      sleep(100)
-
-      -- screen:snapshot_util()
-      screen:expect{grid=[[
-        {4:  1 }is              |
-        {5:  2 }a               |
-        {3:  3 }                |
-        {5:  4 }file            |
-        {2:  5 }sed             |
-        {5:  6 }for             |
-        {4:  7 }testing         |
-        {5:  8 }The             |
-        {2:  9 }^oesn't          |
-        {5: 10 }matter,         |
-        {5: 11 }it              |
-        {5: 12 }just            |
-        {5: 13 }needs           |
-        {5: 14 }to              |
-        {5: 15 }be              |
-        {5: 16 }static.         |
-                            |
-      ]]}
-    end)
-
-    it('doesn\'t attach to ignored files', function()
-      exec_lua('gs.setup(...)', test_config)
-
-      write_to_file(scratch..'/.gitignore', {'dummy_ignored.txt'})
-
-      local ignored_file = scratch.."/dummy_ignored.txt"
-
-      system{"touch", ignored_file}
-      edit(ignored_file)
-      sleep(20)
-
-      match_debug_messages {
-        "dprint(nil): Running: git --version",
-        "attach(1): Attaching",
-        "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
-        p"Running: git .* ls%-files .*/dummy_ignored.txt",
-        "attach(1): Cannot resolve file in repo",
-      }
-
-      check_status {head='master'}
-    end)
-
-    it('doesn\'t attach to non-existent files', function()
-      exec_lua('gs.setup(...)', test_config)
-      edit(newfile)
-      sleep(10)
-
-      match_debug_messages {
-        "dprint(nil): Running: git --version",
-        "attach(1): Attaching",
-        "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
-        "attach(1): Not a file",
-      }
-
-      check_status {head='master'}
-
-    end)
-
-    it('doesn\'t attach to non-existent files with non-existent sub-dirs', function()
-      exec_lua('gs.setup(...)', test_config)
-      edit(scratch..'/does/not/exist')
-      sleep(10)
-
-      match_debug_messages {
-        "dprint(nil): Running: git --version",
-        "attach(1): Attaching",
-        "attach(1): Not a path",
-      }
-
-      helpers.pcall_err(get_buf_var, 'gitsigns_head')
-      helpers.pcall_err(get_buf_var, 'gitsigns_status_dict')
-
-    end)
-
-    it('attaches to newly created files', function()
-      screen:try_resize(4, 4)
-      exec_lua('gs.setup(...)', test_config)
-      edit(newfile)
-      sleep(100)
-      exec_lua('gs.clear_debug()')
-      command("write")
-      sleep(40)
-
-      local jobs = advanced_features and 5 or 6
-
-      if advanced_features then
-        match_debug_messages {
-        "attach(1): Attaching",
-        "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
-        p"Running: git .* ls%-files .*/newfile.txt",
-        "watch_index(1): Watching index",
-        "dprint(nil): Running: git --no-pager show :0:newfile.txt",
-          "update(1): updates: 1, jobs: "..jobs
-        }
-      else
-        match_debug_messages {
-        "attach(1): Attaching",
-        "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
-        p"Running: git .* ls%-files .*/newfile.txt",
-        "watch_index(1): Watching index",
-        "dprint(nil): Running: git --no-pager show :0:newfile.txt",
-          p'Running: git .* diff .* /tmp/lua_.* /tmp/lua_.*',
-          "update(1): updates: 1, jobs: "..jobs
-        }
-      end
-
-      check_status {head='master', added=1, changed=0, removed=0}
-
-      screen:expect{grid=([[
-        {3:+ }^          |
-        {6:~           }|
-        {6:~           }|
-        upda...s: %s |
-      ]]):format(jobs)}
-
-    end)
-
-    it('can add untracked files to the index', function()
-      screen:try_resize(10, 4)
-      exec_lua('gs.setup(...)', test_config)
-
-      edit(newfile)
-      feed("iline<esc>")
-      command("write")
-      sleep(20)
-
-      -- screen:snapshot_util()
-      screen:expect{grid=[[
-        {3:+ }lin^e      |
-        {6:~           }|
-        {6:~           }|
-        <5C written |
-      ]]}
-
-      feed('mhs') -- Stage the file (add file to index)
-      sleep(20)
-
-      screen:expect{grid=[[
-        lin^e        |
-        {6:~           }|
-        {6:~           }|
-        <5C written |
-      ]]}
-
-    end)
-
-    it('run copen', function()
-      exec_lua('gs.setup(...)', test_config)
-      sleep(10)
-      command("copen")
-      match_debug_messages {
-        "dprint(nil): Running: git --version",
-        "attach(2): Attaching",
-        "attach(2): Non-normal buffer",
-      }
-    end)
-
-    it('tracks files in new repos', function()
-      screen:try_resize(10, 4)
-      exec_lua('gs.setup(...)', test_config)
-      system{"touch", newfile}
-      edit(newfile)
-
-      feed("iEDIT<esc>")
-      command("write")
-
-      screen:expect{grid=[[
-        {3:+ }EDI^T      |
-        {6:~           }|
-        {6:~           }|
-        <5C written |
-      ]]}
-
-      -- Stage
-      git{"add", newfile}
-
-      screen:expect{grid=[[
-        EDI^T        |
-        {6:~           }|
-        {6:~           }|
-        <5C written |
-      ]]}
-
-      -- -- Reset
-      git{"reset"}
-
-      screen:expect{grid=[[
-        {3:+ }EDI^T      |
-        {6:~           }|
-        {6:~           }|
-        <5C written |
-      ]]}
-
-    end)
-
-    it('can detach from buffers', function()
-      exec_lua('gs.setup(...)', test_config)
-      edit(test_file)
-      command("set signcolumn=yes")
-
-      feed("dd") -- Top delete
-      feed("j")
-      feed("o<esc>") -- Add
-      feed("2j")
-      feed("x") -- Change
-      feed("3j")
-      feed("dd") -- Delete
-      feed("j")
-      feed("ddx") -- Change delete
-      sleep(10)
-
-      screen:expect{grid=[[
-        {4:^ }is                |
-        {1:  }a                 |
-        {3:+ }                  |
-        {1:  }file              |
-        {2:~ }sed               |
-        {1:  }for               |
-        {4:_ }testing           |
-        {1:  }The               |
-        {2:% }^oesn't            |
-        {1:  }matter,           |
-        {1:  }it                |
-        {1:  }just              |
-        {1:  }needs             |
-        {1:  }to                |
-        {1:  }be                |
-        {1:  }static.           |
-                            |
-      ]]}
-
-      exec_lua('gs.detach()')
-
-      screen:expect{grid=[[
-        {1:  }is                |
-        {1:  }a                 |
-        {1:  }                  |
-        {1:  }file              |
-        {1:  }sed               |
-        {1:  }for               |
-        {1:  }testing           |
-        {1:  }The               |
-        {1:  }^oesn't            |
-        {1:  }matter,           |
-        {1:  }it                |
-        {1:  }just              |
-        {1:  }needs             |
-        {1:  }to                |
-        {1:  }be                |
-        {1:  }static.           |
-                            |
-      ]]}
-
-      assert(not buf_var_exists('gitsigns_head'),
-        'gitsigns_status_dict should not be defined')
-
-      assert(not buf_var_exists('gitsigns_status_dict'),
-        'gitsigns_head should not be defined')
-
-      assert(not buf_var_exists('gitsigns_status'),
-        'gitsigns_status should not be defined')
-    end)
-
-    it('can stages file with merge conflicts', function()
-      screen:try_resize(40, 8)
-      exec_lua('gs.setup(...)', test_config)
-      command("set signcolumn=yes")
-
-      -- Edit a file and commit it on main branch
-      edit(test_file)
-      feed('iedit')
-      sleep(20)
-      command("write")
-      sleep(20)
-      command("bdelete")
-      sleep(20)
-      git{'add', test_file}
-      git{"commit", "-m", "commit on main"}
-
-      -- Create a branch, remove last commit, edit file again
-      git{'checkout', '-B', 'abranch'}
-      git{'reset', '--hard', 'HEAD~1'}
-      edit(test_file)
-      feed('idiff')
-      sleep(20)
-      command("write")
-      command("bdelete")
-      git{'add', test_file}
-      git{"commit", "-m", "commit on branch"}
-      sleep(20)
-
-      git{"rebase", "master"}
-      sleep(20)
-
-      -- test_file should have a conflict
-      edit(test_file)
-      sleep(50)
-      screen:expect{grid=[[
-        {2:~ }^<<<<<<< HEAD                          |
-        {3:+ }editThis                              |
-        {3:+ }=======                               |
-        {3:+ }idiffThis                             |
-        {3:+ }>>>>>>> {MATCH:.......} (commit on branch)    |
-        {1:  }is                                    |
-        {1:  }a                                     |
-        {7:-- INSERT --}                            |
-      ]]}
-
-      exec_lua('gs.stage_hunk()')
-
-      screen:expect{grid=[[
-        {1:  }^<<<<<<< HEAD                          |
-        {1:  }editThis                              |
-        {1:  }=======                               |
-        {1:  }idiffThis                             |
-        {1:  }>>>>>>> {MATCH:.......} (commit on branch)    |
-        {1:  }is                                    |
-        {1:  }a                                     |
-        {7:-- INSERT --}                            |
-      ]]}
-
-    end)
-
-    it('handle files with spaces', function()
-      screen:try_resize(20,6)
-      exec_lua('gs.setup(...)', test_config)
-      command("set signcolumn=yes")
-
-      local spacefile = scratch..'/a b c d'
-
-      write_to_file(spacefile, {'spaces', 'in', 'file'})
-
-      edit(spacefile)
-
-      screen:expect{grid=[[
-        {3:+ }^spaces            |
-        {3:+ }in                |
-        {3:+ }file              |
-        {6:~                   }|
-        {6:~                   }|
-                            |
-      ]]}
-
-      git{'add', spacefile}
-      sleep(100)
-      edit(spacefile)
-
-      screen:expect{grid=[[
-        {1:  }^spaces            |
-        {1:  }in                |
-        {1:  }file              |
-        {6:~                   }|
-        {6:~                   }|
-                            |
-      ]]}
-
-    end)
-
-    it('updates highlights when colorscheme changes', function()
+    it('update when colorscheme changes', function()
       command("set termguicolors")
 
-      local test_config2 = helpers.deepcopy(test_config)
-      test_config2.signs.add.hl = nil
-      test_config2.signs.change.hl = nil
-      test_config2.signs.delete.hl = nil
-      test_config2.signs.changedelete.hl = nil
-      test_config2.signs.topdelete.hl = nil
-      test_config2.linehl = true
+      config.signs.add.hl = nil
+      config.signs.change.hl = nil
+      config.signs.delete.hl = nil
+      config.signs.changedelete.hl = nil
+      config.signs.topdelete.hl = nil
+      config.linehl = true
 
-      exec_lua('gs.setup(...)', test_config2)
+      exec_lua('gs.setup(...)', config)
       sleep(10)
 
       eq('GitSignsChange xxx gui=reverse guibg=#ffbbff',
@@ -810,12 +434,438 @@ local function testsuite(variant, advanced_features)
         exec_capture('hi GitSignsAddLn'))
     end)
   end)
-end
 
--- Run regular config
-testsuite('diff-ext', false)
+  local function testsuite(advanced_features)
+    return function()
+      before_each(function()
+        config.use_decoration_api = advanced_features
+        config.use_internal_diff = advanced_features
+        init()
+      end)
 
--- Run with:
---   - internal diff (ffi)
---   - decoration provider
-testsuite('diff-int', true)
+      it('apply basic signs', function()
+        exec_lua('gs.setup(...)', config)
+        edit(test_file)
+        command("set signcolumn=yes")
+
+        feed("dd") -- Top delete
+        feed("j")
+        feed("o<esc>") -- Add
+        feed("2j")
+        feed("x") -- Change
+        feed("3j")
+        feed("dd") -- Delete
+        feed("j")
+        feed("ddx") -- Change delete
+        sleep(10)
+
+        -- screen:snapshot_util()
+        screen:expect{grid=[[
+          {4:^ }is                |
+          {1:  }a                 |
+          {3:+ }                  |
+          {1:  }file              |
+          {2:~ }sed               |
+          {1:  }for               |
+          {4:_ }testing           |
+          {1:  }The               |
+          {2:% }^oesn't            |
+          {1:  }matter,           |
+          {1:  }it                |
+          {1:  }just              |
+          {1:  }needs             |
+          {1:  }to                |
+          {1:  }be                |
+          {1:  }static.           |
+                              |
+        ]]}
+
+      end)
+
+      it('perform actions', function()
+        screen:try_resize(20,6)
+        exec_lua('gs.setup(...)', config)
+        edit(test_file)
+        command("set signcolumn=yes")
+
+        feed("jjj")
+        feed("cc")
+        sleep(20)
+        feed("EDIT<esc>")
+        sleep(10)
+
+        screen:expect{grid=[[
+          {1:  }This              |
+          {1:  }is                |
+          {1:  }a                 |
+          {2:~ }EDI^T              |
+          {1:  }used              |
+                              |
+        ]]}
+
+        -- Stage
+        feed("mhs")
+        sleep(10)
+
+        screen:expect{grid=[[
+          {1:  }This              |
+          {1:  }is                |
+          {1:  }a                 |
+          {1:  }EDI^T              |
+          {1:  }used              |
+                              |
+        ]]}
+
+        -- Undo stage
+        feed("mhu")
+        sleep(10)
+
+        screen:expect{grid=[[
+          {1:  }This              |
+          {1:  }is                |
+          {1:  }a                 |
+          {2:~ }EDI^T              |
+          {1:  }used              |
+                              |
+        ]]}
+
+        -- Reset
+        feed("mhr")
+        sleep(10)
+
+        screen:expect{grid=[[
+          {1:  }This              |
+          {1:  }is                |
+          {1:  }a                 |
+          {1:  }fil^e              |
+          {1:  }used              |
+                              |
+        ]]}
+
+      end)
+
+      it('can enable numhl', function()
+        config.numhl = true
+        exec_lua('gs.setup(...)', config)
+        edit(test_file)
+        command("set signcolumn=no")
+        command("set number")
+
+        feed("dd") -- Top delete
+        feed("j")
+        feed("o<esc>") -- Add
+        feed("2j")
+        feed("x") -- Change
+        feed("3j")
+        feed("dd") -- Delete
+        feed("j")
+        sleep(40)
+        feed("ddx") -- Change delete
+        sleep(100)
+
+        -- screen:snapshot_util()
+        screen:expect{grid=[[
+          {4:  1 }is              |
+          {5:  2 }a               |
+          {3:  3 }                |
+          {5:  4 }file            |
+          {2:  5 }sed             |
+          {5:  6 }for             |
+          {4:  7 }testing         |
+          {5:  8 }The             |
+          {2:  9 }^oesn't          |
+          {5: 10 }matter,         |
+          {5: 11 }it              |
+          {5: 12 }just            |
+          {5: 13 }needs           |
+          {5: 14 }to              |
+          {5: 15 }be              |
+          {5: 16 }static.         |
+                              |
+        ]]}
+      end)
+
+      it('attaches to newly created files', function()
+        screen:try_resize(4, 4)
+        exec_lua('gs.setup(...)', config)
+        edit(newfile)
+        sleep(100)
+        exec_lua('gs.clear_debug()')
+        command("write")
+        sleep(40)
+
+        local jobs = advanced_features and 5 or 6
+
+        if advanced_features then
+          match_debug_messages {
+          "attach(1): Attaching",
+          "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+          p"Running: git .* ls%-files .*/newfile.txt",
+          "watch_index(1): Watching index",
+          "dprint(nil): Running: git --no-pager show :0:newfile.txt",
+            "update(1): updates: 1, jobs: "..jobs
+          }
+        else
+          match_debug_messages {
+          "attach(1): Attaching",
+          "dprint(nil): Running: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+          p"Running: git .* ls%-files .*/newfile.txt",
+          "watch_index(1): Watching index",
+          "dprint(nil): Running: git --no-pager show :0:newfile.txt",
+            p'Running: git .* diff .* /tmp/lua_.* /tmp/lua_.*',
+            "update(1): updates: 1, jobs: "..jobs
+          }
+        end
+
+        check_status {head='master', added=1, changed=0, removed=0}
+
+        screen:expect{grid=([[
+          {3:+ }^          |
+          {6:~           }|
+          {6:~           }|
+          upda...s: %s |
+        ]]):format(jobs)}
+
+      end)
+
+      it('can add untracked files to the index', function()
+        screen:try_resize(10, 4)
+        exec_lua('gs.setup(...)', config)
+
+        edit(newfile)
+        feed("iline<esc>")
+        command("write")
+        sleep(20)
+
+        -- screen:snapshot_util()
+        screen:expect{grid=[[
+          {3:+ }lin^e      |
+          {6:~           }|
+          {6:~           }|
+          <5C written |
+        ]]}
+
+        feed('mhs') -- Stage the file (add file to index)
+        sleep(20)
+
+        screen:expect{grid=[[
+          lin^e        |
+          {6:~           }|
+          {6:~           }|
+          <5C written |
+        ]]}
+
+      end)
+
+      it('tracks files in new repos', function()
+        screen:try_resize(10, 4)
+        exec_lua('gs.setup(...)', config)
+        system{"touch", newfile}
+        edit(newfile)
+
+        feed("iEDIT<esc>")
+        command("write")
+
+        screen:expect{grid=[[
+          {3:+ }EDI^T      |
+          {6:~           }|
+          {6:~           }|
+          <5C written |
+        ]]}
+
+        -- Stage
+        git{"add", newfile}
+
+        screen:expect{grid=[[
+          EDI^T        |
+          {6:~           }|
+          {6:~           }|
+          <5C written |
+        ]]}
+
+        -- -- Reset
+        git{"reset"}
+
+        screen:expect{grid=[[
+          {3:+ }EDI^T      |
+          {6:~           }|
+          {6:~           }|
+          <5C written |
+        ]]}
+
+      end)
+
+      it('can detach from buffers', function()
+        exec_lua('gs.setup(...)', config)
+        edit(test_file)
+        command("set signcolumn=yes")
+
+        feed("dd") -- Top delete
+        feed("j")
+        feed("o<esc>") -- Add
+        feed("2j")
+        feed("x") -- Change
+        feed("3j")
+        feed("dd") -- Delete
+        feed("j")
+        feed("ddx") -- Change delete
+        sleep(10)
+
+        screen:expect{grid=[[
+          {4:^ }is                |
+          {1:  }a                 |
+          {3:+ }                  |
+          {1:  }file              |
+          {2:~ }sed               |
+          {1:  }for               |
+          {4:_ }testing           |
+          {1:  }The               |
+          {2:% }^oesn't            |
+          {1:  }matter,           |
+          {1:  }it                |
+          {1:  }just              |
+          {1:  }needs             |
+          {1:  }to                |
+          {1:  }be                |
+          {1:  }static.           |
+                              |
+        ]]}
+
+        exec_lua('gs.detach()')
+
+        screen:expect{grid=[[
+          {1:  }is                |
+          {1:  }a                 |
+          {1:  }                  |
+          {1:  }file              |
+          {1:  }sed               |
+          {1:  }for               |
+          {1:  }testing           |
+          {1:  }The               |
+          {1:  }^oesn't            |
+          {1:  }matter,           |
+          {1:  }it                |
+          {1:  }just              |
+          {1:  }needs             |
+          {1:  }to                |
+          {1:  }be                |
+          {1:  }static.           |
+                              |
+        ]]}
+
+        assert(not buf_var_exists('gitsigns_head'),
+          'gitsigns_status_dict should not be defined')
+
+        assert(not buf_var_exists('gitsigns_status_dict'),
+          'gitsigns_head should not be defined')
+
+        assert(not buf_var_exists('gitsigns_status'),
+          'gitsigns_status should not be defined')
+      end)
+
+      it('can stages file with merge conflicts', function()
+        screen:try_resize(40, 8)
+        exec_lua('gs.setup(...)', config)
+        command("set signcolumn=yes")
+
+        -- Edit a file and commit it on main branch
+        edit(test_file)
+        feed('iedit')
+        sleep(20)
+        command("write")
+        sleep(20)
+        command("bdelete")
+        sleep(20)
+        git{'add', test_file}
+        git{"commit", "-m", "commit on main"}
+
+        -- Create a branch, remove last commit, edit file again
+        git{'checkout', '-B', 'abranch'}
+        git{'reset', '--hard', 'HEAD~1'}
+        edit(test_file)
+        feed('idiff')
+        sleep(20)
+        command("write")
+        command("bdelete")
+        git{'add', test_file}
+        git{"commit", "-m", "commit on branch"}
+        sleep(20)
+
+        git{"rebase", "master"}
+        sleep(20)
+
+        -- test_file should have a conflict
+        edit(test_file)
+        sleep(50)
+        screen:expect{grid=[[
+          {2:~ }^<<<<<<< HEAD                          |
+          {3:+ }editThis                              |
+          {3:+ }=======                               |
+          {3:+ }idiffThis                             |
+          {3:+ }>>>>>>> {MATCH:.......} (commit on branch)    |
+          {1:  }is                                    |
+          {1:  }a                                     |
+          {7:-- INSERT --}                            |
+        ]]}
+
+        exec_lua('gs.stage_hunk()')
+
+        screen:expect{grid=[[
+          {1:  }^<<<<<<< HEAD                          |
+          {1:  }editThis                              |
+          {1:  }=======                               |
+          {1:  }idiffThis                             |
+          {1:  }>>>>>>> {MATCH:.......} (commit on branch)    |
+          {1:  }is                                    |
+          {1:  }a                                     |
+          {7:-- INSERT --}                            |
+        ]]}
+
+      end)
+
+      it('handle files with spaces', function()
+        screen:try_resize(20,6)
+        exec_lua('gs.setup(...)', config)
+        command("set signcolumn=yes")
+
+        local spacefile = scratch..'/a b c d'
+
+        write_to_file(spacefile, {'spaces', 'in', 'file'})
+
+        edit(spacefile)
+
+        screen:expect{grid=[[
+          {3:+ }^spaces            |
+          {3:+ }in                |
+          {3:+ }file              |
+          {6:~                   }|
+          {6:~                   }|
+                              |
+        ]]}
+
+        git{'add', spacefile}
+        sleep(100)
+        edit(spacefile)
+
+        screen:expect{grid=[[
+          {1:  }^spaces            |
+          {1:  }in                |
+          {1:  }file              |
+          {6:~                   }|
+          {6:~                   }|
+                              |
+        ]]}
+
+      end)
+    end
+  end
+
+  -- Run regular config
+  describe('diff-ext', testsuite(false))
+
+  -- Run with:
+  --   - internal diff (ffi)
+  --   - decoration provider
+  describe('diff-int', testsuite(true))
+
+end)
