@@ -597,12 +597,14 @@ end
 
 local function add_debug_functions()
   M.dump_cache = function()
-    print(vim.inspect(cache))
+    api.nvim_echo({{vim.inspect(cache)}}, false, {})
   end
 
-  M.debug_messages = function(): {string}
-    for _, m in ipairs(gs_debug.messages) do
-      print(m)
+  M.debug_messages = function(noecho: boolean): {string}
+    if not noecho then
+      for _, m in ipairs(gs_debug.messages) do
+        api.nvim_echo({{m}}, false, {})
+      end
     end
     return gs_debug.messages
   end
