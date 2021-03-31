@@ -9,12 +9,14 @@ local enum GitSignHl
   'GitSignsAdd'
   'GitSignsChange'
   'GitSignsDelete'
+  'GitSignsCurrentLineBlame'
 end
 
 local hls: {GitSignHl:{string}} = {
   GitSignsAdd    = { 'GitGutterAdd'   , 'SignifySignAdd'   , 'DiffAdd'    },
   GitSignsChange = { 'GitGutterChange', 'SignifySignChange', 'DiffChange' },
   GitSignsDelete = { 'GitGutterDelete', 'SignifySignDelete', 'DiffDelete' },
+  GitSignsCurrentLineBlame = { 'NonText' }
 }
 
 local function is_hl_set(hl_name: string): boolean
@@ -66,7 +68,7 @@ function M.setup_highlight(hl_name0: string)
   local hl_name = hl_name0 as GitSignHl
 
   if is_hl_set(hl_name) then
-    -- Alread defined
+    -- Already defined
     return
   end
 

@@ -10,7 +10,28 @@ local Hunk = require('gitsigns/hunks').Hunk
 local uv = vim.loop
 local startswith = vim.startswith
 
-local M = {Version = {}, }
+local M = {BlameInfo = {}, Version = {}, }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -153,12 +174,12 @@ function M.run_blame(file, toplevel, lines, lnum)
             local header = vim.split(table.remove(results, 1), ' ')
             ret.sha = header[1]
             ret.abbrev_sha = string.sub(ret.sha, 1, 8)
-            ret.orig_lnum = header[2]
-            ret.final_lnum = header[3]
+            ret.orig_lnum = tonumber(header[2])
+            ret.final_lnum = tonumber(header[3])
             for _, l in ipairs(results) do
                if not startswith(l, '\t') then
                   local cols = vim.split(l, ' ')
-                  local key = table.remove(cols, 1)
+                  local key = table.remove(cols, 1):gsub('-', '_')
                   ret[key] = table.concat(cols, ' ')
                end
             end
@@ -383,6 +404,30 @@ function M.set_version(version)
          end,
          on_exit = function()
             callback()
+         end,
+      })
+   end
+end
+
+function M.command(...)
+   local args = { ... }
+   return function(callback)
+      local result = {}
+      run_job({
+         command = 'git', args = args,
+         on_stdout = function(_, line)
+            table.insert(result, line)
+         end,
+         on_stderr = function(err, line)
+            if err then
+               gsd.eprint(err)
+            end
+            if line then
+               gsd.eprint(line)
+            end
+         end,
+         on_exit = function()
+            callback(result)
          end,
       })
    end
