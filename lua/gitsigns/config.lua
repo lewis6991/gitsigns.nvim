@@ -1,6 +1,3 @@
-local StatusObj = require('gitsigns/status').StatusObj
-local SignType = require('gitsigns/signs').SignType
-
 local SchemaElem = {}
 
 
@@ -10,6 +7,8 @@ local SchemaElem = {}
 
 
 local M = {Config = {SignsConfig = {}, watch_index = {}, }, }
+
+
 
 
 
@@ -268,6 +267,66 @@ M.schema = {
         Use Neovim's decoration API to apply signs. This should improve
         performance on large files since signs will only be applied to drawn
         lines as opposed to all lines in the buffer.
+    ]],
+   },
+
+   current_line_blame = {
+      type = 'boolean',
+      default = false,
+      description = [[
+        Adds an unobtrusive and customisable blame annotation at the end of
+        the current line.
+
+        The highlight group used for the text is `GitSignsCurrentLineBlame`.
+    ]],
+   },
+
+   current_line_blame_formatter = {
+      type = 'function',
+      default = [[function(name, blame_info)
+      if blame_info.author == name then
+        blame_info.author = 'You'
+      end
+
+      local text
+      if blame_info.author == 'Not Committed Yet' then
+        text = blame_info.author
+      else
+        text = string.format(
+          '%s, %s - %s',
+          blame_info.author,
+          os.date('%Y-%m-%d', tonumber(blame_info['author_time'])),
+          blame_info.summary
+        )
+      end
+
+      return {{' '..text, 'GitSignsCurrentLineBlame'}}
+    end]],
+      description = [[
+        Function used to format the virtual text of
+        |gitsigns-config-current_line_blame|. The first argument {name} is the
+        git user name returned from: >
+            git config user.name
+<
+        The second argument {blame_info} is a table with the following keys:
+        - abbrev_sha: string
+        - orig_lnum: integer
+        - final_lnum: integer
+        - author: string
+        - author_mail: string
+        - author_time: integer
+        - author_tz: string
+        - committer: string
+        - committer_mail: string
+        - committer_time: integer
+        - committer_tz: string
+        - summary: string
+        - previous: string
+        - filename: string
+
+        Note that the keys map onto the output of: >
+            git blame --line-porcelain
+<
     ]],
    },
 

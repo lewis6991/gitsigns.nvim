@@ -11,10 +11,12 @@ local GitSignHl = {}
 
 
 
+
 local hls = {
    GitSignsAdd = { 'GitGutterAdd', 'SignifySignAdd', 'DiffAdd' },
    GitSignsChange = { 'GitGutterChange', 'SignifySignChange', 'DiffChange' },
    GitSignsDelete = { 'GitGutterDelete', 'SignifySignDelete', 'DiffDelete' },
+   GitSignsCurrentLineBlame = { 'NonText' },
 }
 
 local function is_hl_set(hl_name)

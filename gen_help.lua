@@ -4,8 +4,16 @@ exec lua "$0" "$@"
 ]]
 -- Simple script to update the help doc by reading the config schema.
 
-inspect = require('inspect')
-config = require('lua/gitsigns/config')
+local inspect = require('inspect')
+local config = require('lua/gitsigns/config')
+
+function table.slice(tbl, first, last, step)
+  local sliced = {}
+  for i = first or 1, last or #tbl, step or 1 do
+    sliced[#sliced+1] = tbl[i]
+  end
+  return sliced
+end
 
 local function is_simple_type(t)
   return t == 'number' or t == 'string' or t == 'boolean'
@@ -26,6 +34,14 @@ local function read_file(path)
   return t
 end
 
+local function read_file_lines(path)
+  local lines = {}
+  for l in read_file(path):gmatch("([^\n]*)\n?") do
+    table.insert(lines, l)
+  end
+  return lines
+end
+
 -- To makw sure the output is consistent between runs (to minimise diffs), we
 -- need to iterate through the schema keys in a deterministic way. To do this we
 -- do a smple scan over the file the schema is defined in and collect the keys
@@ -36,7 +52,7 @@ local function get_ordered_schema_keys()
   local ci = c:gmatch("[^\n\r]+")
 
   for l in ci do
-    if startswith(l, 'local schema = {') then
+    if startswith(l, 'M.schema = {') then
       break
     end
   end
@@ -70,6 +86,12 @@ local function gen_config_doc()
       local d = v.default
       if type(d) == 'table' then
         d = inspect(d):gsub('\n([^\n\r])', '\n    %1')
+      elseif type(d) == 'function' then
+        local info = debug.getinfo(d)
+        local start, last = info.linedefined, info.lastlinedefined
+        local source = info.source:sub(2)  -- Remove leading @
+        local func = table.slice(read_file_lines(source), start, last)
+        d = table.concat(func, '\n    ')
       end
       out('        '..d:gsub('\n([^\n\r])', '\n    %1'))
       out('<')

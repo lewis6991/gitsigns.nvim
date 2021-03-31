@@ -232,10 +232,11 @@ describe('gitsigns', function()
       'attach(1): Attaching',
       'run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       'run_job: git --no-pager ls-files --stage --others --exclude-standard '..test_file,
+      "run_job: git config user.name",
       'watch_index(1): Watching index',
       'run_job: git --no-pager show :0:dummy.txt',
       'watcher_cb(1): Index update error: ENOENT',
-      'update(1): updates: 1, jobs: 4'
+      'update(1): updates: 1, jobs: 5'
     }
 
     screen:expect{grid=[[
@@ -594,28 +595,22 @@ describe('gitsigns', function()
         command("write")
         sleep(40)
 
-        local jobs = advanced_features and 5 or 6
 
-        if advanced_features then
-          match_debug_messages {
+        local messages = {
           "attach(1): Attaching",
           "run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
           p"run_job: git .* ls%-files .*/newfile.txt",
+          "run_job: git config user.name",
           "watch_index(1): Watching index",
           "run_job: git --no-pager show :0:newfile.txt",
-            "update(1): updates: 1, jobs: "..jobs
-          }
-        else
-          match_debug_messages {
-          "attach(1): Attaching",
-          "run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
-          p"run_job: git .* ls%-files .*/newfile.txt",
-          "watch_index(1): Watching index",
-          "run_job: git --no-pager show :0:newfile.txt",
-          p'run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*',
-          "update(1): updates: 1, jobs: "..jobs
-          }
+        }
+        if not advanced_features then
+          table.insert(messages, p'run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*')
         end
+        local jobs = advanced_features and 6 or 7
+        table.insert(messages, "update(1): updates: 1, jobs: "..jobs)
+
+        match_debug_messages(messages)
 
         check_status {head='master', added=1, changed=0, removed=0}
 
@@ -867,5 +862,8 @@ describe('gitsigns', function()
   --   - internal diff (ffi)
   --   - decoration provider
   describe('diff-int', testsuite(true))
+
+  -- TODO Add test for current_line_blame
+  -- TODO Add test for toggle_current_line_blame
 
 end)

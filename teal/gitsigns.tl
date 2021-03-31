@@ -40,9 +40,11 @@ local api = vim.api
 local uv = vim.loop
 local current_buf = api.nvim_get_current_buf
 
-local M: {string:function}
+local M: {string:function} = {}
 
 local config: Config
+
+local namespace: integer
 
 local record CacheEntry
   file          : string
@@ -51,6 +53,7 @@ local record CacheEntry
   mode_bits     : string
   toplevel      : string
   gitdir        : string
+  username      : string
   staged        : string
   staged_text   : {string}
   abbrev_head   : string
@@ -543,6 +546,7 @@ local attach = async(function(cbuf: integer)
     toplevel      = toplevel,
     gitdir        = gitdir,
     abbrev_head   = abbrev_head,
+    username      = (await(git.command, 'config', 'user.name') as {string})[1],
     has_conflicts = has_conflicts,
     staged        = staged,
     staged_text   = nil,
@@ -592,6 +596,9 @@ local function setup_signs(redefine: boolean)
       linehl = config.linehl     and cs.linehl
     }, redefine)
 
+  end
+  if config.current_line_blame then
+    gs_hl.setup_highlight('GitSignsCurrentLineBlame')
   end
 end
 
@@ -643,8 +650,7 @@ local function setup_command()
 end
 
 local function setup_decoration_provider()
-  local ns = api.nvim_create_namespace('gitsigns')
-  api.nvim_set_decoration_provider(ns, {
+  api.nvim_set_decoration_provider(namespace, {
     on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
       local bcache = get_cache_opt(bufnr)
       if not bcache or not bcache.pending_signs then
@@ -655,8 +661,21 @@ local function setup_decoration_provider()
   })
 end
 
+local function setup_current_line_blame()
+  vim.cmd('augroup gitsigns_blame | autocmd! | augroup END')
+  if config.current_line_blame then
+    for func, events in pairs{
+      _current_line_blame       = 'CursorHold',
+      _current_line_blame_reset = 'CursorMoved',
+    } do
+      vim.cmd('autocmd gitsigns_blame '..events..' * lua require("gitsigns").'..func..'()')
+    end
+  end
+end
+
 local setup = sync(function(cfg: Config)
   config = gs_config.process(cfg) as Config
+  namespace = api.nvim_create_namespace('gitsigns')
 
   gs_debug.debug_mode = config.debug_mode
 
@@ -664,7 +683,7 @@ local setup = sync(function(cfg: Config)
     add_debug_functions()
   end
 
-  Status.formatter = config.status_formatter
+  Status.formatter = config.status_formatter as function(Status.StatusObj): string
 
   setup_signs()
   setup_command()
@@ -703,6 +722,7 @@ local setup = sync(function(cfg: Config)
     vim.cmd('autocmd gitsigns '..events..' * lua require("gitsigns").'..func..'()')
   end
 
+  setup_current_line_blame()
 end)
 
 local function preview_hunk()
@@ -741,9 +761,9 @@ local blame_line = sync(function()
 
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = await(git.run_blame, bcache.file, bcache.toplevel, buftext, lnum) as {string:string}
+  local result = await(git.run_blame, bcache.file, bcache.toplevel, buftext, lnum) as git.BlameInfo
 
-  local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author-time']))
+  local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author_time']))
   local lines = {
     ('%s %s (%s):'):format(result.abbrev_sha, result.author, date),
     result.summary
@@ -769,9 +789,37 @@ local blame_line = sync(function()
   add_highlight('Label'    , 0, p1+p2+2, p3+2)
 end)
 
+local _current_line_blame_reset = function(bufnr: integer)
+  bufnr = bufnr or current_buf()
+  api.nvim_buf_del_extmark(bufnr, namespace, 1)
+end
+
+local _current_line_blame = sync(function()
+  local bufnr = current_buf()
+
+  local bcache = get_cache_opt(bufnr)
+  if not bcache then
+    return
+  end
+
+  local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local lnum = api.nvim_win_get_cursor(0)[1]
+  local result = await(git.run_blame, bcache.file, bcache.toplevel, buftext, lnum) as git.BlameInfo
+
+  await_main()
+
+  _current_line_blame_reset(bufnr)
+  api.nvim_buf_set_extmark(bufnr, namespace, lnum-1, 0, {
+    id = 1,
+    virt_text = config.current_line_blame_formatter(bcache.username, result),
+  })
+end)
+
 local function refresh()
   setup_signs(true)
+  setup_current_line_blame()
   for k, v in pairs(cache) do
+    _current_line_blame_reset(k)
     v.staged_text = nil  -- Invalidate
     arun(update)(k, v)
   end
@@ -789,6 +837,11 @@ end
 
 local function toggle_linehl()
   config.linehl = not config.linehl
+  refresh()
+end
+
+local function toggle_current_line_blame()
+  config.current_line_blame = not config.current_line_blame
   refresh()
 end
 
@@ -811,6 +864,10 @@ M = {
   toggle_signs    = toggle_signs,
   toggle_linehl   = toggle_linehl,
   toggle_numhl    = toggle_numhl,
+
+  _current_line_blame       = _current_line_blame,
+  _current_line_blame_reset = _current_line_blame_reset,
+  toggle_current_line_blame = toggle_current_line_blame,
 
   _update_highlights = function()
     setup_signs()
