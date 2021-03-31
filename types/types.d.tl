@@ -36,7 +36,7 @@ local record api
   nvim_buf_is_loaded: function(number): boolean
   nvim_buf_is_valid: function(number): boolean
   nvim_buf_line_count: function(number): number
-  nvim_buf_set_extmark: function(number, number, number, number, number, {string:any}): number
+  nvim_buf_set_extmark: function(integer, integer, integer, integer, {string:any}): integer
   nvim_buf_set_keymap: function(number, string, string, string, {string:any})
   nvim_buf_set_lines: function(number, number, number, boolean, {string})
   nvim_buf_set_name: function(number, string)
@@ -48,7 +48,7 @@ local record api
   nvim_call_function: function(string, any): any
   nvim_command: function(string)
   nvim_create_buf: function(boolean, boolean): number
-  nvim_create_namespace: function(string): number
+  nvim_create_namespace: function(string): integer
   nvim_del_current_line: function()
   nvim_del_keymap: function(string, string)
   nvim_del_var: function(string)
@@ -129,7 +129,7 @@ local record api
   nvim_win_del_var: function(number, string)
   nvim_win_get_buf: function(number): number
   nvim_win_get_config: function(number): {string:any}
-  nvim_win_get_cursor: function(number): {number}
+  nvim_win_get_cursor: function(number): {integer}
   nvim_win_get_height: function(number): number
   nvim_win_get_number: function(number): number
   nvim_win_get_option: function(number, string): any

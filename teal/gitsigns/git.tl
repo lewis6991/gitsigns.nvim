@@ -11,6 +11,27 @@ local uv = vim.loop
 local startswith = vim.startswith
 
 local record M
+  record BlameInfo
+    -- Info in header
+    sha: string
+    abbrev_sha: string
+    orig_lnum: integer
+    final_lnum: integer
+
+    -- Porcelain fields
+    author: string
+    author_mail: string
+    author_time: integer
+    author_tz: string
+    committer: string
+    committer_mail: string
+    committer_time: integer
+    committer_tz: string
+    summary: string
+    previous: string
+    filename: string
+  end
+
   record Version
     major: integer
     minor: integer
@@ -131,7 +152,7 @@ function M.get_staged_text(toplevel: string, relpath: string, stage: number): cb
 end
 
 function M.run_blame(file: string, toplevel: string, lines: {string}, lnum: number): cb_function
-  return function(callback: function({string:string}))
+  return function(callback: function(M.BlameInfo))
     local results: {string} = {}
     run_job {
       command = 'git',
@@ -149,20 +170,20 @@ function M.run_blame(file: string, toplevel: string, lines: {string}, lnum: numb
         table.insert(results, line)
       end,
       on_exit = function()
-        local ret: {string:string} = {}
+        local ret: {string:any} = {}
         local header = vim.split(table.remove(results, 1), ' ')
         ret.sha = header[1]
-        ret.abbrev_sha = string.sub(ret.sha, 1, 8)
-        ret.orig_lnum = header[2]
-        ret.final_lnum = header[3]
+        ret.abbrev_sha = string.sub(ret.sha as string, 1, 8)
+        ret.orig_lnum = tonumber(header[2]) as integer
+        ret.final_lnum = tonumber(header[3]) as integer
         for _, l in ipairs(results) do
           if not startswith(l, '\t') then
             local cols = vim.split(l, ' ')
-            local key = table.remove(cols, 1)
+            local key = table.remove(cols, 1):gsub('-', '_')
             ret[key] = table.concat(cols, ' ')
           end
         end
-        callback(ret)
+        callback(ret as M.BlameInfo)
       end
     }
   end
@@ -383,6 +404,30 @@ function M.set_version(version: string): cb_function
       end,
       on_exit = function()
         callback()
+      end
+    }
+  end
+end
+
+function M.command(...: string): cb_function
+  local args = {...}
+  return function(callback: function({string}))
+    local result: {string} = {}
+    run_job {
+      command = 'git', args = args,
+      on_stdout = function(_, line: string)
+        table.insert(result, line)
+      end,
+      on_stderr = function(err: string, line: string)
+        if err then
+          gsd.eprint(err)
+        end
+        if line then
+          gsd.eprint(line)
+        end
+      end,
+      on_exit = function()
+        callback(result)
       end
     }
   end
