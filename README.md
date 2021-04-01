@@ -3,14 +3,14 @@
 [![CI](https://github.com/lewis6991/gitsigns.nvim/workflows/CI/badge.svg?branch=main)](https://github.com/lewis6991/gitsigns.nvim/actions?query=workflow%3ACI)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Git signs written in pure lua.
+Super fast git decorations implemented purely lua.
 
-![](https://raw.githubusercontent.com/lewis6991/media/main/gitsigns_demo1.gif)
+## Preview
 
-## Status
-**WIP**
-
-Expect things to break sometimes but please don't hesitate to raise an issue.
+| Hunk Actions | Line Blame |
+| --- | ----------- |
+| <img src="https://raw.githubusercontent.com/lewis6991/media/main/gitsigns_actions.gif" width="450em"/> | <img src="https://raw.githubusercontent.com/lewis6991/media/main/gitsigns_blame.gif" width="450em"/>
+ |
 
 ## Features
 
@@ -132,22 +132,16 @@ For the current branch use the variable `b:gitsigns_head`.
 
 ## TODO
 
-- [x] Add action for undoing a stage of a hunk
-- [x] Add action for ~~undoing~~ reseting a hunk
-- [x] Add action for showing diff (or original text) in a floating window
 - [ ] Add ability to show staged hunks with different signs (maybe in a different sign column?)
-- [x] Add support for repeat.vim
-- [x] Apply buffer updates incrementally
-- [x] Add tests
-- [x] Respect algorithm in diffopt
-- [x] When detecting index changes, also check if the file of the buffer changed
 - [ ] Add ability to show commit in floating window of current line
-- [x] Add help doc
 - [ ] Allow extra options to be passed to `git diff`
 - [ ] Folding of text around hunks
 - [ ] Diff against working tree instead of index, or diff against any SHA.
-- [x] Line highlighting
-- [x] Hunk text object
 - [ ] Open diff mode of buffer against what gitsigns is comparing to (currently the index)
-- [ ] Share index watchers for files in the same repo
 - [ ] Show messages when navigating hunks similar to '/' search
+
+## Similar plugins
+
+- [coc-git](https://github.com/neoclide/coc-git)
+- [vim-gitgutter](https://github.com/airblade/vim-gitgutter)
+- [vim-signify](https://github.com/mhinz/vim-signify)
