@@ -3,7 +3,7 @@
 [![CI](https://github.com/lewis6991/gitsigns.nvim/workflows/CI/badge.svg?branch=main)](https://github.com/lewis6991/gitsigns.nvim/actions?query=workflow%3ACI)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Super fast git decorations implemented purely lua.
+Super fast git decorations implemented purely in lua/teal.
 
 ## Preview
 
