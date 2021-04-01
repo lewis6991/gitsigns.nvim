@@ -9,8 +9,7 @@ Super fast git decorations implemented purely in lua/teal.
 
 | Hunk Actions | Line Blame |
 | --- | ----------- |
-| <img src="https://raw.githubusercontent.com/lewis6991/media/main/gitsigns_actions.gif" width="450em"/> | <img src="https://raw.githubusercontent.com/lewis6991/media/main/gitsigns_blame.gif" width="450em"/>
- |
+| <img src="https://raw.githubusercontent.com/lewis6991/media/main/gitsigns_actions.gif" width="450em"/> | <img src="https://raw.githubusercontent.com/lewis6991/media/main/gitsigns_blame.gif" width="450em"/> |
 
 ## Features
 
