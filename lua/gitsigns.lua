@@ -94,7 +94,7 @@ local function add_signs(bufnr, signs)
       local cs = config.signs[s.type]
       if config.signcolumn and cs.show_count and count then
          local cc = config.count_chars
-         local count_suffix = cc[count] and (count) or (cc['+'] and 'Plus') or ''
+         local count_suffix = cc[count] and tostring(count) or (cc['+'] and 'Plus') or ''
          local count_char = cc[count] or cc['+'] or ''
          stype = stype .. count_suffix
          gs_signs.sign_define(stype, {
@@ -118,11 +118,11 @@ local function apply_win_signs(bufnr, pending, top, bot)
 
    if config.use_decoration_api then
 
-      top = top or tonumber(vim.fn.line('w0'))
-      bot = bot or tonumber(vim.fn.line('w$'))
+      top = top or vim.fn.line('w0')
+      bot = bot or vim.fn.line('w$')
    else
       top = top or 0
-      bot = bot or tonumber(vim.fn.line('$'))
+      bot = bot or vim.fn.line('$')
    end
 
    local scheduled = {}

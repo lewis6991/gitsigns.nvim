@@ -94,8 +94,8 @@ local function add_signs(bufnr: integer, signs: {integer:Sign})
     local cs = config.signs[s.type]
     if config.signcolumn and cs.show_count and count then
       local cc = config.count_chars
-      local count_suffix: string = cc[count] and (count as string) or (cc['+'] and 'Plus') or ''
-      local count_char   = cc[count]           or cc['+']            or ''
+      local count_suffix = cc[count] and tostring(count) or (cc['+'] and 'Plus') or ''
+      local count_char   = cc[count]                     or  cc['+']             or ''
       stype = stype..count_suffix
       gs_signs.sign_define(stype, {
         texthl = cs.hl,
@@ -118,11 +118,11 @@ local function apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: int
 
   if config.use_decoration_api then
     -- Just apply to signs visible in window
-    top = top or tonumber(vim.fn.line('w0')) as integer
-    bot = bot or tonumber(vim.fn.line('w$')) as integer
+    top = top or vim.fn.line('w0')
+    bot = bot or vim.fn.line('w$')
   else
     top = top or 0
-    bot = bot or tonumber(vim.fn.line('$')) as integer
+    bot = bot or vim.fn.line('$')
   end
 
   local scheduled: {integer:Sign} = {}
@@ -674,7 +674,7 @@ local function setup_current_line_blame()
 end
 
 local setup = sync(function(cfg: Config)
-  config = gs_config.process(cfg) as Config
+  config = gs_config.process(cfg)
   namespace = api.nvim_create_namespace('gitsigns')
 
   gs_debug.debug_mode = config.debug_mode
