@@ -8,9 +8,9 @@ function popup.create(what: {string}, opts: {string:any}): number, number
 
   api.nvim_buf_set_lines(bufnr, 0, -1, true, what)
 
-  local width: number
+  local width: integer
   if opts.width then
-    width = opts.width as number
+    width = opts.width as integer
   else
     width = 0
     for _, l in ipairs(what) do

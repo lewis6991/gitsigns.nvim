@@ -25,7 +25,7 @@ local function validate_option_keywords(options: table)
     local value = options[option_name]
     if value then
       validate {
-        [option_name] = { value, expected_type } as {any};
+        [option_name] = { value, expected_type };
       }
     end
   end
@@ -68,7 +68,7 @@ local function apply_mappings(mappings: {string:any}, bufonly: boolean)
       else
         error(("Invalid type for option rhs: %q = %s"):format(type(opts), vim.inspect(opts)))
       end
-      options = vim.tbl_extend('keep', default_options, options as table) as {string:any}
+      options = vim.tbl_extend('keep', default_options, options) as {string:any}
 
       validate_option_keywords(options)
 
