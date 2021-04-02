@@ -527,7 +527,7 @@ end)
 
 local attach_throttled = void(attach)
 
-local function setup_signs(redefine)
+local function setup_signs_and_highlights(redefine)
 
    for t, sign_name in pairs(signs.sign_map) do
       local cs = config.signs[t]
@@ -637,7 +637,7 @@ local setup = void_async(function(cfg)
 
    Status.formatter = config.status_formatter
 
-   setup_signs()
+   setup_signs_and_highlights()
    setup_command()
    apply_keymaps(false)
 
@@ -766,7 +766,7 @@ local _current_line_blame = void_async(function()
 end)
 
 local function refresh()
-   setup_signs(true)
+   setup_signs_and_highlights(true)
    setup_current_line_blame()
    for k, v in pairs(cache) do
       _current_line_blame_reset(k)
@@ -820,7 +820,7 @@ M = {
    toggle_current_line_blame = toggle_current_line_blame,
 
    _update_highlights = function()
-      setup_signs()
+      setup_signs_and_highlights()
    end,
    _run_func = function(func, ...)
       M[func](...)
