@@ -7,7 +7,6 @@ local await3 = gs_async.await3
 local await4 = gs_async.await4
 local async1 = gs_async.async1
 local async2 = gs_async.async2
-local async3_1 = gs_async.async3_1
 local await_main = gs_async.await_main
 
 local gs_debounce = require('gitsigns/debounce')
@@ -70,14 +69,6 @@ local CacheEntry = {}
 
 
 local cache = {}
-
-local function get_cache(bufnr)
-   return cache[bufnr]
-end
-
-local function get_cache_opt(bufnr)
-   return cache[bufnr]
-end
 
 local function get_cursor_hunk(bufnr, hunks)
    bufnr = bufnr or current_buf()
@@ -161,7 +152,7 @@ end
 local update_cnt = 0
 
 local update = async2(function(bufnr, bcache)
-   bcache = bcache or get_cache_opt(bufnr)
+   bcache = bcache or cache[bufnr]
    if not bcache then
       error('Cache for buffer ' .. bufnr .. ' was nil')
       return
@@ -197,18 +188,17 @@ end)
 
 local update_debounced
 
-local watch_index = async3_1(function(bufnr, gitdir, on_change)
+local watch_index = function(bufnr, gitdir, on_change)
    dprint('Watching index', bufnr, 'watch_index')
    local index = gitdir .. util.path_sep .. 'index'
    local w = uv.new_fs_poll()
    w:start(index, config.watch_index.interval, on_change)
    return w
-end)
+end
 
 local stage_hunk = void_async(function()
    local bufnr = current_buf()
-
-   local bcache = get_cache_opt(bufnr)
+   local bcache = cache[bufnr]
    if not bcache then
       return
    end
@@ -260,16 +250,7 @@ end)
 
 local function reset_hunk(bufnr, hunk)
    bufnr = bufnr or current_buf()
-
-   if not hunk then
-      local bcache = get_cache_opt(bufnr)
-      if not bcache then
-         return
-      end
-
-      hunk = get_cursor_hunk(bufnr, bcache.hunks)
-   end
-
+   hunk = hunk or get_cursor_hunk(bufnr)
    if not hunk then
       return
    end
@@ -291,8 +272,7 @@ end
 
 local function reset_buffer()
    local bufnr = current_buf()
-
-   local bcache = get_cache_opt(bufnr)
+   local bcache = cache[bufnr]
    if not bcache then
       return
    end
@@ -304,8 +284,7 @@ end
 
 local undo_stage_hunk = void_async(function()
    local bufnr = current_buf()
-
-   local bcache = get_cache_opt(bufnr)
+   local bcache = cache[bufnr]
    if not bcache then
       return
    end
@@ -335,7 +314,7 @@ local NavHunkOpts = {}
 
 
 local function nav_hunk(options)
-   local bcache = get_cache_opt(current_buf())
+   local bcache = cache[current_buf()]
    if not bcache then
       return
    end
@@ -378,8 +357,7 @@ end
 local function detach(bufnr, keep_signs)
    bufnr = bufnr or current_buf()
    dprint('Detached', bufnr)
-
-   local bcache = get_cache_opt(bufnr)
+   local bcache = cache[bufnr]
    if not bcache then
       dprint('Cache was nil', bufnr)
       return
@@ -431,7 +409,7 @@ local function index_update_handler(cbuf)
          return
       end
       dprint('Index update', cbuf, 'watcher_cb')
-      local bcache = get_cache(cbuf)
+      local bcache = cache[cbuf]
 
       _, _, bcache.abbrev_head = await3(git.get_repo_info(bcache.toplevel))
 
@@ -464,7 +442,7 @@ local function in_git_dir(file)
 end
 
 local function on_lines(buf, last_orig, last_new)
-   if not get_cache_opt(buf) then
+   if not cache[buf] then
       dprint('Cache for buffer ' .. buf .. ' was nil. Detaching')
       return true
    end
@@ -556,7 +534,7 @@ local attach = async1(function(cbuf)
       staged_text = nil,
       hunks = {},
       staged_diffs = {},
-      index_watcher = await1(watch_index(cbuf, gitdir, index_update_handler(cbuf))),
+      index_watcher = watch_index(cbuf, gitdir, index_update_handler(cbuf)),
    }
 
 
@@ -655,7 +633,7 @@ end
 local function setup_decoration_provider()
    api.nvim_set_decoration_provider(namespace, {
       on_win = function(_, _, bufnr, top, bot)
-         local bcache = get_cache_opt(bufnr)
+         local bcache = cache[bufnr]
          if not bcache or not bcache.pending_signs then
             return
          end
@@ -756,8 +734,7 @@ end
 
 local blame_line = void_async(function()
    local bufnr = current_buf()
-
-   local bcache = get_cache_opt(bufnr)
+   local bcache = cache[bufnr]
    if not bcache then
       return
    end
@@ -799,8 +776,7 @@ end
 
 local _current_line_blame = void_async(function()
    local bufnr = current_buf()
-
-   local bcache = get_cache_opt(bufnr)
+   local bcache = cache[bufnr]
    if not bcache then
       return
    end
