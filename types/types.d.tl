@@ -83,7 +83,7 @@ local record api
   nvim_get_vvar: function(string): any
   nvim_input: function(string): number
   nvim_input_mouse: function(string, string, string, number, number, number)
-  nvim_list_bufs: function(): {number}
+  nvim_list_bufs: function(): {integer}
   nvim_list_chans: function(): any
   nvim_list_runtime_paths: function(): {string}
   nvim_list_tabpages: function(): {any}
