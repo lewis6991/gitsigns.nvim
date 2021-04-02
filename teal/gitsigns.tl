@@ -15,8 +15,8 @@ local debounce_trailing = gs_debounce.debounce_trailing
 local gs_popup          = require('gitsigns/popup')
 local gs_hl             = require('gitsigns/highlight')
 
-local gs_signs          = require('gitsigns/signs')
-local Sign              = gs_signs.Sign
+local signs             = require('gitsigns/signs')
+local Sign              = signs.Sign
 
 local gs_config         = require('gitsigns/config')
 local Config            = gs_config.Config
@@ -78,35 +78,6 @@ local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk
   return gs_hunks.find_hunk(lnum, hunks)
 end
 
-local function remove_sign(bufnr: integer, lnum: integer)
-  vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr, id = lnum})
-end
-
-local function add_signs(bufnr: integer, signs: {integer:Sign})
-  for lnum, s in pairs(signs) do
-    local stype: string = gs_signs.sign_map[s.type]
-    local count = s.count
-
-    local cs = config.signs[s.type]
-    if config.signcolumn and cs.show_count and count then
-      local cc = config.count_chars
-      local count_suffix = cc[count] and tostring(count) or (cc['+'] and 'Plus') or ''
-      local count_char   = cc[count]                     or  cc['+']             or ''
-      stype = stype..count_suffix
-      gs_signs.sign_define(stype, {
-        texthl = cs.hl,
-        text   = config.signcolumn and cs.text..count_char or '',
-        numhl  = config.numhl      and cs.numhl,
-        linehl = config.linehl     and cs.linehl
-      })
-    end
-
-    vim.fn.sign_place(lnum, 'gitsigns_ns', stype, bufnr, {
-      lnum = lnum, priority = config.sign_priority
-    })
-  end
-end
-
 local function apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: integer, bot: integer)
   -- If called without top or bot, then assume this is the first call after
   -- clearing all the signs
@@ -135,7 +106,7 @@ local function apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: int
   end
 
   if first_apply then
-    remove_sign(bufnr)  -- Remove all signs
+    signs.remove(bufnr)  -- Remove all signs
 
     -- To stop the sign column width changing too much, if there are signs to be
     -- added but none of them are visible in the window, then make sure to add at
@@ -146,7 +117,7 @@ local function apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: int
     end
   end
 
-  add_signs(bufnr, scheduled)
+  signs.add(config, bufnr, scheduled)
 end
 
 local update_cnt = 0
@@ -234,7 +205,7 @@ local stage_hunk = void_async(function()
 
   table.insert(bcache.staged_diffs, hunk)
 
-  local signs = process_hunks({hunk})
+  local hunk_signs = process_hunks({hunk})
 
   await_main()
 
@@ -243,8 +214,8 @@ local stage_hunk = void_async(function()
   -- running a full diff.
   --
   -- We cannot update the status bar as that requires a full diff.
-  for lnum, _ in pairs(signs) do
-    remove_sign(bufnr, lnum)
+  for lnum, _ in pairs(hunk_signs) do
+    signs.remove(bufnr, lnum)
   end
 end)
 
@@ -302,10 +273,10 @@ local undo_stage_hunk = void_async(function()
 
   table.remove(bcache.staged_diffs)
 
-  local signs = process_hunks({hunk})
+  local hunk_signs = process_hunks({hunk})
 
   await_main()
-  add_signs(bufnr, signs)
+  signs.add(config, bufnr, hunk_signs)
 end)
 
 local record NavHunkOpts
@@ -451,7 +422,7 @@ local function on_lines(buf: integer, last_orig: integer, last_new: integer): bo
   -- This is only has noticeable effect on large files
   if last_new < last_orig then
     for i = last_new+1, last_orig do
-      remove_sign(buf, i)
+      signs.remove(buf, i)
     end
   end
 
@@ -558,7 +529,7 @@ local attach_throttled = void(attach)
 
 local function setup_signs(redefine: boolean)
   -- Define signs
-  for t, sign_name in pairs(gs_signs.sign_map) do
+  for t, sign_name in pairs(signs.sign_map) do
     local cs = config.signs[t]
 
     gs_hl.setup_highlight(cs.hl)
@@ -570,7 +541,7 @@ local function setup_signs(redefine: boolean)
       end
     end
 
-    gs_signs.sign_define(sign_name, {
+    signs.define(sign_name, {
       texthl = cs.hl,
       text   = config.signcolumn and cs.text or nil,
       numhl  = config.numhl      and cs.numhl,
