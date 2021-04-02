@@ -47,7 +47,7 @@ local record api
   nvim_call_dict_function: function(any, string, any): any
   nvim_call_function: function(string, any): any
   nvim_command: function(string)
-  nvim_create_buf: function(boolean, boolean): number
+  nvim_create_buf: function(boolean, boolean): integer
   nvim_create_namespace: function(string): integer
   nvim_del_current_line: function()
   nvim_del_keymap: function(string, string)
@@ -90,7 +90,7 @@ local record api
   nvim_list_uis: function(): any
   nvim_list_wins: function(): {number}
   nvim_load_context: function({string:any}): any
-  nvim_open_win: function(number, boolean, {string:any}): number
+  nvim_open_win: function(number, boolean, {string:any}): integer
   nvim_out_write: function(string)
   nvim_parse_expression: function(string, string, boolean): {string:any}
   nvim_paste: function(string, boolean, number): boolean
@@ -152,9 +152,8 @@ end
 global record vim
   api: api
   record fn
-    line: function(string): number
+    line: function(string): integer
     expand: function(string): string
-    line: function(string): string
     sign_unplace: function(string, {string:any})
     sign_place: function(number, string, string, string | number, {string:any})
     sign_getdefined: function(string): table
