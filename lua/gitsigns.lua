@@ -466,7 +466,6 @@ local attach = async1(function(cbuf)
    local toplevel, gitdir, abbrev_head = await3(git.get_repo_info(file_dir))
 
    if not gitdir then
-      print(toplevel)
       dprint('Not in git repo', cbuf, 'attach')
       return
    end
