@@ -689,6 +689,7 @@ local function preview_hunk()
    api.nvim_win_set_option(winid, 'number', false)
    api.nvim_win_set_option(winid, 'relativenumber', false)
    api.nvim_win_set_option(winid, 'signcolumn', 'no')
+   api.nvim_win_set_option(winid, 'cursorline', false)
 end
 
 local function select_hunk()
