@@ -2,23 +2,29 @@ local popup = {}
 
 local api = vim.api
 
+local function visible_len(x, softtabstop)
+
+   local x2 = x:gsub('\t', string.rep(' ', softtabstop))
+   return #x2
+end
+
+local function calc_width(lines, bufnr)
+   local width = 0
+   local sts = api.nvim_buf_get_option(bufnr, 'softtabstop')
+   for _, l in ipairs(lines) do
+      local len = visible_len(l, sts)
+      if len > width then
+         width = len
+      end
+   end
+   return width
+end
+
 function popup.create(what, opts)
    local bufnr = api.nvim_create_buf(false, true)
    assert(bufnr, "Failed to create buffer")
 
    api.nvim_buf_set_lines(bufnr, 0, -1, true, what)
-
-   local width
-   if opts.width then
-      width = opts.width
-   else
-      width = 0
-      for _, l in ipairs(what) do
-         if #l > width then
-            width = #l
-         end
-      end
-   end
 
    opts = opts or {}
 
@@ -27,7 +33,7 @@ function popup.create(what, opts)
       row = opts.row or 0,
       col = opts.col or 0,
       height = opts.height or #what,
-      width = width,
+      width = opts.width or calc_width(what, bufnr),
    })
 
    vim.lsp.util.close_preview_autocmd({ 'CursorMoved', 'CursorMovedI' }, win_id)
