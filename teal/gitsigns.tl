@@ -2,13 +2,10 @@ local a = require('plenary/async_lib/async')
 local void  = a.void
 local await = a.await
 local async = a.async
+local scheduler = a.scheduler
 
 local function void_async(func: function): function
-  return a.void(a.async(func))
-end
-
-local function await_main()
-  a.await(a.scheduler())
+  return void(async(func))
 end
 
 local gs_debounce       = require('gitsigns/debounce')
@@ -131,7 +128,7 @@ local update = async(function(bufnr: integer, bcache: CacheEntry)
     return
   end
 
-  await_main()
+  await(scheduler())
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local stage = bcache.has_conflicts and 1 or 0
 
@@ -146,7 +143,7 @@ local update = async(function(bufnr: integer, bcache: CacheEntry)
   end
   bcache.pending_signs = process_hunks(bcache.hunks)
 
-  await_main()
+  await(scheduler())
 
   -- Apply signs to the window. Other signs will be added by the decoration
   -- provider as they are drawn.
@@ -209,7 +206,7 @@ local stage_hunk = void_async(function()
 
   local hunk_signs = process_hunks({hunk})
 
-  await_main()
+  await(scheduler())
 
   -- If watch_index is enabled then that will eventually kick in and update the
   -- signs, however for  smoother UX we can update the signs immediately without
@@ -277,7 +274,7 @@ local undo_stage_hunk = void_async(function()
 
   local hunk_signs = process_hunks({hunk})
 
-  await_main()
+  await(scheduler())
   signs.add(config, bufnr, hunk_signs)
 end)
 
@@ -432,7 +429,7 @@ local function on_lines(buf: integer, last_orig: integer, last_new: integer): bo
 end
 
 local attach = async(function(cbuf: integer)
-  await_main()
+  await(scheduler())
   cbuf = cbuf or current_buf()
   if cache[cbuf] ~= nil then
     dprint('Already attached', cbuf, 'attach')
@@ -481,7 +478,7 @@ local attach = async(function(cbuf: integer)
 
   -- On windows os.tmpname() crashes in callback threads so initialise this
   -- variable on the main thread.
-  await_main()
+  await(scheduler())
   local staged = os.tmpname() -- Temp filename of staged file
 
   local relpath, object_name, mode_bits, has_conflicts =
@@ -512,7 +509,7 @@ local attach = async(function(cbuf: integer)
   -- Initial update
   await(update(cbuf, cache[cbuf]))
 
-  await_main()
+  await(scheduler())
 
   api.nvim_buf_attach(cbuf, false, {
     on_lines = function(_, buf: integer, _, _, last_orig: integer, last_new: integer)
@@ -652,7 +649,7 @@ local setup = void_async(function(cfg: Config)
   end
 
   await(git.set_version(config._git_version))
-  await_main()
+  await(scheduler())
 
   -- Attach to all open buffers
   for _, buf in ipairs(api.nvim_list_bufs()) do
@@ -660,7 +657,7 @@ local setup = void_async(function(cfg: Config)
       and api.nvim_buf_is_loaded(buf)
       and api.nvim_buf_get_name(buf) ~= '' then
       await(attach(buf))
-      await_main()
+      await(scheduler())
     end
   end
 
@@ -722,7 +719,7 @@ local blame_line = void_async(function()
     result.summary
   }
 
-  await_main()
+  await(scheduler())
 
   local winid, pbufnr = gs_popup.create(lines, { relative = 'cursor', col = 1 })
 
@@ -758,7 +755,7 @@ local _current_line_blame = void_async(function()
   local lnum = api.nvim_win_get_cursor(0)[1]
   local result = await(git.run_blame(bcache.file, bcache.toplevel, buftext, lnum))
 
-  await_main()
+  await(scheduler())
 
   _current_line_blame_reset(bufnr)
   api.nvim_buf_set_extmark(bufnr, namespace, lnum-1, 0, {
