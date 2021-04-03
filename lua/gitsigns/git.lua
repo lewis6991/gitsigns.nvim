@@ -1,4 +1,4 @@
-local a = require('gitsigns/async')
+local a = require('plenary/async_lib/async')
 local gsd = require("gitsigns/debug")
 local util = require('gitsigns/util')
 
@@ -74,7 +74,7 @@ local function check_version(version)
    return true
 end
 
-M.file_info = a.wrap2_4(function(
+M.file_info = a.wrap(function(
    file,
    toplevel,
    callback)
@@ -115,9 +115,9 @@ M.file_info = a.wrap2_4(function(
          callback(relpath, object_name, mode_bits, has_conflict)
       end,
    })
-end)
+end, 3)
 
-M.get_staged = a.wrap4(function(
+M.get_staged = a.wrap(function(
    toplevel,
    relpath,
    stage,
@@ -144,9 +144,9 @@ M.get_staged = a.wrap4(function(
          callback()
       end,
    })
-end)
+end, 5)
 
-M.get_staged_text = a.wrap3_1(function(
+M.get_staged_text = a.wrap(function(
    toplevel,
    relpath,
    stage,
@@ -168,9 +168,9 @@ M.get_staged_text = a.wrap3_1(function(
          callback(result)
       end,
    })
-end)
+end, 4)
 
-M.run_blame = a.wrap4_1(function(
+M.run_blame = a.wrap(function(
    file,
    toplevel,
    lines,
@@ -210,7 +210,7 @@ M.run_blame = a.wrap4_1(function(
          callback(ret)
       end,
    })
-end)
+end, 5)
 
 local function process_abbrev_head(gitdir, head_str)
    if not gitdir then
@@ -229,7 +229,7 @@ local function process_abbrev_head(gitdir, head_str)
    return head_str
 end
 
-M.get_repo_info = a.wrap1_3(function(
+M.get_repo_info = a.wrap(function(
    path, callback)
    local out = {}
 
@@ -259,9 +259,9 @@ git_dir_opt,
          callback(toplevel, gitdir, abbrev_head)
       end),
    })
-end)
+end, 2)
 
-M.stage_lines = a.wrap2(function(
+M.stage_lines = a.wrap(function(
    toplevel, lines, callback)
    local status = true
    local err = {}
@@ -282,9 +282,9 @@ M.stage_lines = a.wrap2(function(
          callback()
       end,
    })
-end)
+end, 3)
 
-M.add_file = a.wrap2(function(
+M.add_file = a.wrap(function(
    toplevel, file, callback)
    local status = true
    local err = {}
@@ -304,9 +304,9 @@ M.add_file = a.wrap2(function(
          callback()
       end,
    })
-end)
+end, 3)
 
-M.update_index = a.wrap4(function(
+M.update_index = a.wrap(function(
    toplevel,
    mode_bits,
    object_name,
@@ -332,7 +332,7 @@ M.update_index = a.wrap4(function(
          callback()
       end,
    })
-end)
+end, 5)
 
 local function write_to_file(path, text)
    local f = io.open(path, 'wb')
@@ -343,7 +343,7 @@ local function write_to_file(path, text)
    f:close()
 end
 
-M.run_diff = a.wrap3_1(function(
+M.run_diff = a.wrap(function(
    staged,
    text,
    diff_algo,
@@ -405,9 +405,9 @@ M.run_diff = a.wrap3_1(function(
          callback(results)
       end,
    })
-end)
+end, 4)
 
-M.set_version = a.wrap1(function(version, callback)
+M.set_version = a.wrap(function(version, callback)
    if version ~= 'auto' then
       M.version = parse_version(version)
       callback()
@@ -432,9 +432,9 @@ M.set_version = a.wrap1(function(version, callback)
          callback()
       end,
    })
-end)
+end, 2)
 
-M.command = a.wrap1_1(function(args, callback)
+M.command = a.wrap(function(args, callback)
    local result = {}
    util.run_job({
       command = 'git', args = args,
@@ -453,6 +453,6 @@ M.command = a.wrap1_1(function(args, callback)
          callback(result)
       end,
    })
-end)
+end, 2)
 
 return M
