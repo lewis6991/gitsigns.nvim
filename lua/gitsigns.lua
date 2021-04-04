@@ -683,9 +683,9 @@ local function preview_hunk()
       return
    end
 
-   local winid, bufnr = gs_popup.create(hunk.lines, { relative = 'cursor' })
+   local ts = api.nvim_buf_get_option(cbuf, 'tabstop')
+   local winid, bufnr = gs_popup.create(hunk.lines, { relative = 'cursor', tabstop = ts })
 
-   api.nvim_buf_set_option(bufnr, 'tabstop', api.nvim_buf_get_option(cbuf, 'tabstop'))
    api.nvim_buf_set_option(bufnr, 'filetype', 'diff')
    api.nvim_win_set_option(winid, 'number', false)
    api.nvim_win_set_option(winid, 'relativenumber', false)
