@@ -27,6 +27,8 @@ function popup.create(what, opts)
 
    opts = opts or {}
 
+
+
    if opts.tabstop then
       api.nvim_buf_set_option(bufnr, 'tabstop', opts.tabstop)
    end
