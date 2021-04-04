@@ -159,6 +159,7 @@ global record vim
     sign_getdefined: function(string): table
     sign_define: function(string, table): number
     sign_undefine: function(string): number
+    strdisplaywidth: function(string, integer): integer
   end
 
   cmd: function(string): any

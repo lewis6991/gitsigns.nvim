@@ -676,7 +676,8 @@ local setup = void_async(function(cfg)
 end)
 
 local function preview_hunk()
-   local hunk = get_cursor_hunk()
+   local cbuf = current_buf()
+   local hunk = get_cursor_hunk(cbuf)
 
    if not hunk then
       return
@@ -684,6 +685,7 @@ local function preview_hunk()
 
    local winid, bufnr = gs_popup.create(hunk.lines, { relative = 'cursor' })
 
+   api.nvim_buf_set_option(bufnr, 'tabstop', api.nvim_buf_get_option(cbuf, 'tabstop'))
    api.nvim_buf_set_option(bufnr, 'filetype', 'diff')
    api.nvim_win_set_option(winid, 'number', false)
    api.nvim_win_set_option(winid, 'relativenumber', false)
