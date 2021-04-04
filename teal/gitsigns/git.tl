@@ -195,6 +195,10 @@ M.run_blame = a.wrap(function(
     end,
     on_exit = function()
       local ret: {string:any} = {}
+      if #results == 0 then
+        callback({})
+        return
+      end
       local header = vim.split(table.remove(results, 1), ' ')
       ret.sha = header[1]
       ret.abbrev_sha = string.sub(ret.sha as string, 1, 8)
