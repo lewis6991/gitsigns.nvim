@@ -749,7 +749,7 @@ end
 local _current_line_blame = void_async(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
-   if not bcache then
+   if not bcache or not bcache.object_name then
       return
    end
 

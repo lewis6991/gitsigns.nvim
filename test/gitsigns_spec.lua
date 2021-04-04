@@ -436,6 +436,22 @@ describe('gitsigns', function()
     end)
   end)
 
+  describe('current line blame', function()
+    it('doesn\'t error on untracked files', function()
+      command("set updatetime=1")
+      init(true)
+      screen:detach()
+      screen:attach({ext_messages=true})
+      config.current_line_blame = true
+      exec_lua('gs.setup(...)', config)
+      sleep(20)
+      edit(newfile)
+      feed("iline<esc>")
+      command("write")
+      screen:expect{messages = { { content = { { "<" } }, kind = "" } } }
+    end)
+  end)
+
   local function testsuite(advanced_features)
     return function()
       before_each(function()
