@@ -27,6 +27,9 @@ function popup.create(what: {string}, opts: {string:any}): number, number
 
   opts = opts or {}
 
+  if opts.tabstop then
+    api.nvim_buf_set_option(bufnr, 'tabstop', opts.tabstop)
+  end
 
   local win_id = api.nvim_open_win(bufnr, false, {
     relative = opts.relative,
