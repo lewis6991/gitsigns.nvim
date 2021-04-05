@@ -684,13 +684,8 @@ local function preview_hunk()
   end
 
   local ts = api.nvim_buf_get_option(cbuf, 'tabstop')
-  local winid, bufnr = gs_popup.create(hunk.lines, { relative = 'cursor', tabstop = ts })
-
+  local _, bufnr = gs_popup.create(hunk.lines, { tabstop = ts })
   api.nvim_buf_set_option(bufnr, 'filetype', 'diff')
-  api.nvim_win_set_option(winid, 'number', false)
-  api.nvim_win_set_option(winid, 'relativenumber', false)
-  api.nvim_win_set_option(winid, 'signcolumn', 'no')
-  api.nvim_win_set_option(winid, 'cursorline', false)
 end
 
 local function select_hunk()
@@ -723,10 +718,7 @@ local blame_line = void_async(function()
 
   await(scheduler())
 
-  local winid, pbufnr = gs_popup.create(lines, { relative = 'cursor', col = 1 })
-
-  api.nvim_win_set_option(winid, 'number', false)
-  api.nvim_win_set_option(winid, 'relativenumber', false)
+  local _, pbufnr = gs_popup.create(lines)
 
   local p1 = #result.abbrev_sha
   local p2 = #result.author
