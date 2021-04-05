@@ -182,6 +182,8 @@ local test_config = {
     ['n mhu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
     ['n mhr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
     ['n mhp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
+    ['n mhS'] = '<cmd>lua require"gitsigns".stage_buffer()<CR>',
+    ['n mhU'] = '<cmd>lua require"gitsigns".reset_buffer_index()<CR>',
   },
   update_debounce = 5,
 }
@@ -278,6 +280,8 @@ describe('gitsigns', function()
 
       -- Check all keymaps get set
       match_lines(res, {
+        'n  mhS         *@<Cmd>lua require"gitsigns".stage_buffer()<CR>',
+        'n  mhU         *@<Cmd>lua require"gitsigns".reset_buffer_index()<CR>',
         'n  mhp         *@<Cmd>lua require"gitsigns".preview_hunk()<CR>',
         'n  mhr         *@<Cmd>lua require"gitsigns".reset_hunk()<CR>',
         'n  mhs         *@<Cmd>lua require"gitsigns".stage_hunk()<CR>',
@@ -546,15 +550,59 @@ describe('gitsigns', function()
                               |
         ]]}
 
+        -- Add multiple edits
+        feed('gg')
+        sleep(20)
+        feed('cc')
+        sleep(20)
+        feed('That<esc>')
+        sleep(10)
+
+        screen:expect{grid=[[
+          {2:~ }Tha^t              |
+          {1:  }is                |
+          {1:  }a                 |
+          {2:~ }EDIT              |
+          {1:  }used              |
+                              |
+        ]]}
+
+        -- Stage buffer
+        feed("mhS")
+        sleep(10)
+
+        screen:expect{grid=[[
+          {1:  }Tha^t              |
+          {1:  }is                |
+          {1:  }a                 |
+          {1:  }EDIT              |
+          {1:  }used              |
+                              |
+        ]]}
+
+        -- Unstage buffer
+        feed("mhU")
+        sleep(10)
+
+        screen:expect{grid=[[
+          {2:~ }Tha^t              |
+          {1:  }is                |
+          {1:  }a                 |
+          {2:~ }EDIT              |
+          {1:  }used              |
+                              |
+        ]]}
+
+
         -- Reset
         feed("mhr")
         sleep(10)
 
         screen:expect{grid=[[
-          {1:  }This              |
+          {1:  }Thi^s              |
           {1:  }is                |
           {1:  }a                 |
-          {1:  }fil^e              |
+          {2:~ }EDIT              |
           {1:  }used              |
                               |
         ]]}

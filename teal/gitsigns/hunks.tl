@@ -115,39 +115,46 @@ function M.process_hunks(hunks: {Hunk}): {integer:Sign}
   return signs
 end
 
-function M.create_patch(relpath: string, hunk: Hunk, mode_bits: string, invert: boolean): {string}
+function M.create_patch(relpath: string, hunks: {Hunk}, mode_bits: string, invert: boolean): {string}
   invert = invert or false
 
-  local start, pre_count, now_count =
-    hunk.removed.start, hunk.removed.count, hunk.added.count
-
-  if hunk.type == 'add' then
-    start = start + 1
-  end
-
-  local lines = hunk.lines
-
-  if invert then
-    pre_count, now_count = now_count, pre_count
-
-    lines = vim.tbl_map(function(l: string): string
-      if vim.startswith(l, '+') then
-        l = '-'..string.sub(l, 2, -1)
-      elseif vim.startswith(l, '-') then
-        l = '+'..string.sub(l, 2, -1)
-      end
-      return l
-    end, lines) as {string}
-  end
-
-  return {
+  local results = {
     string.format('diff --git a/%s b/%s', relpath, relpath),
     'index 000000..000000 '..mode_bits,
     '--- a/'..relpath,
     '+++ b/'..relpath,
-    string.format('@@ -%s,%s +%s,%s @@', start, pre_count, start, now_count),
-    unpack(lines)
   }
+
+  for _, process_hunk in ipairs(hunks) do
+    local start, pre_count, now_count =
+    process_hunk.removed.start, process_hunk.removed.count, process_hunk.added.count
+
+    if process_hunk.type == 'add' then
+      start = start + 1
+    end
+
+    local lines = process_hunk.lines
+
+    if invert then
+      pre_count, now_count = now_count, pre_count
+
+      lines = vim.tbl_map(function(l: string): string
+        if vim.startswith(l, '+') then
+          l = '-'..string.sub(l, 2, -1)
+        elseif vim.startswith(l, '-') then
+          l = '+'..string.sub(l, 2, -1)
+        end
+        return l
+      end, lines) as {string}
+    end
+
+    table.insert(results, string.format('@@ -%s,%s +%s,%s @@', start, pre_count, start, now_count))
+    for _, line in ipairs(lines) do
+      table.insert(results, line)
+    end
+  end
+
+  return results
 end
 
 function M.get_summary(hunks: {Hunk}, head: string): StatusObj
@@ -213,8 +220,8 @@ function M.extract_removed(hunk: Hunk): {string}
   return vim.tbl_map(function(l: string): string
     return string.sub(l, 2, -1)
   end, vim.tbl_filter(function(l: string): boolean
-      return vim.startswith(l, '-')
-    end, hunk.lines)) as {string}
+    return vim.startswith(l, '-')
+  end, hunk.lines)) as {string}
 end
 
 return M

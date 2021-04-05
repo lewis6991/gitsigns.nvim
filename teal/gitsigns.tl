@@ -69,6 +69,23 @@ end
 
 local cache: {integer:CacheEntry} = {}
 
+local ensure_file_in_index = async(function(bcache: CacheEntry)
+  if not bcache.object_name or bcache.has_conflicts then
+    if not bcache.object_name then
+      -- If there is no object_name then it is not yet in the index so add it
+      await(git.add_file(bcache.toplevel, bcache.relpath))
+    else
+      -- Update the index with the common ancestor (stage 1) which is what bcache
+      -- stores
+      await(git.update_index(bcache.toplevel, bcache.mode_bits, bcache.object_name, bcache.relpath))
+    end
+
+    -- Update the cache
+    _, bcache.object_name, bcache.mode_bits, bcache.has_conflicts =
+      await(git.file_info(bcache.relpath, bcache.toplevel))
+  end
+end)
+
 local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk
   bufnr = bufnr or current_buf()
   hunks = hunks or cache[bufnr].hunks
@@ -183,22 +200,9 @@ local stage_hunk = void_async(function()
     return
   end
 
-  if not bcache.object_name or bcache.has_conflicts then
-    if not bcache.object_name then
-      -- If there is no object_name then it is not yet in the index so add it
-      await(git.add_file(bcache.toplevel, bcache.relpath))
-    else
-      -- Update the index with the common ancestor (stage 1) which is what bcache
-      -- stores
-      await(git.update_index(bcache.toplevel, bcache.mode_bits, bcache.object_name, bcache.relpath))
-    end
+  await(ensure_file_in_index(bcache))
 
-    -- Update the cache
-    _, bcache.object_name, bcache.mode_bits, bcache.has_conflicts =
-      await(git.file_info(bcache.relpath, bcache.toplevel))
-  end
-
-  local lines = create_patch(bcache.relpath, hunk, bcache.mode_bits)
+  local lines = create_patch(bcache.relpath, {hunk}, bcache.mode_bits)
 
   await(git.stage_lines(bcache.toplevel, lines))
 
@@ -266,7 +270,7 @@ local undo_stage_hunk = void_async(function()
     return
   end
 
-  local lines = create_patch(bcache.relpath, hunk, bcache.mode_bits, true)
+  local lines = create_patch(bcache.relpath, {hunk}, bcache.mode_bits, true)
 
   await(git.stage_lines(bcache.toplevel, lines))
 
@@ -275,6 +279,70 @@ local undo_stage_hunk = void_async(function()
   local hunk_signs = process_hunks({hunk})
 
   await(scheduler())
+  signs.add(config, bufnr, hunk_signs)
+end)
+
+local stage_buffer = void_async(function()
+  local bufnr = current_buf()
+
+  local bcache = cache[bufnr]
+  if not bcache then
+    return
+  end
+
+  -- Only process files with existing hunks
+  local hunks = bcache.hunks
+  if #hunks == 0 then
+    print("No unstaged changes in file to stage")
+    return 
+  end
+
+  if not util.path_exists(bcache.file) then
+    print("Error: Cannot stage file. Please add it to the working tree.")
+    return
+  end
+
+  await(ensure_file_in_index(bcache))
+
+  local lines = create_patch(bcache.relpath, hunks, bcache.mode_bits)
+
+  await(git.stage_lines(bcache.toplevel, lines))
+
+  for _,hunk in ipairs(hunks) do
+    table.insert(bcache.staged_diffs, hunk)
+  end
+
+  await(scheduler())
+
+  signs.remove(bufnr)
+
+  Status:clear_diff(bufnr)
+end)
+
+local reset_buffer_index = void_async(function()
+  local bufnr = current_buf()
+  local bcache = cache[bufnr]
+  if not bcache then
+    return
+  end
+
+  -- `bcache.staged_diffs` won't contain staged changes outside of current neovim session
+  -- so signs added from this unstage won't be complete
+  -- They will however be fixed by index watcher and properly updated
+  -- We should implement some sort of initial population from git diff,
+  -- after that this function can be improved to check if any staged hunks exists
+  -- and it can undo changes using git apply line by line instead of reseting whole file
+  local hunks = bcache.staged_diffs
+
+  await(git.unstage_file(bcache.toplevel, bcache.file))
+
+  -- Signs need to be generated before the `table.remove` below as it modifies the hunks array
+  local hunk_signs = process_hunks(hunks)
+
+  table.remove(bcache.staged_diffs)
+
+  await(scheduler())
+
   signs.add(config, bufnr, hunk_signs)
 end)
 
@@ -366,7 +434,7 @@ end
 local function get_buf_path(bufnr: integer): string
   return
     uv.fs_realpath(api.nvim_buf_get_name(bufnr))
-    or
+      or
     api.nvim_buf_call(bufnr, function(): string
       return vim.fn.expand('%:p')
     end)
@@ -789,24 +857,26 @@ local function toggle_current_line_blame()
 end
 
 M = {
-  update          = update_debounced,
-  stage_hunk      = mk_repeatable(stage_hunk),
-  undo_stage_hunk = mk_repeatable(undo_stage_hunk),
-  reset_hunk      = mk_repeatable(reset_hunk),
-  next_hunk       = next_hunk,
-  prev_hunk       = prev_hunk,
-  select_hunk     = select_hunk,
-  preview_hunk    = preview_hunk,
-  blame_line      = blame_line,
-  reset_buffer    = reset_buffer,
-  attach          = attach_throttled,
-  detach          = detach,
-  detach_all      = detach_all,
-  setup           = setup,
-  refresh         = refresh,
-  toggle_signs    = toggle_signs,
-  toggle_linehl   = toggle_linehl,
-  toggle_numhl    = toggle_numhl,
+  update               = update_debounced,
+  stage_hunk           = mk_repeatable(stage_hunk),
+  undo_stage_hunk      = mk_repeatable(undo_stage_hunk),
+  reset_hunk           = mk_repeatable(reset_hunk),
+  stage_buffer         = stage_buffer,
+  reset_buffer_index   = reset_buffer_index,
+  next_hunk            = next_hunk,
+  prev_hunk            = prev_hunk,
+  select_hunk          = select_hunk,
+  preview_hunk         = preview_hunk,
+  blame_line           = blame_line,
+  reset_buffer         = reset_buffer,
+  attach               = attach_throttled,
+  detach               = detach,
+  detach_all           = detach_all,
+  setup                = setup,
+  refresh              = refresh,
+  toggle_signs         = toggle_signs,
+  toggle_linehl        = toggle_linehl,
+  toggle_numhl         = toggle_numhl,
 
   _current_line_blame       = _current_line_blame,
   _current_line_blame_reset = _current_line_blame_reset,
