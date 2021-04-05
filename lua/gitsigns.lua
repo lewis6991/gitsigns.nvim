@@ -69,6 +69,23 @@ local CacheEntry = {}
 
 local cache = {}
 
+local ensure_file_in_index = async(function(bcache)
+   if not bcache.object_name or bcache.has_conflicts then
+      if not bcache.object_name then
+
+         await(git.add_file(bcache.toplevel, bcache.relpath))
+      else
+
+
+         await(git.update_index(bcache.toplevel, bcache.mode_bits, bcache.object_name, bcache.relpath))
+      end
+
+
+      _, bcache.object_name, bcache.mode_bits, bcache.has_conflicts = 
+      await(git.file_info(bcache.relpath, bcache.toplevel))
+   end
+end)
+
 local function get_cursor_hunk(bufnr, hunks)
    bufnr = bufnr or current_buf()
    hunks = hunks or cache[bufnr].hunks
@@ -183,22 +200,9 @@ local stage_hunk = void_async(function()
       return
    end
 
-   if not bcache.object_name or bcache.has_conflicts then
-      if not bcache.object_name then
+   await(ensure_file_in_index(bcache))
 
-         await(git.add_file(bcache.toplevel, bcache.relpath))
-      else
-
-
-         await(git.update_index(bcache.toplevel, bcache.mode_bits, bcache.object_name, bcache.relpath))
-      end
-
-
-      _, bcache.object_name, bcache.mode_bits, bcache.has_conflicts = 
-      await(git.file_info(bcache.relpath, bcache.toplevel))
-   end
-
-   local lines = create_patch(bcache.relpath, hunk, bcache.mode_bits)
+   local lines = create_patch(bcache.relpath, { hunk }, bcache.mode_bits)
 
    await(git.stage_lines(bcache.toplevel, lines))
 
@@ -266,7 +270,7 @@ local undo_stage_hunk = void_async(function()
       return
    end
 
-   local lines = create_patch(bcache.relpath, hunk, bcache.mode_bits, true)
+   local lines = create_patch(bcache.relpath, { hunk }, bcache.mode_bits, true)
 
    await(git.stage_lines(bcache.toplevel, lines))
 
@@ -275,6 +279,70 @@ local undo_stage_hunk = void_async(function()
    local hunk_signs = process_hunks({ hunk })
 
    await(scheduler())
+   signs.add(config, bufnr, hunk_signs)
+end)
+
+local stage_buffer = void_async(function()
+   local bufnr = current_buf()
+
+   local bcache = cache[bufnr]
+   if not bcache then
+      return
+   end
+
+
+   local hunks = bcache.hunks
+   if #hunks == 0 then
+      print("No unstaged changes in file to stage")
+      return
+   end
+
+   if not util.path_exists(bcache.file) then
+      print("Error: Cannot stage file. Please add it to the working tree.")
+      return
+   end
+
+   await(ensure_file_in_index(bcache))
+
+   local lines = create_patch(bcache.relpath, hunks, bcache.mode_bits)
+
+   await(git.stage_lines(bcache.toplevel, lines))
+
+   for _, hunk in ipairs(hunks) do
+      table.insert(bcache.staged_diffs, hunk)
+   end
+
+   await(scheduler())
+
+   signs.remove(bufnr)
+
+   Status:clear_diff(bufnr)
+end)
+
+local reset_buffer_index = void_async(function()
+   local bufnr = current_buf()
+   local bcache = cache[bufnr]
+   if not bcache then
+      return
+   end
+
+
+
+
+
+
+
+   local hunks = bcache.staged_diffs
+
+   await(git.unstage_file(bcache.toplevel, bcache.file))
+
+
+   local hunk_signs = process_hunks(hunks)
+
+   table.remove(bcache.staged_diffs)
+
+   await(scheduler())
+
    signs.add(config, bufnr, hunk_signs)
 end)
 
@@ -793,6 +861,8 @@ M = {
    stage_hunk = mk_repeatable(stage_hunk),
    undo_stage_hunk = mk_repeatable(undo_stage_hunk),
    reset_hunk = mk_repeatable(reset_hunk),
+   stage_buffer = stage_buffer,
+   reset_buffer_index = reset_buffer_index,
    next_hunk = next_hunk,
    prev_hunk = prev_hunk,
    select_hunk = select_hunk,

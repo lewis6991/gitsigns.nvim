@@ -34,6 +34,17 @@ function Status:clear(bufnr: number)
   api.nvim_buf_del_var(bufnr, 'gitsigns_status')
 end
 
+function Status:clear_diff(bufnr: number)
+  local new_status: StatusObj = {
+    added = 0,
+    removed = 0,
+    changed = 0,
+    head = self.status.head or ''
+  }
+
+  self:update(bufnr, new_status)
+end
+
 function Status:update_head(bufnr: number, head: string)
   self.status.head = head
   Status:update(bufnr)
