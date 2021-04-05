@@ -44,6 +44,7 @@ local record M
   get_repo_info   : function(string): a.future3<string,string,string>
   stage_lines     : function(string, {string}): a.future0
   add_file        : function(string, string, string): a.future0
+  unstage_file    : function(string, string, string): a.future0
   update_index    : function(string, string, string, string): a.future0
   run_diff        : function(string, {string}, string): a.future1<{Hunk}>
   set_version     : function(string): a.future0
@@ -304,6 +305,28 @@ M.add_file = a.wrap(function(
       if not status then
         local s = table.concat(err, '\n')
         error('Cannot add file. Command stderr:\n\n'..s)
+      end
+      callback()
+    end
+  }
+end, 3)
+
+M.unstage_file = a.wrap(function(
+  toplevel: string, file: string, callback: function())
+  local status = true
+  local err = {}
+  util.run_job {
+    command = 'git',
+    args = {'reset', file},
+    cwd = toplevel,
+    on_stderr = function(_, line: string)
+      status = false
+      table.insert(err, line)
+    end,
+    on_exit = function()
+      if not status then
+        local s = table.concat(err, '\n')
+        error('Cannot unstage file. Command stderr:\n\n'..s)
       end
       callback()
     end

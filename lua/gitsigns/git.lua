@@ -50,6 +50,7 @@ local M = {BlameInfo = {}, Version = {}, }
 
 
 
+
 local function parse_version(version)
    assert(version:match('%d+%.%d+%.%d+'), 'Invalid git version: ' .. version)
    local ret = {}
@@ -304,6 +305,28 @@ M.add_file = a.wrap(function(
          if not status then
             local s = table.concat(err, '\n')
             error('Cannot add file. Command stderr:\n\n' .. s)
+         end
+         callback()
+      end,
+   })
+end, 3)
+
+M.unstage_file = a.wrap(function(
+   toplevel, file, callback)
+   local status = true
+   local err = {}
+   util.run_job({
+      command = 'git',
+      args = { 'reset', file },
+      cwd = toplevel,
+      on_stderr = function(_, line)
+         status = false
+         table.insert(err, line)
+      end,
+      on_exit = function()
+         if not status then
+            local s = table.concat(err, '\n')
+            error('Cannot unstage file. Command stderr:\n\n' .. s)
          end
          callback()
       end,

@@ -114,6 +114,14 @@ undo_stage_hunk()                                 *gitsigns.undo_stage_hunk()*
                 Undo the last call of stage_hunk(). Note: only the calls to
                 stage_hunk() performed in the current session can be undone.
 
+stage_buffer()                                           *gitsigns.stage_buffer()*
+                Stage all hunks in current buffer.
+
+reset_buffer_index()                                 *gitsigns.reset_buffer_index()*
+                Unstage all hunks for current buffer in the index. Note: Unlike
+                |gitsigns.undo_stage_hunk()| this doesn't simply undo stages, this runs
+                an actual `git reset` on current file.
+
 reset_hunk()                                           *gitsigns.reset_hunk()*
                 Reset the lines of the hunk at the cursor position to what
                 is in Git's index.
@@ -216,6 +224,8 @@ keymaps                                              *gitsigns-config-keymaps*
           ['n <leader>hR'] = '<cmd>lua require"gitsigns".reset_buffer()<CR>',
           ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
           ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line()<CR>',
+          ['n <leader>hS'] = '<cmd>lua require"gitsigns".stage_buffer()<CR>',
+          ['n <leader>hU'] = '<cmd>lua require"gitsigns".reset_buffer_index()<CR>',
 
           ['o ih'] = ':<C-U>lua require"gitsigns".select_hunk()<CR>',
           ['x ih'] = ':<C-U>lua require"gitsigns".select_hunk()<CR>'
