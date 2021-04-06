@@ -21,6 +21,8 @@ local function open_win(bufnr: integer, enter: boolean, opts: {string:any}): int
     -- Try again with newer options removed
     opts.border = nil
     win_id = api.nvim_open_win(bufnr, enter, opts)
+  elseif opts.border then
+    api.nvim_win_set_option(win_id, 'winhl', string.format('NormalFloat:Normal' ))
   end
 
   return win_id
@@ -57,8 +59,6 @@ function popup.create(what: {string}, opts: {string:any}): number, number
   })
 
   vim.lsp.util.close_preview_autocmd({'CursorMoved', 'CursorMovedI'}, win_id)
-
-  api.nvim_win_set_option(win_id, 'winhl', string.format('NormalFloat:Normal' ))
 
   return win_id, bufnr
 end
