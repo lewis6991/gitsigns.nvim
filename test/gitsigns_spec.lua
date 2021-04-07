@@ -21,6 +21,7 @@ local function check_status(status)
 end
 
 local scratch = os.getenv('PJ_ROOT')..'/scratch'
+local gitdir = scratch..'/.git'
 local test_file = scratch..'/dummy.txt'
 local newfile = scratch.."/newfile.txt"
 
@@ -93,7 +94,7 @@ end
 
 local function match_lines(lines, spec)
   local i = 1
-  for _, line in ipairs(lines) do
+  for lid, line in ipairs(lines) do
     if line ~= '' then
       local s = spec[i]
       if s then
@@ -103,7 +104,11 @@ local function match_lines(lines, spec)
           eq(s, line)
         end
       else
-        error('Unexpected extra text: '..line)
+        local extra = {}
+        for j=lid,#lines do
+          table.insert(extra, lines[j])
+        end
+        error('Unexpected extra text:\n    '..table.concat(extra, '\n    '))
       end
       i = i + 1
     end
@@ -204,7 +209,9 @@ describe('gitsigns', function()
       [4] = {background = Screen.colors.LightCyan1, bold = true, foreground = Screen.colors.Blue1};
       [5] = {foreground = Screen.colors.Brown};
       [6] = {foreground = Screen.colors.Blue1, bold = true};
-      [7] = {bold = true}
+      [7] = {bold = true},
+      [8] = {foreground = Screen.colors.White, background = Screen.colors.Red};
+      [9] = {foreground = Screen.colors.SeaGreen, bold = true};
     })
 
     -- Make gitisigns available
@@ -219,7 +226,16 @@ describe('gitsigns', function()
   end)
 
   it('can run basic setup', function()
+    screen:try_resize(60,6)
     exec_lua('gs.setup()')
+    screen:expect{grid=[[
+      ^                                                            |
+      {6:~                                                           }|
+      {6:~                                                           }|
+      {6:~                                                           }|
+      {6:~                                                           }|
+                                                                  |
+    ]]}
   end)
 
   it('index watcher works on a fresh repo', function()
@@ -230,14 +246,14 @@ describe('gitsigns', function()
     edit(test_file)
     sleep(10)
     match_debug_messages {
-      "run_job: git --version",
+      "run_job: git --no-pager --version",
       'attach(1): Attaching',
-      'run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
-      'run_job: git --no-pager ls-files --stage --others --exclude-standard '..test_file,
-      "run_job: git config user.name",
+      p'run_job: git .* config user.name',
+      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+      p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard '..test_file),
       'watch_index(1): Watching index',
-      'run_job: git --no-pager show :0:dummy.txt',
       'watcher_cb(1): Index update error: ENOENT',
+      p'run_job: git .* show :0:dummy.txt',
       'update(1): updates: 1, jobs: 5'
     }
 
@@ -261,7 +277,47 @@ describe('gitsigns', function()
       used                |
                           |
     ]]}
+  end)
 
+  it('can open files not in a git repo', function()
+    screen:try_resize(60,6)
+    exec_lua('gs.setup(...)', config)
+    local tmpfile = os.tmpname()
+    sleep(100)
+    edit(tmpfile)
+    sleep(100)
+    screen:expect{grid=[[
+      ^                                                            |
+      {6:~                                                           }|
+      {6:~                                                           }|
+      {6:~                                                           }|
+      {6:~                                                           }|
+                                                                  |
+    ]]}
+    sleep(100)
+    feed('iline<esc>')
+    sleep(100)
+    command("write")
+    sleep(102)
+    screen:expect{grid=([[
+      lin^e                                                        |
+      {6:~                                                           }|
+      {6:~                                                           }|
+      {6:~                                                           }|
+      {6:~                                                           }|
+      "%s" 1L, 5C written                            |
+    ]]):format(tmpfile)}
+    match_debug_messages {
+      "run_job: git --no-pager --version",
+      'attach(1): Attaching',
+      p"run_job: git .* config user.name",
+      "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+      'attach(1): Not in git repo',
+      'attach(1): Attaching',
+      'run_job: git --no-pager config user.name',
+      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+      'attach(1): Not in git repo'
+    }
   end)
 
   describe('when attaching', function()
@@ -294,7 +350,7 @@ describe('gitsigns', function()
       sleep(20)
 
       match_debug_messages {
-        "run_job: git --version",
+        "run_job: git --no-pager --version",
         'attach(1): Attaching',
         'attach(1): In git dir'
       }
@@ -310,9 +366,10 @@ describe('gitsigns', function()
       sleep(20)
 
       match_debug_messages {
-        "run_job: git --version",
+        "run_job: git --no-pager --version",
         "attach(1): Attaching",
-        "run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+        p"run_job: git .* config user.name",
+        "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
         p"run_job: git .* ls%-files .*/dummy_ignored.txt",
         "attach(1): Cannot resolve file in repo",
       }
@@ -325,9 +382,11 @@ describe('gitsigns', function()
       sleep(10)
 
       match_debug_messages {
-        "run_job: git --version",
+        "run_job: git --no-pager --version",
         "attach(1): Attaching",
-        "run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+        p"run_job: git .* config user.name",
+        "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+        p("run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard "..newfile),
         "attach(1): Not a file",
       }
 
@@ -339,7 +398,7 @@ describe('gitsigns', function()
       edit(scratch..'/does/not/exist')
 
       match_debug_messages {
-        "run_job: git --version",
+        "run_job: git --no-pager --version",
         "attach(1): Attaching",
         "attach(1): Not a path",
       }
@@ -352,7 +411,7 @@ describe('gitsigns', function()
     it('can run copen', function()
       command("copen")
       match_debug_messages {
-        "run_job: git --version",
+        "run_job: git --no-pager --version",
         "attach(2): Attaching",
         "attach(2): Non-normal buffer",
       }
@@ -593,7 +652,6 @@ describe('gitsigns', function()
                               |
         ]]}
 
-
         -- Reset
         feed("mhr")
         sleep(10)
@@ -659,19 +717,20 @@ describe('gitsigns', function()
         command("write")
         sleep(40)
 
-
         local messages = {
           "attach(1): Attaching",
-          "run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
-          p"run_job: git .* ls%-files .*/newfile.txt",
-          "run_job: git config user.name",
+          p"run_job: git .* config user.name",
+          "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+          p"run_job: git .* ls%-files .*",
           "watch_index(1): Watching index",
-          "run_job: git --no-pager show :0:newfile.txt",
+          p"run_job: git .* show :0:newfile.txt"
         }
+
         if not advanced_features then
           table.insert(messages, p'run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*')
         end
-        local jobs = advanced_features and 6 or 7
+
+        local jobs = advanced_features and 8 or 9
         table.insert(messages, "update(1): updates: 1, jobs: "..jobs)
 
         match_debug_messages(messages)
@@ -742,7 +801,7 @@ describe('gitsigns', function()
           <5C written |
         ]]}
 
-        -- -- Reset
+        -- Reset
         git{"reset"}
 
         screen:expect{grid=[[
