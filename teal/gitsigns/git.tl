@@ -1,12 +1,53 @@
 local a = require('plenary/async_lib/async')
+local JobSpec = require('plenary/job').JobSpec
+local await = a.await
+local async = a.async
+
 local gsd = require("gitsigns/debug")
 local util = require('gitsigns/util')
 
-local hunks = require("gitsigns/hunks")
-local Hunk = hunks.Hunk
+local gs_hunks = require("gitsigns/hunks")
+local Hunk = gs_hunks.Hunk
 
 local uv = vim.loop
 local startswith = vim.startswith
+
+local record GJobSpec
+  command: string
+  args: {string}
+  cwd: string
+  on_stdout: function
+  on_stderr: function
+  on_exit: function
+  writer: {string}
+
+  -- gitsigns extensions
+  supress_stderr: boolean
+end
+
+local record Obj
+  toplevel      : string
+  gitdir        : string
+  file          : string
+  abbrev_head   : string
+  username      : string
+  relpath       : string
+  object_name   : string
+  mode_bits     : string
+  has_conflicts : boolean
+
+  command              : function(Obj, {string}, GJobSpec): a.future1<{string}>
+  update_abbrev_head   : function(Obj): a.future0
+  update_file_info     : function(Obj): a.future1<boolean>
+  unstage_file         : function(Obj, string, string): a.future0
+  get_staged           : function(Obj, string): a.future0
+  get_staged_text      : function(Obj): a.future1<{string}>
+  run_blame            : function(Obj, {string}, number): a.future1<M.BlameInfo>
+  file_info            : function(Obj): a.future4<string, string, string, boolean>
+  ensure_file_in_index : function(Obj): a.future0
+  stage_hunks          : function(Obj, {Hunk}, boolean): a.future0
+  new                  : function(Obj, string): a.future1<Obj>
+end
 
 local record M
   record BlameInfo
@@ -37,18 +78,13 @@ local record M
   end
   version: Version
 
-  file_info       : function(string, string): a.future4<string, string, string, boolean>
-  get_staged      : function(string, string, number, string): a.future0
-  get_staged_text : function(string, string, number): a.future1<{string}>
-  run_blame       : function(string, string, {string}, number): a.future1<M.BlameInfo>
-  get_repo_info   : function(string): a.future3<string,string,string>
-  stage_lines     : function(string, {string}): a.future0
-  add_file        : function(string, string, string): a.future0
-  unstage_file    : function(string, string, string): a.future0
-  update_index    : function(string, string, string, string): a.future0
-  run_diff        : function(string, {string}, string): a.future1<{Hunk}>
-  set_version     : function(string): a.future0
-  command         : function({string}): a.future1<{string}>
+  set_version: function(string): a.future0
+  run_diff   : function(string, {string}, string): a.future1<{Hunk}>
+
+  type Obj = Obj
+
+  obj: Obj
+
 end
 
 local function parse_version(version: string): M.Version
@@ -75,147 +111,29 @@ local function check_version(version: {number,number,number}): boolean
   return true
 end
 
-M.file_info = a.wrap(function(
-  file: string,
-  toplevel: string,
-  callback: function(string, string, string, boolean)
-)
-  local relpath: string
-  local object_name: string
-  local mode_bits: string
-  local stage: number
-  local has_conflict: boolean = false
-  util.run_job {
-    command = 'git',
-    args = {
-      '--no-pager',
-      'ls-files',
-      '--stage',
-      '--others',
-      '--exclude-standard',
-      file
-    },
-    cwd = toplevel,
-    on_stdout = function(_, line: string)
-      local parts = vim.split(line, '\t')
-      if #parts > 1 then -- tracked file
-        relpath = parts[2]
-        local attrs = vim.split(parts[1], '%s+')
-        stage = tonumber(attrs[3])
-        if stage <= 1 then
-            mode_bits   = attrs[1]
-            object_name = attrs[2]
-        else
-            has_conflict = true
-        end
-      else -- untracked file
-        relpath = parts[1]
-      end
-    end,
-    on_exit = function()
-      callback(relpath, object_name, mode_bits, has_conflict)
+local command = a.wrap(function(args: {string}, spec: GJobSpec, callback: function({string}))
+  local result: {string} = {}
+  spec = spec or {}
+  spec.command = 'git'
+  spec.args = {'--no-pager', unpack(args) }
+  spec.on_stdout = spec.on_stdout or function(_, line: string)
+    table.insert(result, line)
+  end
+  if not spec.supress_stderr then
+    spec.on_stderr = spec.on_stderr or function(err: string, line: string)
+      if err  then gsd.eprint(err)  end
+      if line then gsd.eprint(line) end
     end
-  }
+  end
+  local old_on_exit = spec.on_exit
+  spec.on_exit = function()
+    if old_on_exit then
+      old_on_exit()
+    end
+    callback(result)
+  end
+  util.run_job(spec as JobSpec)
 end, 3)
-
-M.get_staged = a.wrap(function(
-  toplevel: string,
-  relpath: string,
-  stage: number,
-  output: string,
-  callback: function()
-)
-  -- On windows 'w' mode use \r\n instead of \n, see:
-  -- https://stackoverflow.com/a/43967013
-  local outf = io.open(output , 'wb')
-  util.run_job {
-    command = 'git',
-    args = {
-      '--no-pager',
-      'show',
-      ':'..tostring(stage)..':'..relpath,
-    },
-    cwd = toplevel,
-    on_stdout = function(_, line: string)
-      outf:write(line)
-      outf:write('\n')
-    end,
-    on_exit = function()
-      outf:close()
-      callback()
-    end
-  }
-end, 5)
-
-M.get_staged_text = a.wrap(function(
-  toplevel: string,
-  relpath: string,
-  stage: number,
-  callback: function({string})
-)
-  local result = {}
-  util.run_job {
-    command = 'git',
-    args = {
-      '--no-pager',
-      'show',
-      ':'..tostring(stage)..':'..relpath,
-    },
-    cwd = toplevel,
-    on_stdout = function(_, line: string)
-      table.insert(result, line)
-    end,
-    on_exit = function()
-      callback(result)
-    end
-  }
-end, 4)
-
-M.run_blame = a.wrap(function(
-  file: string,
-  toplevel: string,
-  lines: {string},
-  lnum: number,
-  callback: function(M.BlameInfo)
-)
-  local results: {string} = {}
-  util.run_job {
-    command = 'git',
-    args = {
-      '--no-pager',
-      'blame',
-      '--contents', '-',
-      '-L', lnum..',+1',
-      '--line-porcelain',
-      file
-    },
-    writer = lines,
-    cwd = toplevel,
-    on_stdout = function(_, line: string)
-      table.insert(results, line)
-    end,
-    on_exit = function()
-      local ret: {string:any} = {}
-      if #results == 0 then
-        callback({})
-        return
-      end
-      local header = vim.split(table.remove(results, 1), ' ')
-      ret.sha = header[1]
-      ret.abbrev_sha = string.sub(ret.sha as string, 1, 8)
-      ret.orig_lnum = tonumber(header[2]) as integer
-      ret.final_lnum = tonumber(header[3]) as integer
-      for _, l in ipairs(results) do
-        if not startswith(l, '\t') then
-          local cols = vim.split(l, ' ')
-          local key = table.remove(cols, 1):gsub('-', '_')
-          ret[key] = table.concat(cols, ' ')
-        end
-      end
-      callback(ret as M.BlameInfo)
-    end
-  }
-end, 5)
 
 local function process_abbrev_head(gitdir: string, head_str: string): string
   if not gitdir then
@@ -234,132 +152,27 @@ local function process_abbrev_head(gitdir: string, head_str: string): string
   return head_str
 end
 
-M.get_repo_info = a.wrap(function(
-  path: string, callback: function(string,string,string))
-  local out = {}
-
+local get_repo_info = async(function(path: string): string,string,string
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --   https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
   local has_abs_gd = check_version{2,13}
   local git_dir_opt = has_abs_gd and '--absolute-git-dir' or '--git-dir'
 
-  util.run_job {
-    command = 'git',
-    args = {'rev-parse',
-      '--show-toplevel',
-      git_dir_opt,
-      '--abbrev-ref', 'HEAD',
-    },
-    cwd = path,
-    on_stdout = function(_, line: string)
-      if not has_abs_gd and #out == 1 then
-        line = uv.fs_realpath(line)
-      end
-      table.insert(out, line)
-    end,
-    on_exit = vim.schedule_wrap(function()
-      local toplevel = out[1]
-      local gitdir = out[2]
-      local abbrev_head = process_abbrev_head(gitdir, out[3])
-      callback(toplevel, gitdir, abbrev_head)
-    end)
-  }
-end, 2)
+  local results = await(command({
+    'rev-parse', '--show-toplevel', git_dir_opt, '--abbrev-ref', 'HEAD',
+  }, {
+    supress_stderr = true,
+    cwd = path
+  }))
 
-M.stage_lines = a.wrap(function(
-  toplevel: string, lines: {string}, callback: function())
-  local status = true
-  local err = {}
-  util.run_job {
-    command = 'git',
-    args = {'apply', '--cached', '--unidiff-zero', '-'},
-    cwd = toplevel,
-    writer = lines,
-    on_stderr = function(_, line: string)
-      status = false
-      table.insert(err, line)
-    end,
-    on_exit = function()
-      if not status then
-        local s = table.concat(err, '\n')
-        error('Cannot stage lines. Command stderr:\n\n'..s)
-      end
-      callback()
-    end
-  }
-end, 3)
-
-M.add_file = a.wrap(function(
-  toplevel: string, file: string, callback: function())
-  local status = true
-  local err = {}
-  util.run_job {
-    command = 'git',
-    args = {'add', '--intent-to-add', file},
-    cwd = toplevel,
-    on_stderr = function(_, line: string)
-      status = false
-      table.insert(err, line)
-    end,
-    on_exit = function()
-      if not status then
-        local s = table.concat(err, '\n')
-        error('Cannot add file. Command stderr:\n\n'..s)
-      end
-      callback()
-    end
-  }
-end, 3)
-
-M.unstage_file = a.wrap(function(
-  toplevel: string, file: string, callback: function())
-  local status = true
-  local err = {}
-  util.run_job {
-    command = 'git',
-    args = {'reset', file},
-    cwd = toplevel,
-    on_stderr = function(_, line: string)
-      status = false
-      table.insert(err, line)
-    end,
-    on_exit = function()
-      if not status then
-        local s = table.concat(err, '\n')
-        error('Cannot unstage file. Command stderr:\n\n'..s)
-      end
-      callback()
-    end
-  }
-end, 3)
-
-M.update_index = a.wrap(function(
-  toplevel: string,
-  mode_bits: string,
-  object_name: string,
-  file: string,
-  callback: function()
-)
-  local status = true
-  local err = {}
-  local cacheinfo = table.concat({mode_bits, object_name, file}, ',')
-  util.run_job {
-    command = 'git',
-    args = {'update-index', '--add', '--cacheinfo', cacheinfo},
-    cwd = toplevel,
-    on_stderr = function(_, line: string)
-      status = false
-      table.insert(err, line)
-    end,
-    on_exit = function()
-      if not status then
-        local s = table.concat(err, '\n')
-        error('Cannot update index. Command stderr:\n\n'..s)
-      end
-      callback()
-    end
-  }
-end, 5)
+  local toplevel = results[1]
+  local gitdir = results[2]
+  if not has_abs_gd then
+    gitdir = uv.fs_realpath(gitdir)
+  end
+  local abbrev_head = process_abbrev_head(gitdir, results[3])
+  return toplevel, gitdir, abbrev_head
+end)
 
 local function write_to_file(path: string, text: {string})
   local f = io.open(path, 'wb')
@@ -370,15 +183,14 @@ local function write_to_file(path: string, text: {string})
   f:close()
 end
 
-M.run_diff = a.wrap(function(
+M.run_diff = async(function(
   staged: string,
   text: {string},
-  diff_algo: string,
-  callback: function({Hunk})
-)
+  diff_algo: string
+): {Hunk}
   local results: {Hunk} = {}
 
-  local buffile = staged..'_buf'
+  local buffile = os.tmpname()..'_buf'
   write_to_file(buffile, text)
 
   -- Taken from gitgutter, diff.vim:
@@ -397,10 +209,7 @@ M.run_diff = a.wrap(function(
   -- We can safely ignore the warning, we turn it off by passing the '-c
   -- "core.safecrlf=false"' argument to git-diff.
 
-  util.run_job {
-    command = 'git',
-    args = {
-      '--no-pager',
+  await(command({
       '-c', 'core.safecrlf=false',
       'diff',
       '--color=never',
@@ -409,77 +218,187 @@ M.run_diff = a.wrap(function(
       '--unified=0',
       staged,
       buffile,
-    },
+    }, {
     on_stdout = function(_, line: string)
       if startswith(line, '@@') then
-        table.insert(results, hunks.parse_diff_line(line))
-      else
-        if #results > 0 then
-          table.insert(results[#results].lines, line)
-        end
+        table.insert(results, gs_hunks.parse_diff_line(line))
+      elseif #results > 0 then
+        table.insert(results[#results].lines, line)
       end
-    end,
-    on_stderr = function(err: string, line: string)
-      if err then
-        gsd.eprint(err)
-      end
-      if line then
-        gsd.eprint(line)
-      end
-    end,
-    on_exit = function()
-      os.remove(buffile)
-      callback(results)
     end
-  }
-end, 4)
+  }))
+  os.remove(buffile)
+  return results
+end)
 
-M.set_version = a.wrap(function(version: string, callback: function())
+M.set_version = async(function(version: string)
   if version ~= 'auto' then
     M.version = parse_version(version)
-    callback()
     return
   end
-  util.run_job {
-    command = 'git', args = {'--version'},
-    on_stdout = function(_, line: string)
-      assert(startswith(line, 'git version'), 'Unexpected output: '..line)
-      local parts = vim.split(line, '%s+')
-      M.version = parse_version(parts[3])
-    end,
-    on_stderr = function(err: string, line: string)
-      if err then
-        gsd.eprint(err)
-      end
-      if line then
-        gsd.eprint(line)
-      end
-    end,
-    on_exit = function()
-      callback()
-    end
-  }
-end, 2)
+  local results = await(command{'--version'})
+  local line = results[1]
+  assert(startswith(line, 'git version'), 'Unexpected output: '..line)
+  local parts = vim.split(line, '%s+')
+  M.version = parse_version(parts[3])
+end)
 
-M.command = a.wrap(function(args: {string}, callback: function({string}))
-  local result: {string} = {}
-  util.run_job {
-    command = 'git', args = args,
-    on_stdout = function(_, line: string)
-      table.insert(result, line)
-    end,
-    on_stderr = function(err: string, line: string)
-      if err then
-        gsd.eprint(err)
+--------------------------------------------------------------------------------
+-- Git object methods
+--------------------------------------------------------------------------------
+
+local O: Obj = {}
+
+--- Run git command the with the objects gitdir and toplevel
+O.command = async(function(self: Obj, args: {string}, spec: GJobSpec): {string}
+  spec = spec or {}
+  spec.cwd = self.toplevel
+  return await(command({'--git-dir='..self.gitdir, unpack(args)}, spec))
+end)
+
+O.update_abbrev_head = async(function(self: Obj)
+  _, _, self.abbrev_head = await(get_repo_info(self.toplevel))
+end)
+
+O.update_file_info = async(function(self: Obj): boolean
+  local old_object_name = self.object_name
+  _, self.object_name, self.mode_bits, self.has_conflicts = await(self:file_info())
+
+  return old_object_name ~= self.object_name
+end)
+
+O.file_info = async(function(self: Obj): string, string, string, boolean
+  local results = await(self:command({
+    'ls-files',
+    '--stage',
+    '--others',
+    '--exclude-standard',
+    self.file
+  }))
+
+  local relpath: string
+  local object_name: string
+  local mode_bits: string
+  local stage: number
+  local has_conflict: boolean = false
+  for _, line in ipairs(results) do
+    local parts = vim.split(line, '\t')
+    if #parts > 1 then -- tracked file
+      relpath = parts[2]
+      local attrs = vim.split(parts[1], '%s+')
+      stage = tonumber(attrs[3])
+      if stage <= 1 then
+          mode_bits   = attrs[1]
+          object_name = attrs[2]
+      else
+          has_conflict = true
       end
-      if line then
-        gsd.eprint(line)
-      end
-    end,
-    on_exit = function()
-      callback(result)
+    else -- untracked file
+      relpath = parts[1]
     end
-  }
-end, 2)
+  end
+  return relpath, object_name, mode_bits, has_conflict
+end)
+
+O.unstage_file = async(function(self: Obj)
+    await(self:command{'reset', self.file })
+end)
+
+--- Get version of file in the index, return array lines
+O.get_staged_text = async(function(self: Obj): {string}
+  local stage = self.has_conflicts and 1 or 0
+  return await(self:command({'show', ':'..tostring(stage)..':'..self.relpath}, {
+    supress_stderr = true
+  }))
+end)
+
+--- Get version of file in the index, write lines to file
+O.get_staged = async(function(self: Obj, output_file: string)
+  local stage = self.has_conflicts and 1 or 0
+  -- On windows 'w' mode use \r\n instead of \n, see:
+  -- https://stackoverflow.com/a/43967013
+  local outf = io.open(output_file, 'wb')
+  await(self:command({
+      'show', ':'..tostring(stage)..':'..self.relpath
+  }, {
+    supress_stderr = true,
+    on_stdout = function(_, line: string)
+      outf:write(line)
+      outf:write('\n')
+    end
+  }))
+  outf:close()
+end)
+
+O.run_blame = async(function(self: Obj, lines: {string}, lnum: number): M.BlameInfo
+  local results = await(self:command({
+      'blame',
+      '--contents', '-',
+      '-L', lnum..',+1',
+      '--line-porcelain',
+      self.file
+    }, {
+    writer = lines,
+  }))
+  if #results == 0 then
+    return {}
+  end
+  local header = vim.split(table.remove(results, 1), ' ')
+
+  local ret: {string:any} = {}
+  ret.sha = header[1]
+  ret.orig_lnum = tonumber(header[2]) as integer
+  ret.final_lnum = tonumber(header[3]) as integer
+  ret.abbrev_sha = string.sub(ret.sha as string, 1, 8)
+  for _, l in ipairs(results) do
+    if not startswith(l, '\t') then
+      local cols = vim.split(l, ' ')
+      local key = table.remove(cols, 1):gsub('-', '_')
+      ret[key] = table.concat(cols, ' ')
+    end
+  end
+  return ret as M.BlameInfo
+end)
+
+O.ensure_file_in_index = async(function(self: Obj)
+  if not self.object_name or self.has_conflicts then
+    if not self.object_name then
+      -- If there is no object_name then it is not yet in the index so add it
+      await(self:command{'add', '--intent-to-add', self.file})
+    else
+      -- Update the index with the common ancestor (stage 1) which is what bcache
+      -- stores
+      local info = table.concat({self.mode_bits, self.object_name, self.relpath}, ',')
+      await(self:command{'update-index', '--add', '--cacheinfo', info})
+    end
+
+    -- Update file info
+    _, self.object_name, self.mode_bits, self.has_conflicts = await(self:file_info())
+  end
+end)
+
+O.stage_hunks = async(function(self: Obj, hunks: {Hunk}, invert: boolean)
+  await(self:ensure_file_in_index())
+  await(self:command({
+    'apply', '--cached', '--unidiff-zero', '-'
+  }, {
+    writer = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert)
+  }))
+end)
+
+O.new = a.async(function(self: Obj, file: string): Obj
+  self.file = file
+  self.toplevel, self.gitdir, self.abbrev_head =
+    await(get_repo_info(util.dirname(file)))
+
+  self.relpath, self.object_name, self.mode_bits, self.has_conflicts =
+    await(self:file_info())
+
+  self.username = await(command({'config', 'user.name'}))[1]
+
+  return self
+end)
+
+M.obj = O
 
 return M

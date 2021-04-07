@@ -28,7 +28,6 @@ local git               = require('gitsigns/git')
 local util              = require('gitsigns/util')
 
 local gs_hunks          = require("gitsigns/hunks")
-local create_patch      = gs_hunks.create_patch
 local process_hunks     = gs_hunks.process_hunks
 local Hunk              = gs_hunks.Hunk
 
@@ -51,40 +50,16 @@ local namespace: integer
 
 local record CacheEntry
   file          : string
-  relpath       : string
-  object_name   : string
-  mode_bits     : string
-  toplevel      : string
-  gitdir        : string
-  username      : string
   staged        : string
   staged_text   : {string}
-  abbrev_head   : string
-  has_conflicts : boolean
   hunks         : {Hunk}
   staged_diffs  : {Hunk}
   pending_signs : {integer:Sign}
   index_watcher : vim.loop.FSPollObj -- Timer object watching the files index
+  git_obj       : git.Obj
 end
 
 local cache: {integer:CacheEntry} = {}
-
-local ensure_file_in_index = async(function(bcache: CacheEntry)
-  if not bcache.object_name or bcache.has_conflicts then
-    if not bcache.object_name then
-      -- If there is no object_name then it is not yet in the index so add it
-      await(git.add_file(bcache.toplevel, bcache.relpath))
-    else
-      -- Update the index with the common ancestor (stage 1) which is what bcache
-      -- stores
-      await(git.update_index(bcache.toplevel, bcache.mode_bits, bcache.object_name, bcache.relpath))
-    end
-
-    -- Update the cache
-    _, bcache.object_name, bcache.mode_bits, bcache.has_conflicts =
-      await(git.file_info(bcache.relpath, bcache.toplevel))
-  end
-end)
 
 local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk
   bufnr = bufnr or current_buf()
@@ -147,15 +122,15 @@ local update = async(function(bufnr: integer, bcache: CacheEntry)
 
   await(scheduler())
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  local stage = bcache.has_conflicts and 1 or 0
+  local git_obj = bcache.git_obj
 
   if config.use_internal_diff then
     if not bcache.staged_text or config._refresh_staged_on_update then
-      bcache.staged_text = await(git.get_staged_text(bcache.toplevel, bcache.relpath, stage))
+      bcache.staged_text = await(git_obj:get_staged_text())
     end
     bcache.hunks = diff.run_diff(bcache.staged_text, buftext, config.diff_algorithm)
   else
-    await(git.get_staged(bcache.toplevel, bcache.relpath, stage, bcache.staged))
+    await(git_obj:get_staged(bcache.staged))
     bcache.hunks = await(git.run_diff(bcache.staged, buftext, config.diff_algorithm))
   end
   bcache.pending_signs = process_hunks(bcache.hunks)
@@ -166,7 +141,7 @@ local update = async(function(bufnr: integer, bcache: CacheEntry)
   -- provider as they are drawn.
   apply_win_signs(bufnr, bcache.pending_signs)
 
-  Status:update(bufnr, gs_hunks.get_summary(bcache.hunks, bcache.abbrev_head))
+  Status:update(bufnr, gs_hunks.get_summary(bcache.hunks, git_obj.abbrev_head))
 
   update_cnt = update_cnt + 1
   dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt), bufnr, 'update')
@@ -190,21 +165,17 @@ local stage_hunk = void_async(function()
     return
   end
 
-  local hunk = get_cursor_hunk(bufnr, bcache.hunks)
-  if not hunk then
-    return
-  end
-
   if not util.path_exists(bcache.file) then
     print("Error: Cannot stage lines. Please add the file to the working tree.")
     return
   end
 
-  await(ensure_file_in_index(bcache))
+  local hunk = get_cursor_hunk(bufnr, bcache.hunks)
+  if not hunk then
+    return
+  end
 
-  local lines = create_patch(bcache.relpath, {hunk}, bcache.mode_bits)
-
-  await(git.stage_lines(bcache.toplevel, lines))
+  await(bcache.git_obj:stage_hunks({hunk}))
 
   table.insert(bcache.staged_diffs, hunk)
 
@@ -263,23 +234,15 @@ local undo_stage_hunk = void_async(function()
     return
   end
 
-  local hunk = bcache.staged_diffs[#bcache.staged_diffs]
-
+  local hunk = table.remove(bcache.staged_diffs)
   if not hunk then
     print("No hunks to undo")
     return
   end
 
-  local lines = create_patch(bcache.relpath, {hunk}, bcache.mode_bits, true)
-
-  await(git.stage_lines(bcache.toplevel, lines))
-
-  table.remove(bcache.staged_diffs)
-
-  local hunk_signs = process_hunks({hunk})
-
+  await(bcache.git_obj:stage_hunks({hunk}, true))
   await(scheduler())
-  signs.add(config, bufnr, hunk_signs)
+  signs.add(config, bufnr, process_hunks({hunk}))
 end)
 
 local stage_buffer = void_async(function()
@@ -294,28 +257,22 @@ local stage_buffer = void_async(function()
   local hunks = bcache.hunks
   if #hunks == 0 then
     print("No unstaged changes in file to stage")
-    return 
+    return
   end
 
-  if not util.path_exists(bcache.file) then
+  if not util.path_exists(bcache.git_obj.file) then
     print("Error: Cannot stage file. Please add it to the working tree.")
     return
   end
 
-  await(ensure_file_in_index(bcache))
+  await(bcache.git_obj:stage_hunks(hunks))
 
-  local lines = create_patch(bcache.relpath, hunks, bcache.mode_bits)
-
-  await(git.stage_lines(bcache.toplevel, lines))
-
-  for _,hunk in ipairs(hunks) do
+  for _, hunk in ipairs(hunks) do
     table.insert(bcache.staged_diffs, hunk)
   end
 
   await(scheduler())
-
   signs.remove(bufnr)
-
   Status:clear_diff(bufnr)
 end)
 
@@ -326,24 +283,19 @@ local reset_buffer_index = void_async(function()
     return
   end
 
-  -- `bcache.staged_diffs` won't contain staged changes outside of current neovim session
-  -- so signs added from this unstage won't be complete
-  -- They will however be fixed by index watcher and properly updated
-  -- We should implement some sort of initial population from git diff,
-  -- after that this function can be improved to check if any staged hunks exists
-  -- and it can undo changes using git apply line by line instead of reseting whole file
+  -- `bcache.staged_diffs` won't contain staged changes outside of current
+  -- neovim session so signs added from this unstage won't be complete They will
+  -- however be fixed by index watcher and properly updated We should implement
+  -- some sort of initial population from git diff, after that this function can
+  -- be improved to check if any staged hunks exists and it can undo changes
+  -- using git apply line by line instead of reseting whole file
   local hunks = bcache.staged_diffs
+  bcache.staged_diffs = {}
 
-  await(git.unstage_file(bcache.toplevel, bcache.file))
-
-  -- Signs need to be generated before the `table.remove` below as it modifies the hunks array
-  local hunk_signs = process_hunks(hunks)
-
-  table.remove(bcache.staged_diffs)
+  await(bcache.git_obj:unstage_file())
 
   await(scheduler())
-
-  signs.add(config, bufnr, hunk_signs)
+  signs.add(config, bufnr, process_hunks(hunks))
 end)
 
 local record NavHunkOpts
@@ -389,7 +341,7 @@ end
 -- When this is called interactively (with no arguments) we want to remove all
 -- the signs, however if called via a detach event (due to nvim_buf_attach) then
 -- we don't want to clear the signs in case the buffer is just being updated due
--- to the file externally changeing. When this happens a detach and attach event
+-- to the file externally changing. When this happens a detach and attach event
 -- happen in sequence and so we keep the old signs to stop the sign column width
 -- moving about between updates.
 local function detach(bufnr: integer, keep_signs: boolean)
@@ -402,8 +354,7 @@ local function detach(bufnr: integer, keep_signs: boolean)
   end
 
   if not keep_signs then
-    -- Remove all the signs
-    vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr})
+    signs.remove(bufnr)  -- Remove all signs
   end
 
   -- Clear status variables
@@ -440,7 +391,7 @@ local function get_buf_path(bufnr: integer): string
     end)
 end
 
-local function index_update_handler(cbuf: integer): function
+local function index_handler(cbuf: integer): function
   return void_async(function(err: string)
     if err then
       dprint('Index update error: '..err, cbuf, 'watcher_cb')
@@ -448,23 +399,19 @@ local function index_update_handler(cbuf: integer): function
     end
     dprint('Index update', cbuf, 'watcher_cb')
     local bcache = cache[cbuf]
+    local git_obj = bcache.git_obj
 
-    _, _, bcache.abbrev_head = await(git.get_repo_info(bcache.toplevel))
+    await(git_obj:update_abbrev_head())
 
-    Status:update_head(cbuf, bcache.abbrev_head)
+    await(scheduler())
+    Status:update_head(cbuf, git_obj.abbrev_head)
 
-    local _, object_name0, mode_bits0, has_conflicts =
-      await(git.file_info(bcache.file, bcache.toplevel))
-
-    if object_name0 == bcache.object_name then
+    if not await(git_obj:update_file_info()) then
       dprint('File not changed', cbuf, 'watcher_cb')
       return
     end
 
-    bcache.object_name   = object_name0
-    bcache.mode_bits     = mode_bits0
-    bcache.has_conflicts = has_conflicts
-    bcache.staged_text   = nil -- Invalidate
+    bcache.staged_text = nil -- Invalidate
 
     await(update(cbuf, bcache))
   end)
@@ -499,14 +446,13 @@ end
 local attach = async(function(cbuf: integer)
   await(scheduler())
   cbuf = cbuf or current_buf()
-  if cache[cbuf] ~= nil then
+  if cache[cbuf] then
     dprint('Already attached', cbuf, 'attach')
     return
   end
   dprint('Attaching', cbuf, 'attach')
 
-  local lc = api.nvim_buf_line_count(cbuf)
-  if lc > config.max_file_length then
+  if api.nvim_buf_line_count(cbuf) > config.max_file_length then
     dprint('Exceeds max_file_length', cbuf, 'attach')
     return
   end
@@ -530,48 +476,38 @@ local attach = async(function(cbuf: integer)
     return
   end
 
-  local toplevel, gitdir, abbrev_head = await(git.get_repo_info(file_dir))
+  local git_obj = await(git.obj:new(file))
 
-  if not gitdir then
+  if not git_obj.gitdir then
     dprint('Not in git repo', cbuf, 'attach')
     return
   end
 
-  Status:update_head(cbuf, abbrev_head)
+  await(scheduler())
+  Status:update_head(cbuf, git_obj.abbrev_head)
 
   if not util.path_exists(file) or uv.fs_stat(file).type == 'directory' then
     dprint('Not a file', cbuf, 'attach')
     return
   end
 
-  -- On windows os.tmpname() crashes in callback threads so initialise this
-  -- variable on the main thread.
-  await(scheduler())
-  local staged = os.tmpname() -- Temp filename of staged file
-
-  local relpath, object_name, mode_bits, has_conflicts =
-    await(git.file_info(file, toplevel))
-
-  if not relpath then
+  if not git_obj.relpath then
     dprint('Cannot resolve file in repo', cbuf, 'attach')
     return
   end
 
+  -- On windows os.tmpname() crashes in callback threads so initialise this
+  -- variable on the main thread.
+  await(scheduler())
+
   cache[cbuf] = {
     file          = file,
-    relpath       = relpath,
-    object_name   = object_name,
-    mode_bits     = mode_bits,
-    toplevel      = toplevel,
-    gitdir        = gitdir,
-    abbrev_head   = abbrev_head,
-    username      = await(git.command{'config', 'user.name'})[1],
-    has_conflicts = has_conflicts,
-    staged        = staged,
+    staged        = os.tmpname(),
     staged_text   = nil,
     hunks         = {},
     staged_diffs  = {},
-    index_watcher = watch_index(cbuf, gitdir, index_update_handler(cbuf))
+    index_watcher = watch_index(cbuf, git_obj.gitdir, index_handler(cbuf)),
+    git_obj       = git_obj
   }
 
   -- Initial update
@@ -655,7 +591,6 @@ function gitsigns_complete(arglead: string, line: string): {string}
   end
   return matches
 end
-
 
 local function setup_command()
   vim.cmd(table.concat({
@@ -776,7 +711,7 @@ local blame_line = void_async(function()
 
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = await(git.run_blame(bcache.file, bcache.toplevel, buftext, lnum))
+  local result = await(bcache.git_obj:run_blame(buftext, lnum))
 
   local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author_time']))
   local lines = {
@@ -809,20 +744,20 @@ end
 local _current_line_blame = void_async(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
-  if not bcache or not bcache.object_name then
+  if not bcache or not bcache.git_obj.object_name then
     return
   end
 
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = await(git.run_blame(bcache.file, bcache.toplevel, buftext, lnum))
+  local result = await(bcache.git_obj:run_blame(buftext, lnum))
 
   await(scheduler())
 
   _current_line_blame_reset(bufnr)
   api.nvim_buf_set_extmark(bufnr, namespace, lnum-1, 0, {
     id = 1,
-    virt_text = config.current_line_blame_formatter(bcache.username, result),
+    virt_text = config.current_line_blame_formatter(bcache.git_obj.username, result),
   })
 end)
 
