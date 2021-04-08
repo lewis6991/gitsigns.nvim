@@ -40,7 +40,7 @@ local record M
   file_info       : function(string, string): a.future4<string, string, string, boolean>
   get_staged      : function(string, string, number, string): a.future0
   get_staged_text : function(string, string, number): a.future1<{string}>
-  run_blame       : function(string, string, {string}, number): a.future1<M.BlameInfo>
+  run_blame       : function(string, string, {string}, number, {string}): a.future1<M.BlameInfo>
   get_repo_info   : function(string): a.future3<string,string,string>
   stage_lines     : function(string, {string}): a.future0
   add_file        : function(string, string, string): a.future0
@@ -176,6 +176,7 @@ M.run_blame = a.wrap(function(
   toplevel: string,
   lines: {string},
   lnum: number,
+  extra_args: {string},
   callback: function(M.BlameInfo)
 )
   local results: {string} = {}
@@ -187,7 +188,8 @@ M.run_blame = a.wrap(function(
       '--contents', '-',
       '-L', lnum..',+1',
       '--line-porcelain',
-      file
+      file,
+      unpack(extra_args or {})
     },
     writer = lines,
     cwd = toplevel,
@@ -215,7 +217,7 @@ M.run_blame = a.wrap(function(
       callback(ret as M.BlameInfo)
     end
   }
-end, 5)
+end, 6)
 
 local function process_abbrev_head(gitdir: string, head_str: string): string
   if not gitdir then

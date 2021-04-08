@@ -176,6 +176,7 @@ M.run_blame = a.wrap(function(
    toplevel,
    lines,
    lnum,
+   extra_args,
    callback)
 
    local results = {}
@@ -188,6 +189,7 @@ M.run_blame = a.wrap(function(
          '-L', lnum .. ',+1',
          '--line-porcelain',
          file,
+         unpack(extra_args or {}),
       },
       writer = lines,
       cwd = toplevel,
@@ -215,7 +217,7 @@ M.run_blame = a.wrap(function(
          callback(ret)
       end,
    })
-end, 5)
+end, 6)
 
 local function process_abbrev_head(gitdir, head_str)
    if not gitdir then

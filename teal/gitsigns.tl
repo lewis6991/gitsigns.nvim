@@ -294,7 +294,7 @@ local stage_buffer = void_async(function()
   local hunks = bcache.hunks
   if #hunks == 0 then
     print("No unstaged changes in file to stage")
-    return 
+    return
   end
 
   if not util.path_exists(bcache.file) then
@@ -767,7 +767,7 @@ local function select_hunk()
   vim.cmd('normal! '..start..'GV'..dend..'G')
 end
 
-local blame_line = void_async(function()
+local blame_line = void_async(function(extra_args: {string})
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
@@ -776,7 +776,7 @@ local blame_line = void_async(function()
 
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = await(git.run_blame(bcache.file, bcache.toplevel, buftext, lnum))
+  local result = await(git.run_blame(bcache.file, bcache.toplevel, buftext, lnum, extra_args))
 
   local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author_time']))
   local lines = {
