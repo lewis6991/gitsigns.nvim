@@ -6,7 +6,11 @@ local SchemaElem = {}
 
 
 
-local M = {Config = {SignsConfig = {}, watch_index = {}, }, }
+local M = {Config = {SignsConfig = {}, watch_index = {}, yadm = {}, }, }
+
+
+
+
 
 
 
@@ -329,6 +333,14 @@ M.schema = {
         Note that the keys map onto the output of: >
             git blame --line-porcelain
 <
+    ]],
+   },
+
+   yadm = {
+      type = 'table',
+      default = [[{ enable = false }]],
+      description = [[
+        yadm configuration.
     ]],
    },
 
