@@ -21,7 +21,6 @@ local function check_status(status)
 end
 
 local scratch = os.getenv('PJ_ROOT')..'/scratch'
-local gitdir = scratch..'/.git'
 local test_file = scratch..'/dummy.txt'
 local newfile = scratch.."/newfile.txt"
 
@@ -231,14 +230,14 @@ describe('gitsigns', function()
     edit(test_file)
     sleep(10)
     match_debug_messages {
-      "run_job: git --no-pager --version",
+      "run_job: git --version",
       'attach(1): Attaching',
-      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
-      p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard '..test_file),
-      p'run_job: git .* config user.name',
+      'run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+      'run_job: git --no-pager ls-files --stage --others --exclude-standard '..test_file,
+      "run_job: git config user.name",
       'watch_index(1): Watching index',
+      'run_job: git --no-pager show :0:dummy.txt',
       'watcher_cb(1): Index update error: ENOENT',
-      p'run_job: git .* show :0:dummy.txt',
       'update(1): updates: 1, jobs: 5'
     }
 
@@ -295,7 +294,7 @@ describe('gitsigns', function()
       sleep(20)
 
       match_debug_messages {
-        "run_job: git --no-pager --version",
+        "run_job: git --version",
         'attach(1): Attaching',
         'attach(1): In git dir'
       }
@@ -311,11 +310,10 @@ describe('gitsigns', function()
       sleep(20)
 
       match_debug_messages {
-        "run_job: git --no-pager --version",
+        "run_job: git --version",
         "attach(1): Attaching",
-        "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+        "run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
         p"run_job: git .* ls%-files .*/dummy_ignored.txt",
-        p"run_job: git .* config user.name",
         "attach(1): Cannot resolve file in repo",
       }
 
@@ -327,11 +325,9 @@ describe('gitsigns', function()
       sleep(10)
 
       match_debug_messages {
-        "run_job: git --no-pager --version",
+        "run_job: git --version",
         "attach(1): Attaching",
-        "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
-        p("run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard "..newfile),
-        p"run_job: git .* config user.name",
+        "run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
         "attach(1): Not a file",
       }
 
@@ -343,7 +339,7 @@ describe('gitsigns', function()
       edit(scratch..'/does/not/exist')
 
       match_debug_messages {
-        "run_job: git --no-pager --version",
+        "run_job: git --version",
         "attach(1): Attaching",
         "attach(1): Not a path",
       }
@@ -356,7 +352,7 @@ describe('gitsigns', function()
     it('can run copen', function()
       command("copen")
       match_debug_messages {
-        "run_job: git --no-pager --version",
+        "run_job: git --version",
         "attach(2): Attaching",
         "attach(2): Non-normal buffer",
       }
@@ -597,6 +593,7 @@ describe('gitsigns', function()
                               |
         ]]}
 
+
         -- Reset
         feed("mhr")
         sleep(10)
@@ -662,20 +659,19 @@ describe('gitsigns', function()
         command("write")
         sleep(40)
 
+
         local messages = {
           "attach(1): Attaching",
-          "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
-          p"run_job: git .* ls%-files .*",
-          p"run_job: git .* config user.name",
+          "run_job: git rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+          p"run_job: git .* ls%-files .*/newfile.txt",
+          "run_job: git config user.name",
           "watch_index(1): Watching index",
-          p"run_job: git .* show :0:newfile.txt"
+          "run_job: git --no-pager show :0:newfile.txt",
         }
-
         if not advanced_features then
           table.insert(messages, p'run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*')
         end
-
-        local jobs = advanced_features and 8 or 9
+        local jobs = advanced_features and 6 or 7
         table.insert(messages, "update(1): updates: 1, jobs: "..jobs)
 
         match_debug_messages(messages)
@@ -746,7 +742,7 @@ describe('gitsigns', function()
           <5C written |
         ]]}
 
-        -- Reset
+        -- -- Reset
         git{"reset"}
 
         screen:expect{grid=[[
