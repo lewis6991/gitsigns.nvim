@@ -28,7 +28,7 @@ local record M
     sign_priority: integer
     keymaps: {string:any}
     record watch_index
-        interval: integer
+      interval: integer
     end
     max_file_length: integer
     update_debounce: integer
@@ -37,6 +37,10 @@ local record M
     current_line_blame_formatter: function(string, {string:any}): string
     use_internal_diff: boolean
     use_decoration_api: boolean
+
+    record yadm
+      enable: boolean
+    end
 
     -- Undocumented
     _refresh_staged_on_update: boolean
@@ -329,6 +333,14 @@ M.schema = {
         Note that the keys map onto the output of: >
             git blame --line-porcelain
 <
+    ]]
+  },
+
+  yadm = {
+    type = 'table',
+    default = [[{ enable = false }]],
+    description = [[
+        yadm configuration.
     ]]
   },
 

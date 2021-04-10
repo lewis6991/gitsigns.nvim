@@ -87,6 +87,8 @@ local M = {BlameInfo = {}, Version = {}, }
 
 
 
+
+
 local function parse_version(version)
    assert(version:match('%d+%.%d+%.%d+'), 'Invalid git version: ' .. version)
    local ret = {}
@@ -114,7 +116,7 @@ end
 local command = a.wrap(function(args, spec, callback)
    local result = {}
    spec = spec or {}
-   spec.command = 'git'
+   spec.command = spec.command or 'git'
    spec.args = { '--no-pager', unpack(args) }
    spec.on_stdout = spec.on_stdout or function(_, line)
       table.insert(result, line)
@@ -152,7 +154,7 @@ local function process_abbrev_head(gitdir, head_str)
    return head_str
 end
 
-local get_repo_info = async(function(path)
+local get_repo_info = async(function(path, cmd)
 
 
    local has_abs_gd = check_version({ 2, 13 })
@@ -161,6 +163,7 @@ local get_repo_info = async(function(path)
    local results = await(command({
       'rev-parse', '--show-toplevel', git_dir_opt, '--abbrev-ref', 'HEAD',
    }, {
+      command = cmd or 'git',
       supress_stderr = true,
       cwd = path,
    }))
@@ -391,6 +394,14 @@ O.new = a.async(function(self, file)
    self.username = await(command({ 'config', 'user.name' }))[1]
    self.toplevel, self.gitdir, self.abbrev_head = 
    await(get_repo_info(util.dirname(file)))
+
+
+   if M.enable_yadm and not self.gitdir then
+      if #await(command({ 'ls-files', file }, { command = 'yadm' })) ~= 0 then
+         self.toplevel, self.gitdir, self.abbrev_head = 
+         await(get_repo_info(util.dirname(file), 'yadm'))
+      end
+   end
 
    if not self.gitdir then
       return self

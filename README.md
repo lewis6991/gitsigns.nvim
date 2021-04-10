@@ -22,6 +22,7 @@ Super fast git decorations implemented purely in lua/teal.
 - Status bar integration
 - Git blame a specific line using virtual text.
 - Hunk text object
+- Support for [yadm](https://yadm.io/)
 
 ## Requirements
 
