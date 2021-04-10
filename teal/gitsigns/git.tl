@@ -78,6 +78,8 @@ local record M
   end
   version: Version
 
+  enable_yadm: boolean
+
   set_version: function(string): a.future0
   run_diff   : function(string, {string}, string): a.future1<{Hunk}>
 
@@ -114,7 +116,7 @@ end
 local command = a.wrap(function(args: {string}, spec: GJobSpec, callback: function({string}))
   local result: {string} = {}
   spec = spec or {}
-  spec.command = 'git'
+  spec.command = spec.command or 'git'
   spec.args = {'--no-pager', unpack(args) }
   spec.on_stdout = spec.on_stdout or function(_, line: string)
     table.insert(result, line)
@@ -152,7 +154,7 @@ local function process_abbrev_head(gitdir: string, head_str: string): string
   return head_str
 end
 
-local get_repo_info = async(function(path: string): string,string,string
+local get_repo_info = async(function(path: string, cmd: string): string,string,string
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --   https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
   local has_abs_gd = check_version{2,13}
@@ -161,6 +163,7 @@ local get_repo_info = async(function(path: string): string,string,string
   local results = await(command({
     'rev-parse', '--show-toplevel', git_dir_opt, '--abbrev-ref', 'HEAD',
   }, {
+    command = cmd or 'git',
     supress_stderr = true,
     cwd = path
   }))
@@ -391,6 +394,14 @@ O.new = a.async(function(self: Obj, file: string): Obj
   self.username = await(command({'config', 'user.name'}))[1]
   self.toplevel, self.gitdir, self.abbrev_head =
     await(get_repo_info(util.dirname(file)))
+
+  -- Try yadm
+  if M.enable_yadm and not self.gitdir then
+    if #await(command({'ls-files', file}, {command = 'yadm'})) ~= 0 then
+      self.toplevel, self.gitdir, self.abbrev_head =
+        await(get_repo_info(util.dirname(file), 'yadm'))
+    end
+  end
 
   if not self.gitdir then
     return self

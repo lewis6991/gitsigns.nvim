@@ -651,6 +651,7 @@ local setup = void_async(function(cfg: Config)
     setup_decoration_provider()
   end
 
+  git.enable_yadm = config.yadm.enable
   await(git.set_version(config._git_version))
   await(scheduler())
 

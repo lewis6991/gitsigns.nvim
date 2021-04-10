@@ -394,6 +394,13 @@ current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
             git blame --line-porcelain
 <
 
+yadm                                                    *gitsigns-config-yadm*
+        Type: `table`, Default:
+>
+        { enable = false }
+<
+        yadm configuration.
+
 debug_mode                                        *gitsigns-config-debug_mode*
         Type: `boolean`, Default: `false`
 
