@@ -133,9 +133,13 @@ preview_hunk()                                       *gitsigns.preview_hunk()*
                 Preview the hunk at the cursor position in a floating
                 window.
 
-blame_line()                                           *gitsigns.blame_line()*
+blame_line({extra_args})                                *gitsigns.blame_line()*
                 Run git blame on the current line and show the results in a
                 floating window.
+
+                Parameters: ~
+                    {extra_args} (array[string]):
+                        Array of strings to pass to git blame, e.g. "-w".
 
 update()                                                   *gitsigns.update()*
                 Update signs for the current buffer.
