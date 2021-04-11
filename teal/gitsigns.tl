@@ -519,6 +519,11 @@ local attach = async(function(cbuf: integer)
     on_lines = function(_, buf: integer, _, _, last_orig: integer, last_new: integer)
       on_lines(buf, last_orig, last_new)
     end,
+    on_reload = function()
+      -- FIXME (lewis6991) Dummy callback to prevent unwanted detach events
+      -- which Invalidate the cache. Probably need to update the signs here but
+      -- for now do nothing. See #138, #139.
+    end,
     on_detach = function(_, buf: integer)
       detach(buf, true)
     end
