@@ -519,6 +519,11 @@ local attach = async(function(cbuf)
       on_lines = function(_, buf, _, _, last_orig, last_new)
          on_lines(buf, last_orig, last_new)
       end,
+      on_reload = function()
+
+
+
+      end,
       on_detach = function(_, buf)
          detach(buf, true)
       end,
