@@ -571,7 +571,36 @@ end
 
 local function add_debug_functions()
    M.dump_cache = function()
-      api.nvim_echo({ { vim.inspect(cache) } }, false, {})
+      api.nvim_echo({ { vim.inspect(cache, {
+   process = function(raw_item, path)
+      if path[#path] == vim.inspect.METATABLE then
+         return nil
+      elseif type(raw_item) == "function" then
+         return nil
+      elseif type(raw_item) == "table" then
+         local key = path[#path]
+         if key == 'staged_text' then
+            local item = raw_item
+            return { '...', length = #item, head = item[1] }
+         elseif not vim.tbl_isempty(raw_item) and vim.tbl_contains({
+               'hunks', 'staged_diffs', }, key) then
+            return { '...', length = #vim.tbl_keys(raw_item) }
+         elseif key == 'pending_signs' then
+            local keys = vim.tbl_keys(raw_item)
+            local max = 100
+            if #keys > max then
+               keys.length = #keys
+               for i = max, #keys do
+                  keys[i] = nil
+               end
+               keys[max] = '...'
+            end
+            return keys
+         end
+      end
+      return raw_item
+   end,
+}), }, }, false, {})
    end
 
    M.debug_messages = function(noecho)

@@ -275,8 +275,12 @@ global record vim
     indent: string
     process: function
   end
-  inspect: function(any): string
-  inspect: function(any, InspectOptions): string
+  record inspect
+    METATABLE: any
+    KEY: any
+    metamethod __call: function(inspect, any, InspectOptions): string
+    metamethod __call: function(inspect, any): string
+  end
 
   wait: function(number, function, number, boolean)
 
