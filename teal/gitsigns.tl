@@ -524,13 +524,12 @@ local attach = async(function(cbuf: integer)
   await(scheduler())
 
   api.nvim_buf_attach(cbuf, false, {
-    on_lines = function(_, buf: integer, _, _, last_orig: integer, last_new: integer)
-      on_lines(buf, last_orig, last_new)
+    on_lines = function(_, buf: integer, _, _, last_orig: integer, last_new: integer): boolean
+      return on_lines(buf, last_orig, last_new)
     end,
-    on_reload = function()
-      -- FIXME (lewis6991) Dummy callback to prevent unwanted detach events
-      -- which Invalidate the cache. Probably need to update the signs here but
-      -- for now do nothing. See #138, #139.
+    on_reload = function(_, buf: integer)
+      dprint('Reload', buf, 'on_reload')
+      update_debounced(buf)
     end,
     on_detach = function(_, buf: integer)
       detach(buf, true)
