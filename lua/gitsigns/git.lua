@@ -25,31 +25,7 @@ local GJobSpec = {}
 
 
 
-local Obj = {}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-local M = {BlameInfo = {}, Version = {}, }
+local M = {BlameInfo = {}, Version = {}, Obj = {}, }
 
 
 
@@ -88,6 +64,28 @@ local M = {BlameInfo = {}, Version = {}, }
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+local Obj = M.Obj
 
 local function parse_version(version)
    assert(version:match('%d+%.%d+%.%d+'), 'Invalid git version: ' .. version)
@@ -250,27 +248,25 @@ end)
 
 
 
-local O = {}
 
-
-O.command = async(function(self, args, spec)
+Obj.command = async(function(self, args, spec)
    spec = spec or {}
    spec.cwd = self.toplevel
    return await(command({ '--git-dir=' .. self.gitdir, unpack(args) }, spec))
 end)
 
-O.update_abbrev_head = async(function(self)
+Obj.update_abbrev_head = async(function(self)
    _, _, self.abbrev_head = await(get_repo_info(self.toplevel))
 end)
 
-O.update_file_info = async(function(self)
+Obj.update_file_info = async(function(self)
    local old_object_name = self.object_name
    _, self.object_name, self.mode_bits, self.has_conflicts = await(self:file_info())
 
    return old_object_name ~= self.object_name
 end)
 
-O.file_info = async(function(self)
+Obj.file_info = async(function(self)
    local results = await(self:command({
       'ls-files',
       '--stage',
@@ -303,12 +299,12 @@ O.file_info = async(function(self)
    return relpath, object_name, mode_bits, has_conflict
 end)
 
-O.unstage_file = async(function(self)
+Obj.unstage_file = async(function(self)
    await(self:command({ 'reset', self.file }))
 end)
 
 
-O.get_staged_text = async(function(self)
+Obj.get_staged_text = async(function(self)
    local stage = self.has_conflicts and 1 or 0
    return await(self:command({ 'show', ':' .. tostring(stage) .. ':' .. self.relpath }, {
       supress_stderr = true,
@@ -316,7 +312,7 @@ O.get_staged_text = async(function(self)
 end)
 
 
-O.get_staged = async(function(self, output_file)
+Obj.get_staged = async(function(self, output_file)
    local stage = self.has_conflicts and 1 or 0
 
 
@@ -333,7 +329,7 @@ O.get_staged = async(function(self, output_file)
    outf:close()
 end)
 
-O.run_blame = async(function(self, lines, lnum)
+Obj.run_blame = async(function(self, lines, lnum)
    local results = await(self:command({
       'blame',
       '--contents', '-',
@@ -363,7 +359,7 @@ O.run_blame = async(function(self, lines, lnum)
    return ret
 end)
 
-O.ensure_file_in_index = async(function(self)
+Obj.ensure_file_in_index = async(function(self)
    if not self.object_name or self.has_conflicts then
       if not self.object_name then
 
@@ -380,7 +376,7 @@ O.ensure_file_in_index = async(function(self)
    end
 end)
 
-O.stage_hunks = async(function(self, hunks, invert)
+Obj.stage_hunks = async(function(self, hunks, invert)
    await(self:ensure_file_in_index())
    await(self:command({
       'apply', '--cached', '--unidiff-zero', '-',
@@ -389,7 +385,9 @@ O.stage_hunks = async(function(self, hunks, invert)
    }))
 end)
 
-O.new = a.async(function(self, file)
+Obj.new = a.async(function(file)
+   local self = setmetatable({}, { __index = Obj })
+
    self.file = file
    self.username = await(command({ 'config', 'user.name' }))[1]
    self.toplevel, self.gitdir, self.abbrev_head = 
@@ -412,7 +410,5 @@ O.new = a.async(function(self, file)
 
    return self
 end)
-
-M.obj = O
 
 return M
