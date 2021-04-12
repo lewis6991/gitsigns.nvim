@@ -215,17 +215,25 @@ local function reset_hunk(bufnr, hunk)
    api.nvim_buf_set_lines(bufnr, lstart, lend, false, gs_hunks.extract_removed(hunk))
 end
 
-local function reset_buffer()
+local reset_buffer = void_async(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
       return
    end
 
-   for _, hunk in ipairs(bcache.hunks) do
-      reset_hunk(bufnr, hunk)
+   local limit = 1000
+
+
+   for _ = 1, limit do
+      if not bcache.hunks[1] then
+         return
+      end
+      reset_hunk(bufnr, bcache.hunks[1])
+      await(update(bufnr, bcache))
    end
-end
+   error('Hit maximum limit of hunks to reset')
+end)
 
 local undo_stage_hunk = void_async(function()
    local bufnr = current_buf()
