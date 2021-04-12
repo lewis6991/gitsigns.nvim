@@ -484,7 +484,7 @@ local attach = async(function(cbuf)
       return
    end
 
-   local git_obj = await(git.obj:new(file))
+   local git_obj = await(git.Obj.new(file))
 
    if not git_obj.gitdir then
       dprint('Not in git repo', cbuf, 'attach')

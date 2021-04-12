@@ -25,30 +25,6 @@ local record GJobSpec
   supress_stderr: boolean
 end
 
-local record Obj
-  toplevel      : string
-  gitdir        : string
-  file          : string
-  abbrev_head   : string
-  username      : string
-  relpath       : string
-  object_name   : string
-  mode_bits     : string
-  has_conflicts : boolean
-
-  command              : function(Obj, {string}, GJobSpec): a.future1<{string}>
-  update_abbrev_head   : function(Obj): a.future0
-  update_file_info     : function(Obj): a.future1<boolean>
-  unstage_file         : function(Obj, string, string): a.future0
-  get_staged           : function(Obj, string): a.future0
-  get_staged_text      : function(Obj): a.future1<{string}>
-  run_blame            : function(Obj, {string}, number): a.future1<M.BlameInfo>
-  file_info            : function(Obj): a.future4<string, string, string, boolean>
-  ensure_file_in_index : function(Obj): a.future0
-  stage_hunks          : function(Obj, {Hunk}, boolean): a.future0
-  new                  : function(Obj, string): a.future1<Obj>
-end
-
 local record M
   record BlameInfo
     -- Info in header
@@ -83,11 +59,33 @@ local record M
   set_version: function(string): a.future0
   run_diff   : function(string, {string}, string): a.future1<{Hunk}>
 
-  type Obj = Obj
+  record Obj
+    toplevel      : string
+    gitdir        : string
+    file          : string
+    abbrev_head   : string
+    username      : string
+    relpath       : string
+    object_name   : string
+    mode_bits     : string
+    has_conflicts : boolean
 
-  obj: Obj
+    command              : function(Obj, {string}, GJobSpec): a.future1<{string}>
+    update_abbrev_head   : function(Obj): a.future0
+    update_file_info     : function(Obj): a.future1<boolean>
+    unstage_file         : function(Obj, string, string): a.future0
+    get_staged           : function(Obj, string): a.future0
+    get_staged_text      : function(Obj): a.future1<{string}>
+    run_blame            : function(Obj, {string}, number): a.future1<M.BlameInfo>
+    file_info            : function(Obj): a.future4<string, string, string, boolean>
+    ensure_file_in_index : function(Obj): a.future0
+    stage_hunks          : function(Obj, {Hunk}, boolean): a.future0
+    new                  : function(string): a.future1<Obj>
+  end
 
 end
+
+local Obj = M.Obj
 
 local function parse_version(version: string): M.Version
   assert(version:match('%d+%.%d+%.%d+'), 'Invalid git version: '..version)
@@ -250,27 +248,25 @@ end)
 -- Git object methods
 --------------------------------------------------------------------------------
 
-local O: Obj = {}
-
 --- Run git command the with the objects gitdir and toplevel
-O.command = async(function(self: Obj, args: {string}, spec: GJobSpec): {string}
+Obj.command = async(function(self: Obj, args: {string}, spec: GJobSpec): {string}
   spec = spec or {}
   spec.cwd = self.toplevel
   return await(command({'--git-dir='..self.gitdir, unpack(args)}, spec))
 end)
 
-O.update_abbrev_head = async(function(self: Obj)
+Obj.update_abbrev_head = async(function(self: Obj)
   _, _, self.abbrev_head = await(get_repo_info(self.toplevel))
 end)
 
-O.update_file_info = async(function(self: Obj): boolean
+Obj.update_file_info = async(function(self: Obj): boolean
   local old_object_name = self.object_name
   _, self.object_name, self.mode_bits, self.has_conflicts = await(self:file_info())
 
   return old_object_name ~= self.object_name
 end)
 
-O.file_info = async(function(self: Obj): string, string, string, boolean
+Obj.file_info = async(function(self: Obj): string, string, string, boolean
   local results = await(self:command({
     'ls-files',
     '--stage',
@@ -303,12 +299,12 @@ O.file_info = async(function(self: Obj): string, string, string, boolean
   return relpath, object_name, mode_bits, has_conflict
 end)
 
-O.unstage_file = async(function(self: Obj)
+Obj.unstage_file = async(function(self: Obj)
     await(self:command{'reset', self.file })
 end)
 
 --- Get version of file in the index, return array lines
-O.get_staged_text = async(function(self: Obj): {string}
+Obj.get_staged_text = async(function(self: Obj): {string}
   local stage = self.has_conflicts and 1 or 0
   return await(self:command({'show', ':'..tostring(stage)..':'..self.relpath}, {
     supress_stderr = true
@@ -316,7 +312,7 @@ O.get_staged_text = async(function(self: Obj): {string}
 end)
 
 --- Get version of file in the index, write lines to file
-O.get_staged = async(function(self: Obj, output_file: string)
+Obj.get_staged = async(function(self: Obj, output_file: string)
   local stage = self.has_conflicts and 1 or 0
   -- On windows 'w' mode use \r\n instead of \n, see:
   -- https://stackoverflow.com/a/43967013
@@ -333,7 +329,7 @@ O.get_staged = async(function(self: Obj, output_file: string)
   outf:close()
 end)
 
-O.run_blame = async(function(self: Obj, lines: {string}, lnum: number): M.BlameInfo
+Obj.run_blame = async(function(self: Obj, lines: {string}, lnum: number): M.BlameInfo
   local results = await(self:command({
       'blame',
       '--contents', '-',
@@ -363,7 +359,7 @@ O.run_blame = async(function(self: Obj, lines: {string}, lnum: number): M.BlameI
   return ret as M.BlameInfo
 end)
 
-O.ensure_file_in_index = async(function(self: Obj)
+Obj.ensure_file_in_index = async(function(self: Obj)
   if not self.object_name or self.has_conflicts then
     if not self.object_name then
       -- If there is no object_name then it is not yet in the index so add it
@@ -380,7 +376,7 @@ O.ensure_file_in_index = async(function(self: Obj)
   end
 end)
 
-O.stage_hunks = async(function(self: Obj, hunks: {Hunk}, invert: boolean)
+Obj.stage_hunks = async(function(self: Obj, hunks: {Hunk}, invert: boolean)
   await(self:ensure_file_in_index())
   await(self:command({
     'apply', '--cached', '--unidiff-zero', '-'
@@ -389,7 +385,9 @@ O.stage_hunks = async(function(self: Obj, hunks: {Hunk}, invert: boolean)
   }))
 end)
 
-O.new = a.async(function(self: Obj, file: string): Obj
+Obj.new = a.async(function(file: string): Obj
+  local self = setmetatable({} as Obj, {__index = Obj})
+
   self.file = file
   self.username = await(command({'config', 'user.name'}))[1]
   self.toplevel, self.gitdir, self.abbrev_head =
@@ -412,7 +410,5 @@ O.new = a.async(function(self: Obj, file: string): Obj
 
   return self
 end)
-
-M.obj = O
 
 return M
