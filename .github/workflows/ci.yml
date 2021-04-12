@@ -61,6 +61,18 @@ jobs:
       - name: Check lua files are built from latest teal
         run: make tl-ensure
 
+      - name: Cache neovim build
+        uses: actions/cache@v2
+        with:
+          path: neovim/build
+          key: ${{ runner.os }}-${{ hashFiles('neovim/build') }}
+
+      - name: Cache neovim deps
+        uses: actions/cache@v2
+        with:
+          path: neovim/.deps
+          key: ${{ runner.os }}-${{ hashFiles('neovim/.deps') }}
+
       - name: Build Neovim
         run: make neovim
 
