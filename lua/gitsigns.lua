@@ -525,12 +525,11 @@ local attach = async(function(cbuf)
 
    api.nvim_buf_attach(cbuf, false, {
       on_lines = function(_, buf, _, _, last_orig, last_new)
-         on_lines(buf, last_orig, last_new)
+         return on_lines(buf, last_orig, last_new)
       end,
-      on_reload = function()
-
-
-
+      on_reload = function(_, buf)
+         dprint('Reload', buf, 'on_reload')
+         update_debounced(buf)
       end,
       on_detach = function(_, buf)
          detach(buf, true)
