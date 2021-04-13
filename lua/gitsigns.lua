@@ -391,12 +391,21 @@ local function apply_keymaps(bufonly)
 end
 
 local function get_buf_path(bufnr)
-   return
-uv.fs_realpath(api.nvim_buf_get_name(bufnr)) or
+   local file = 
+   uv.fs_realpath(api.nvim_buf_get_name(bufnr)) or
 
    api.nvim_buf_call(bufnr, function()
       return vim.fn.expand('%:p')
    end)
+
+   if vim.startswith(file, 'fugitive://') then
+      local orig_path = file
+      file = file:gsub('^fugitive:', ''):gsub('%.git/+%x-/', '')
+      file = uv.fs_realpath(file)
+      dprint(("Fugitive buffer for file '%s' from path '%s'"):format(file, orig_path), bufnr)
+   end
+
+   return file
 end
 
 local function index_handler(cbuf)
