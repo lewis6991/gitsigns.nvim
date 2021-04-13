@@ -31,22 +31,15 @@ jobs:
           sudo apt install -y \
             autoconf \
             automake \
-            cmake \
             g++ \
+            gdb \
             gettext \
             gperf \
-            libjemalloc-dev \
-            libluajit-5.1-dev \
             libmsgpack-dev \
             libtermkey-dev \
-            libtool \
-            libtool-bin \
-            libunibilium-dev \
-            libvterm-dev \
             lua-bitop \
             lua-lpeg \
             lua-mpack \
-            ninja-build \
             pkg-config \
             unzip
 
@@ -58,11 +51,14 @@ jobs:
       - name: Install teal
         run: luarocks install tl 0.13.1
 
+      - name: Install busted
+        run: luarocks install busted
+
+      - name: Install nvim-client
+        run: luarocks install nvim-client
+
       - name: Check lua files are built from latest teal
         run: make tl-ensure
-
-      - name: Build Neovim
-        run: make neovim
 
       - name: Run Test
         run: make test

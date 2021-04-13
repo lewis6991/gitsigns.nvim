@@ -3,30 +3,39 @@ export PJ_ROOT=$(PWD)
 
 FILTER=.*
 
-BUSTED_ARGS = \
-    --lpath=$(PJ_ROOT)/lua/?.lua \
-    --lpath=$(PJ_ROOT)/plenary.nvim/lua/?.lua \
-    --filter=$(FILTER)
-
 TEST_FILE = $(PJ_ROOT)/test/gitsigns_spec.lua
 
 INIT_LUAROCKS := eval $$(luarocks --lua-version=5.1 path) &&
 
 .DEFAULT_GOAL := build
 
-neovim:
-	git clone --depth 1 https://github.com/neovim/neovim
-	make -C $@
+PLATFORM := linux64
+
+nvim-$(PLATFORM).tar.gz:
+	wget https://github.com/neovim/neovim/releases/download/nightly/nvim-$(PLATFORM).tar.gz
+
+neovim: nvim-$(PLATFORM).tar.gz
+	rm -rf neovim
+	tar -zxf nvim-$(PLATFORM).tar.gz
+	mv nvim-$(PLATFORM) neovim
+	@touch $@
 
 plenary.nvim:
 	git clone --depth 1 https://github.com/nvim-lua/plenary.nvim
 
+export NVIM_PRG ?= neovim/bin/nvim
+export NVIM_RUNTIME ?= neovim/share/nvim/runtime
+
 .PHONY: test
 test: neovim plenary.nvim
-	make -C neovim functionaltest \
-		CMAKE_BUILD_TYPE=Release \
-		BUSTED_ARGS="$(BUSTED_ARGS)" \
-		TEST_FILE="$(TEST_FILE)"
+	$(INIT_LUAROCKS) busted \
+		-v \
+		-o test.outputHandlers.nvim \
+		--lpath=$(NVIM_RUNTIME)/lua/?.lua \
+		--lpath=lua/?.lua \
+		--lpath=plenary.nvim/lua/?.lua \
+		--filter=$(FILTER) \
+		$(TEST_FILE)
 
 .PHONY: tl-check
 tl-check:
