@@ -591,7 +591,7 @@ local function add_debug_functions()
             local item <const> = raw_item as {string}
             return { '...', length=#item, head=item[1] }
           elseif not vim.tbl_isempty(raw_item) and vim.tbl_contains({
-            'hunks', 'staged_diffs' }, key) then
+            'staged_diffs' }, key) then
             return { '...', length=#vim.tbl_keys(raw_item) }
           elseif key == 'pending_signs' then
             local keys = vim.tbl_keys(raw_item)
@@ -748,9 +748,7 @@ local function select_hunk()
     return
   end
 
-  local start, dend = gs_hunks.get_range(hunk)
-
-  vim.cmd('normal! '..start..'GV'..dend..'G')
+  vim.cmd('normal! '..hunk.start..'GV'..hunk.dend..'G')
 end
 
 local blame_line = void_async(function()
