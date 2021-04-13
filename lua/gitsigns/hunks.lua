@@ -73,26 +73,15 @@ function M.parse_diff_line(line)
    return hunk
 end
 
-function M.get_range(hunk)
-   local dend = hunk.dend
-   if hunk.type == "change" then
-      local add, remove = hunk.added.count, hunk.removed.count
-      if add > remove then
-         dend = dend + add - remove
-      end
-   end
-   return hunk.start, dend
-end
-
 function M.process_hunks(hunks)
    local signs = {}
    for _, hunk in ipairs(hunks) do
+      local count = hunk.type == 'add' and hunk.added.count or hunk.removed.count
       for i = hunk.start, hunk.dend do
          local topdelete = hunk.type == 'delete' and i == 0
          local changedelete = hunk.type == 'change' and hunk.removed.count > hunk.added.count and i == hunk.dend
-         local count = hunk.type == 'add' and hunk.added.count or hunk.removed.count
-         local lnum = topdelete and 1 or i
-         signs[lnum] = {
+
+         signs[topdelete and 1 or i] = {
             type = topdelete and 'topdelete' or changedelete and 'changedelete' or hunk.type,
             count = i == hunk.start and count,
          }
@@ -100,12 +89,11 @@ function M.process_hunks(hunks)
       if hunk.type == "change" then
          local add, remove = hunk.added.count, hunk.removed.count
          if add > remove then
-            local count = add - remove
-            for i = 1, count do
-               local lnum = hunk.dend + i
-               signs[lnum] = {
+            local count_diff = add - remove
+            for i = 1, count_diff do
+               signs[hunk.dend + i] = {
                   type = 'add',
-                  count = i == 1 and count,
+                  count = i == 1 and count_diff,
                }
             end
          end
@@ -183,9 +171,7 @@ function M.find_hunk(lnum, hunks)
          return hunk
       end
 
-      local start, dend = M.get_range(hunk)
-
-      if start <= lnum and dend >= lnum then
+      if hunk.start <= lnum and hunk.dend >= lnum then
          return hunk
       end
    end
