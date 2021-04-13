@@ -33,6 +33,8 @@ M.sign_map = {
    changedelete = "GitSignsChangeDelete",
 }
 
+local ns = 'gitsigns_ns'
+
 local sign_define_cache = {}
 
 local function sign_get(name)
@@ -56,7 +58,7 @@ function M.define(name, opts, redefine)
 end
 
 function M.remove(bufnr, lnum)
-   vim.fn.sign_unplace('gitsigns_ns', { buffer = bufnr, id = lnum })
+   vim.fn.sign_unplace(ns, { buffer = bufnr, id = lnum })
 end
 
 function M.add(cfg, bufnr, signs)
@@ -78,10 +80,21 @@ function M.add(cfg, bufnr, signs)
          })
       end
 
-      vim.fn.sign_place(lnum, 'gitsigns_ns', stype, bufnr, {
+      vim.fn.sign_place(lnum, ns, stype, bufnr, {
          lnum = lnum, priority = cfg.sign_priority,
       })
    end
+end
+
+
+
+function M.get(bufnr, lnum)
+   local placed = vim.fn.sign_getplaced(bufnr, { group = ns, lnum = lnum })[1].signs
+   local ret = {}
+   for _, s in ipairs(placed) do
+      ret[s.lnum] = s.name
+   end
+   return ret
 end
 
 return M

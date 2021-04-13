@@ -79,7 +79,7 @@ local function apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: int
     top = top or vim.fn.line('w0')
     bot = bot or vim.fn.line('w$')
   else
-    top = top or 0
+    top = top or 1
     bot = bot or vim.fn.line('$')
   end
 
@@ -443,20 +443,64 @@ local function in_git_dir(file: string): boolean
   return false
 end
 
+-- Speculate on future signs. It's not a big deal if we speculate incorrectly as
+-- update() will overwrite all the signs anyway. This has noticeable effect on
+-- large files and even makes small files feel very snappy.
+local function speculate_signs(buf: integer, last_orig: integer, last_new: integer)
+  if last_new < last_orig then
+    -- Lines removed
+
+    local placed = signs.get(buf, last_new+1)[last_new+1]
+
+    -- Add a 'delete' sign only if there wasn't an add sign below
+    if not placed or not vim.startswith(placed, 'GitSignsAdd') then
+      dprint("place 'delete'", buf)
+      signs.add(config, buf, {
+        [last_new] = {type='delete', count=last_orig-last_new}
+      })
+    end
+
+    -- If lines are removed, make sure to immediately remove the signs
+    dprint('unplace', buf)
+    for i = last_new+1, last_orig do
+      signs.remove(buf, i)
+    end
+  elseif last_new > last_orig then
+    -- Lines added
+
+
+    local placed = signs.get(buf, last_orig)[last_orig]
+
+    -- Add 'added' signs only if there wasn't a 'delete' sign above
+    if not placed or not vim.startswith(placed, 'GitSignsDelete') then
+      -- If lines are added, make sure to immediately add the signs
+      local to_add = {}
+      for i = last_orig+1, last_new do
+        to_add[i] = {type='add', count=0}
+      end
+      dprint("place 'add'", buf)
+      signs.add(config, buf, to_add)
+    end
+  else
+    -- Line change
+
+    local placed = signs.get(buf, last_orig)[last_orig]
+
+    -- add a 'change' sign if there are no other signs
+    if not placed then
+      dprint("place 'change'", buf)
+      signs.add(config, buf, {[last_orig] = {type='change', count=0}})
+    end
+  end
+end
+
 local function on_lines(buf: integer, last_orig: integer, last_new: integer): boolean
   if not cache[buf] then
     dprint('Cache for buffer '..buf..' was nil. Detaching')
     return true
   end
 
-  -- If lines are removed, make sure to immediately remove the signs
-  -- This is only has noticeable effect on large files
-  if last_new < last_orig then
-    for i = last_new+1, last_orig do
-      signs.remove(buf, i)
-    end
-  end
-
+  speculate_signs(buf, last_orig, last_new)
   update_debounced(buf)
 end
 
@@ -659,7 +703,7 @@ local function setup_decoration_provider()
       if not bcache or not bcache.pending_signs then
         return
       end
-      apply_win_signs(bufnr, bcache.pending_signs, top, bot)
+      apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
     end
   })
 end

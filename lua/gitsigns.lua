@@ -79,7 +79,7 @@ local function apply_win_signs(bufnr, pending, top, bot)
       top = top or vim.fn.line('w0')
       bot = bot or vim.fn.line('w$')
    else
-      top = top or 0
+      top = top or 1
       bot = bot or vim.fn.line('$')
    end
 
@@ -443,20 +443,64 @@ local function in_git_dir(file)
    return false
 end
 
+
+
+
+local function speculate_signs(buf, last_orig, last_new)
+   if last_new < last_orig then
+
+
+      local placed = signs.get(buf, last_new + 1)[last_new + 1]
+
+
+      if not placed or not vim.startswith(placed, 'GitSignsAdd') then
+         dprint("place 'delete'", buf)
+         signs.add(config, buf, {
+            [last_new] = { type = 'delete', count = last_orig - last_new },
+         })
+      end
+
+
+      dprint('unplace', buf)
+      for i = last_new + 1, last_orig do
+         signs.remove(buf, i)
+      end
+   elseif last_new > last_orig then
+
+
+
+      local placed = signs.get(buf, last_orig)[last_orig]
+
+
+      if not placed or not vim.startswith(placed, 'GitSignsDelete') then
+
+         local to_add = {}
+         for i = last_orig + 1, last_new do
+            to_add[i] = { type = 'add', count = 0 }
+         end
+         dprint("place 'add'", buf)
+         signs.add(config, buf, to_add)
+      end
+   else
+
+
+      local placed = signs.get(buf, last_orig)[last_orig]
+
+
+      if not placed then
+         dprint("place 'change'", buf)
+         signs.add(config, buf, { [last_orig] = { type = 'change', count = 0 } })
+      end
+   end
+end
+
 local function on_lines(buf, last_orig, last_new)
    if not cache[buf] then
       dprint('Cache for buffer ' .. buf .. ' was nil. Detaching')
       return true
    end
 
-
-
-   if last_new < last_orig then
-      for i = last_new + 1, last_orig do
-         signs.remove(buf, i)
-      end
-   end
-
+   speculate_signs(buf, last_orig, last_new)
    update_debounced(buf)
 end
 
@@ -659,7 +703,7 @@ local function setup_decoration_provider()
          if not bcache or not bcache.pending_signs then
             return
          end
-         apply_win_signs(bufnr, bcache.pending_signs, top, bot)
+         apply_win_signs(bufnr, bcache.pending_signs, top + 1, bot + 1)
       end,
    })
 end
