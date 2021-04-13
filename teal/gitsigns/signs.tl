@@ -33,6 +33,8 @@ M.sign_map = {
   changedelete = "GitSignsChangeDelete",
 }
 
+local ns = 'gitsigns_ns'
+
 local sign_define_cache = {}
 
 local function sign_get(name: string): table
@@ -56,7 +58,7 @@ function M.define(name: string, opts: {string:any}, redefine: boolean)
 end
 
 function M.remove(bufnr: integer, lnum: integer)
-  vim.fn.sign_unplace('gitsigns_ns', {buffer = bufnr, id = lnum})
+  vim.fn.sign_unplace(ns, {buffer = bufnr, id = lnum})
 end
 
 function M.add(cfg: Config, bufnr: integer, signs: {integer:M.Sign})
@@ -78,10 +80,21 @@ function M.add(cfg: Config, bufnr: integer, signs: {integer:M.Sign})
       })
     end
 
-    vim.fn.sign_place(lnum, 'gitsigns_ns', stype, bufnr, {
+    vim.fn.sign_place(lnum, ns, stype, bufnr, {
       lnum = lnum, priority = cfg.sign_priority
     })
   end
+end
+
+-- Return map of line number to sign name. Can't use SignName as signs with
+-- counts have a suffix on their name.
+function M.get(bufnr: integer, lnum: integer): {integer:string}
+  local placed = vim.fn.sign_getplaced(bufnr, {group=ns, lnum=lnum})[1].signs
+  local ret = {}
+  for _, s in ipairs(placed) do
+    ret[s.lnum] = s.name
+  end
+  return ret
 end
 
 return M
