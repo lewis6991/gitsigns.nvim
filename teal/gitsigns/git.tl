@@ -74,8 +74,8 @@ local record M
     update_abbrev_head   : function(Obj): a.future0
     update_file_info     : function(Obj): a.future1<boolean>
     unstage_file         : function(Obj, string, string): a.future0
-    get_staged           : function(Obj, string): a.future0
-    get_staged_text      : function(Obj): a.future1<{string}>
+    get_show             : function(Obj, string, string): a.future0
+    get_show_text        : function(Obj, string): a.future1<{string}>
     run_blame            : function(Obj, {string}, number): a.future1<M.BlameInfo>
     file_info            : function(Obj): a.future4<string, string, string, boolean>
     ensure_file_in_index : function(Obj): a.future0
@@ -304,22 +304,18 @@ Obj.unstage_file = async(function(self: Obj)
 end)
 
 --- Get version of file in the index, return array lines
-Obj.get_staged_text = async(function(self: Obj): {string}
-  local stage = self.has_conflicts and 1 or 0
-  return await(self:command({'show', ':'..tostring(stage)..':'..self.relpath}, {
+Obj.get_show_text = async(function(self: Obj, object: string): {string}
+  return await(self:command({'show', object}, {
     supress_stderr = true
   }))
 end)
 
 --- Get version of file in the index, write lines to file
-Obj.get_staged = async(function(self: Obj, output_file: string)
-  local stage = self.has_conflicts and 1 or 0
+Obj.get_show = async(function(self: Obj, object: string, output_file: string)
   -- On windows 'w' mode use \r\n instead of \n, see:
   -- https://stackoverflow.com/a/43967013
   local outf = io.open(output_file, 'wb')
-  await(self:command({
-      'show', ':'..tostring(stage)..':'..self.relpath
-  }, {
+  await(self:command({'show', object}, {
     supress_stderr = true,
     on_stdout = function(_, line: string)
       outf:write(line)
