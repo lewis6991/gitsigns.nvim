@@ -304,22 +304,18 @@ Obj.unstage_file = async(function(self)
 end)
 
 
-Obj.get_staged_text = async(function(self)
-   local stage = self.has_conflicts and 1 or 0
-   return await(self:command({ 'show', ':' .. tostring(stage) .. ':' .. self.relpath }, {
+Obj.get_show_text = async(function(self, object)
+   return await(self:command({ 'show', object }, {
       supress_stderr = true,
    }))
 end)
 
 
-Obj.get_staged = async(function(self, output_file)
-   local stage = self.has_conflicts and 1 or 0
+Obj.get_show = async(function(self, object, output_file)
 
 
    local outf = io.open(output_file, 'wb')
-   await(self:command({
-      'show', ':' .. tostring(stage) .. ':' .. self.relpath,
-   }, {
+   await(self:command({ 'show', object }, {
       supress_stderr = true,
       on_stdout = function(_, line)
          outf:write(line)

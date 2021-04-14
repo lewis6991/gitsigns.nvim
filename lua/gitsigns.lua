@@ -59,6 +59,7 @@ local CacheEntry = {}
 
 
 
+
 local cache = {}
 
 local function get_cursor_hunk(bufnr, hunks)
@@ -124,14 +125,23 @@ local update = async(function(bufnr, bcache)
    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
    local git_obj = bcache.git_obj
 
-   if config.use_internal_diff then
-      if not bcache.staged_text or config._refresh_staged_on_update then
-         bcache.staged_text = await(git_obj:get_staged_text())
-      end
-      bcache.hunks = diff.run_diff(bcache.staged_text, buftext, config.diff_algorithm)
+   local compare_object
+   if bcache.commit then
+
+      compare_object = bcache.commit .. '^:' .. git_obj.relpath
    else
-      await(git_obj:get_staged(bcache.staged))
-      bcache.hunks = await(git.run_diff(bcache.staged, buftext, config.diff_algorithm))
+      local stage = git_obj.has_conflicts and 1 or 0
+      compare_object = ':' .. tostring(stage) .. ':' .. git_obj.relpath
+   end
+
+   if config.use_internal_diff then
+      if bcache.commit or not bcache.compare_text or config._refresh_staged_on_update then
+         bcache.compare_text = await(git_obj:get_show_text(compare_object))
+      end
+      bcache.hunks = diff.run_diff(bcache.compare_text, buftext, config.diff_algorithm)
+   else
+      await(git_obj:get_show(compare_object, bcache.compare_file))
+      bcache.hunks = await(git.run_diff(bcache.compare_file, buftext, config.diff_algorithm))
    end
    bcache.pending_signs = process_hunks(bcache.hunks)
 
@@ -178,6 +188,7 @@ local stage_hunk = void_async(function()
    await(bcache.git_obj:stage_hunks({ hunk }))
 
    table.insert(bcache.staged_diffs, hunk)
+   bcache.compare_text = nil
 
    local hunk_signs = process_hunks({ hunk })
 
@@ -249,6 +260,7 @@ local undo_stage_hunk = void_async(function()
    end
 
    await(bcache.git_obj:stage_hunks({ hunk }, true))
+   bcache.compare_text = nil
    await(scheduler())
    signs.add(config, bufnr, process_hunks({ hunk }))
 end)
@@ -278,6 +290,7 @@ local stage_buffer = void_async(function()
    for _, hunk in ipairs(hunks) do
       table.insert(bcache.staged_diffs, hunk)
    end
+   bcache.compare_text = nil
 
    await(scheduler())
    signs.remove(bufnr)
@@ -301,6 +314,7 @@ local reset_buffer_index = void_async(function()
    bcache.staged_diffs = {}
 
    await(bcache.git_obj:unstage_file())
+   bcache.compare_text = nil
 
    await(scheduler())
    signs.add(config, bufnr, process_hunks(hunks))
@@ -368,7 +382,7 @@ local function detach(bufnr, keep_signs)
 
    Status:clear(bufnr)
 
-   os.remove(bcache.staged)
+   os.remove(bcache.compare_file)
 
    local w = bcache.index_watcher
    if w then
@@ -402,7 +416,9 @@ local function get_buf_path(bufnr)
       local orig_path = file
       file = file:gsub('^fugitive:', ''):gsub('%.git/+%x-/', '')
       file = uv.fs_realpath(file)
+      local commit = orig_path:match('fugitive.*/(%x-)/')
       dprint(("Fugitive buffer for file '%s' from path '%s'"):format(file, orig_path), bufnr)
+      return file, commit
    end
 
    return file
@@ -428,7 +444,7 @@ local function index_handler(cbuf)
          return
       end
 
-      bcache.staged_text = nil
+      bcache.compare_text = nil
 
       await(update(cbuf, bcache))
    end)
@@ -523,7 +539,7 @@ local attach = async(function(cbuf)
       return
    end
 
-   local file = get_buf_path(cbuf)
+   local file, commit = get_buf_path(cbuf)
 
    if in_git_dir(file) then
       dprint('In git dir', cbuf, 'attach')
@@ -563,8 +579,9 @@ local attach = async(function(cbuf)
 
    cache[cbuf] = {
       file = file,
-      staged = os.tmpname(),
-      staged_text = nil,
+      commit = commit,
+      compare_file = os.tmpname(),
+      compare_text = nil,
       hunks = {},
       staged_diffs = {},
       index_watcher = watch_index(cbuf, git_obj.gitdir, index_handler(cbuf)),
@@ -631,7 +648,7 @@ local function add_debug_functions()
          return nil
       elseif type(raw_item) == "table" then
          local key = path[#path]
-         if key == 'staged_text' then
+         if key == 'compare_text' then
             local item = raw_item
             return { '...', length = #item, head = item[1] }
          elseif not vim.tbl_isempty(raw_item) and vim.tbl_contains({
@@ -859,7 +876,7 @@ local function refresh()
    setup_current_line_blame()
    for k, v in pairs(cache) do
       _current_line_blame_reset(k)
-      v.staged_text = nil
+      v.compare_text = nil
       void(update)(k, v)
    end
 end

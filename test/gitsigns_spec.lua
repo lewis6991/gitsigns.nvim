@@ -244,8 +244,9 @@ describe('gitsigns', function()
     config.watch_index = {interval = 5}
     exec_lua('gs.setup(...)', config)
     edit(test_file)
-    sleep(10)
-    match_debug_messages {
+    sleep(40)
+
+    match_dag(debug_messages(), {
       "run_job: git --no-pager --version",
       'attach(1): Attaching',
       p'run_job: git .* config user.name',
@@ -255,7 +256,7 @@ describe('gitsigns', function()
       'watcher_cb(1): Index update error: ENOENT',
       p'run_job: git .* show :0:dummy.txt',
       'update(1): updates: 1, jobs: 5'
-    }
+    })
 
     screen:expect{grid=[[
       {3:+ }^This              |
