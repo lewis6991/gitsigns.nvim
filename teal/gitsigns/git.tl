@@ -88,12 +88,18 @@ end
 local Obj = M.Obj
 
 local function parse_version(version: string): M.Version
-  assert(version:match('%d+%.%d+%.%d+'), 'Invalid git version: '..version)
+  assert(version:match('%d+%.%d+%.%w+'), 'Invalid git version: '..version)
   local ret: M.Version = {}
   local parts = vim.split(version, '%.')
   ret.major = tonumber(parts[1]) as integer
   ret.minor = tonumber(parts[2]) as integer
-  ret.patch = tonumber(parts[3]) as integer
+
+  if parts[3] == 'GIT' then
+    ret.patch = 0
+  else
+    ret.patch = tonumber(parts[3]) as integer
+  end
+
   return ret
 end
 

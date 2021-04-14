@@ -94,8 +94,8 @@ local function parse_version(version)
    ret.major = tonumber(parts[1])
    ret.minor = tonumber(parts[2])
 
-   if ret.patch == 'GIT' then
-      ret.patch = math.huge
+   if parts[3] == 'GIT' then
+      ret.patch = 0
    else
       ret.patch = tonumber(parts[3])
    end
