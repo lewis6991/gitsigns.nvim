@@ -412,7 +412,7 @@ local function get_buf_path(bufnr)
       return vim.fn.expand('%:p')
    end)
 
-   if vim.startswith(file, 'fugitive://') then
+   if vim.startswith(file, 'fugitive://') and vim.wo.diff == false then
       local orig_path = file
       file = file:gsub('^fugitive:', ''):gsub('%.git/+%x-/', '')
       file = uv.fs_realpath(file)

@@ -183,6 +183,11 @@ global record vim
     updatetime: number
   end
 
+
+  record wo
+    diff: boolean
+  end
+
   record lsp
     record util
       close_preview_autocmd: function ({string}, number)
