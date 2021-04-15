@@ -414,11 +414,19 @@ local function get_buf_path(bufnr: integer): string, string
 
   if vim.startswith(file, 'fugitive://') and vim.wo.diff == false then
     local orig_path = file
-    file = file:gsub('^fugitive:',''):gsub('%.git/+%x-/', '')
-    file = uv.fs_realpath(file)
-    local commit = orig_path:match('fugitive.*/(%x-)/')
-    dprint(("Fugitive buffer for file '%s' from path '%s'"):format(file, orig_path), bufnr)
-    return file, commit
+    local _,_, root_path, sub_module_path, commit, real_path =
+      file:find([[^fugitive://(.*)/%.git(.*)/(%x-)/(.*)]])
+    if root_path then
+      sub_module_path = sub_module_path:gsub("^/modules", "")
+      file = root_path .. sub_module_path .. real_path
+      file = uv.fs_realpath(file)
+      dprint(("Fugitive buffer for file '%s' from path '%s'"):format(file, orig_path), bufnr)
+      if file then
+        return file, commit
+      else
+        file = orig_path
+      end
+    end
   end
 
   return file
