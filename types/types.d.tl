@@ -154,6 +154,8 @@ global record vim
   record fn
     line: function(string): integer
     expand: function(string): string
+    foldclosed: function(integer): integer
+    foldclosedend: function(integer): integer
     sign_unplace: function(string, {string:any})
     sign_place: function(number, string, string, string | number, {string:any})
     sign_getdefined: function(string): table
@@ -260,6 +262,7 @@ global record vim
   split: function(string, string, boolean): {string}
 
   startswith: function(string, string): boolean
+  endswith: function(string, string): boolean
 
   schedule_wrap: function(function(...:any): any...): function(...:any): any...
   schedule: function(function)

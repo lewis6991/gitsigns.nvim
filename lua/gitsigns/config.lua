@@ -51,6 +51,9 @@ local M = {Config = {SignsConfig = {}, watch_index = {}, yadm = {}, }, }
 
 
 
+
+
+
 M.schema = {
    signs = {
       type = 'table',
@@ -61,6 +64,10 @@ M.schema = {
       delete       = {hl = 'GitSignsDelete', text = '_', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
       topdelete    = {hl = 'GitSignsDelete', text = '‾', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
       changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
+
+      -- Show signs on folded lines with changes in the folded region
+      fold         = {enable = false,
+                      hl = 'GitSignsFold'  , text = '│', numhl='GitSignsFoldNr'  , linehl='GitSignsFoldLn'   },
     }]],
       description = [[
         Configuration for signs:
@@ -83,6 +90,8 @@ M.schema = {
         For example if `signs.add.hl = GitSignsAdd` and `GitSignsAdd` is not
         defined but `GitGutterAdd` is defined, then `GitSignsAdd` will be linked
         to `GitGutterAdd`.
+
+        Note: `signs.fold` requires `use_decoration_api=true`.
 
     ]],
    },

@@ -25,12 +25,15 @@ local M = {Sign = {}, }
 
 
 
+
+
 M.sign_map = {
    add = "GitSignsAdd",
    delete = "GitSignsDelete",
    change = "GitSignsChange",
    topdelete = "GitSignsTopDelete",
    changedelete = "GitSignsChangeDelete",
+   fold = "GitSignsFold",
 }
 
 local ns = 'gitsigns_ns'
@@ -74,9 +77,9 @@ function M.add(cfg, bufnr, signs)
          stype = stype .. count_suffix
          M.define(stype, {
             texthl = cs.hl,
-            text = cfg.signcolumn and cs.text .. count_char or '',
-            numhl = cfg.numhl and cs.numhl,
-            linehl = cfg.linehl and cs.linehl,
+            text = cfg.signcolumn and cs.text .. count_char or nil,
+            numhl = cfg.numhl and cs.numhl or nil,
+            linehl = cfg.linehl and cs.linehl or nil,
          })
       end
 
@@ -92,7 +95,7 @@ function M.get(bufnr, lnum)
    local placed = vim.fn.sign_getplaced(bufnr, { group = ns, lnum = lnum })[1].signs
    local ret = {}
    for _, s in ipairs(placed) do
-      ret[s.lnum] = s.name
+      table.insert(ret, s.name)
    end
    return ret
 end

@@ -14,6 +14,7 @@ Super fast git decorations implemented purely in lua/teal.
 ## Features
 
 - Signs for added, removed, and changed lines
+    - Also signs for folds with changes.
 - Asynchronous using [luv](https://github.com/luvit/luv/blob/master/docs.md)
 - Navigation between hunks
 - Stage hunks (with undo)
@@ -75,11 +76,13 @@ the default settings:
 ```lua
 require('gitsigns').setup {
   signs = {
-    add          = {hl = 'GitSignsAdd'   , text = '│', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'},
+    add          = {hl = 'GitSignsAdd'   , text = '│', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'   },
     change       = {hl = 'GitSignsChange', text = '│', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn'},
     delete       = {hl = 'GitSignsDelete', text = '_', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn'},
     topdelete    = {hl = 'GitSignsDelete', text = '‾', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn'},
     changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn'},
+    fold         = {enable = false,
+                    hl = 'GitSignsFold'  , text = '│', numhl='GitSignsFoldNr'  , linehl='GitSignsFoldLn'  },
   },
   numhl = false,
   linehl = false,
