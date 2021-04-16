@@ -89,10 +89,10 @@ end
 -- Return map of line number to sign name. Can't use SignName as signs with
 -- counts have a suffix on their name.
 function M.get(bufnr: integer, lnum: integer): {integer:string}
-  local placed = vim.fn.sign_getplaced(bufnr, {group=ns, lnum=lnum})[1].signs
+  local placed = vim.fn.sign_getplaced(bufnr, {group=ns, id=lnum})[1].signs
   local ret = {}
   for _, s in ipairs(placed) do
-    ret[s.lnum] = s.name
+    ret[s.id] = s.name
   end
   return ret
 end
