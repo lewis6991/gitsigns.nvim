@@ -484,32 +484,41 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
 
     -- Add a 'delete' sign only if there wasn't an add sign below
     if not placed or not vim.startswith(placed, 'GitSignsAdd') then
-      dprint("place 'delete'", buf)
-      signs.add(config, buf, {
-        [last_new] = {type='delete', count=last_orig-last_new}
-      })
+      local stype: signs.SignType = last_new == 0 and 'topdelete' or 'delete'
+      local snum                  = last_new == 0 and 1           or last_new
+      signs.add(config, buf, {[snum] = {type=stype, count=last_orig}})
     end
 
     -- If lines are removed, make sure to immediately remove the signs
-    dprint('unplace', buf)
     for i = last_new+1, last_orig do
       signs.remove(buf, i)
     end
   elseif last_new > last_orig then
     -- Lines added
 
+    if last_orig == 0 then
+      -- Note: It seems that
+      local placed = signs.get(buf, 1)[1]
 
-    local placed = signs.get(buf, last_orig)[last_orig]
-
-    -- Add 'added' signs only if there wasn't a 'delete' sign above
-    if not placed or not vim.startswith(placed, 'GitSignsDelete') then
-      -- If lines are added, make sure to immediately add the signs
-      local to_add = {}
-      for i = last_orig+1, last_new do
-        to_add[i] = {type='add', count=0}
+      -- Add 'added' signs only if there wasn't a 'delete' sign above
+      if not placed or not vim.startswith(placed, 'GitSignsTopDelete') then
+        -- If lines are added, make sure to immediately add the signs
+        for i = 1, last_new do
+          signs.add(config, buf, {[i] = {type='add', count=0}})
+        end
+      else
+        signs.remove(buf, 1)
       end
-      dprint("place 'add'", buf)
-      signs.add(config, buf, to_add)
+    else
+      local placed = signs.get(buf, last_orig)[last_orig]
+
+      -- Add 'added' signs only if there wasn't a 'delete' sign above
+      if not placed or not vim.startswith(placed, 'GitSignsDelete') then
+        -- If lines are added, make sure to immediately add the signs
+        for i = last_orig+1, last_new do
+          signs.add(config, buf, {[i] = {type='add', count=0}})
+        end
+      end
     end
   else
     -- Line change
@@ -518,7 +527,6 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
 
     -- add a 'change' sign if there are no other signs
     if not placed then
-      dprint("place 'change'", buf)
       signs.add(config, buf, {[last_orig] = {type='change', count=0}})
     end
   end
