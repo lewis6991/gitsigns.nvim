@@ -128,14 +128,14 @@ local update = async(function(bufnr, bcache)
    local compare_object
    if bcache.commit then
 
-      compare_object = bcache.commit .. '^:' .. git_obj.relpath
+      compare_object = string.format('%s^:%s', bcache.commit, git_obj.relpath)
    else
       local stage = git_obj.has_conflicts and 1 or 0
-      compare_object = ':' .. tostring(stage) .. ':' .. git_obj.relpath
+      compare_object = string.format(':%d:%s', stage, git_obj.relpath)
    end
 
    if config.use_internal_diff then
-      if bcache.commit or not bcache.compare_text or config._refresh_staged_on_update then
+      if not bcache.compare_text or config._refresh_staged_on_update then
          bcache.compare_text = await(git_obj:get_show_text(compare_object))
       end
       bcache.hunks = diff.run_diff(bcache.compare_text, buftext, config.diff_algorithm)
@@ -160,11 +160,43 @@ end)
 
 local update_debounced
 
-local watch_index = function(bufnr, gitdir, on_change)
+local watch_index = function(bufnr, gitdir)
    dprint('Watching index', bufnr, 'watch_index')
    local index = gitdir .. util.path_sep .. 'index'
    local w = uv.new_fs_poll()
-   w:start(index, config.watch_index.interval, on_change)
+   w:start(index, config.watch_index.interval, void_async(function(err)
+      if err then
+         dprint('Index update error: ' .. err, bufnr, 'watcher_cb')
+         return
+      end
+      dprint('Index update', bufnr, 'watcher_cb')
+
+      local bcache = cache[bufnr]
+
+      if not bcache then
+
+
+
+         dprint(string.format('Buffer %s has detached, aborting', bufnr))
+         return
+      end
+
+      local git_obj = bcache.git_obj
+
+      await(git_obj:update_abbrev_head())
+
+      await(scheduler())
+      Status:update_head(bufnr, git_obj.abbrev_head)
+
+      if not await(git_obj:update_file_info()) then
+         dprint('File not changed', bufnr, 'watcher_cb')
+         return
+      end
+
+      bcache.compare_text = nil
+
+      await(update(bufnr, bcache))
+   end))
    return w
 end
 
@@ -432,32 +464,6 @@ local function get_buf_path(bufnr)
    return file
 end
 
-local function index_handler(cbuf)
-   return void_async(function(err)
-      if err then
-         dprint('Index update error: ' .. err, cbuf, 'watcher_cb')
-         return
-      end
-      dprint('Index update', cbuf, 'watcher_cb')
-      local bcache = cache[cbuf]
-      local git_obj = bcache.git_obj
-
-      await(git_obj:update_abbrev_head())
-
-      await(scheduler())
-      Status:update_head(cbuf, git_obj.abbrev_head)
-
-      if not await(git_obj:update_file_info()) then
-         dprint('File not changed', cbuf, 'watcher_cb')
-         return
-      end
-
-      bcache.compare_text = nil
-
-      await(update(cbuf, bcache))
-   end)
-end
-
 local function in_git_dir(file)
    for _, p in ipairs(vim.split(file, util.path_sep)) do
       if p == '.git' then
@@ -592,7 +598,7 @@ local attach = async(function(cbuf)
       compare_text = nil,
       hunks = {},
       staged_diffs = {},
-      index_watcher = watch_index(cbuf, git_obj.gitdir, index_handler(cbuf)),
+      index_watcher = watch_index(cbuf, git_obj.gitdir),
       git_obj = git_obj,
    }
 
