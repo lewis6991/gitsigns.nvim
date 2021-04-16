@@ -28,4 +28,16 @@ function M.eprint(msg: string)
   end
 end
 
+function M.warning(msg: string)
+  local msg1 = '[gitsigns] Warning: '..msg
+  -- On windows print() crashes in callback threads
+  if vim.in_fast_event() then
+    vim.schedule(function()
+      print(msg1)
+    end)
+  else
+    print(msg1)
+  end
+end
+
 return M

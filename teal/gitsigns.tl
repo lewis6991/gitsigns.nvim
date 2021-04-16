@@ -480,10 +480,10 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
   if last_new < last_orig then
     -- Lines removed
 
-    local placed = signs.get(buf, last_new+1)[last_new+1]
+    local placed = signs.get(buf, last_new+1)
 
     -- Add a 'delete' sign only if there wasn't an add sign below
-    if not placed or not vim.startswith(placed, 'GitSignsAdd') then
+    if #placed == 0 or not vim.startswith(placed[1], 'GitSignsAdd') then
       dprint("place 'delete'", buf)
       signs.add(config, buf, {
         [last_new] = {type='delete', count=last_orig-last_new}
@@ -499,10 +499,10 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
     -- Lines added
 
 
-    local placed = signs.get(buf, last_orig)[last_orig]
+    local placed = signs.get(buf, last_orig)
 
     -- Add 'added' signs only if there wasn't a 'delete' sign above
-    if not placed or not vim.startswith(placed, 'GitSignsDelete') then
+    if #placed == 0 or not vim.startswith(placed[1], 'GitSignsDelete') then
       -- If lines are added, make sure to immediately add the signs
       local to_add = {}
       for i = last_orig+1, last_new do
@@ -514,10 +514,10 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
   else
     -- Line change
 
-    local placed = signs.get(buf, last_orig)[last_orig]
+    local placed = signs.get(buf, last_orig)
 
     -- add a 'change' sign if there are no other signs
-    if not placed then
+    if #placed == 0 then
       dprint("place 'change'", buf)
       signs.add(config, buf, {[last_orig] = {type='change', count=0}})
     end
@@ -641,9 +641,9 @@ local function setup_signs_and_highlights(redefine: boolean)
 
     signs.define(sign_name, {
       texthl = cs.hl,
-      text   = config.signcolumn and cs.text or nil,
-      numhl  = config.numhl      and cs.numhl,
-      linehl = config.linehl     and cs.linehl
+      text   = config.signcolumn and cs.text   or nil,
+      numhl  = config.numhl      and cs.numhl  or nil,
+      linehl = config.linehl     and cs.linehl or nil
     }, redefine)
 
   end
@@ -727,7 +727,41 @@ local function setup_command()
   }, ' '))
 end
 
-local function setup_decoration_provider()
+-- If a lnum is the start of a fold and the folded lines has a gitsigns sign,
+-- then add a fold sign to the folded line
+local function apply_fold_sign(buf: integer, lnum: integer)
+  local closed_lnum = vim.fn.foldclosed(lnum)
+  if closed_lnum == -1 then
+    -- lnum is not in a folded region, if there is a fold sign then remove it
+    local placed = signs.get(buf, lnum)
+    if #placed > 0 and vim.startswith(placed[1], 'GitSignsFold') then
+      signs.remove(buf, lnum)
+      return
+    end
+  elseif closed_lnum == lnum then
+    -- lnum is at the top of a folded region. See if there is a sign in the
+    -- folded region. If there is place a fold sign on lnum.
+    for j = lnum+1, vim.fn.foldclosedend(lnum) do
+      local placed = signs.get(buf, j)
+      if #placed > 0 then
+        local closed_placed = signs.get(buf, lnum)
+        if #closed_placed == 0 then
+          signs.add(config, buf, {[lnum]={type='fold', count=0}})
+        end
+        break
+      end
+    end
+  end
+end
+
+local function setup_decoration_provider(fold_signs: boolean)
+  local on_line: function
+  if fold_signs then
+    on_line = function(_, _, bufnr: integer, row: integer)
+      apply_fold_sign(bufnr, row+1)
+    end
+  end
+
   api.nvim_set_decoration_provider(namespace, {
     on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
       local bcache = cache[bufnr]
@@ -735,7 +769,8 @@ local function setup_decoration_provider()
         return
       end
       apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
-    end
+    end,
+    on_line = on_line
   })
 end
 
@@ -773,7 +808,9 @@ local setup = void_async(function(cfg: Config)
   if config.use_decoration_api then
     -- Calling this before any await calls will stop nvim's intro messages being
     -- displayed
-    setup_decoration_provider()
+    setup_decoration_provider(config.signs.fold.enable)
+  elseif config.signs.fold.enable then
+    gs_debug.warning("'signs.fold' requires 'use_decoration_api")
   end
 
   git.enable_yadm = config.yadm.enable

@@ -9,13 +9,15 @@ local enum GitSignHl
   'GitSignsAdd'
   'GitSignsChange'
   'GitSignsDelete'
+  'GitSignsFold'
   'GitSignsCurrentLineBlame'
 end
 
 local hls: {GitSignHl:{string}} = {
-  GitSignsAdd    = { 'GitGutterAdd'   , 'SignifySignAdd'   , 'DiffAdd'    },
-  GitSignsChange = { 'GitGutterChange', 'SignifySignChange', 'DiffChange' },
-  GitSignsDelete = { 'GitGutterDelete', 'SignifySignDelete', 'DiffDelete' },
+  GitSignsAdd    = { 'GitGutterAdd'   , 'SignifySignAdd'   , 'DiffAdd:reverse'    },
+  GitSignsChange = { 'GitGutterChange', 'SignifySignChange', 'DiffChange:reverse' },
+  GitSignsDelete = { 'GitGutterDelete', 'SignifySignDelete', 'DiffDelete:reverse' },
+  GitSignsFold   = { 'Special:fg' },
   GitSignsCurrentLineBlame = { 'NonText' }
 }
 
@@ -31,27 +33,38 @@ local function hl_link(to: string, from: string, reverse: boolean)
     return
   end
 
-  if not reverse then
+  local mods: {string:boolean} = {
+    reverse = reverse or false,
+    fg      = false
+  }
+
+  for p, _ in pairs(mods) do
+    local sfx = ':'..p
+    if vim.endswith(from, sfx) then
+      from = from:sub(1, -(1+#sfx))
+      mods[p] = true
+    end
+  end
+
+  if not (mods.reverse or mods.fg) then
     vim.cmd(('highlight link %s %s'):format(to, from))
     return
   end
 
   local exists, hl = pcall(api.nvim_get_hl_by_name, from, true)
   if exists then
-    local bg = hl.background and ('guibg=#%06x'):format(hl.background) or ''
+    local bg: string
+    if mods.fg then
+      -- Use background from Signcolumn
+      local sc_hl = api.nvim_get_hl_by_name('Signcolumn', true)
+      bg = sc_hl.background and ('guibg=#%06x'):format(sc_hl.background) or ''
+    else
+      bg = hl.background and ('guibg=#%06x'):format(hl.background) or ''
+    end
     local fg = hl.foreground and ('guifg=#%06x'):format(hl.foreground) or ''
-    vim.cmd(table.concat({'highlight', to, fg, bg, 'gui=reverse'}, ' '))
+    local rev = mods.reverse and 'gui=reverse' or ''
+    vim.cmd(table.concat({'highlight', to, fg, bg, rev}, ' '))
   end
-end
-
-local stdHl = {
-  'DiffAdd',
-  'DiffChange',
-  'DiffDelete'
-}
-
-local function isStdHl(hl: string): boolean
-  return vim.tbl_contains(stdHl, hl)
 end
 
 local function isGitSignHl(hl: string): boolean
@@ -73,9 +86,9 @@ function M.setup_highlight(hl_name0: string)
   end
 
   for _, d in ipairs(hls[hl_name]) do
-    if is_hl_set(d) then
+    if is_hl_set(d:match('%w+')) then
       dprint(('Deriving %s from %s'):format(hl_name, d))
-      hl_link(hl_name, d, isStdHl(d))
+      hl_link(hl_name, d)
       return
     end
   end

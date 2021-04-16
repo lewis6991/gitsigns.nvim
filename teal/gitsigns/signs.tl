@@ -7,6 +7,7 @@ local record M
     "GitSignsChange"
     "GitSignsTopDelete"
     "GitSignsChangeDelete"
+    "GitSignsFold"
   end
 
   enum SignType
@@ -15,6 +16,7 @@ local record M
     "change"
     "topdelete"
     "changedelete"
+    "fold"
   end
 
   record Sign
@@ -31,6 +33,7 @@ M.sign_map = {
   change       = "GitSignsChange",
   topdelete    = "GitSignsTopDelete",
   changedelete = "GitSignsChangeDelete",
+  fold         = "GitSignsFold",
 }
 
 local ns = 'gitsigns_ns'
@@ -74,9 +77,9 @@ function M.add(cfg: Config, bufnr: integer, signs: {integer:M.Sign})
       stype = stype..count_suffix
       M.define(stype, {
         texthl = cs.hl,
-        text   = cfg.signcolumn and cs.text..count_char or '',
-        numhl  = cfg.numhl      and cs.numhl,
-        linehl = cfg.linehl     and cs.linehl
+        text   = cfg.signcolumn and cs.text..count_char or nil,
+        numhl  = cfg.numhl      and cs.numhl            or nil,
+        linehl = cfg.linehl     and cs.linehl           or nil
       })
     end
 
@@ -88,11 +91,11 @@ end
 
 -- Return map of line number to sign name. Can't use SignName as signs with
 -- counts have a suffix on their name.
-function M.get(bufnr: integer, lnum: integer): {integer:string}
+function M.get(bufnr: integer, lnum: integer): {string}
   local placed = vim.fn.sign_getplaced(bufnr, {group=ns, lnum=lnum})[1].signs
   local ret = {}
   for _, s in ipairs(placed) do
-    ret[s.lnum] = s.name
+    table.insert(ret, s.name)
   end
   return ret
 end
