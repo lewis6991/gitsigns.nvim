@@ -709,7 +709,7 @@ local function add_debug_functions()
 end
 
 -- Needs to be global so can be accessed from v:lua
-function gitsigns_complete(arglead: string, line: string): {string}
+local function _complete(arglead: string, line: string): {string}
   local n: integer = #vim.split(line, '%s+')
 
   local matches: {string} = {}
@@ -729,7 +729,7 @@ local function setup_command()
   vim.cmd(table.concat({
     'command!',
     '-nargs=+',
-    '-complete=customlist,v:lua.gitsigns_complete',
+    '-complete=customlist,v:lua.package.loaded.gitsigns._complete',
     'Gitsigns',
     'lua require("gitsigns")._run_func(<f-args>)'
   }, ' '))
@@ -944,6 +944,8 @@ M = {
   toggle_signs         = toggle_signs,
   toggle_linehl        = toggle_linehl,
   toggle_numhl         = toggle_numhl,
+
+  _complete = _complete,
 
   _current_line_blame       = _current_line_blame,
   _current_line_blame_reset = _current_line_blame_reset,
