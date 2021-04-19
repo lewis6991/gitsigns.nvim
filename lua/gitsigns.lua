@@ -480,19 +480,7 @@ local function speculate_signs(buf, last_orig, last_new)
    if last_new < last_orig then
 
 
-      local placed = signs.get(buf, last_new + 1)[last_new + 1]
 
-
-      if not placed or not vim.startswith(placed, 'GitSignsAdd') then
-         local stype = last_new == 0 and 'topdelete' or 'delete'
-         local snum = last_new == 0 and 1 or last_new
-         signs.add(config, buf, { [snum] = { type = stype, count = last_orig } })
-      end
-
-
-      for i = last_new + 1, last_orig do
-         signs.remove(buf, i)
-      end
    elseif last_new > last_orig then
 
 
