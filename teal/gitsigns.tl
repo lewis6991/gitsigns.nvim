@@ -479,20 +479,8 @@ end
 local function speculate_signs(buf: integer, last_orig: integer, last_new: integer)
   if last_new < last_orig then
     -- Lines removed
-
-    local placed = signs.get(buf, last_new+1)[last_new+1]
-
-    -- Add a 'delete' sign only if there wasn't an add sign below
-    if not placed or not vim.startswith(placed, 'GitSignsAdd') then
-      local stype: signs.SignType = last_new == 0 and 'topdelete' or 'delete'
-      local snum                  = last_new == 0 and 1           or last_new
-      signs.add(config, buf, {[snum] = {type=stype, count=last_orig}})
-    end
-
-    -- If lines are removed, make sure to immediately remove the signs
-    for i = last_new+1, last_orig do
-      signs.remove(buf, i)
-    end
+    --
+    -- Cannot do much here due to https://github.com/neovim/neovim/pull/12323
   elseif last_new > last_orig then
     -- Lines added
 
