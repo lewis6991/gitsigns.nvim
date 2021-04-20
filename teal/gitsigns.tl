@@ -536,7 +536,7 @@ local attach = async(function(cbuf: integer)
   end
   dprint('Attaching', cbuf, 'attach')
 
-  if api.nvim_buf_is_loaded(cbuf) then
+  if not api.nvim_buf_is_loaded(cbuf) then
     dprint('Non-loaded buffer', cbuf, 'attach')
     return
   end
