@@ -536,6 +536,11 @@ local attach = async(function(cbuf)
    end
    dprint('Attaching', cbuf, 'attach')
 
+   if api.nvim_buf_is_loaded(cbuf) then
+      dprint('Non-loaded buffer', cbuf, 'attach')
+      return
+   end
+
    if api.nvim_buf_line_count(cbuf) > config.max_file_length then
       dprint('Exceeds max_file_length', cbuf, 'attach')
       return
@@ -775,8 +780,7 @@ local setup = async_void(function(cfg)
 
 
    for _, buf in ipairs(api.nvim_list_bufs()) do
-      if api.nvim_buf_is_valid(buf) and
-         api.nvim_buf_is_loaded(buf) and
+      if api.nvim_buf_is_loaded(buf) and
          api.nvim_buf_get_name(buf) ~= '' then
          await(attach(buf))
          await(scheduler())
