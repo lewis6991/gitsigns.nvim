@@ -100,6 +100,7 @@ local record Async
   scheduler: future
   execute: function
   void: function(function): function
+  async_void: function(function): function
   run: function
 end
 

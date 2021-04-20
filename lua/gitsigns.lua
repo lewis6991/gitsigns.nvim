@@ -2,11 +2,8 @@ local a = require('plenary/async_lib/async')
 local void = a.void
 local await = a.await
 local async = a.async
+local async_void = a.async_void
 local scheduler = a.scheduler
-
-local function void_async(func)
-   return void(async(func))
-end
 
 local gs_debounce = require('gitsigns/debounce')
 local debounce_trailing = gs_debounce.debounce_trailing
@@ -164,7 +161,7 @@ local watch_index = function(bufnr, gitdir)
    dprint('Watching index', bufnr, 'watch_index')
    local index = gitdir .. util.path_sep .. 'index'
    local w = uv.new_fs_poll()
-   w:start(index, config.watch_index.interval, void_async(function(err)
+   w:start(index, config.watch_index.interval, async_void(function(err)
       if err then
          dprint('Index update error: ' .. err, bufnr, 'watcher_cb')
          return
@@ -200,7 +197,7 @@ local watch_index = function(bufnr, gitdir)
    return w
 end
 
-local stage_hunk = void_async(function()
+local stage_hunk = async_void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -258,7 +255,7 @@ local function reset_hunk(bufnr, hunk)
    api.nvim_buf_set_lines(bufnr, lstart, lend, false, gs_hunks.extract_removed(hunk))
 end
 
-local reset_buffer = void_async(function()
+local reset_buffer = async_void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -278,7 +275,7 @@ local reset_buffer = void_async(function()
    error('Hit maximum limit of hunks to reset')
 end)
 
-local undo_stage_hunk = void_async(function()
+local undo_stage_hunk = async_void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -297,7 +294,7 @@ local undo_stage_hunk = void_async(function()
    signs.add(config, bufnr, process_hunks({ hunk }))
 end)
 
-local stage_buffer = void_async(function()
+local stage_buffer = async_void(function()
    local bufnr = current_buf()
 
    local bcache = cache[bufnr]
@@ -329,7 +326,7 @@ local stage_buffer = void_async(function()
    Status:clear_diff(bufnr)
 end)
 
-local reset_buffer_index = void_async(function()
+local reset_buffer_index = async_void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -747,7 +744,7 @@ local function setup_current_line_blame()
    end
 end
 
-local setup = void_async(function(cfg)
+local setup = async_void(function(cfg)
    config = gs_config.process(cfg)
    namespace = api.nvim_create_namespace('gitsigns')
 
@@ -822,7 +819,7 @@ local function select_hunk()
    vim.cmd('normal! ' .. hunk.start .. 'GV' .. hunk.dend .. 'G')
 end
 
-local blame_line = void_async(function()
+local blame_line = async_void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -861,7 +858,7 @@ local _current_line_blame_reset = function(bufnr)
    api.nvim_buf_del_extmark(bufnr, namespace, 1)
 end
 
-local _current_line_blame = void_async(function()
+local _current_line_blame = async_void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache or not bcache.git_obj.object_name then
