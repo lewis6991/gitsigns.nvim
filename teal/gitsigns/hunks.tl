@@ -14,6 +14,7 @@ local record M
     lines: {string}
     start: integer
     dend: integer
+    vend: integer
 
     record Node
       start: integer
@@ -41,14 +42,17 @@ function M.create_hunk(start_a: integer, count_a: integer, start_b: integer, cou
   if added.count == 0 then
     -- delete
     hunk.dend = added.start
+    hunk.vend = hunk.dend
     hunk.type = "delete"
   elseif removed.count == 0 then
     -- add
     hunk.dend = added.start + added.count - 1
+    hunk.vend = hunk.dend
     hunk.type = "add"
   else
     -- change
     hunk.dend = added.start + math.min(added.count, removed.count) - 1
+    hunk.vend = hunk.dend + math.max(added.count - removed.count, 0)
     hunk.type = "change"
   end
 
@@ -167,11 +171,11 @@ end
 
 function M.find_hunk(lnum: number, hunks: {Hunk}): Hunk
   for _, hunk in ipairs(hunks) do
-    if lnum == 1 and hunk.start == 0 and hunk.dend == 0 then
+    if lnum == 1 and hunk.start == 0 and hunk.vend == 0 then
       return hunk
     end
 
-    if hunk.start <= lnum and hunk.dend >= lnum then
+    if hunk.start <= lnum and hunk.vend >= lnum then
       return hunk
     end
   end
@@ -190,7 +194,7 @@ function M.find_nearest_hunk(lnum: number, hunks: {Hunk}, forwards: boolean, wra
   else
     for i = #hunks, 1, -1 do
       local hunk = hunks[i]
-      if hunk.dend < lnum then
+      if hunk.vend < lnum then
         ret = hunk
         break
       end
