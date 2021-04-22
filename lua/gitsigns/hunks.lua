@@ -25,6 +25,7 @@ local M = {Hunk = {Node = {}, }, }
 
 
 
+
 local Hunk = M.Hunk
 
 function M.create_hunk(start_a, count_a, start_b, count_b)
@@ -41,14 +42,17 @@ function M.create_hunk(start_a, count_a, start_b, count_b)
    if added.count == 0 then
 
       hunk.dend = added.start
+      hunk.vend = hunk.dend
       hunk.type = "delete"
    elseif removed.count == 0 then
 
       hunk.dend = added.start + added.count - 1
+      hunk.vend = hunk.dend
       hunk.type = "add"
    else
 
       hunk.dend = added.start + math.min(added.count, removed.count) - 1
+      hunk.vend = hunk.dend + math.max(added.count - removed.count, 0)
       hunk.type = "change"
    end
 
@@ -167,11 +171,11 @@ end
 
 function M.find_hunk(lnum, hunks)
    for _, hunk in ipairs(hunks) do
-      if lnum == 1 and hunk.start == 0 and hunk.dend == 0 then
+      if lnum == 1 and hunk.start == 0 and hunk.vend == 0 then
          return hunk
       end
 
-      if hunk.start <= lnum and hunk.dend >= lnum then
+      if hunk.start <= lnum and hunk.vend >= lnum then
          return hunk
       end
    end
@@ -190,7 +194,7 @@ function M.find_nearest_hunk(lnum, hunks, forwards, wrap)
    else
       for i = #hunks, 1, -1 do
          local hunk = hunks[i]
-         if hunk.dend < lnum then
+         if hunk.vend < lnum then
             ret = hunk
             break
          end
