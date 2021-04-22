@@ -367,7 +367,7 @@ local function nav_hunk(options)
 
    local wrap = options.wrap ~= nil and options.wrap or vim.o.wrapscan
    local hunk = gs_hunks.find_nearest_hunk(line, hunks, options.forwards, wrap)
-   local row = options.forwards and hunk.start or hunk.dend
+   local row = options.forwards and hunk.start or hunk.vend
    if row then
 
       if row == 0 then
@@ -820,7 +820,7 @@ local function select_hunk()
       return
    end
 
-   vim.cmd('normal! ' .. hunk.start .. 'GV' .. hunk.dend .. 'G')
+   vim.cmd('normal! ' .. hunk.start .. 'GV' .. hunk.vend .. 'G')
 end
 
 local blame_line = async_void(function()
