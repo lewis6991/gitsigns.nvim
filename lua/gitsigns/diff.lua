@@ -128,6 +128,12 @@ function M.run_diff(fa, fb, diff_algo)
    local emitconf = ffi.new('xdemitconf_t')
    emitconf.hunk_func = hunk_func
 
+   local jit_status = jit.status()
+
+
+
+   jit.off()
+
    local res = ffi.C.xdl_diff(
    mmbuffer(fa),
    mmbuffer(fb),
@@ -135,6 +141,10 @@ function M.run_diff(fa, fb, diff_algo)
    emitconf,
    ffi.new('xdemitcb_t'))
 
+
+   if jit_status then
+      jit.on()
+   end
 
    assert(res, 'DIFF bad result')
 
