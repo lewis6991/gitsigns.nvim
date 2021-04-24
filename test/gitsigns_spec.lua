@@ -990,4 +990,7 @@ describe('gitsigns', function()
   -- TODO Add test for current_line_blame
   -- TODO Add test for toggle_current_line_blame
 
+  -- TODO Add test for #163: signcolumn=number with signs disabled shouldn't
+  -- overwrite number column
+
 end)
