@@ -62,6 +62,10 @@ function M.remove(bufnr: integer, lnum: integer)
 end
 
 function M.add(cfg: Config, bufnr: integer, signs: {integer:M.Sign})
+  if not cfg.signcolumn and not cfg.numhl and not cfg.linehl then
+    -- Don't place signs if it won't show anything
+    return
+  end
   for lnum, s in pairs(signs) do
     local stype: string = M.sign_map[s.type]
     local count = s.count
