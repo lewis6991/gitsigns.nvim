@@ -35,6 +35,7 @@ local record M
     status_formatter: function({string:any}): string
     current_line_blame: boolean
     current_line_blame_formatter: function(string, {string:any}): string
+    preview_config: {string:any}
     use_internal_diff: boolean
     use_decoration_api: boolean
 
@@ -238,6 +239,15 @@ M.schema = {
     default = 40000,
     description = [[
       Max file length to attach to.
+    ]]
+  },
+
+  preview_config = {
+    type = 'table',
+    default = {},
+    description = [[
+      Option overrides for the Gitsigns preview window. Table is passed directly
+      to `nvim_open_win`.
     ]]
   },
 
