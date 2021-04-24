@@ -36,6 +36,7 @@ local record M
     current_line_blame: boolean
     current_line_blame_formatter: function(string, {string:any}): string
     preview_config: {string:any}
+    attach_to_untracked: boolean
     use_internal_diff: boolean
     use_decoration_api: boolean
 
@@ -248,6 +249,14 @@ M.schema = {
     description = [[
       Option overrides for the Gitsigns preview window. Table is passed directly
       to `nvim_open_win`.
+    ]]
+  },
+
+  attach_to_untracked = {
+    type = 'boolean',
+    default = true,
+    description = [[
+      Attach to untracked files.
     ]]
   },
 

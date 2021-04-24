@@ -993,4 +993,6 @@ describe('gitsigns', function()
   -- TODO Add test for #163: signcolumn=number with signs disabled shouldn't
   -- overwrite number column
 
+  -- TODO Test config.attach_to_untracked
+
 end)
