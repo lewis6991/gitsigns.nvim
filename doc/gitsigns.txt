@@ -327,6 +327,11 @@ preview_config                                *gitsigns-config-preview_config*
       Option overrides for the Gitsigns preview window. Table is passed directly
       to `nvim_open_win`.
 
+attach_to_untracked                      *gitsigns-config-attach_to_untracked*
+        Type: `boolean`, Default: `true`
+
+      Attach to untracked files.
+
 update_debounce                              *gitsigns-config-update_debounce*
         Type: `number`, Default: `100`
 

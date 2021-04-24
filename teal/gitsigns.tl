@@ -8,7 +8,6 @@ local scheduler  = a.scheduler
 local gs_debounce       = require('gitsigns/debounce')
 local debounce_trailing = gs_debounce.debounce_trailing
 
-local gs_popup          = require('gitsigns/popup')
 local gs_hl             = require('gitsigns/highlight')
 
 local signs             = require('gitsigns/signs')
@@ -585,6 +584,11 @@ local attach = async(function(cbuf: integer)
     return
   end
 
+  if not config.attach_to_untracked and git_obj.object_name == nil then
+    dprint('File is untracked', cbuf, 'attach')
+    return
+  end
+
   -- On windows os.tmpname() crashes in callback threads so initialise this
   -- variable on the main thread.
   await(scheduler())
@@ -809,6 +813,8 @@ local function preview_hunk()
     return
   end
 
+  local gs_popup = require('gitsigns/popup')
+
   local _, bufnr = gs_popup.create(hunk.lines, config.preview_config)
   api.nvim_buf_set_option(bufnr, 'filetype', 'diff')
 end
@@ -840,6 +846,8 @@ local blame_line = async_void(function()
   }
 
   await(scheduler())
+
+  local gs_popup = require('gitsigns/popup')
 
   local _, pbufnr = gs_popup.create(lines, config.preview_config)
 

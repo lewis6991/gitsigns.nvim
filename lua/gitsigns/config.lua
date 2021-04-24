@@ -52,6 +52,7 @@ local M = {Config = {SignsConfig = {}, watch_index = {}, yadm = {}, }, }
 
 
 
+
 M.schema = {
    signs = {
       type = 'table',
@@ -246,8 +247,16 @@ M.schema = {
       type = 'table',
       default = {},
       description = [[
-      Option overrides for the Gitsigns preview window. Value is passed directly
+      Option overrides for the Gitsigns preview window. Table is passed directly
       to `nvim_open_win`.
+    ]],
+   },
+
+   attach_to_untracked = {
+      type = 'boolean',
+      default = true,
+      description = [[
+      Attach to untracked files.
     ]],
    },
 
