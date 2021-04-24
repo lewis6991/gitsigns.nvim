@@ -128,6 +128,12 @@ function M.run_diff(fa: {string}, fb: {string}, diff_algo: string): {Hunk}
   local emitconf = ffi.new('xdemitconf_t') as XDEmitConf
   emitconf.hunk_func = hunk_func as function(Long, Long, Long, Long): number
 
+  local jit_status = jit.status()
+
+  -- Disable jit as jit-compiling a C call which calls a lua callback will cause
+  -- a crash (see https://luajit.org/ext_ffi_semantics.html#callback).
+  jit.off()
+
   local res = ffi.C.xdl_diff(
     mmbuffer(fa),
     mmbuffer(fb),
@@ -135,6 +141,10 @@ function M.run_diff(fa: {string}, fb: {string}, diff_algo: string): {Hunk}
     emitconf,
     ffi.new('xdemitcb_t')
   )
+
+  if jit_status then
+    jit.on()
+  end
 
   assert(res, 'DIFF bad result')
 

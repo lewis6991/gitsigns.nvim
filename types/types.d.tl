@@ -9,6 +9,9 @@ global record jit
     os: string
     version: string
     version_num: number
+    off: function()
+    on: function()
+    status: function(): boolean
 end
 
 local record api
