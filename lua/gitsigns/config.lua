@@ -51,6 +51,7 @@ local M = {Config = {SignsConfig = {}, watch_index = {}, yadm = {}, }, }
 
 
 
+
 M.schema = {
    signs = {
       type = 'table',
@@ -238,6 +239,15 @@ M.schema = {
       default = 40000,
       description = [[
       Max file length to attach to.
+    ]],
+   },
+
+   preview_config = {
+      type = 'table',
+      default = {},
+      description = [[
+      Option overrides for the Gitsigns preview window. Value is passed directly
+      to `nvim_open_win`.
     ]],
    },
 

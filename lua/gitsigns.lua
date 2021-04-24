@@ -809,8 +809,7 @@ local function preview_hunk()
       return
    end
 
-   local ts = api.nvim_buf_get_option(cbuf, 'tabstop')
-   local _, bufnr = gs_popup.create(hunk.lines, { tabstop = ts })
+   local _, bufnr = gs_popup.create(hunk.lines, config.preview_config)
    api.nvim_buf_set_option(bufnr, 'filetype', 'diff')
 end
 
@@ -842,7 +841,7 @@ local blame_line = async_void(function()
 
    await(scheduler())
 
-   local _, pbufnr = gs_popup.create(lines)
+   local _, pbufnr = gs_popup.create(lines, config.preview_config)
 
    local p1 = #result.abbrev_sha
    local p2 = #result.author

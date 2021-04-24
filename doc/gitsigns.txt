@@ -319,6 +319,14 @@ max_file_length                              *gitsigns-config-max_file_length*
 
       Max file length to attach to.
 
+preview_config                                *gitsigns-config-preview_config*
+        Type: `table`, Default:
+>
+        {}
+<
+      Option overrides for the Gitsigns preview window. Table is passed directly
+      to `nvim_open_win`.
+
 update_debounce                              *gitsigns-config-update_debounce*
         Type: `number`, Default: `100`
 
@@ -405,36 +413,4 @@ debug_mode                                        *gitsigns-config-debug_mode*
         Type: `boolean`, Default: `false`
 
         Print diagnostic messages.
-
-==============================================================================
-STATUSLINE                                               *gitsigns-statusline*
-
-                                *b:gitsigns_status* *b:gitsigns_status_dict*
-The buffer variables `b:gitsigns_status` and `b:gitsigns_status_dict` are
-provided. `b:gitsigns_status` is formatted using `config.status_formatter`
-. `b:gitsigns_status_dict` is a dictionary with the keys `added`, `removed`,
-`changed` and `head`.
-
-Example:
->
-    set statusline+=%{get(b:,'gitsigns_status','')}
-<
-                                                             *b:gitsigns_head*
-Use `b:gitsigns_head` to return the name of the current branch. If the current
-HEAD is detached then this will be an empty string.
-
-==============================================================================
-TEXT OBJECTS                                             *gitsigns-textobject*
-
-Since text objects are defined via keymaps, these are exposed and configurable
-via the config, see |gitsigns-config-keymaps|. The lua implementation is
-exposed through |gitsigns.select_hunk()|.
-
-------------------------------------------------------------------------------
-vim:tw=78:ts=8:ft=help:norl:
-
-
-
-
-
 

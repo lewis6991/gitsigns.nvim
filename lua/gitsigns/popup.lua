@@ -35,6 +35,7 @@ local function bufnr_calc_width(buf, lines)
 end
 
 function popup.create(what, opts)
+   local ts = api.nvim_buf_get_option(0, 'tabstop')
    local bufnr = api.nvim_create_buf(false, true)
    assert(bufnr, "Failed to create buffer")
 
@@ -45,12 +46,12 @@ function popup.create(what, opts)
 
 
    if opts.tabstop then
-      api.nvim_buf_set_option(bufnr, 'tabstop', opts.tabstop)
+      api.nvim_buf_set_option(bufnr, 'tabstop', ts)
    end
 
    local win_id = open_win(bufnr, false, {
-      border = 'single',
-      style = 'minimal',
+      border = opts.border or 'single',
+      style = opts.style or 'minimal',
       relative = opts.relative or 'cursor',
       row = opts.row or 0,
       col = opts.col or 1,
