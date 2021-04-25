@@ -27,8 +27,6 @@ local gs_hunks          = require("gitsigns.hunks")
 local process_hunks     = gs_hunks.process_hunks
 local Hunk              = gs_hunks.Hunk
 
-local diff              = require('gitsigns.diff')
-
 local gs_debug          = require("gitsigns.debug")
 local dprint            = gs_debug.dprint
 
@@ -131,6 +129,7 @@ local update = async(function(bufnr: integer, bcache: CacheEntry)
   end
 
   if config.use_internal_diff then
+    local diff = require('gitsigns.diff')
     if not bcache.compare_text or config._refresh_staged_on_update then
       bcache.compare_text = await(git_obj:get_show_text(compare_object))
     end
