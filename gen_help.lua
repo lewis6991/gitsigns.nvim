@@ -5,7 +5,7 @@ exec lua "$0" "$@"
 -- Simple script to update the help doc by reading the config schema.
 
 local inspect = require('inspect')
-local config = require('lua/gitsigns/config')
+local config = require('lua.gitsigns.config')
 
 function table.slice(tbl, first, last, step)
   local sliced = {}

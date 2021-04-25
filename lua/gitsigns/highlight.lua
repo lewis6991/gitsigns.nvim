@@ -1,7 +1,7 @@
 
 local api = vim.api
 
-local dprint = require("gitsigns/debug").dprint
+local dprint = require("gitsigns.debug").dprint
 
 local M = {}
 

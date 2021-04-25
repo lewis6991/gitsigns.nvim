@@ -1,5 +1,5 @@
-local Sign = require('gitsigns/signs').Sign
-local StatusObj = require('gitsigns/status').StatusObj
+local Sign = require('gitsigns.signs').Sign
+local StatusObj = require('gitsigns.status').StatusObj
 
 local record M
   record Hunk

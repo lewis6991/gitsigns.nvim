@@ -40,7 +40,7 @@ end
 local function main()
   io.output("teal/gitsigns/async.tl")
 
-  out('local a = require(\'plenary/async_lib/async\')')
+  out('local a = require(\'plenary.async_lib.async\')')
   out('')
   out('local record M')
 

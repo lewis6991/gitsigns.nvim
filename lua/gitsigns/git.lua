@@ -1,12 +1,12 @@
-local a = require('plenary/async_lib/async')
-local JobSpec = require('plenary/job').JobSpec
+local a = require('plenary.async_lib.async')
+local JobSpec = require('plenary.job').JobSpec
 local await = a.await
 local async = a.async
 
-local gsd = require("gitsigns/debug")
-local util = require('gitsigns/util')
+local gsd = require("gitsigns.debug")
+local util = require('gitsigns.util')
 
-local gs_hunks = require("gitsigns/hunks")
+local gs_hunks = require("gitsigns.hunks")
 local Hunk = gs_hunks.Hunk
 
 local uv = vim.loop

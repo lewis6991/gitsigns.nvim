@@ -21,7 +21,7 @@ end
 vim.api.nvim_set_keymap(
 'n',
 '<Plug>GitsignsRepeat',
-'<cmd>lua require"gitsigns/repeat".repeat_action()<CR>',
+'<cmd>lua require"gitsigns.repeat".repeat_action()<CR>',
 { noremap = false, silent = true })
 
 

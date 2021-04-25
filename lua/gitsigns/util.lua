@@ -1,6 +1,6 @@
-local Job = require('plenary/job')
+local Job = require('plenary.job')
 
-local gsd = require("gitsigns/debug")
+local gsd = require("gitsigns.debug")
 
 local M = {}
 
