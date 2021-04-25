@@ -29,7 +29,7 @@ local Hunk              = gs_hunks.Hunk
 
 local diff              = require('gitsigns.diff')
 
-local gs_debug          = require("gitsigns/debug")
+local gs_debug          = require("gitsigns.debug")
 local dprint            = gs_debug.dprint
 
 local Status            = require("gitsigns/status")
@@ -652,54 +652,6 @@ local function setup_signs_and_highlights(redefine: boolean)
   end
 end
 
-local function add_debug_functions()
-  M.dump_cache = function()
-    api.nvim_echo({{vim.inspect(cache, {
-      process = function(raw_item: any, path: {string}): any
-        if path[#path] == vim.inspect.METATABLE then
-          return nil
-        elseif raw_item is function then
-          return nil
-        elseif raw_item is table then
-          local key <const> = path[#path]
-          if key == 'compare_text' then
-            local item <const> = raw_item as {string}
-            return { '...', length=#item, head=item[1] }
-          elseif not vim.tbl_isempty(raw_item) and vim.tbl_contains({
-            'staged_diffs' }, key) then
-            return { '...', length=#vim.tbl_keys(raw_item) }
-          elseif key == 'pending_signs' then
-            local keys = vim.tbl_keys(raw_item)
-            local max <const> = 100
-            if #keys > max then
-              keys.length = #keys
-              for i = max, #keys do
-                keys[i] = nil
-              end
-              keys[max] = '...'
-            end
-            return keys
-          end
-        end
-        return raw_item
-      end
-    })}}, false, {})
-  end
-
-  M.debug_messages = function(noecho: boolean): {string}
-    if not noecho then
-      for _, m in ipairs(gs_debug.messages) do
-        api.nvim_echo({{m}}, false, {})
-      end
-    end
-    return gs_debug.messages
-  end
-
-  M.clear_debug = function()
-    gs_debug.messages = {}
-  end
-end
-
 -- Needs to be global so can be accessed from v:lua
 local function _complete(arglead: string, line: string): {string}
   local n: integer = #vim.split(line, '%s+')
@@ -758,7 +710,9 @@ local setup = async_void(function(cfg: Config)
   gs_debug.debug_mode = config.debug_mode
 
   if config.debug_mode then
-    add_debug_functions()
+    for nm, f in pairs(gs_debug.add_debug_functions(cache)) do
+      M[nm] = f
+    end
   end
 
   Status.formatter = config.status_formatter as function(Status.StatusObj): string

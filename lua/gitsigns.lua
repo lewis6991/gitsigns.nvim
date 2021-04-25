@@ -29,7 +29,7 @@ local Hunk = gs_hunks.Hunk
 
 local diff = require('gitsigns.diff')
 
-local gs_debug = require("gitsigns/debug")
+local gs_debug = require("gitsigns.debug")
 local dprint = gs_debug.dprint
 
 local Status = require("gitsigns/status")
@@ -625,8 +625,6 @@ local attach = async(function(cbuf)
    apply_keymaps(true)
 end)
 
-local attach_throttled = void(attach)
-
 local function setup_signs_and_highlights(redefine)
 
    for t, sign_name in pairs(signs.sign_map) do
@@ -651,54 +649,6 @@ local function setup_signs_and_highlights(redefine)
    end
    if config.current_line_blame then
       gs_hl.setup_highlight('GitSignsCurrentLineBlame')
-   end
-end
-
-local function add_debug_functions()
-   M.dump_cache = function()
-      api.nvim_echo({ { vim.inspect(cache, {
-   process = function(raw_item, path)
-      if path[#path] == vim.inspect.METATABLE then
-         return nil
-      elseif type(raw_item) == "function" then
-         return nil
-      elseif type(raw_item) == "table" then
-         local key = path[#path]
-         if key == 'compare_text' then
-            local item = raw_item
-            return { '...', length = #item, head = item[1] }
-         elseif not vim.tbl_isempty(raw_item) and vim.tbl_contains({
-               'staged_diffs', }, key) then
-            return { '...', length = #vim.tbl_keys(raw_item) }
-         elseif key == 'pending_signs' then
-            local keys = vim.tbl_keys(raw_item)
-            local max = 100
-            if #keys > max then
-               keys.length = #keys
-               for i = max, #keys do
-                  keys[i] = nil
-               end
-               keys[max] = '...'
-            end
-            return keys
-         end
-      end
-      return raw_item
-   end,
-}), }, }, false, {})
-   end
-
-   M.debug_messages = function(noecho)
-      if not noecho then
-         for _, m in ipairs(gs_debug.messages) do
-            api.nvim_echo({ { m } }, false, {})
-         end
-      end
-      return gs_debug.messages
-   end
-
-   M.clear_debug = function()
-      gs_debug.messages = {}
    end
 end
 
@@ -760,7 +710,9 @@ local setup = async_void(function(cfg)
    gs_debug.debug_mode = config.debug_mode
 
    if config.debug_mode then
-      add_debug_functions()
+      for nm, f in pairs(gs_debug.add_debug_functions(cache)) do
+         M[nm] = f
+      end
    end
 
    Status.formatter = config.status_formatter
@@ -806,12 +758,8 @@ local setup = async_void(function(cfg)
 end)
 
 local function preview_hunk()
-   local cbuf = current_buf()
-   local hunk = get_cursor_hunk(cbuf)
-
-   if not hunk then
-      return
-   end
+   local hunk = get_cursor_hunk()
+   if not hunk then return end
 
    local gs_popup = require('gitsigns/popup')
 
@@ -821,9 +769,7 @@ end
 
 local function select_hunk()
    local hunk = get_cursor_hunk()
-   if not hunk then
-      return
-   end
+   if not hunk then return end
 
    vim.cmd('normal! ' .. hunk.start .. 'GV' .. hunk.vend .. 'G')
 end
@@ -831,9 +777,7 @@ end
 local blame_line = async_void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
-   if not bcache then
-      return
-   end
+   if not bcache then return end
 
    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
    local lnum = api.nvim_win_get_cursor(0)[1]
@@ -932,7 +876,7 @@ M = {
    preview_hunk = preview_hunk,
    blame_line = blame_line,
    reset_buffer = reset_buffer,
-   attach = attach_throttled,
+   attach = void(attach),
    detach = detach,
    detach_all = detach_all,
    setup = setup,
