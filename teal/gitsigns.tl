@@ -625,8 +625,6 @@ local attach = async(function(cbuf: integer)
   apply_keymaps(true)
 end)
 
-local attach_throttled = void(attach)
-
 local function setup_signs_and_highlights(redefine: boolean)
   -- Define signs
   for t, sign_name in pairs(signs.sign_map) do
@@ -806,12 +804,8 @@ local setup = async_void(function(cfg: Config)
 end)
 
 local function preview_hunk()
-  local cbuf = current_buf()
-  local hunk = get_cursor_hunk(cbuf)
-
-  if not hunk then
-    return
-  end
+  local hunk = get_cursor_hunk()
+  if not hunk then return end
 
   local gs_popup = require('gitsigns/popup')
 
@@ -821,9 +815,7 @@ end
 
 local function select_hunk()
   local hunk = get_cursor_hunk()
-  if not hunk then
-    return
-  end
+  if not hunk then return end
 
   vim.cmd('normal! '..hunk.start..'GV'..hunk.vend..'G')
 end
@@ -831,9 +823,7 @@ end
 local blame_line = async_void(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
-  if not bcache then
-    return
-  end
+  if not bcache then return end
 
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local lnum = api.nvim_win_get_cursor(0)[1]
@@ -932,7 +922,7 @@ M = {
   preview_hunk         = preview_hunk,
   blame_line           = blame_line,
   reset_buffer         = reset_buffer,
-  attach               = attach_throttled,
+  attach               = void(attach),
   detach               = detach,
   detach_all           = detach_all,
   setup                = setup,
