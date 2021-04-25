@@ -1,4 +1,4 @@
-local Config = require('gitsigns/config').Config
+local Config = require('gitsigns.config').Config
 
 local record M
   enum SignName

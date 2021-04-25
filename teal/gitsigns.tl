@@ -1,29 +1,29 @@
-local a = require('plenary/async_lib/async')
+local a = require('plenary.async_lib.async')
 local void       = a.void
 local await      = a.await
 local async      = a.async
 local async_void = a.async_void
 local scheduler  = a.scheduler
 
-local gs_debounce       = require('gitsigns/debounce')
+local gs_debounce       = require('gitsigns.debounce')
 local debounce_trailing = gs_debounce.debounce_trailing
 
-local gs_hl             = require('gitsigns/highlight')
+local gs_hl             = require('gitsigns.highlight')
 
-local signs             = require('gitsigns/signs')
+local signs             = require('gitsigns.signs')
 local Sign              = signs.Sign
 
-local gs_config         = require('gitsigns/config')
+local gs_config         = require('gitsigns.config')
 local Config            = gs_config.Config
 
-local mk_repeatable     = require('gitsigns/repeat').mk_repeatable
+local mk_repeatable     = require('gitsigns.repeat').mk_repeatable
 
-local apply_mappings    = require('gitsigns/mappings')
+local apply_mappings    = require('gitsigns.mappings')
 
-local git               = require('gitsigns/git')
-local util              = require('gitsigns/util')
+local git               = require('gitsigns.git')
+local util              = require('gitsigns.util')
 
-local gs_hunks          = require("gitsigns/hunks")
+local gs_hunks          = require("gitsigns.hunks")
 local process_hunks     = gs_hunks.process_hunks
 local Hunk              = gs_hunks.Hunk
 
@@ -32,7 +32,7 @@ local diff              = require('gitsigns.diff')
 local gs_debug          = require("gitsigns.debug")
 local dprint            = gs_debug.dprint
 
-local Status            = require("gitsigns/status")
+local Status            = require("gitsigns.status")
 
 local api = vim.api
 local uv = vim.loop
@@ -761,7 +761,7 @@ local function preview_hunk()
   local hunk = get_cursor_hunk()
   if not hunk then return end
 
-  local gs_popup = require('gitsigns/popup')
+  local gs_popup = require('gitsigns.popup')
 
   local _, bufnr = gs_popup.create(hunk.lines, config.preview_config)
   api.nvim_buf_set_option(bufnr, 'filetype', 'diff')
@@ -791,7 +791,7 @@ local blame_line = async_void(function()
 
   await(scheduler())
 
-  local gs_popup = require('gitsigns/popup')
+  local gs_popup = require('gitsigns.popup')
 
   local _, pbufnr = gs_popup.create(lines, config.preview_config)
 
