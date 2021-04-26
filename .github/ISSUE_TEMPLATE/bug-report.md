@@ -21,11 +21,10 @@ set runtimepath^=$PLUGIN_DIRECTORY/gitsigns.nvim
 
 lua << EOF
 require('gitsigns').setup {
-  debug_mode = true, -- Add this to enable debug messages
+  debug_mode = true, -- You must add this to enable debug messages
   -- config
 }
 EOF
-
 ```
 
 Steps to reproduce the behavior:
@@ -36,7 +35,7 @@ Steps to reproduce the behavior:
 **Observed output**
 Error messages, logs, etc
 
-Include the output of `:lua require('gitsigns').debug_messages()`.
+Include the output of `:Gitsigns debug_messages`. If you think it's relevant maybe also provide the output of `:Gitsigns dump_cache`.
 
 **Screenshots**
 If applicable, add screenshots to help explain your problem or to capture error messages.
