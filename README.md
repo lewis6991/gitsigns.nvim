@@ -69,7 +69,7 @@ use {
 }
 ```
 
-Configuration can be passed to the setup function. Here is an example with all
+Configuration can be passed to the setup function. Here is an example with most of
 the default settings:
 
 ```lua
