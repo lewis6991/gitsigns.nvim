@@ -419,7 +419,7 @@ local function resolve_default(schema_elem)
    end
 end
 
-function M.process(user_config)
+function M.build(user_config)
    user_config = user_config or {}
 
    validate_config(user_config)
