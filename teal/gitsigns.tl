@@ -703,7 +703,7 @@ local function setup_current_line_blame()
 end
 
 local setup = async_void(function(cfg: Config)
-  config = gs_config.process(cfg)
+  config = gs_config.build(cfg)
   namespace = api.nvim_create_namespace('gitsigns')
 
   gs_debug.debug_mode = config.debug_mode
@@ -883,6 +883,11 @@ M = {
   toggle_signs         = toggle_signs,
   toggle_linehl        = toggle_linehl,
   toggle_numhl         = toggle_numhl,
+
+  -- Internal, API unstable
+  _get_config = function(): Config
+    return config
+  end,
 
   _complete = _complete,
 
