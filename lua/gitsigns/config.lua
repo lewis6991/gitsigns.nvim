@@ -427,6 +427,14 @@ local function validate_config(config)
    end
 end
 
+local function resolve_default(v)
+   if type(v.default) == 'function' and v.type ~= 'function' then
+      return (v.default)()
+   else
+      return v.default
+   end
+end
+
 function M.build(user_config)
    user_config = user_config or {}
 
@@ -434,12 +442,15 @@ function M.build(user_config)
 
    local config = {}
    for k, v in pairs(M.schema) do
-      if user_config[k] == nil then
-         config[k] = v.default
-      elseif v.deep_extend then
-         config[k] = vim.tbl_deep_extend('force', v.default, user_config[k])
+      if user_config[k] ~= nil then
+         if v.deep_extend then
+            local d = resolve_default(v)
+            config[k] = vim.tbl_deep_extend('force', d, user_config[k])
+         else
+            config[k] = user_config[k]
+         end
       else
-         config[k] = user_config[k]
+         config[k] = resolve_default(v)
       end
    end
 
