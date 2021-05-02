@@ -42,7 +42,7 @@ local function read_file_lines(path)
   return lines
 end
 
--- To makw sure the output is consistent between runs (to minimise diffs), we
+-- To make sure the output is consistent between runs (to minimise diffs), we
 -- need to iterate through the schema keys in a deterministic way. To do this we
 -- do a smple scan over the file the schema is defined in and collect the keys
 -- in the order they are defined.
@@ -71,31 +71,82 @@ local function get_ordered_schema_keys()
   return keys
 end
 
+local function get_default(field)
+  local cfg = read_file_lines('teal/gitsigns/config.tl')
+
+  local fs, fe
+  for i = 1, #cfg do
+    local l = cfg[i]
+    if l:match('^  '..field..' =') then
+      fs = i
+    end
+    if fs and l:match('^  }') then
+      fe = i
+      break
+    end
+  end
+
+  local ds, de
+  for i = fs, fe do
+    local l = cfg[i]
+    if l:match('^    default =') then
+      ds = i
+      if l:match('},') then
+        de = i
+        break
+      end
+    end
+    if ds and l:match('^    }') then
+      de = i
+      break
+    end
+  end
+
+  local ret = {}
+  for i = ds, de do
+    local l = cfg[i]
+    if i == ds then
+      l = l:gsub('%s*default = ', '')
+    elseif i == de then
+      l = l:gsub('(}),', '%1')
+    end
+    table.insert(ret, l)
+  end
+
+  return table.concat(ret, '\n')
+end
+
 local function gen_config_doc()
   for _, k in ipairs(get_ordered_schema_keys()) do
     local v = config.schema[k]
     local t = ('*gitsigns-config-%s*'):format(k)
     out(('%-30s%48s'):format(k, t))
-    if v.default_help ~= nil or is_simple_type(v.type) then
-      local d = v.default_help or ('`%s`'):format(inspect(v.default))
-      out(('        Type: `%s`, Default: %s'):format(v.type, d))
-      out()
+
+    local d
+    if v.default_help ~= nil then
+      d = v.default_help
+    elseif is_simple_type(v.type) then
+      d = inspect(v.default)
+      d = ('`%s`'):format(d)
     else
-      out(('        Type: `%s`, Default:'):format(v.type))
-      out('>')
-      local d = v.default
-      if type(d) == 'table' then
-        d = inspect(d):gsub('\n([^\n\r])', '\n    %1')
-      elseif type(d) == 'function' then
-        local info = debug.getinfo(d)
-        local start, last = info.linedefined, info.lastlinedefined
-        local source = info.source:sub(2)  -- Remove leading @
-        local func = table.slice(read_file_lines(source), start, last)
-        d = table.concat(func, '\n    ')
+      d = get_default(k)
+      if d:find('\n') then
+        d = d:gsub('\n([^\n\r])', '\n%1')
+      else
+        d = ('`%s`'):format(d)
       end
+    end
+
+    if d:find('\n') then
+      out(('      Type: `%s`'):format(v.type))
+      out('      Default: >')
       out('        '..d:gsub('\n([^\n\r])', '\n    %1'))
       out('<')
+    else
+      out(('      Type: `%s`, Default: %s'):format(v.type, d))
+      out()
     end
+
     out(v.description:gsub(' +$', ''))
   end
 end
@@ -132,4 +183,3 @@ local function main()
 end
 
 main()
--- helo
