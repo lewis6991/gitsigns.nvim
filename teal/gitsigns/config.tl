@@ -57,41 +57,40 @@ M.schema = {
   signs = {
     type = 'table',
     deep_extend = true,
-    default = [[{
+    default = {
       add          = {hl = 'GitSignsAdd'   , text = '│', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
       change       = {hl = 'GitSignsChange', text = '│', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
       delete       = {hl = 'GitSignsDelete', text = '_', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
       topdelete    = {hl = 'GitSignsDelete', text = '‾', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
       changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
-    }]],
+    },
     description = [[
-        Configuration for signs:
-          • `hl` specifies the highlight group to use for the sign.
-          • `text` specifies the character to use for the sign.
-          • `numhl` specifies the highlight group to use for the number column
-            (see |gitsigns-config.numhl|).
-          • `linehl` specifies the highlight group to use for the line
-            (see |gitsigns-config.linehl|).
-          • `show_count` to enable showing count of hunk, e.g. number of deleted
-            lines.
+      Configuration for signs:
+        • `hl` specifies the highlight group to use for the sign.
+        • `text` specifies the character to use for the sign.
+        • `numhl` specifies the highlight group to use for the number column
+          (see |gitsigns-config.numhl|).
+        • `linehl` specifies the highlight group to use for the line
+          (see |gitsigns-config.linehl|).
+        • `show_count` to enable showing count of hunk, e.g. number of deleted
+          lines.
 
-        Note if `hl`, `numhl` or `linehl` use a `GitSigns*` highlight and it is
-        not defined, it will be automatically derived by searching for other
-        defined highlights in the following order:
-          • `GitGutter*`
-          • `Signify*`
-          • `Diff*`
+      Note if `hl`, `numhl` or `linehl` use a `GitSigns*` highlight and it is
+      not defined, it will be automatically derived by searching for other
+      defined highlights in the following order:
+        • `GitGutter*`
+        • `Signify*`
+        • `Diff*`
 
-        For example if `signs.add.hl = GitSignsAdd` and `GitSignsAdd` is not
-        defined but `GitGutterAdd` is defined, then `GitSignsAdd` will be linked
-        to `GitGutterAdd`.
-
+      For example if `signs.add.hl = GitSignsAdd` and `GitSignsAdd` is not
+      defined but `GitGutterAdd` is defined, then `GitSignsAdd` will be linked
+      to `GitGutterAdd`.
     ]]
   },
 
   keymaps = {
     type = 'table',
-    default = [[{
+    default = {
       -- Default keymap options
       noremap = true,
       buffer = true,
@@ -110,26 +109,26 @@ M.schema = {
 
       ['o ih'] = ':<C-U>lua require"gitsigns".select_hunk()<CR>',
       ['x ih'] = ':<C-U>lua require"gitsigns".select_hunk()<CR>'
-    }]],
+    },
     description = [[
-        Keymaps to set up when attaching to a buffer.
+      Keymaps to set up when attaching to a buffer.
 
-        Each key in the table defines the mode and key (whitespace delimited)
-        for the mapping and the value defines what the key maps to. The value
-        can be a table which can contain keys matching the options defined in
-        |map-arguments| which are: `expr`, `noremap`, `nowait`, `script`,
-        `silent`, `unique` and `buffer`.  These options can also be used in
-        the top level of the table to define default options for all mappings.
+      Each key in the table defines the mode and key (whitespace delimited)
+      for the mapping and the value defines what the key maps to. The value
+      can be a table which can contain keys matching the options defined in
+      |map-arguments| which are: `expr`, `noremap`, `nowait`, `script`,
+      `silent`, `unique` and `buffer`.  These options can also be used in
+      the top level of the table to define default options for all mappings.
     ]]
   },
 
   watch_index = {
     type = 'table',
-    default = [[{ interval = 1000 }]],
+    default = { interval = 1000 },
     description = [[
-        When opening a file, a libuv watcher is placed on the respective
-        `.git/index` file to detect when changes happen to use as a trigger to
-        update signs.
+      When opening a file, a libuv watcher is placed on the respective
+      `.git/index` file to detect when changes happen to use as a trigger to
+      update signs.
     ]]
   },
 
@@ -137,7 +136,7 @@ M.schema = {
     type = 'number',
     default = 6,
     description = [[
-        Priority to use for signs.
+      Priority to use for signs.
     ]]
   },
 
@@ -145,10 +144,10 @@ M.schema = {
     type = 'boolean',
     default = true,
     description = [[
-        Enable/disable symbols in the sign column.
+      Enable/disable symbols in the sign column.
 
-        When enabled the highlights defined in `signs.*.hl` and symbols defined
-        in `signs.*.text` are used.
+      When enabled the highlights defined in `signs.*.hl` and symbols defined
+      in `signs.*.text` are used.
     ]]
   },
 
@@ -156,11 +155,11 @@ M.schema = {
     type = 'boolean',
     default = false,
     description = [[
-        Enable/disable line number highlights.
+      Enable/disable line number highlights.
 
-        When enabled the highlights defined in `signs.*.numhl` are used. If
-        the highlight group does not exist, then it is automatically defined
-        and linked to the corresponding highlight group in `signs.*.hl`.
+      When enabled the highlights defined in `signs.*.numhl` are used. If
+      the highlight group does not exist, then it is automatically defined
+      and linked to the corresponding highlight group in `signs.*.hl`.
     ]]
   },
 
@@ -168,19 +167,18 @@ M.schema = {
     type = 'boolean',
     default = false,
     description = [[
-        Enable/disable line highlights.
+      Enable/disable line highlights.
 
-        When enabled the highlights defined in `signs.*.linehl` are used. If
-        the highlight group does not exist, then it is automatically defined
-        and linked to the corresponding highlight group in `signs.*.hl`.
+      When enabled the highlights defined in `signs.*.linehl` are used. If
+      the highlight group does not exist, then it is automatically defined
+      and linked to the corresponding highlight group in `signs.*.hl`.
     ]]
   },
 
   diff_algorithm = {
     type = 'string',
-
-    -- Get algorithm from 'diffopt'
-    default = [[function()
+    default = function(): string
+      -- Get algorithm from 'diffopt'
       local algo = 'myers'
       for o in vim.gsplit(vim.o.diffopt, ',') do
         if vim.startswith(o, 'algorithm:') then
@@ -188,10 +186,10 @@ M.schema = {
         end
       end
       return algo
-    end]],
+    end,
     default_help = "taken from 'diffopt'",
     description = [[
-        Diff algorithm to pass to `git diff` .
+      Diff algorithm to pass to `git diff` .
     ]]
   },
 
@@ -210,19 +208,27 @@ M.schema = {
       ['+'] = '>', -- '₊',
     },
     description = [[
-        The count characters used when `signs.*.show_count` is enabled. The
-        `+` entry is used as a fallback. With the default, any count outside
-        of 1-9 uses the `>` character in the sign.
+      The count characters used when `signs.*.show_count` is enabled. The
+      `+` entry is used as a fallback. With the default, any count outside
+      of 1-9 uses the `>` character in the sign.
 
-        Possible use cases for this field:
-          • to specify unicode characters for the counts instead of 1-9.
-          • to define characters to be used for counts greater than 9.
+      Possible use cases for this field:
+        • to specify unicode characters for the counts instead of 1-9.
+        • to define characters to be used for counts greater than 9.
     ]]
   },
 
   status_formatter = {
     type = 'function',
-    default = [[function(status)
+    default = function(status: {string:number}): string
+      local added, changed, removed = status.added, status.changed, status.removed
+      local status_txt = {}
+      if added   and added   > 0 then table.insert(status_txt, '+'..added  ) end
+      if changed and changed > 0 then table.insert(status_txt, '~'..changed) end
+      if removed and removed > 0 then table.insert(status_txt, '-'..removed) end
+      return table.concat(status_txt, ' ')
+    end,
+    default_help = [[function(status)
       local added, changed, removed = status.added, status.changed, status.removed
       local status_txt = {}
       if added   and added   > 0 then table.insert(status_txt, '+'..added  ) end
@@ -231,7 +237,7 @@ M.schema = {
       return table.concat(status_txt, ' ')
     end]],
     description = [[
-        Function used to format `b:gitsigns_status`.
+      Function used to format `b:gitsigns_status`.
     ]]
   },
 
@@ -270,18 +276,18 @@ M.schema = {
 
   use_internal_diff = {
     type = 'boolean',
-    default = [[function()
+    default = function(): boolean
       if not jit or jit.os == "Windows" then
         return false
       else
         return true
       end
-    end]],
-    default_help = "true if luajit is present (windows unsupported)",
+    end,
+    default_help = "`true` if luajit is present (windows unsupported)",
     description = [[
-        Use Neovim's built in xdiff library for running diffs.
+      Use Neovim's built in xdiff library for running diffs.
 
-        This uses LuaJIT's FFI interface.
+      This uses LuaJIT's FFI interface.
     ]]
   },
 
@@ -289,9 +295,9 @@ M.schema = {
     type = 'boolean',
     default = true,
     description = [[
-        Use Neovim's decoration API to apply signs. This should improve
-        performance on large files since signs will only be applied to drawn
-        lines as opposed to all lines in the buffer.
+      Use Neovim's decoration API to apply signs. This should improve
+      performance on large files since signs will only be applied to drawn
+      lines as opposed to all lines in the buffer.
     ]]
   },
 
@@ -299,16 +305,35 @@ M.schema = {
     type = 'boolean',
     default = false,
     description = [[
-        Adds an unobtrusive and customisable blame annotation at the end of
-        the current line.
+      Adds an unobtrusive and customisable blame annotation at the end of
+      the current line.
 
-        The highlight group used for the text is `GitSignsCurrentLineBlame`.
+      The highlight group used for the text is `GitSignsCurrentLineBlame`.
     ]]
   },
 
   current_line_blame_formatter = {
     type = 'function',
-    default = [[function(name, blame_info)
+    default = function(name: string, blame_info: {string:string}): {{string}}
+      if blame_info.author == name then
+        blame_info.author = 'You'
+      end
+
+      local text: string
+      if blame_info.author == 'Not Committed Yet' then
+        text = blame_info.author
+      else
+        text = string.format(
+          '%s, %s - %s',
+          blame_info.author,
+          os.date('%Y-%m-%d', tonumber(blame_info['author_time'])),
+          blame_info.summary
+        )
+      end
+
+      return {{' '..text, 'GitSignsCurrentLineBlame'}}
+    end,
+    default_help = [[function(name, blame_info)
       if blame_info.author == name then
         blame_info.author = 'You'
       end
@@ -328,38 +353,38 @@ M.schema = {
       return {{' '..text, 'GitSignsCurrentLineBlame'}}
     end]],
     description = [[
-        Function used to format the virtual text of
-        |gitsigns-config-current_line_blame|. The first argument {name} is the
-        git user name returned from: >
-            git config user.name
+      Function used to format the virtual text of
+      |gitsigns-config-current_line_blame|. The first argument {name} is the
+      git user name returned from: >
+        git config user.name
 <
-        The second argument {blame_info} is a table with the following keys:
-        - abbrev_sha: string
-        - orig_lnum: integer
-        - final_lnum: integer
-        - author: string
-        - author_mail: string
-        - author_time: integer
-        - author_tz: string
-        - committer: string
-        - committer_mail: string
-        - committer_time: integer
-        - committer_tz: string
-        - summary: string
-        - previous: string
-        - filename: string
+      The second argument {blame_info} is a table with the following keys:
+      - abbrev_sha: string
+      - orig_lnum: integer
+      - final_lnum: integer
+      - author: string
+      - author_mail: string
+      - author_time: integer
+      - author_tz: string
+      - committer: string
+      - committer_mail: string
+      - committer_time: integer
+      - committer_tz: string
+      - summary: string
+      - previous: string
+      - filename: string
 
-        Note that the keys map onto the output of: >
-            git blame --line-porcelain
+      Note that the keys map onto the output of: >
+        git blame --line-porcelain
 <
     ]]
   },
 
   yadm = {
     type = 'table',
-    default = [[{ enable = false }]],
+    default = { enable = false },
     description = [[
-        yadm configuration.
+      yadm configuration.
     ]]
   },
 
@@ -367,7 +392,7 @@ M.schema = {
     type = 'string',
     default = 'auto',
     description = [[
-        Version of git available. Set to 'auto' to automatically detect.
+      Version of git available. Set to 'auto' to automatically detect.
     ]]
   },
 
@@ -375,9 +400,9 @@ M.schema = {
     type = 'boolean',
     default = true,
     description = [[
-        Always refresh the staged file on each update. Disabling this will cause
-        the staged file to only be refreshed when an update to the index is
-        detected.
+      Always refresh the staged file on each update. Disabling this will cause
+      the staged file to only be refreshed when an update to the index is
+      detected.
     ]]
   },
 
@@ -385,7 +410,7 @@ M.schema = {
     type = 'boolean',
     default = false,
     description = [[
-        Print diagnostic messages.
+      Print diagnostic messages.
     ]]
   }
 }
@@ -402,23 +427,6 @@ local function validate_config(config: {string:any})
   end
 end
 
-local function resolve_default(schema_elem: SchemaElem): any
-  local v = schema_elem
-  local default = v.default
-  if default is string and vim.startswith(default, 'function(') then
-    local d = loadstring('return '..default)() as function
-    if v.type == 'function' then
-      return d
-    else
-      return d()
-    end
-  elseif default is string and vim.startswith(default, '{') then
-    return loadstring('return '..default)()
-  else
-    return default
-  end
-end
-
 function M.build(user_config: {string:any}): M.Config
   user_config = user_config or {}
 
@@ -426,15 +434,12 @@ function M.build(user_config: {string:any}): M.Config
 
   local config: {string:any} = {}
   for k, v in pairs(M.schema) do
-    if user_config[k] ~= nil then
-      if v.deep_extend then
-        local d = resolve_default(v)
-        config[k] = vim.tbl_deep_extend('force', d as table, user_config[k] as table)
-      else
-        config[k] = user_config[k]
-      end
+    if user_config[k] == nil then
+      config[k] = v.default
+    elseif v.deep_extend then
+      config[k] = vim.tbl_deep_extend('force', v.default as table, user_config[k] as table)
     else
-      config[k] = resolve_default(v)
+      config[k] = user_config[k]
     end
   end
 

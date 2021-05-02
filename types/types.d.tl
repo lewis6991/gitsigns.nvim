@@ -182,6 +182,7 @@ global record vim
   cmd: function(string): any
 
   record o
+    diffopt: string
     wrapscan: boolean
     updatetime: number
   end
@@ -261,6 +262,8 @@ global record vim
   list_extend: function({any}, {any}, integer, integer)
   split: function(string, string): {string}
   split: function(string, string, boolean): {string}
+
+  gsplit: function(string, string, boolean): function(): string
 
   startswith: function(string, string): boolean
 
