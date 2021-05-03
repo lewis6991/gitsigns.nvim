@@ -340,8 +340,16 @@ max_file_length                              *gitsigns-config-max_file_length*
       Max file length to attach to.
 
 preview_config                                *gitsigns-config-preview_config*
-      Type: `table`, Default: `{},`
-
+      Type: `table`
+      Default: >
+        {
+          border   = 'single',
+          style    = 'minimal',
+          relative = 'cursor',
+          row      = 0,
+          col      = 1
+        }
+<
       Option overrides for the Gitsigns preview window. Table is passed directly
       to `nvim_open_win`.
 
