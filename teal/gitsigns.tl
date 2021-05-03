@@ -609,7 +609,12 @@ local attach = async(function(cbuf: integer)
   await(scheduler())
 
   api.nvim_buf_attach(cbuf, false, {
-    on_lines = function(_, buf: integer, _, _, last_orig: integer, last_new: integer): boolean
+    on_lines = function(_, buf: integer, _, first: integer, last_orig: integer, last_new: integer, byte_count: integer): boolean
+      if first == last_orig and last_orig == last_new and byte_count == 0 then
+        -- on_lines can be called twice for undo events; ignore the second
+        -- call which indicates no changes.
+        return
+      end
       return on_lines(buf, last_orig, last_new)
     end,
     on_reload = function(_, buf: integer)
