@@ -181,6 +181,8 @@ global record vim
 
   cmd: function(string): any
 
+  deepcopy: function<T>(T): T
+
   record o
     diffopt: string
     wrapscan: boolean
