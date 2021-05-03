@@ -251,7 +251,14 @@ M.schema = {
 
   preview_config = {
     type = 'table',
-    default = {},
+    deep_extend = true,
+    default = {
+      border   = 'single',
+      style    = 'minimal',
+      relative = 'cursor',
+      row      = 0,
+      col      = 1
+    },
     description = [[
       Option overrides for the Gitsigns preview window. Table is passed directly
       to `nvim_open_win`.
