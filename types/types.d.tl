@@ -157,6 +157,8 @@ global record vim
   api: api
   record fn
     line: function(string): integer
+    join: function({any}, string): string
+    getpos: function(string): {integer}
     expand: function(string): string
     sign_unplace: function(string, {string:any})
     sign_place: function(number, string, string, string | number, {string:any})

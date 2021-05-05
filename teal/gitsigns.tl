@@ -300,8 +300,9 @@ local function _complete(arglead: string, line: string): {string}
   return matches
 end
 
-local function _run_func(func: string, ...: any)
+local function _run_func(range: {integer, integer}, func: string, ...: any)
   local actions = require('gitsigns.actions') as {string:function}
+  actions._set_user_range(range)
   if type(actions[func]) == 'function' then
     actions[func](...)
     return
@@ -315,10 +316,11 @@ end
 local function setup_command()
   vim.cmd(table.concat({
     'command!',
+    '-range',
     '-nargs=+',
     '-complete=customlist,v:lua.package.loaded.gitsigns._complete',
     'Gitsigns',
-    'lua require("gitsigns")._run_func(<f-args>)'
+    'lua require("gitsigns")._run_func({<line1>, <line2>}, <f-args>)'
   }, ' '))
 end
 

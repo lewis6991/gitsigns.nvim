@@ -52,8 +52,10 @@ of the default settings:
         ['n [c'] = { expr = true, "&diff ? '[c' : '<cmd>lua require\"gitsigns\".prev_hunk()<CR>'"},
 
         ['n <leader>hs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
+        ['v <leader>hs'] = '<cmd>lua require"gitsigns".stage_hunk({vim.fn.line("."), vim.fn.line("v")})<CR>',
         ['n <leader>hu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
         ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
+        ['v <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk({vim.fn.line("."), vim.fn.line("v")})<CR>',
         ['n <leader>hR'] = '<cmd>lua require"gitsigns".reset_buffer()<CR>',
         ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
         ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line(true)<CR>',
@@ -122,8 +124,14 @@ prev_hunk({opts})                                       *gitsigns.prev_hunk()*
                               Whether to loop around file or not. Defaults
                               to the value 'wrapscan'
 
-stage_hunk()                                           *gitsigns.stage_hunk()*
-                Stage the hunk at the cursor position.
+stage_hunk({range})                                    *gitsigns.stage_hunk()*
+                Stage the hunk at the cursor position, or all hunks in the
+                given range. If {range} is provided, all hunks that intersect
+                with the given range are staged.
+
+                Parameters:~
+                    {range} table|nil List-like table of two integers making
+                    up the line range from which you want to stage the hunks.
 
 undo_stage_hunk()                                 *gitsigns.undo_stage_hunk()*
                 Undo the last call of stage_hunk(). Note: only the calls to
@@ -137,9 +145,15 @@ reset_buffer_index()                           *gitsigns.reset_buffer_index()*
                 Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
                 stages, this runs an `git reset` on current buffers file.
 
-reset_hunk()                                           *gitsigns.reset_hunk()*
-                Reset the lines of the hunk at the cursor position to what
-                is in Git's index.
+reset_hunk({range})                                    *gitsigns.reset_hunk()*
+                Reset the lines of the hunk at the cursor position, or all
+                hunks in the given range, to what it is in Git's index. If
+                {range} is provided, all hunks that intersect with the given
+                range are reset.
+
+                Parameters:~
+                    {range} table|nil List-like table of two integers making
+                    up the line range from which you want to reset the hunks.
 
 reset_buffer()                                       *gitsigns.reset_buffer()*
                 Reset the lines of all hunks in the buffer.
@@ -274,8 +288,10 @@ keymaps                                              *gitsigns-config-keymaps*
           ['n [c'] = { expr = true, "&diff ? '[c' : '<cmd>lua require\"gitsigns\".prev_hunk()<CR>'"},
 
           ['n <leader>hs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
+          ['v <leader>hs'] = '<cmd>lua require"gitsigns".stage_hunk({vim.fn.line("."), vim.fn.line("v")})<CR>',
           ['n <leader>hu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
           ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
+          ['v <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk({vim.fn.line("."), vim.fn.line("v")})<CR>',
           ['n <leader>hR'] = '<cmd>lua require"gitsigns".reset_buffer()<CR>',
           ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
           ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line(true)<CR>',
