@@ -5,34 +5,24 @@ local async = a.async
 local async_void = a.async_void
 local scheduler = a.scheduler
 
-local sleep = require('plenary.async_lib.util').sleep
-
-local gs_debounce = require('gitsigns.debounce')
-local debounce_trailing = gs_debounce.debounce_trailing
-
+local Status = require("gitsigns.status")
+local apply_mappings = require('gitsigns.mappings')
+local git = require('gitsigns.git')
 local gs_hl = require('gitsigns.highlight')
-
+local manager = require('gitsigns.manager')
 local signs = require('gitsigns.signs')
-local Sign = signs.Sign
+local util = require('gitsigns.util')
+
+local gs_cache = require('gitsigns.cache')
+local cache = gs_cache.cache
+local CacheEntry = gs_cache.CacheEntry
 
 local gs_config = require('gitsigns.config')
 local Config = gs_config.Config
-
-local mk_repeatable = require('gitsigns.repeat').mk_repeatable
-
-local apply_mappings = require('gitsigns.mappings')
-
-local git = require('gitsigns.git')
-local util = require('gitsigns.util')
-
-local gs_hunks = require("gitsigns.hunks")
-local process_hunks = gs_hunks.process_hunks
-local Hunk = gs_hunks.Hunk
+local config = gs_config.config
 
 local gs_debug = require("gitsigns.debug")
 local dprint = gs_debug.dprint
-
-local Status = require("gitsigns.status")
 
 local api = vim.api
 local uv = vim.loop
@@ -40,158 +30,7 @@ local current_buf = api.nvim_get_current_buf
 
 local M = {}
 
-local config
-
 local namespace
-
-local CacheEntry = {}
-
-
-
-
-
-
-
-
-
-
-
-
-local cache = {}
-
-local function get_cursor_hunk(bufnr, hunks)
-   bufnr = bufnr or current_buf()
-   hunks = hunks or cache[bufnr].hunks
-
-   local lnum = api.nvim_win_get_cursor(0)[1]
-   return gs_hunks.find_hunk(lnum, hunks)
-end
-
-local function apply_win_signs(bufnr, pending, top, bot)
-
-
-   local first_apply = top == nil
-
-   if config.use_decoration_api then
-
-      top = top or vim.fn.line('w0')
-      bot = bot or vim.fn.line('w$')
-   else
-      top = top or 1
-      bot = bot or vim.fn.line('$')
-   end
-
-   local scheduled = {}
-
-   local function schedule_sign(n, _)
-      if n and pending[n] then
-         scheduled[n] = pending[n]
-         pending[n] = nil
-      end
-   end
-
-   for lnum = top, bot do
-      schedule_sign(lnum)
-   end
-
-   if first_apply then
-      signs.remove(bufnr)
-
-
-
-
-
-      if config.use_decoration_api then
-         schedule_sign(next(pending))
-      end
-   end
-
-   signs.add(config, bufnr, scheduled)
-end
-
-local update_cnt = 0
-
-local function get_compare_object(bcache, base)
-   base = base or bcache.base
-   local prefix
-   if base then
-      prefix = base
-   elseif bcache.commit then
-
-      prefix = string.format('%s^', bcache.commit)
-   else
-      local stage = bcache.git_obj.has_conflicts and 1 or 0
-      prefix = string.format(':%d', stage)
-   end
-
-   return string.format('%s:%s', prefix, bcache.git_obj.relpath)
-end
-
-local update0 = async(function(bufnr, bcache)
-   bcache = bcache or cache[bufnr]
-   if not bcache then
-      error('Cache for buffer ' .. bufnr .. ' was nil')
-      return
-   end
-
-   await(scheduler())
-   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
-   local git_obj = bcache.git_obj
-
-   local compare_object = get_compare_object(bcache)
-
-   if config.use_internal_diff then
-      local diff = require('gitsigns.diff')
-      if not bcache.compare_text or config._refresh_staged_on_update then
-         bcache.compare_text = await(git_obj:get_show_text(compare_object))
-      end
-      bcache.hunks = diff.run_diff(bcache.compare_text, buftext, config.diff_algorithm)
-   else
-      await(git_obj:get_show(compare_object, bcache.compare_file))
-      bcache.hunks = await(git.run_diff(bcache.compare_file, buftext, config.diff_algorithm))
-   end
-   bcache.pending_signs = process_hunks(bcache.hunks)
-
-   await(scheduler())
-
-
-
-   apply_win_signs(bufnr, bcache.pending_signs)
-
-   Status:update(bufnr, gs_hunks.get_summary(bcache.hunks, git_obj.abbrev_head))
-
-   update_cnt = update_cnt + 1
-   dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt), bufnr, 'update')
-end)
-
-
-
-
-
-local update
-do
-   local running = false
-   local scheduled = {}
-   update = async(function(bufnr)
-      scheduled[bufnr] = true
-      if not running then
-         running = true
-         while scheduled[bufnr] do
-            scheduled[bufnr] = false
-            await(update0(bufnr))
-         end
-         running = false
-      else
-
-         while running do
-            await(sleep(100))
-         end
-      end
-   end)
-end
-
-
-local update_debounced
 
 local watch_index = function(bufnr, gitdir)
    dprint('Watching index', bufnr, 'watch_index')
@@ -228,202 +67,9 @@ local watch_index = function(bufnr, gitdir)
 
       bcache.compare_text = nil
 
-      await(update(bufnr))
+      await(manager.update(bufnr))
    end))
    return w
-end
-
-local stage_hunk = async_void(function()
-   local bufnr = current_buf()
-   local bcache = cache[bufnr]
-   if not bcache then
-      return
-   end
-
-   if not util.path_exists(bcache.file) then
-      print("Error: Cannot stage lines. Please add the file to the working tree.")
-      return
-   end
-
-   local hunk = get_cursor_hunk(bufnr, bcache.hunks)
-   if not hunk then
-      return
-   end
-
-   await(bcache.git_obj:stage_hunks({ hunk }))
-
-   table.insert(bcache.staged_diffs, hunk)
-   bcache.compare_text = nil
-
-   local hunk_signs = process_hunks({ hunk })
-
-   await(scheduler())
-
-
-
-
-
-
-   for lnum, _ in pairs(hunk_signs) do
-      signs.remove(bufnr, lnum)
-   end
-   await(update(bufnr))
-end)
-
-local function reset_hunk(bufnr, hunk)
-   bufnr = bufnr or current_buf()
-   hunk = hunk or get_cursor_hunk(bufnr)
-   if not hunk then
-      return
-   end
-
-   local lstart, lend
-   if hunk.type == 'delete' then
-      lstart = hunk.start
-      lend = hunk.start
-   else
-      local length = vim.tbl_count(vim.tbl_filter(function(l)
-         return vim.startswith(l, '+')
-      end, hunk.lines))
-
-      lstart = hunk.start - 1
-      lend = hunk.start - 1 + length
-   end
-   api.nvim_buf_set_lines(bufnr, lstart, lend, false, gs_hunks.extract_removed(hunk))
-end
-
-local reset_buffer = async_void(function()
-   local bufnr = current_buf()
-   local bcache = cache[bufnr]
-   if not bcache then
-      return
-   end
-
-   local limit = 1000
-
-
-   for _ = 1, limit do
-      if not bcache.hunks[1] then
-         return
-      end
-      reset_hunk(bufnr, bcache.hunks[1])
-      await(update(bufnr))
-   end
-   error('Hit maximum limit of hunks to reset')
-end)
-
-local undo_stage_hunk = async_void(function()
-   local bufnr = current_buf()
-   local bcache = cache[bufnr]
-   if not bcache then
-      return
-   end
-
-   local hunk = table.remove(bcache.staged_diffs)
-   if not hunk then
-      print("No hunks to undo")
-      return
-   end
-
-   await(bcache.git_obj:stage_hunks({ hunk }, true))
-   bcache.compare_text = nil
-   await(scheduler())
-   signs.add(config, bufnr, process_hunks({ hunk }))
-end)
-
-local stage_buffer = async_void(function()
-   local bufnr = current_buf()
-
-   local bcache = cache[bufnr]
-   if not bcache then
-      return
-   end
-
-
-   local hunks = bcache.hunks
-   if #hunks == 0 then
-      print("No unstaged changes in file to stage")
-      return
-   end
-
-   if not util.path_exists(bcache.git_obj.file) then
-      print("Error: Cannot stage file. Please add it to the working tree.")
-      return
-   end
-
-   await(bcache.git_obj:stage_hunks(hunks))
-
-   for _, hunk in ipairs(hunks) do
-      table.insert(bcache.staged_diffs, hunk)
-   end
-   bcache.compare_text = nil
-
-   await(scheduler())
-   signs.remove(bufnr)
-   Status:clear_diff(bufnr)
-end)
-
-local reset_buffer_index = async_void(function()
-   local bufnr = current_buf()
-   local bcache = cache[bufnr]
-   if not bcache then
-      return
-   end
-
-
-
-
-
-
-
-   local hunks = bcache.staged_diffs
-   bcache.staged_diffs = {}
-
-   await(bcache.git_obj:unstage_file())
-   bcache.compare_text = nil
-
-   await(scheduler())
-   signs.add(config, bufnr, process_hunks(hunks))
-end)
-
-local NavHunkOpts = {}
-
-
-
-
-local function nav_hunk(options)
-   local bcache = cache[current_buf()]
-   if not bcache then
-      return
-   end
-   local hunks = bcache.hunks
-   if not hunks or vim.tbl_isempty(hunks) then
-      return
-   end
-   local line = api.nvim_win_get_cursor(0)[1]
-
-   local wrap = options.wrap ~= nil and options.wrap or vim.o.wrapscan
-   local hunk = gs_hunks.find_nearest_hunk(line, hunks, options.forwards, wrap)
-   local row = options.forwards and hunk.start or hunk.vend
-   if row then
-
-      if row == 0 then
-         row = 1
-      end
-      api.nvim_win_set_cursor(0, { row, 0 })
-   end
-end
-
-local function next_hunk(options)
-   options = options or {}
-   options.forwards = true
-   nav_hunk(options)
-end
-
-local function prev_hunk(options)
-   options = options or {}
-   options.forwards = false
-   nav_hunk(options)
 end
 
 
@@ -448,26 +94,13 @@ local function detach(bufnr, keep_signs)
 
    Status:clear(bufnr)
 
-   os.remove(bcache.compare_file)
-
-   local w = bcache.index_watcher
-   if w then
-      w:stop()
-   else
-      dprint('Index_watcher was nil', bufnr)
-   end
-
-   cache[bufnr] = nil
+   cache:destroy(bufnr)
 end
 
 local function detach_all()
    for k, _ in pairs(cache) do
       detach(k)
    end
-end
-
-local function apply_keymaps(bufonly)
-   apply_mappings(config.keymaps, bufonly)
 end
 
 local function get_buf_path(bufnr)
@@ -505,63 +138,6 @@ local function in_git_dir(file)
       end
    end
    return false
-end
-
-
-
-
-local function speculate_signs(buf, last_orig, last_new)
-   if last_new < last_orig then
-
-
-
-   elseif last_new > last_orig then
-
-
-      if last_orig == 0 then
-
-         local placed = signs.get(buf, 1)[1]
-
-
-         if not placed or not vim.startswith(placed, 'GitSignsTopDelete') then
-
-            for i = 1, last_new do
-               signs.add(config, buf, { [i] = { type = 'add', count = 0 } })
-            end
-         else
-            signs.remove(buf, 1)
-         end
-      else
-         local placed = signs.get(buf, last_orig)[last_orig]
-
-
-         if not placed or not vim.startswith(placed, 'GitSignsDelete') then
-
-            for i = last_orig + 1, last_new do
-               signs.add(config, buf, { [i] = { type = 'add', count = 0 } })
-            end
-         end
-      end
-   else
-
-
-      local placed = signs.get(buf, last_orig)[last_orig]
-
-
-      if not placed then
-         signs.add(config, buf, { [last_orig] = { type = 'change', count = 0 } })
-      end
-   end
-end
-
-local function on_lines(buf, last_orig, last_new)
-   if not cache[buf] then
-      dprint('Cache for buffer ' .. buf .. ' was nil. Detaching')
-      return true
-   end
-
-   speculate_signs(buf, last_orig, last_new)
-   update_debounced(buf)
 end
 
 local attach = async(function(cbuf)
@@ -636,19 +212,15 @@ local attach = async(function(cbuf)
 
    await(scheduler())
 
-   cache[cbuf] = {
+   cache[cbuf] = CacheEntry.new({
       file = file,
       commit = commit,
-      compare_file = os.tmpname(),
-      compare_text = nil,
-      hunks = {},
-      staged_diffs = {},
       index_watcher = watch_index(cbuf, git_obj.gitdir),
       git_obj = git_obj,
-   }
+   })
 
 
-   await(update(cbuf))
+   await(manager.update(cbuf))
 
    await(scheduler())
 
@@ -659,18 +231,18 @@ local attach = async(function(cbuf)
 
             return
          end
-         return on_lines(buf, last_orig, last_new)
+         return manager.on_lines(buf, last_orig, last_new)
       end,
       on_reload = function(_, buf)
          dprint('Reload', buf, 'on_reload')
-         update_debounced(buf)
+         manager.update_debounced(buf)
       end,
       on_detach = function(_, buf)
          detach(buf, true)
       end,
    })
 
-   apply_keymaps(true)
+   apply_mappings(config.keymaps, true)
 end)
 
 local function setup_signs_and_highlights(redefine)
@@ -706,15 +278,32 @@ local function _complete(arglead, line)
 
    local matches = {}
    if n == 2 then
-      for func, _ in pairs(M) do
-         if vim.startswith(func, '_') then
+      local function get_matches(t)
+         for func, _ in pairs(t) do
+            if vim.startswith(func, '_') then
 
-         elseif vim.startswith(func, arglead) then
-            table.insert(matches, func)
+            elseif vim.startswith(func, arglead) then
+               table.insert(matches, func)
+            end
          end
       end
+
+      get_matches(require('gitsigns.actions'))
+      get_matches(M)
    end
    return matches
+end
+
+local function _run_func(func, ...)
+   local actions = require('gitsigns.actions')
+   if type(actions[func]) == 'function' then
+      actions[func](...)
+      return
+   end
+   if type(M[func]) == 'function' then
+      M[func](...)
+      return
+   end
 end
 
 local function setup_command()
@@ -727,32 +316,12 @@ local function setup_command()
    }, ' '))
 end
 
-local function setup_decoration_provider()
-   api.nvim_set_decoration_provider(namespace, {
-      on_win = function(_, _, bufnr, top, bot)
-         local bcache = cache[bufnr]
-         if not bcache or not bcache.pending_signs then
-            return
-         end
-         apply_win_signs(bufnr, bcache.pending_signs, top + 1, bot + 1)
-      end,
-   })
-end
-
 local function setup_current_line_blame()
-   vim.cmd('augroup gitsigns_blame | autocmd! | augroup END')
-   if config.current_line_blame then
-      for func, events in pairs({
-            _current_line_blame = 'CursorHold',
-            _current_line_blame_reset = 'CursorMoved',
-         }) do
-         vim.cmd('autocmd gitsigns_blame ' .. events .. ' * lua require("gitsigns").' .. func .. '()')
-      end
-   end
+   require('gitsigns.current_line_blame').setup()
 end
 
 local setup = async_void(function(cfg)
-   config = gs_config.build(cfg)
+   gs_config.build(cfg)
    namespace = api.nvim_create_namespace('gitsigns')
 
    gs_debug.debug_mode = config.debug_mode
@@ -763,19 +332,26 @@ local setup = async_void(function(cfg)
       end
    end
 
+   manager.setup()
+
    Status.formatter = config.status_formatter
 
    setup_signs_and_highlights()
    setup_command()
-   apply_keymaps(false)
-
-   update_debounced = debounce_trailing(config.update_debounce, void(update))
-
+   apply_mappings(config.keymaps, false)
 
    if config.use_decoration_api then
 
 
-      setup_decoration_provider()
+      api.nvim_set_decoration_provider(namespace, {
+         on_win = function(_, _, bufnr, top, bot)
+            local bcache = cache[bufnr]
+            if not bcache or not bcache.pending_signs then
+               return
+            end
+            manager.apply_win_signs(bufnr, bcache.pending_signs, top + 1, bot + 1)
+         end,
+      })
    end
 
    git.enable_yadm = config.yadm.enable
@@ -805,110 +381,12 @@ local setup = async_void(function(cfg)
    setup_current_line_blame()
 end)
 
-local function preview_hunk()
-   local hunk = get_cursor_hunk()
-   if not hunk then return end
-
-   local gs_popup = require('gitsigns.popup')
-
-   local _, bufnr = gs_popup.create(hunk.lines, config.preview_config)
-   api.nvim_buf_set_option(bufnr, 'filetype', 'diff')
-end
-
-local function select_hunk()
-   local hunk = get_cursor_hunk()
-   if not hunk then return end
-
-   vim.cmd('normal! ' .. hunk.start .. 'GV' .. hunk.vend .. 'G')
-end
-
-local blame_line = async_void(function(full)
-   local bufnr = current_buf()
-   local bcache = cache[bufnr]
-   if not bcache then return end
-
-   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
-   local lnum = api.nvim_win_get_cursor(0)[1]
-   local result = await(bcache.git_obj:run_blame(buftext, lnum))
-
-   local gs_popup = require('gitsigns.popup')
-
-   local is_committed = tonumber('0x' .. result.sha) ~= 0
-   if is_committed then
-      local body = {}
-      if full then
-         body = await(bcache.git_obj:command({ 'show', '-s', '--format=%b', result.sha }))
-
-         while body[#body] == '' do
-            body[#body] = nil
-         end
-
-         if #body > 0 then
-            body = { '', unpack(body) }
-         end
-      end
-
-      local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author_time']))
-      local lines = {
-         ('%s %s (%s):'):format(result.abbrev_sha, result.author, date),
-         result.summary,
-         unpack(body),
-      }
-
-      await(scheduler())
-      local _, pbufnr = gs_popup.create(lines, config.preview_config)
-
-      local p1 = #result.abbrev_sha
-      local p2 = #result.author
-      local p3 = #date
-
-      local function add_highlight(hlgroup, line, start, length)
-         api.nvim_buf_add_highlight(pbufnr, -1, hlgroup, line, start, start + length)
-      end
-
-      add_highlight('Directory', 0, 0, p1)
-      add_highlight('MoreMsg', 0, p1 + 1, p2)
-      add_highlight('Label', 0, p1 + p2 + 2, p3 + 2)
-   else
-      local lines = { result.author }
-      await(scheduler())
-      local _, pbufnr = gs_popup.create(lines, config.preview_config)
-      api.nvim_buf_add_highlight(pbufnr, -1, 'MoreMsg', 0, 0, #result.author)
-   end
-end)
-
-local _current_line_blame_reset = function(bufnr)
-   bufnr = bufnr or current_buf()
-   api.nvim_buf_del_extmark(bufnr, namespace, 1)
-end
-
-local _current_line_blame = async_void(function()
-   local bufnr = current_buf()
-   local bcache = cache[bufnr]
-   if not bcache or not bcache.git_obj.object_name then
-      return
-   end
-
-   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
-   local lnum = api.nvim_win_get_cursor(0)[1]
-   local result = await(bcache.git_obj:run_blame(buftext, lnum))
-
-   await(scheduler())
-
-   _current_line_blame_reset(bufnr)
-   api.nvim_buf_set_extmark(bufnr, namespace, lnum - 1, 0, {
-      id = 1,
-      virt_text = config.current_line_blame_formatter(bcache.git_obj.username, result),
-   })
-end)
-
 local function refresh()
    setup_signs_and_highlights(true)
    setup_current_line_blame()
    for k, v in pairs(cache) do
-      _current_line_blame_reset(k)
       v.compare_text = nil
-      void(update)(k, v)
+      void(manager.update)(k, v)
    end
 end
 
@@ -932,92 +410,7 @@ local function toggle_current_line_blame()
    refresh()
 end
 
-local function calc_base(base)
-   if base and base:sub(1, 1):match('[~\\^]') then
-      base = 'HEAD' .. base
-   end
-   return base
-end
-
-local function change_base(base)
-   base = calc_base(base)
-   local buf = current_buf()
-   cache[buf].base = base
-   cache[buf].compare_text = nil
-   update_debounced(buf)
-end
-
-local function get_show_text(bcache, comp_obj)
-   if config.use_internal_diff then
-      return await(bcache.git_obj:get_show_text(comp_obj))
-   end
-
-   local compare_file = os.tmpname()
-   await(bcache.git_obj:get_show(comp_obj, compare_file))
-   local text = util.file_lines(compare_file)
-   os.remove(compare_file)
-   return text
-end
-
-local function get_bcache_compare_lines(bcache)
-   if config.use_internal_diff then
-      return bcache.compare_text
-   end
-   return util.file_lines(bcache.compare_file)
-end
-
-local diffthis = async_void(function(base)
-   local bufnr = current_buf()
-   local bcache = cache[bufnr]
-   if not bcache then return end
-
-   if api.nvim_win_get_option(0, 'diff') then return end
-
-   local text
-   local comp_obj = get_compare_object(bcache, calc_base(base))
-   if base then
-      text = get_show_text(bcache, comp_obj)
-   else
-      text = get_bcache_compare_lines(bcache)
-   end
-
-   await(scheduler())
-
-   local ft = api.nvim_buf_get_option(bufnr, 'filetype')
-
-   local bufname = string.format('gitsigns://%s/%s', bcache.git_obj.gitdir, comp_obj)
-
-
-   vim.cmd("keepalt aboveleft vertical split " .. bufname)
-
-   local dbuf = current_buf()
-
-   api.nvim_buf_set_option(dbuf, 'modifiable', true)
-   api.nvim_buf_set_lines(dbuf, 0, -1, false, text)
-   api.nvim_buf_set_option(dbuf, 'modifiable', false)
-
-   api.nvim_buf_set_option(dbuf, 'filetype', ft)
-   api.nvim_buf_set_option(dbuf, 'buftype', 'nowrite')
-
-   vim.cmd(string.format('autocmd! WinClosed <buffer=%d> ++once call nvim_buf_delete(%d, {})', dbuf, dbuf))
-
-   vim.cmd([[windo diffthis]])
-end)
-
 M = {
-   update = update_debounced,
-   stage_hunk = mk_repeatable(stage_hunk),
-   undo_stage_hunk = mk_repeatable(undo_stage_hunk),
-   reset_hunk = mk_repeatable(reset_hunk),
-   stage_buffer = stage_buffer,
-   reset_buffer_index = reset_buffer_index,
-   next_hunk = next_hunk,
-   prev_hunk = prev_hunk,
-   select_hunk = select_hunk,
-   preview_hunk = preview_hunk,
-   blame_line = blame_line,
-   reset_buffer = reset_buffer,
-   change_base = change_base,
    attach = void(attach),
    detach = detach,
    detach_all = detach_all,
@@ -1027,25 +420,25 @@ M = {
    toggle_linehl = toggle_linehl,
    toggle_numhl = toggle_numhl,
 
-   diffthis = diffthis,
-
 
    _get_config = function()
       return config
    end,
 
    _complete = _complete,
+   _run_func = _run_func,
 
-   _current_line_blame = _current_line_blame,
-   _current_line_blame_reset = _current_line_blame_reset,
    toggle_current_line_blame = toggle_current_line_blame,
 
    _update_highlights = function()
       setup_signs_and_highlights()
    end,
-   _run_func = function(func, ...)
-      M[func](...)
-   end,
 }
+
+setmetatable(M, {
+   __index = function(_, f)
+      return (require('gitsigns.actions'))[f]
+   end,
+})
 
 return M

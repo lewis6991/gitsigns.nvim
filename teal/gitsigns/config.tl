@@ -51,7 +51,10 @@ local record M
   end
 
   schema: {string:SchemaElem}
+  config: Config
 end
+
+M.config = {}
 
 M.schema = {
   signs = {
@@ -442,12 +445,12 @@ local function resolve_default(v: SchemaElem): any
   end
 end
 
-function M.build(user_config: {string:any}): M.Config
+function M.build(user_config: {string:any})
   user_config = user_config or {}
 
   validate_config(user_config)
 
-  local config: {string:any} = {}
+  local config = M.config as {string:any}
   for k, v in pairs(M.schema) do
     if user_config[k] ~= nil then
       if v.deep_extend then
@@ -460,8 +463,6 @@ function M.build(user_config: {string:any}): M.Config
       config[k] = resolve_default(v)
     end
   end
-
-  return config as M.Config
 end
 
 return M

@@ -186,9 +186,6 @@ diffthis({base})                                         *gitsigns.diffthis()*
                   " Diff against the last commit
                   :Gitsigns diffthis ~1
 
-update()                                                   *gitsigns.update()*
-                Update signs for the current buffer.
-
 attach()                                                   *gitsigns.attach()*
                 Attach Gitsigns to the current buffer.
 

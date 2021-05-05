@@ -61,6 +61,7 @@ function M.add_debug_functions(cache)
       return raw_item
    end,
 }), }, }, false, {})
+      return cache
    end
 
    R.debug_messages = function(noecho)
