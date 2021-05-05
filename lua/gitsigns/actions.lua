@@ -6,7 +6,6 @@ local scheduler = a.scheduler
 local Status = require("gitsigns.status")
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
-local manager = require('gitsigns.manager')
 local mk_repeatable = require('gitsigns.repeat').mk_repeatable
 local popup = require('gitsigns.popup')
 local signs = require('gitsigns.signs')
@@ -17,6 +16,7 @@ local Hunk = gs_hunks.Hunk
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
+local user_range
 
 local NavHunkOpts = {}
 
@@ -24,6 +24,7 @@ local NavHunkOpts = {}
 
 
 local M = {}
+
 
 
 
@@ -52,7 +53,39 @@ local function get_cursor_hunk(bufnr, hunks)
    return gs_hunks.find_hunk(lnum, hunks)
 end
 
-M.stage_hunk = mk_repeatable(async_void(function()
+
+
+
+
+
+
+local function get_range_hunks(bufnr, hunks, range, strict)
+   bufnr = bufnr or current_buf()
+   hunks = hunks or cache[bufnr].hunks
+
+   local ret = {}
+   for _, hunk in ipairs(hunks) do
+      if range[1] == 1 and hunk.start == 0 and hunk.vend == 0 then
+         return { hunk }
+      end
+
+      if strict then
+         if (range[1] <= hunk.start and range[2] >= hunk.vend) then
+            ret[#ret + 1] = hunk
+         end
+      else
+         if (range[2] >= hunk.start and range[1] <= hunk.vend) then
+            ret[#ret + 1] = hunk
+         end
+      end
+   end
+
+   return ret
+end
+
+M.stage_hunk = mk_repeatable(async_void(function(range)
+   range = range or user_range
+   local valid_range = false
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -64,17 +97,29 @@ M.stage_hunk = mk_repeatable(async_void(function()
       return
    end
 
-   local hunk = get_cursor_hunk(bufnr, bcache.hunks)
-   if not hunk then
+   local hunks = {}
+
+   if type(range) == "table" and range[1] ~= range[2] then
+      valid_range = true
+      table.sort(range)
+      hunks = get_range_hunks(bufnr, bcache.hunks, range)
+   else
+      hunks[1] = get_cursor_hunk(bufnr, bcache.hunks)
+   end
+
+   if #hunks == 0 then
       return
    end
 
-   await(bcache.git_obj:stage_hunks({ hunk }))
+   await(bcache.git_obj:stage_hunks(hunks))
 
-   table.insert(bcache.staged_diffs, hunk)
+   for _, hunk in ipairs(hunks) do
+      table.insert(bcache.staged_diffs, hunk)
+   end
+
    bcache.compare_text = nil
 
-   local hunk_signs = gs_hunks.process_hunks({ hunk })
+   local hunk_signs = gs_hunks.process_hunks(hunks)
 
    await(scheduler())
 
@@ -86,29 +131,43 @@ M.stage_hunk = mk_repeatable(async_void(function()
    for lnum, _ in pairs(hunk_signs) do
       signs.remove(bufnr, lnum)
    end
-   await(manager.update(bufnr))
 end))
 
-M.reset_hunk = mk_repeatable(function(bufnr, hunk)
-   bufnr = bufnr or current_buf()
-   hunk = hunk or get_cursor_hunk(bufnr)
-   if not hunk then
+M.reset_hunk = mk_repeatable(function(range)
+   range = range or user_range
+   local bufnr = current_buf()
+   local hunks = {}
+
+   if type(range) == "table" and range[1] ~= range[2] then
+      table.sort(range)
+      hunks = get_range_hunks(bufnr, nil, range)
+   else
+      hunks[1] = get_cursor_hunk(bufnr)
+   end
+
+   if #hunks == 0 then
       return
    end
 
-   local lstart, lend
-   if hunk.type == 'delete' then
-      lstart = hunk.start
-      lend = hunk.start
-   else
-      local length = vim.tbl_count(vim.tbl_filter(function(l)
-         return vim.startswith(l, '+')
-      end, hunk.lines))
+   local offset = 0
 
-      lstart = hunk.start - 1
-      lend = hunk.start - 1 + length
+   for _, hunk in ipairs(hunks) do
+      local lstart, lend
+      if hunk.type == 'delete' then
+         lstart = hunk.start
+         lend = hunk.start
+      else
+         local length = vim.tbl_count(vim.tbl_filter(function(l)
+            return vim.startswith(l, '+')
+         end, hunk.lines))
+
+         lstart = hunk.start - 1
+         lend = hunk.start - 1 + length
+      end
+      local lines = gs_hunks.extract_removed(hunk)
+      api.nvim_buf_set_lines(bufnr, lstart + offset, lend + offset, false, lines)
+      offset = offset + (#lines - (lend - lstart))
    end
-   api.nvim_buf_set_lines(bufnr, lstart, lend, false, gs_hunks.extract_removed(hunk))
 end)
 
 M.reset_buffer = function()
@@ -366,6 +425,14 @@ M.diffthis = async_void(function(base)
 
    vim.cmd([[windo diffthis]])
 end)
+
+M._set_user_range = function(range)
+   if type(range) == "table" and range[1] ~= range[2] then
+      user_range = range
+   else
+      user_range = nil
+   end
+end
 
 M.get_actions = function()
    local hunk = get_cursor_hunk()

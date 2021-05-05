@@ -117,6 +117,8 @@ function M.create_patch(relpath, hunks, mode_bits, invert)
       '+++ b/' .. relpath,
    }
 
+   local offset = 0
+
    for _, process_hunk in ipairs(hunks) do
       local start, pre_count, now_count = 
       process_hunk.removed.start, process_hunk.removed.count, process_hunk.added.count
@@ -140,10 +142,13 @@ function M.create_patch(relpath, hunks, mode_bits, invert)
          end, lines)
       end
 
-      table.insert(results, string.format('@@ -%s,%s +%s,%s @@', start, pre_count, start, now_count))
+      table.insert(results, string.format('@@ -%s,%s +%s,%s @@', start, pre_count, start + offset, now_count))
       for _, line in ipairs(lines) do
          table.insert(results, line)
       end
+
+      process_hunk.removed.start = start + offset
+      offset = offset + (now_count - pre_count)
    end
 
    return results

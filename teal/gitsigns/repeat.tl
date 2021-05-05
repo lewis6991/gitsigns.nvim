@@ -1,4 +1,4 @@
-
+local tbl = require('plenary.tbl')
 local M = {}
 
 local repeat_fn: function()
@@ -8,10 +8,10 @@ function M.repeat_action()
 end
 
 function M.mk_repeatable(fn: function): function
-  return function(...)
-    local args = {...}
+  return function(...: any)
+    local args = tbl.pack(...)
     repeat_fn = function()
-      fn(unpack(args))
+      fn(tbl.unpack(args))
       vim.cmd('silent! call repeat#set("\\<Plug>GitsignsRepeat",-1)')
     end
 
