@@ -53,6 +53,9 @@ local M = {Config = {SignsConfig = {}, watch_index = {}, yadm = {}, }, }
 
 
 
+
+M.config = {}
+
 M.schema = {
    signs = {
       type = 'table',
@@ -447,7 +450,7 @@ function M.build(user_config)
 
    validate_config(user_config)
 
-   local config = {}
+   local config = M.config
    for k, v in pairs(M.schema) do
       if user_config[k] ~= nil then
          if v.deep_extend then
@@ -460,8 +463,6 @@ function M.build(user_config)
          config[k] = resolve_default(v)
       end
    end
-
-   return config
 end
 
 return M
