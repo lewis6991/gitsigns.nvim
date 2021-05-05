@@ -55,7 +55,7 @@ of the default settings:
         ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
         ['n <leader>hR'] = '<cmd>lua require"gitsigns".reset_buffer()<CR>',
         ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
-        ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line()<CR>',
+        ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line(true)<CR>',
 
         -- Text objects
         ['o ih'] = ':<C-U>lua require"gitsigns".select_hunk()<CR>',
@@ -147,9 +147,10 @@ preview_hunk()                                       *gitsigns.preview_hunk()*
                 Preview the hunk at the cursor position in a floating
                 window.
 
-blame_line()                                           *gitsigns.blame_line()*
+blame_line({full})                                     *gitsigns.blame_line()*
                 Run git blame on the current line and show the results in a
-                floating window.
+                floating window. If {full} is true then the full commit
+                message is displayed instead of just the one-line summary.
 
 change_base({base})                                   *gitsigns.change_base()*
                 Change the base revision to diff against. If {base} is not
@@ -259,7 +260,7 @@ keymaps                                              *gitsigns-config-keymaps*
           ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
           ['n <leader>hR'] = '<cmd>lua require"gitsigns".reset_buffer()<CR>',
           ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
-          ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line()<CR>',
+          ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line(true)<CR>',
           ['n <leader>hS'] = '<cmd>lua require"gitsigns".stage_buffer()<CR>',
           ['n <leader>hU'] = '<cmd>lua require"gitsigns".reset_buffer_index()<CR>',
 
