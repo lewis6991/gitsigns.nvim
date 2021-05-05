@@ -787,7 +787,7 @@ local function select_hunk()
   vim.cmd('normal! '..hunk.start..'GV'..hunk.vend..'G')
 end
 
-local blame_line = async_void(function()
+local blame_line = async_void(function(full: boolean)
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then return end
@@ -796,29 +796,50 @@ local blame_line = async_void(function()
   local lnum = api.nvim_win_get_cursor(0)[1]
   local result = await(bcache.git_obj:run_blame(buftext, lnum))
 
-  local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author_time']))
-  local lines = {
-    ('%s %s (%s):'):format(result.abbrev_sha, result.author, date),
-    result.summary
-  }
-
   await(scheduler())
 
   local gs_popup = require('gitsigns.popup')
 
-  local _, pbufnr = gs_popup.create(lines, config.preview_config)
+  local is_committed = tonumber('0x'..result.sha) ~= 0
+  if is_committed then
+    local body = {}
+    if full then
+      body = await(bcache.git_obj:command({'show', '-s', '--format=%b', result.sha}))
 
-  local p1 = #result.abbrev_sha
-  local p2 = #result.author
-  local p3 = #date
+      while body[#body] == '' do
+        body[#body] = nil
+      end
 
-  local function add_highlight(hlgroup: string, line: integer, start: integer, length: integer)
-    api.nvim_buf_add_highlight(pbufnr, -1, hlgroup, line, start, start+length)
+      if #body > 0 then
+        body = {'', unpack(body)}
+      end
+    end
+
+    local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author_time']))
+    local lines = {
+      ('%s %s (%s):'):format(result.abbrev_sha, result.author, date),
+      result.summary,
+      unpack(body)
+    }
+
+    local _, pbufnr = gs_popup.create(lines, config.preview_config)
+
+    local p1 = #result.abbrev_sha
+    local p2 = #result.author
+    local p3 = #date
+
+    local function add_highlight(hlgroup: string, line: integer, start: integer, length: integer)
+      api.nvim_buf_add_highlight(pbufnr, -1, hlgroup, line, start, start+length)
+    end
+
+    add_highlight('Directory', 0, 0      , p1)
+    add_highlight('MoreMsg'  , 0, p1+1   , p2)
+    add_highlight('Label'    , 0, p1+p2+2, p3+2)
+  else
+    local lines = {result.author}
+    local _, pbufnr = gs_popup.create(lines, config.preview_config)
+    api.nvim_buf_add_highlight(pbufnr, -1, 'MoreMsg', 0, 0, #result.author)
   end
-
-  add_highlight('Directory', 0, 0      , p1)
-  add_highlight('MoreMsg'  , 0, p1+1   , p2)
-  add_highlight('Label'    , 0, p1+p2+2, p3+2)
 end)
 
 local _current_line_blame_reset = function(bufnr: integer)
