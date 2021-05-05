@@ -30,7 +30,7 @@ end
 
 function M.add_debug_functions(cache: any): {string:function}
   local R: {string:function} = {}
-  R.dump_cache = function()
+  R.dump_cache = function(): any
     vim.api.nvim_echo({{vim.inspect(cache, {
       process = function(raw_item: any, path: {string}): any
         if path[#path] == vim.inspect.METATABLE then
@@ -61,6 +61,7 @@ function M.add_debug_functions(cache: any): {string:function}
         return raw_item
       end
     })}}, false, {})
+    return cache
   end
 
   R.debug_messages = function(noecho: boolean): {string}

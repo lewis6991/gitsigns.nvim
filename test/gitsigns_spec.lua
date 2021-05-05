@@ -183,12 +183,12 @@ local test_config = {
   keymaps = {
     noremap = true,
     buffer = true,
-    ['n mhs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
-    ['n mhu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
-    ['n mhr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
-    ['n mhp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
-    ['n mhS'] = '<cmd>lua require"gitsigns".stage_buffer()<CR>',
-    ['n mhU'] = '<cmd>lua require"gitsigns".reset_buffer_index()<CR>',
+    ['n mhs'] = '<cmd>lua require"gitsigns.actions".stage_hunk()<CR>',
+    ['n mhu'] = '<cmd>lua require"gitsigns.actions".undo_stage_hunk()<CR>',
+    ['n mhr'] = '<cmd>lua require"gitsigns.actions".reset_hunk()<CR>',
+    ['n mhp'] = '<cmd>lua require"gitsigns.actions".preview_hunk()<CR>',
+    ['n mhS'] = '<cmd>lua require"gitsigns.actions".stage_buffer()<CR>',
+    ['n mhU'] = '<cmd>lua require"gitsigns.actions".reset_buffer_index()<CR>',
   },
   update_debounce = 5,
 }
@@ -337,12 +337,12 @@ describe('gitsigns', function()
 
       -- Check all keymaps get set
       match_lines(res, {
-        'n  mhS         *@<Cmd>lua require"gitsigns".stage_buffer()<CR>',
-        'n  mhU         *@<Cmd>lua require"gitsigns".reset_buffer_index()<CR>',
-        'n  mhp         *@<Cmd>lua require"gitsigns".preview_hunk()<CR>',
-        'n  mhr         *@<Cmd>lua require"gitsigns".reset_hunk()<CR>',
-        'n  mhs         *@<Cmd>lua require"gitsigns".stage_hunk()<CR>',
-        'n  mhu         *@<Cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
+        'n  mhS         *@<Cmd>lua require"gitsigns.actions".stage_buffer()<CR>',
+        'n  mhU         *@<Cmd>lua require"gitsigns.actions".reset_buffer_index()<CR>',
+        'n  mhp         *@<Cmd>lua require"gitsigns.actions".preview_hunk()<CR>',
+        'n  mhr         *@<Cmd>lua require"gitsigns.actions".reset_hunk()<CR>',
+        'n  mhs         *@<Cmd>lua require"gitsigns.actions".stage_hunk()<CR>',
+        'n  mhu         *@<Cmd>lua require"gitsigns.actions".undo_stage_hunk()<CR>',
       })
     end)
 
@@ -927,7 +927,7 @@ describe('gitsigns', function()
           {7:-- INSERT --}                            |
         ]]}
 
-        exec_lua('gs.stage_hunk()')
+        exec_lua('require("gitsigns.actions").stage_hunk()')
 
         screen:expect{grid=[[
           {1:  }^<<<<<<< HEAD                          |
