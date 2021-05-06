@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/lewis6991/gitsigns.nvim/workflows/CI/badge.svg?branch=main)](https://github.com/lewis6991/gitsigns.nvim/actions?query=workflow%3ACI)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Gitter chat](https://badges.gitter.im/gitsigns-nvim/gitter.png)](https://gitter.im/gitsigns-nvim/community)
+[![Gitter](https://badges.gitter.im/gitsigns-nvim/community.svg)](https://gitter.im/gitsigns-nvim/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 Super fast git decorations implemented purely in lua/teal.
 
