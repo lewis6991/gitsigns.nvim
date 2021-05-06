@@ -45,6 +45,7 @@ local namespace: integer
 local record CacheEntry
   file          : string
   compare_file  : string    -- For use with externl diff
+  base          : string
   compare_text  : {string}  -- For use with internal diff
   hunks         : {Hunk}
   staged_diffs  : {Hunk}
@@ -108,6 +109,21 @@ end
 
 local update_cnt = 0
 
+local function get_compare_object(bcache: CacheEntry): string
+  local prefix: string
+  if bcache.base then
+    prefix = bcache.base
+  elseif bcache.commit then
+    -- Buffer is a fugutive commit so compare against the parent of the commit
+    prefix = string.format('%s^', bcache.commit)
+  else
+    local stage = bcache.git_obj.has_conflicts and 1 or 0
+    prefix = string.format(':%d', stage)
+  end
+
+  return string.format('%s:%s', prefix, bcache.git_obj.relpath)
+end
+
 local update = async(function(bufnr: integer, bcache: CacheEntry)
   bcache = bcache or cache[bufnr]
   if not bcache then
@@ -119,14 +135,7 @@ local update = async(function(bufnr: integer, bcache: CacheEntry)
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local git_obj = bcache.git_obj
 
-  local compare_object: string
-  if bcache.commit then
-    -- Buffer is a fugutive commit so compare against the parent of the commit
-    compare_object = string.format('%s^:%s', bcache.commit, git_obj.relpath)
-  else
-    local stage = git_obj.has_conflicts and 1 or 0
-    compare_object = string.format(':%d:%s', stage, git_obj.relpath)
-  end
+  local compare_object = get_compare_object(bcache)
 
   if config.use_internal_diff then
     local diff = require('gitsigns.diff')
@@ -867,6 +876,16 @@ local function toggle_current_line_blame()
   refresh()
 end
 
+local function change_base(base: string)
+  if base and base:sub(1, 1):match('[~\\^]') then
+    base = 'HEAD'..base
+  end
+  local buf = current_buf()
+  cache[buf].base = base
+  cache[buf].compare_text = nil
+  update_debounced(buf)
+end
+
 M = {
   update               = update_debounced,
   stage_hunk           = mk_repeatable(stage_hunk),
@@ -880,6 +899,7 @@ M = {
   preview_hunk         = preview_hunk,
   blame_line           = blame_line,
   reset_buffer         = reset_buffer,
+  change_base          = change_base,
   attach               = void(attach),
   detach               = detach,
   detach_all           = detach_all,
