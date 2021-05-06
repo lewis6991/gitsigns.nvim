@@ -7,4 +7,4 @@ assignees: ''
 
 ---
 
-
+You can also ask questions on gitter: https://gitter.im/gitsigns-nvim/community
