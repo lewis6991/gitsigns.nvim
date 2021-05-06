@@ -151,6 +151,29 @@ blame_line()                                           *gitsigns.blame_line()*
                 Run git blame on the current line and show the results in a
                 floating window.
 
+change_base({base})                                   *gitsigns.change_base()*
+                Change the base revision to diff against. If {base} is not
+                given, then the original base is used.
+
+                Examples: >
+                  " Change base to 1 commit behind head
+                  :lua require('gitsigns').change_base('HEAD~1')
+
+                  " Also works using the Gitsigns command
+                  :Gitsigns change_base HEAD~1
+
+                  " Other variations
+                  :Gitsigns change_base ~1
+                  :Gitsigns change_base ~
+                  :Gitsigns change_base ^
+
+                  " Commits work too
+                  :Gitsigns change_base 92eb3dd
+
+                  " Revert to original base
+                  :Gitsigns change_base
+<
+
 update()                                                   *gitsigns.update()*
                 Update signs for the current buffer.
 
