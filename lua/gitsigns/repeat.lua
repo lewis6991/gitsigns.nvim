@@ -8,9 +8,10 @@ function M.repeat_action()
 end
 
 function M.mk_repeatable(fn)
-   return function()
+   return function(...)
+      local args = { ... }
       repeat_fn = function()
-         fn()
+         fn(unpack(args))
          vim.cmd('silent! call repeat#set("\\<Plug>GitsignsRepeat",-1)')
       end
 
