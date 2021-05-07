@@ -796,8 +796,6 @@ local blame_line = async_void(function(full: boolean)
   local lnum = api.nvim_win_get_cursor(0)[1]
   local result = await(bcache.git_obj:run_blame(buftext, lnum))
 
-  await(scheduler())
-
   local gs_popup = require('gitsigns.popup')
 
   local is_committed = tonumber('0x'..result.sha) ~= 0
@@ -822,6 +820,7 @@ local blame_line = async_void(function(full: boolean)
       unpack(body)
     }
 
+    await(scheduler())
     local _, pbufnr = gs_popup.create(lines, config.preview_config)
 
     local p1 = #result.abbrev_sha
@@ -837,6 +836,7 @@ local blame_line = async_void(function(full: boolean)
     add_highlight('Label'    , 0, p1+p2+2, p3+2)
   else
     local lines = {result.author}
+    await(scheduler())
     local _, pbufnr = gs_popup.create(lines, config.preview_config)
     api.nvim_buf_add_highlight(pbufnr, -1, 'MoreMsg', 0, 0, #result.author)
   end
