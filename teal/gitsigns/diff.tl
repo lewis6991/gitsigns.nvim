@@ -105,11 +105,16 @@ end
 local M = {}
 
 function M.run_diff(fa: {string}, fb: {string}, diff_algo: string): {Hunk}
-  local results: {Hunk} = {}
+  local results: {{integer, integer, integer, integer}} = {}
+
+  local jit_status = jit.status()
+
+  -- Disable jit as jit-compiling a C call which calls a lua callback will cause
+  -- a crash (see https://luajit.org/ext_ffi_semantics.html#callback).
+  jit.off()
 
   local hunk_func = ffi.cast('xdl_emit_hunk_consume_func_t', function(
-    start_a: Long, count_a: Long,
-    start_b: Long, count_b: Long
+    start_a: Long, count_a: Long, start_b: Long, count_b: Long
   ): number
     local ca = tonumber(count_a) as integer
     local cb = tonumber(count_b) as integer
@@ -121,18 +126,12 @@ function M.run_diff(fa: {string}, fb: {string}, diff_algo: string): {Hunk}
     if ca > 0 then sa = sa + 1 end
     if cb > 0 then sb = sb + 1 end
 
-    table.insert(results, create_hunk(sa, ca, sb, cb))
+    table.insert(results, {sa, ca, sb, cb})
     return 0
   end)
 
   local emitconf = ffi.new('xdemitconf_t') as XDEmitConf
   emitconf.hunk_func = hunk_func as function(Long, Long, Long, Long): number
-
-  local jit_status = jit.status()
-
-  -- Disable jit as jit-compiling a C call which calls a lua callback will cause
-  -- a crash (see https://luajit.org/ext_ffi_semantics.html#callback).
-  jit.off()
 
   local res = ffi.C.xdl_diff(
     mmbuffer(fa),
@@ -142,17 +141,19 @@ function M.run_diff(fa: {string}, fb: {string}, diff_algo: string): {Hunk}
     ffi.new('xdemitcb_t')
   )
 
-  if jit_status then
-    jit.on()
-  end
-
   assert(res, 'DIFF bad result')
 
   hunk_func:free()
 
-  for _, hunk in ipairs(results) do
-    local rs, as = hunk.removed.start, hunk.added.start
-    local rc, ac = hunk.removed.count, hunk.added.count
+  if jit_status then
+    jit.on()
+  end
+
+  local hunks: {Hunk} = {}
+
+  for _, r in ipairs(results) do
+    local rs, rc, as, ac = unpack(r)
+    local hunk = create_hunk(rs, rc, as, ac)
     hunk.head = ('@@ -%d%s +%d%s @@'):format(
       rs, rc > 0 and ','..rc or '',
       as, ac > 0 and ','..ac or ''
@@ -167,9 +168,10 @@ function M.run_diff(fa: {string}, fb: {string}, diff_algo: string): {Hunk}
         table.insert(hunk.lines, '+'..(fb[i] or ''))
       end
     end
+    table.insert(hunks, hunk)
   end
 
-  return results
+  return hunks
 end
 
 return M
