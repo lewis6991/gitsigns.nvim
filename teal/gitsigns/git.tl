@@ -67,18 +67,19 @@ local record M
     abbrev_head   : string
     username      : string
     relpath       : string
-    object_name   : string
+    head_object   : string
+    staged_object : string
     mode_bits     : string
     has_conflicts : boolean
 
     command              : function(Obj, {string}, GJobSpec): a.future1<{string}>
-    update_abbrev_head   : function(Obj): a.future0
-    update_file_info     : function(Obj): a.future1<boolean>
+    update_head          : function(Obj): a.future0
+    update_head_object   : function(Obj): a.future0
     unstage_file         : function(Obj, string, string): a.future0
     get_show             : function(Obj, string, string): a.future0
     get_show_text        : function(Obj, string): a.future1<{string}>
     run_blame            : function(Obj, {string}, number): a.future1<M.BlameInfo>
-    file_info            : function(Obj): a.future4<string, string, string, boolean>
+    set_file_info        : function(Obj): a.future0
     ensure_file_in_index : function(Obj): a.future0
     stage_hunks          : function(Obj, {Hunk}, boolean): a.future0
     new                  : function(string): a.future1<Obj>
@@ -182,7 +183,7 @@ local get_repo_info = async(function(path: string, cmd: string): string,string,s
   if not has_abs_gd then
     gitdir = uv.fs_realpath(gitdir)
   end
-  local abbrev_head = process_abbrev_head(gitdir, results[3])
+  local abbrev_head = process_abbrev_head(gitdir, results[4])
   return toplevel, gitdir, abbrev_head
 end)
 
@@ -266,52 +267,39 @@ Obj.command = async(function(self: Obj, args: {string}, spec: GJobSpec): {string
   return await(command({'--git-dir='..self.gitdir, unpack(args)}, spec))
 end)
 
-Obj.update_abbrev_head = async(function(self: Obj)
+Obj.update_head = async(function(self: Obj)
   _, _, self.abbrev_head = await(get_repo_info(self.toplevel))
 end)
 
-Obj.update_file_info = async(function(self: Obj): boolean
-  local old_object_name = self.object_name
-  _, self.object_name, self.mode_bits, self.has_conflicts = await(self:file_info())
-
-  return old_object_name ~= self.object_name
+Obj.update_head_object = async(function(self: Obj)
+  self.head_object = await(self:command({'rev-parse', 'HEAD:'..self.relpath}))[1]
 end)
 
-Obj.file_info = async(function(self: Obj): string, string, string, boolean
+Obj.set_file_info = async(function(self: Obj)
   local results = await(self:command({
-    'ls-files',
-    '--stage',
-    '--others',
-    '--exclude-standard',
-    self.file
-  }))
+    'ls-files', '--stage', '--others', '--exclude-standard', self.file}))
 
-  local relpath: string
-  local object_name: string
-  local mode_bits: string
   local stage: number
-  local has_conflict: boolean = false
   for _, line in ipairs(results) do
     local parts = vim.split(line, '\t')
     if #parts > 1 then -- tracked file
-      relpath = parts[2]
+      self.relpath = parts[2]
       local attrs = vim.split(parts[1], '%s+')
       stage = tonumber(attrs[3])
       if stage <= 1 then
-          mode_bits   = attrs[1]
-          object_name = attrs[2]
+        self.mode_bits     = attrs[1]
+        self.staged_object = attrs[2]
       else
-          has_conflict = true
+        self.has_conflicts = true
       end
     else -- untracked file
-      relpath = parts[1]
+      self.relpath = parts[1]
     end
   end
-  return relpath, object_name, mode_bits, has_conflict
 end)
 
 Obj.unstage_file = async(function(self: Obj)
-    await(self:command{'reset', self.file })
+  await(self:command{'reset', self.file })
 end)
 
 --- Get version of file in the index, return array lines
@@ -367,29 +355,33 @@ Obj.run_blame = async(function(self: Obj, lines: {string}, lnum: number): M.Blam
 end)
 
 Obj.ensure_file_in_index = async(function(self: Obj)
-  if not self.object_name or self.has_conflicts then
-    if not self.object_name then
+  if not self.staged_object or self.has_conflicts then
+    if not self.staged_object then
       -- If there is no object_name then it is not yet in the index so add it
       await(self:command{'add', '--intent-to-add', self.file})
     else
       -- Update the index with the common ancestor (stage 1) which is what bcache
       -- stores
-      local info = table.concat({self.mode_bits, self.object_name, self.relpath}, ',')
+      local info = table.concat({self.mode_bits, self.staged_object, self.relpath}, ',')
       await(self:command{'update-index', '--add', '--cacheinfo', info})
     end
 
-    -- Update file info
-    _, self.object_name, self.mode_bits, self.has_conflicts = await(self:file_info())
+    await(self:set_file_info())
   end
 end)
 
 Obj.stage_hunks = async(function(self: Obj, hunks: {Hunk}, invert: boolean)
   await(self:ensure_file_in_index())
-  await(self:command({
-    'apply', '--cached', '--unidiff-zero', '-'
-  }, {
-    writer = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert)
-  }))
+  local patch = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert)
+  if gsd.debug_mode then
+    gsd.dprint('Applying patch:', nil ,'stage_hunks')
+    if gsd.debug_mode then
+      for _, l in ipairs(patch) do
+        gsd.dprint('    '..l, nil, 'stage_hunks')
+      end
+    end
+  end
+  await(self:command({'apply', '--cached', '--unidiff-zero', '-'}, { writer = patch }))
 end)
 
 Obj.new = a.async(function(file: string): Obj
@@ -413,8 +405,10 @@ Obj.new = a.async(function(file: string): Obj
     return self
   end
 
-  self.relpath, self.object_name, self.mode_bits, self.has_conflicts =
-    await(self:file_info())
+  await(self:set_file_info())
+  if self.relpath then
+    await(self:update_head_object())
+  end
 
   return self
 end)

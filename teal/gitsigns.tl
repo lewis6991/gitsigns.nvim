@@ -37,10 +37,51 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
   local w = uv.new_fs_poll()
   w:start(index, config.watch_index.interval, async_void(function(err: string)
     if err then
-      dprint('Index update error: '..err, bufnr, 'watcher_cb')
+      dprint('Index update error: '..err, bufnr, 'index_watcher_cb')
       return
     end
-    dprint('Index update', bufnr, 'watcher_cb')
+    dprint('Index update', bufnr, 'index_watcher_cb')
+
+    local bcache = cache[bufnr]
+
+    if not bcache then
+      -- Very occasionally an external git operation may cause the buffer to
+      -- detach and update the index simultaneously. When this happens this
+      -- handler will trigger but there will be no cache.
+      dprint(string.format('Buffer %s has detached, aborting', bufnr))
+    end
+
+    local git_obj = bcache.git_obj
+
+    local old_staged_object = git_obj.staged_object
+
+    await(git_obj:set_file_info())
+
+    if old_staged_object == git_obj.staged_object then
+      dprint('index object for file not changed', bufnr, 'index_watcher_cb')
+      return
+    end
+
+    -- Invalidate
+    bcache.main.compare_text = nil
+    bcache.sec.compare_text = nil
+
+    await(manager.update(bufnr))
+  end))
+  return w
+end
+
+local watch_head = function(bufnr: integer, gitdir: string): uv.FSPollObj
+  dprint('Watching HEAD', bufnr, 'watch_head')
+  -- We watch .git/COMMIT_EDITMSG as this always changes when HEAD changes
+  local head = gitdir..util.path_sep..'COMMIT_EDITMSG'
+  local w = uv.new_fs_poll()
+  w:start(head, config.watch_index.interval, async_void(function(err: string)
+    if err then
+      dprint('HEAD update error: '..err, bufnr, 'head_watcher_cb')
+      return
+    end
+    dprint('HEAD update', bufnr, 'head_watcher_cb')
 
     local bcache = cache[bufnr]
 
@@ -54,17 +95,23 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
 
     local git_obj = bcache.git_obj
 
-    await(git_obj:update_abbrev_head())
+    local old_head_object = git_obj.head_object
+
+    await(git_obj:update_head())
 
     await(scheduler())
     Status:update_head(bufnr, git_obj.abbrev_head)
 
-    if not await(git_obj:update_file_info()) then
-      dprint('File not changed', bufnr, 'watcher_cb')
+    await(git_obj:update_head_object())
+
+    if old_head_object == git_obj.head_object then
+      dprint('HEAD object for file not changed', bufnr, 'head_watcher_cb')
       return
     end
 
-    bcache.compare_text = nil -- Invalidate
+    -- Invalidate
+    bcache.main.compare_text = nil
+    bcache.sec.compare_text = nil
 
     await(manager.update(bufnr))
   end))
@@ -88,6 +135,7 @@ local function detach(bufnr: integer, keep_signs: boolean)
 
   if not keep_signs then
     signs.remove(bufnr)  -- Remove all signs
+    signs.remove(bufnr, nil, true)  -- Remove all signs
   end
 
   -- Clear status variables
@@ -202,7 +250,7 @@ local attach = async(function(cbuf: integer)
     return
   end
 
-  if not config.attach_to_untracked and git_obj.object_name == nil then
+  if not config.attach_to_untracked and git_obj.staged_object == nil then
     dprint('File is untracked', cbuf, 'attach')
     return
   end
@@ -217,9 +265,20 @@ local attach = async(function(cbuf: integer)
   end
 
   cache[cbuf] = CacheEntry.new {
-    file          = file,
-    commit        = commit,
+    file   = file,
+    commit = commit,
+
+    main = {
+      base = config.signs.base,
+    },
+
+    sec = {
+      base = config.signs_sec.base,
+    },
+
     index_watcher = watch_index(cbuf, git_obj.gitdir),
+    head_watcher  = watch_head(cbuf, git_obj.gitdir),
+
     git_obj       = git_obj
   }
 
@@ -253,25 +312,26 @@ end)
 
 local function setup_signs_and_highlights(redefine: boolean)
   -- Define signs
-  for t, sign_name in pairs(signs.sign_map) do
-    local cs = config.signs[t]
+  for i, sign_cfg in ipairs{config.signs, config.signs_sec} do
+    for t, sign_name in pairs(signs.sign_map) do
+      local cs = sign_cfg[t]
 
-    gs_hl.setup_highlight(cs.hl)
+      gs_hl.setup_highlight(cs.hl)
 
-    local enum HlTy 'numhl' 'linehl' end
-    for _, hlty in ipairs({'numhl', 'linehl'} as {HlTy}) do
-      if config[hlty] then
-        gs_hl.setup_other_highlight(cs[hlty], cs.hl)
+      local enum HlTy 'numhl' 'linehl' end
+      for _, hlty in ipairs({'numhl', 'linehl'} as {HlTy}) do
+        if sign_cfg[hlty] then
+          gs_hl.setup_other_highlight(cs[hlty], cs.hl)
+        end
       end
+
+      signs.define(sign_name..(i==2 and 'Sec' or ''), {
+        texthl = cs.hl,
+        text   = sign_cfg.signcolumn and cs.text or nil,
+        numhl  = sign_cfg.numhl      and cs.numhl,
+        linehl = sign_cfg.linehl     and cs.linehl
+      }, redefine)
     end
-
-    signs.define(sign_name, {
-      texthl = cs.hl,
-      text   = config.signcolumn and cs.text or nil,
-      numhl  = config.numhl      and cs.numhl,
-      linehl = config.linehl     and cs.linehl
-    }, redefine)
-
   end
   if config.current_line_blame then
     gs_hl.setup_highlight('GitSignsCurrentLineBlame')
@@ -350,11 +410,7 @@ local setup = async_void(function(cfg: Config)
     -- displayed
     api.nvim_set_decoration_provider(namespace, {
       on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
-        local bcache = cache[bufnr]
-        if not bcache or not bcache.pending_signs then
-          return false
-        end
-        manager.apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
+        manager.apply_win_signs(bufnr, top+1, bot+1)
 
         -- Returning false prevents the on_line callbacks
         return config._word_diff
@@ -396,23 +452,32 @@ local function refresh()
   setup_signs_and_highlights(true)
   setup_current_line_blame()
   for k, v in pairs(cache as {integer:CacheEntry}) do
-    v.compare_text = nil  -- Invalidate
+    v.main.compare_text = nil  -- Invalidate
+    v.sec.compare_text = nil  -- Invalidate
     void(manager.update)(k, v)
   end
 end
 
-local function toggle_signs()
-  config.signcolumn = not config.signcolumn
+local function toggle_signs(sec: boolean)
+  local scfg = sec and config.signs_sec or config.signs
+  scfg.signcolumn = not scfg.signcolumn
   refresh()
 end
 
-local function toggle_numhl()
-  config.numhl = not config.numhl
+local function toggle_numhl(sec: boolean)
+  local scfg = sec and config.signs_sec or config.signs
+  scfg.numhl = not scfg.numhl
   refresh()
 end
 
-local function toggle_linehl()
-  config.linehl = not config.linehl
+local function toggle_linehl(sec: boolean)
+  local scfg = sec and config.signs_sec or config.signs
+  scfg.linehl = not scfg.linehl
+  refresh()
+end
+
+local function toggle_staged_signs()
+  config.staged_signs = not config.staged_signs
   refresh()
 end
 
@@ -422,14 +487,16 @@ local function toggle_current_line_blame()
 end
 
 M = {
-  attach        = void(attach),
-  detach        = detach,
-  detach_all    = detach_all,
-  setup         = setup,
-  refresh       = refresh,
-  toggle_signs  = toggle_signs,
-  toggle_linehl = toggle_linehl,
-  toggle_numhl  = toggle_numhl,
+  attach              = void(attach),
+  detach              = detach,
+  detach_all          = detach_all,
+  setup               = setup,
+  refresh             = refresh,
+  toggle_signs        = toggle_signs,
+  toggle_linehl       = toggle_linehl,
+  toggle_numhl        = toggle_numhl,
+  toggle_staged_signs = toggle_staged_signs,
+  toggle_current_line_blame = toggle_current_line_blame,
 
   -- Internal, API unstable
   _get_config = function(): Config
@@ -438,8 +505,6 @@ M = {
 
   _complete = _complete,
   _run_func = _run_func,
-
-  toggle_current_line_blame = toggle_current_line_blame,
 
   _update_highlights = function()
     setup_signs_and_highlights()

@@ -37,7 +37,7 @@ M.update = async_void(function()
 
   local bufnr = current_buf()
   local bcache = cache[bufnr]
-  if not bcache or not bcache.git_obj.object_name then
+  if not bcache or not bcache.git_obj.staged_object then
     return
   end
 

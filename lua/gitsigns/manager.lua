@@ -37,7 +37,9 @@ local M = {}
 
 
 
-function M.apply_win_signs(bufnr, pending, top, bot)
+local function apply_win_signs0(bufnr, pending, top, bot, sec)
+   if not pending then return end
+
 
 
    local first_apply = top == nil
@@ -64,20 +66,32 @@ function M.apply_win_signs(bufnr, pending, top, bot)
       schedule_sign(lnum)
    end
 
-   if first_apply then
-      signs.remove(bufnr)
 
 
 
 
-
-      if config.use_decoration_api then
-         schedule_sign(next(pending))
-      end
+   if first_apply and config.use_decoration_api then
+      schedule_sign(next(pending))
    end
 
-   signs.add(config, bufnr, scheduled)
+   signs.add(config, bufnr, scheduled, sec)
+end
 
+function M.apply_win_signs(bufnr, top, bot)
+   local bcache = cache[bufnr]
+   if not bcache then return end
+
+
+
+   local first_apply = top == nil
+
+   if first_apply then
+      signs.remove(bufnr, nil, true)
+      signs.remove(bufnr, nil, false)
+   end
+
+   apply_win_signs0(bufnr, bcache.sec.pending_signs, top, bot, true)
+   apply_win_signs0(bufnr, bcache.main.pending_signs, top, bot, false)
 end
 
 
@@ -94,24 +108,32 @@ local function speculate_signs(buf, last_orig, last_new)
       if last_orig == 0 then
 
          local placed = signs.get(buf, 1)[1]
+         local place_empty = signs.has_empty(buf)
 
 
          if not placed or not vim.startswith(placed, 'GitSignsTopDelete') then
 
             for i = 1, last_new do
-               signs.add(config, buf, { [i] = { type = 'add', count = 0 } })
+               signs.add_one(config, buf, i, 'add')
+               if place_empty then
+                  signs.add_empty_sec(config, buf, i)
+               end
             end
          else
             signs.remove(buf, 1)
          end
       else
          local placed = signs.get(buf, last_orig)[last_orig]
+         local place_empty = signs.has_empty(buf)
 
 
          if not placed or not vim.startswith(placed, 'GitSignsDelete') then
 
             for i = last_orig + 1, last_new do
-               signs.add(config, buf, { [i] = { type = 'add', count = 0 } })
+               signs.add_one(config, buf, i, 'add')
+               if place_empty then
+                  signs.add_empty_sec(config, buf, i)
+               end
             end
          end
       end
@@ -122,7 +144,10 @@ local function speculate_signs(buf, last_orig, last_new)
 
 
       if not placed then
-         signs.add(config, buf, { [last_orig] = { type = 'change', count = 0 } })
+         signs.add_one(config, buf, last_orig, 'change')
+         if signs.has_empty(buf) then
+            signs.add_empty_sec(config, buf, last_orig)
+         end
       end
    end
 end
@@ -144,7 +169,7 @@ M.apply_word_diff = function(bufnr, row)
 
    local lnum = row + 1
 
-   for _, hunk in ipairs(cache[bufnr].hunks) do
+   for _, hunk in ipairs(cache[bufnr].main.hunks) do
       if lnum >= hunk.start and lnum <= hunk.vend then
          local regions = require('gitsigns.word_diff').process(hunk.lines)
          for _, region in ipairs(regions) do
@@ -166,6 +191,10 @@ M.apply_word_diff = function(bufnr, row)
    end
 end
 
+local function staged_signs_enabled(c)
+   return config.staged_signs and c.main.base == nil or c.sec.base ~= nil
+end
+
 local update_cnt = 0
 
 local update0 = async(function(bufnr, bcache)
@@ -179,27 +208,65 @@ local update0 = async(function(bufnr, bcache)
    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
    local git_obj = bcache.git_obj
 
-   local compare_object = bcache.get_compare_obj(bcache)
+   local show_sec = staged_signs_enabled(bcache)
 
-   if config.use_internal_diff then
-      local diff = require('gitsigns.diff')
-      if not bcache.compare_text or config._refresh_staged_on_update then
-         bcache.compare_text = await(git_obj:get_show_text(compare_object))
+   for i, o in ipairs({ bcache.main, bcache.sec }) do
+      local sec = i == 2
+
+      if sec and not show_sec then
+         break
       end
-      bcache.hunks = diff.run_diff(bcache.compare_text, buftext, config.diff_algorithm)
-   else
-      await(git_obj:get_show(compare_object, bcache.compare_file))
-      bcache.hunks = await(git.run_diff(bcache.compare_file, buftext, config.diff_algorithm))
+
+      local compare_object = bcache:get_compare_obj(o.base, sec)
+
+      if config.use_internal_diff then
+         local diff = require('gitsigns.diff')
+         if not o.compare_text or config._refresh_staged_on_update then
+            o.compare_text = await(git_obj:get_show_text(compare_object))
+         end
+         o.hunks = diff.run_diff(o.compare_text, buftext, config.diff_algorithm)
+      else
+         await(git_obj:get_show(compare_object, o.compare_file))
+         o.hunks = await(git.run_diff(o.compare_file, buftext, config.diff_algorithm))
+      end
+
+      o.pending_signs = gs_hunks.process_hunks(o.hunks)
    end
-   bcache.pending_signs = gs_hunks.process_hunks(bcache.hunks)
+
+
+
+   if config.staged_signs and bcache.main.base == nil and bcache.sec.base == nil then
+      local fill_empty = false
+      for i, ms in pairs(bcache.main.pending_signs or {}) do
+         local ps = bcache.sec.pending_signs[i]
+         if ps then
+            if ps.type == ms.type then
+               bcache.sec.pending_signs[i] = nil
+            else
+               fill_empty = true
+            end
+         end
+      end
+
+
+
+      if fill_empty then
+         for i, _ in pairs(bcache.main.pending_signs or {}) do
+            local ps = bcache.sec.pending_signs[i]
+            if not ps then
+               bcache.sec.pending_signs[i] = { type = 'empty', count = 0 }
+            end
+         end
+      end
+   end
 
    await(scheduler())
 
 
 
-   M.apply_win_signs(bufnr, bcache.pending_signs)
+   M.apply_win_signs(bufnr)
 
-   Status:update(bufnr, gs_hunks.get_summary(bcache.hunks, git_obj.abbrev_head))
+   Status:update(bufnr, gs_hunks.get_summary(bcache.main.hunks, git_obj.abbrev_head))
 
    update_cnt = update_cnt + 1
 

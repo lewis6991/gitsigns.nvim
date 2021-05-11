@@ -41,10 +41,16 @@ function M.add_debug_functions(cache)
          local key = path[#path]
          if key == 'compare_text' then
             local item = raw_item
-            return { '...', length = #item, head = item[1] }
-         elseif not vim.tbl_isempty(raw_item) and vim.tbl_contains({
-               'staged_diffs', }, key) then
-            return { '...', length = #vim.tbl_keys(raw_item) }
+            return { length = #item, head = item[1] }
+         elseif key == 'hunks' then
+            local ret = {}
+            for _, h in ipairs(raw_item) do
+               local a = vim.deepcopy(h)
+               a.added = nil
+               a.removed = nil
+               ret[#ret + 1] = a
+            end
+            return ret
          elseif key == 'pending_signs' then
             local keys = vim.tbl_keys(raw_item)
             local max = 100

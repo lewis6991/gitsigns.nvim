@@ -1019,5 +1019,9 @@ describe('gitsigns', function()
   -- TODO Add test for #194: Should not attach if file is in a custom git dir
 
   -- TODO Add test diffthis
+  --
+  -- TODO sec signs
+  --  - preview_hunk works on a sec sign
+  --  - stage_hunk doesn't have glitchy intermediate screen states
 
 end)
