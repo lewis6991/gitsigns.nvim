@@ -9,13 +9,21 @@ local enum GitSignHl
   'GitSignsAdd'
   'GitSignsChange'
   'GitSignsDelete'
+  'GitSignsAddSec'
+  'GitSignsChangeSec'
+  'GitSignsDeleteSec'
   'GitSignsCurrentLineBlame'
 end
 
 local hls: {GitSignHl:{string}} = {
-  GitSignsAdd    = { 'GitGutterAdd'   , 'SignifySignAdd'   , 'DiffAdd'    },
-  GitSignsChange = { 'GitGutterChange', 'SignifySignChange', 'DiffChange' },
-  GitSignsDelete = { 'GitGutterDelete', 'SignifySignDelete', 'DiffDelete' },
+  GitSignsAdd       = { 'GitGutterAdd'   , 'SignifySignAdd'   , 'DiffAdd'    },
+  GitSignsChange    = { 'GitGutterChange', 'SignifySignChange', 'DiffChange' },
+  GitSignsDelete    = { 'GitGutterDelete', 'SignifySignDelete', 'DiffDelete' },
+
+  GitSignsAddSec    = { 'GitGutterAdd'   , 'SignifySignAdd'   , 'DiffAdd'    },
+  GitSignsChangeSec = { 'GitGutterChange', 'SignifySignChange', 'DiffChange' },
+  GitSignsDeleteSec = { 'GitGutterDelete', 'SignifySignDelete', 'DiffDelete' },
+
   GitSignsCurrentLineBlame = { 'NonText' }
 }
 
@@ -26,7 +34,7 @@ local function is_hl_set(hl_name: string): boolean
   return exists and color ~= nil
 end
 
-local function hl_link(to: string, from: string, reverse: boolean)
+local function hl_create(to: string, from: string, reverse: boolean)
   if is_hl_set(to) then
     return
   end
@@ -40,15 +48,12 @@ local function hl_link(to: string, from: string, reverse: boolean)
   if exists then
     local bg = hl.background and ('guibg=#%06x'):format(hl.background) or ''
     local fg = hl.foreground and ('guifg=#%06x'):format(hl.foreground) or ''
-    vim.cmd(table.concat({'highlight', to, fg, bg, 'gui=reverse'}, ' '))
+    local rv = reverse and 'gui=reverse' or ''
+    vim.cmd(table.concat({'highlight', to, fg, bg, rv}, ' '))
   end
 end
 
-local stdHl = {
-  'DiffAdd',
-  'DiffChange',
-  'DiffDelete'
-}
+local stdHl = { 'DiffAdd', 'DiffChange', 'DiffDelete' }
 
 local function isStdHl(hl: string): boolean
   return vim.tbl_contains(stdHl, hl)
@@ -60,22 +65,20 @@ end
 
 -- Setup a GitSign* highlight by deriving it from other potentially present
 -- highlights.
-function M.setup_highlight(hl_name0: string)
-  if not isGitSignHl(hl_name0) then
+function M.setup_highlight(hl_name: string)
+  if not isGitSignHl(hl_name) then
     return
   end
-
-  local hl_name = hl_name0 as GitSignHl
 
   if is_hl_set(hl_name) then
     -- Already defined
     return
   end
 
-  for _, d in ipairs(hls[hl_name]) do
+  for _, d in ipairs(hls[hl_name as GitSignHl]) do
     if is_hl_set(d) then
       dprint(('Deriving %s from %s'):format(hl_name, d))
-      hl_link(hl_name, d, isStdHl(d))
+      hl_create(hl_name, d, isStdHl(d))
       return
     end
   end
@@ -85,7 +88,7 @@ function M.setup_other_highlight(hl: string, from_hl: string)
   local hl_pfx, hl_sfx = hl:sub(1, -3), hl:sub(-2, -1)
   if isGitSignHl(hl_pfx) and (hl_sfx == 'Ln' or hl_sfx == 'Nr') then
     dprint(('Deriving %s from %s'):format(hl, from_hl))
-    hl_link(hl, from_hl, hl_sfx == 'Ln')
+    hl_create(hl, from_hl, hl_sfx == 'Ln')
   end
 end
 

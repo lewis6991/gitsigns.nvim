@@ -6,7 +6,24 @@ local SchemaElem = {}
 
 
 
-local M = {Config = {SignsConfig = {}, watch_index = {}, yadm = {}, }, }
+local M = {Config = {SignsConfig = {SignConfig = {}, }, watch_index = {}, yadm = {}, }, }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -63,17 +80,72 @@ M.schema = {
          delete = { hl = 'GitSignsDelete', text = '_', numhl = 'GitSignsDeleteNr', linehl = 'GitSignsDeleteLn' },
          topdelete = { hl = 'GitSignsDelete', text = '‾', numhl = 'GitSignsDeleteNr', linehl = 'GitSignsDeleteLn' },
          changedelete = { hl = 'GitSignsChange', text = '~', numhl = 'GitSignsChangeNr', linehl = 'GitSignsChangeLn' },
+         empty = {},
+
+         base = nil,
+         signcolumn = true,
+         numhl = false,
+         linehl = false,
       },
       description = [[
-      Configuration for signs:
-        • `hl` specifies the highlight group to use for the sign.
-        • `text` specifies the character to use for the sign.
-        • `numhl` specifies the highlight group to use for the number column
-          (see |gitsigns-config.numhl|).
-        • `linehl` specifies the highlight group to use for the line
-          (see |gitsigns-config.linehl|).
-        • `show_count` to enable showing count of hunk, e.g. number of deleted
-          lines.
+      Fields:
+        • `add`:
+            Sign configuration for added lines. See below.
+
+        • `changed`:
+            Sign configuration for changed lines. See below.
+
+        • `delete`:
+            Sign configuration for deleted lines. See below.
+
+        • `topdelete`:
+            Sign configuration for deleted lines at the top of the buffer.
+            See below.
+
+        • `changedelete`:
+            Sign configuration for changed and deleted lines. See below.
+
+        • `base`:
+             Git revision specifier to diff against.
+
+        • `signcolumn`:
+             Enable/disable symbols in the sign column.
+
+             When enabled the highlights defined in `[sign].hl` and symbols defined
+             in `[sign].text` are used.
+
+        • `numhl`:
+
+             Enable/disable line number highlights.
+
+             When enabled the highlights defined in `[sign].numhl` are used. If
+             the highlight group does not exist, then it is automatically defined
+             and linked to the corresponding highlight group in `[sign].hl`.
+
+        • `linehl`:
+
+             Enable/disable line highlights.
+
+             When enabled the highlights defined in `[sign].numhl` are used. If
+             the highlight group does not exist, then it is automatically defined
+             and linked to the corresponding highlight group in `[sign].hl`.
+
+      Sign Configuration:
+        • `hl`:
+            Highlight group to use for the sign.
+
+        • `text`:
+            Character to use for the sign.
+
+        • `numhl`:
+            Highlight group to use for the number column.
+
+        • `linehl`:
+            Highlight group to use for the line.
+
+        • `show_count`:
+            Show count of hunk, e.g. number of deleted lines.
+
 
       Note if `hl`, `numhl` or `linehl` use a `GitSigns*` highlight and it is
       not defined, it will be automatically derived by searching for other
@@ -88,6 +160,27 @@ M.schema = {
     ]],
    },
 
+   signs_sec = {
+      type = 'table',
+      deep_extend = true,
+      default = {
+         add = { hl = 'GitSignsAddSec', text = '│*', numhl = 'GitSignsAddSecNr', linehl = 'GitSignsAddSecLn' },
+         change = { hl = 'GitSignsChangeSec', text = '│*', numhl = 'GitSignsChangeSecNr', linehl = 'GitSignsChangeSecLn' },
+         delete = { hl = 'GitSignsDeleteSec', text = '_*', numhl = 'GitSignsDeleteSecNr', linehl = 'GitSignsDeleteSecLn' },
+         topdelete = { hl = 'GitSignsDeleteSec', text = '‾*', numhl = 'GitSignsDeleteSecNr', linehl = 'GitSignsDeleteSecLn' },
+         changedelete = { hl = 'GitSignsChangeSec', text = '~*', numhl = 'GitSignsChangeSecNr', linehl = 'GitSignsChangeSecLn' },
+         empty = { hl = 'SignColumn', text = ' ' },
+
+         base = nil,
+         signcolumn = true,
+         numhl = false,
+         linehl = false,
+      },
+      description = [[
+      Secondary set of signs.
+    ]],
+   },
+
    keymaps = {
       type = 'table',
       default = {
@@ -99,7 +192,6 @@ M.schema = {
          ['n [c'] = { expr = true, "&diff ? '[c' : '<cmd>lua require\"gitsigns\".prev_hunk()<CR>'" },
 
          ['n <leader>hs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
-         ['n <leader>hu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
          ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
          ['n <leader>hR'] = '<cmd>lua require"gitsigns".reset_buffer()<CR>',
          ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
@@ -140,14 +232,19 @@ M.schema = {
     ]],
    },
 
+   staged_signs = {
+      type = 'boolean',
+      default = false,
+      description = [[
+      Show signs for staged hunks. The sign configution used for these signes in config.signs_sec.
+    ]],
+   },
+
    signcolumn = {
       type = 'boolean',
       default = true,
       description = [[
-      Enable/disable symbols in the sign column.
-
-      When enabled the highlights defined in `signs.*.hl` and symbols defined
-      in `signs.*.text` are used.
+      DEPRECATED: please use `signcolumn` in |gitsigns-config-signs|.
     ]],
    },
 
@@ -155,11 +252,7 @@ M.schema = {
       type = 'boolean',
       default = false,
       description = [[
-      Enable/disable line number highlights.
-
-      When enabled the highlights defined in `signs.*.numhl` are used. If
-      the highlight group does not exist, then it is automatically defined
-      and linked to the corresponding highlight group in `signs.*.hl`.
+      DEPRECATED: please use `numhl` in |gitsigns-config-signs|.
     ]],
    },
 
@@ -167,11 +260,7 @@ M.schema = {
       type = 'boolean',
       default = false,
       description = [[
-      Enable/disable line highlights.
-
-      When enabled the highlights defined in `signs.*.linehl` are used. If
-      the highlight group does not exist, then it is automatically defined
-      and linked to the corresponding highlight group in `signs.*.hl`.
+      DEPRECATED: please use `linehl` in |gitsigns-config-signs|.
     ]],
    },
 
@@ -442,10 +531,22 @@ local function resolve_default(v)
    end
 end
 
+local function handle_deprecated(cfg)
+   cfg.signs = cfg.signs or {}
+   for _, c in ipairs({ 'signcolumn', 'numhl', 'linehl' }) do
+      if cfg[c] ~= nil then
+         print(string.format("Warning(gitsigns): 'config.%s' is deprecated. Please use 'config.signs.%s'", c, c))
+         local uc = cfg.signs
+         uc[c] = cfg[c]
+      end
+   end
+end
+
 function M.build(user_config)
    user_config = user_config or {}
 
    validate_config(user_config)
+   handle_deprecated(user_config)
 
    local config = {}
    for k, v in pairs(M.schema) do

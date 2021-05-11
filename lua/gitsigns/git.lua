@@ -85,6 +85,7 @@ local M = {BlameInfo = {}, Version = {}, Obj = {}, }
 
 
 
+
 local Obj = M.Obj
 
 local function parse_version(version)
@@ -177,7 +178,7 @@ local get_repo_info = async(function(path, cmd)
    if not has_abs_gd then
       gitdir = uv.fs_realpath(gitdir)
    end
-   local abbrev_head = process_abbrev_head(gitdir, results[3])
+   local abbrev_head = process_abbrev_head(gitdir, results[4])
    return toplevel, gitdir, abbrev_head
 end)
 
@@ -261,48 +262,35 @@ Obj.command = async(function(self, args, spec)
    return await(command({ '--git-dir=' .. self.gitdir, unpack(args) }, spec))
 end)
 
-Obj.update_abbrev_head = async(function(self)
+Obj.update_head = async(function(self)
    _, _, self.abbrev_head = await(get_repo_info(self.toplevel))
 end)
 
-Obj.update_file_info = async(function(self)
-   local old_object_name = self.object_name
-   _, self.object_name, self.mode_bits, self.has_conflicts = await(self:file_info())
-
-   return old_object_name ~= self.object_name
+Obj.update_head_object = async(function(self)
+   self.head_object = await(self:command({ 'rev-parse', 'HEAD:' .. self.relpath }))[1]
 end)
 
-Obj.file_info = async(function(self)
+Obj.set_file_info = async(function(self)
    local results = await(self:command({
-      'ls-files',
-      '--stage',
-      '--others',
-      '--exclude-standard',
-      self.file,
-   }))
+      'ls-files', '--stage', '--others', '--exclude-standard', self.file, }))
 
-   local relpath
-   local object_name
-   local mode_bits
    local stage
-   local has_conflict = false
    for _, line in ipairs(results) do
       local parts = vim.split(line, '\t')
       if #parts > 1 then
-         relpath = parts[2]
+         self.relpath = parts[2]
          local attrs = vim.split(parts[1], '%s+')
          stage = tonumber(attrs[3])
          if stage <= 1 then
-            mode_bits = attrs[1]
-            object_name = attrs[2]
+            self.mode_bits = attrs[1]
+            self.staged_object = attrs[2]
          else
-            has_conflict = true
+            self.has_conflicts = true
          end
       else
-         relpath = parts[1]
+         self.relpath = parts[1]
       end
    end
-   return relpath, object_name, mode_bits, has_conflict
 end)
 
 Obj.unstage_file = async(function(self)
@@ -362,29 +350,31 @@ Obj.run_blame = async(function(self, lines, lnum)
 end)
 
 Obj.ensure_file_in_index = async(function(self)
-   if not self.object_name or self.has_conflicts then
-      if not self.object_name then
+   if not self.staged_object or self.has_conflicts then
+      if not self.staged_object then
 
          await(self:command({ 'add', '--intent-to-add', self.file }))
       else
 
 
-         local info = table.concat({ self.mode_bits, self.object_name, self.relpath }, ',')
+         local info = table.concat({ self.mode_bits, self.staged_object, self.relpath }, ',')
          await(self:command({ 'update-index', '--add', '--cacheinfo', info }))
       end
 
-
-      _, self.object_name, self.mode_bits, self.has_conflicts = await(self:file_info())
+      await(self:set_file_info())
    end
 end)
 
 Obj.stage_hunks = async(function(self, hunks, invert)
    await(self:ensure_file_in_index())
-   await(self:command({
-      'apply', '--cached', '--unidiff-zero', '-',
-   }, {
-      writer = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert),
-   }))
+   local patch = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert)
+   if gsd.debug_mode then
+      gsd.dprint('Applying patch:', nil, 'stage_hunks')
+      for _, l in ipairs(patch) do
+         gsd.dprint('    ' .. l, nil, 'stage_hunks')
+      end
+   end
+   await(self:command({ 'apply', '--cached', '--unidiff-zero', '-' }, { writer = patch }))
 end)
 
 Obj.new = a.async(function(file)
@@ -407,8 +397,7 @@ Obj.new = a.async(function(file)
       return self
    end
 
-   self.relpath, self.object_name, self.mode_bits, self.has_conflicts = 
-   await(self:file_info())
+   await(self:set_file_info())
 
    return self
 end)

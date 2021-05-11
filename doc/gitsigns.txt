@@ -52,7 +52,6 @@ of the default settings:
         ['n [c'] = { expr = true, "&diff ? '[c' : '<cmd>lua require\"gitsigns\".prev_hunk()<CR>'"},
 
         ['n <leader>hs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
-        ['n <leader>hu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
         ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
         ['n <leader>hR'] = '<cmd>lua require"gitsigns".reset_buffer()<CR>',
         ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
@@ -125,17 +124,11 @@ prev_hunk({opts})                                       *gitsigns.prev_hunk()*
 stage_hunk()                                           *gitsigns.stage_hunk()*
                 Stage the hunk at the cursor position.
 
-undo_stage_hunk()                                 *gitsigns.undo_stage_hunk()*
-                Undo the last call of stage_hunk(). Note: only the calls to
-                stage_hunk() performed in the current session can be undone.
-
 stage_buffer()                                       *gitsigns.stage_buffer()*
                 Stage all hunks in current buffer.
 
 reset_buffer_index()                           *gitsigns.reset_buffer_index()*
-                Unstage all hunks for current buffer in the index. Note:
-                Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
-                stages, this runs an `git reset` on current buffers file.
+                Unstage all hunks for current buffer in the index.
 
 reset_hunk()                                           *gitsigns.reset_hunk()*
                 Reset the lines of the hunk at the cursor position to what
@@ -153,9 +146,10 @@ blame_line({full})                                     *gitsigns.blame_line()*
                 floating window. If {full} is true then the full commit
                 message is displayed instead of just the one-line summary.
 
-change_base({base})                                   *gitsigns.change_base()*
+change_base({base}, {sec})                            *gitsigns.change_base()*
                 Change the base revision to diff against. If {base} is not
-                given, then the original base is used.
+                given, then the original base is used. If {sec} is true then
+                the base revision of the secondary signs is changed instead.
 
                 Examples: >
                   " Change base to 1 commit behind head
@@ -174,6 +168,9 @@ change_base({base})                                   *gitsigns.change_base()*
 
                   " Revert to original base
                   :Gitsigns change_base
+
+                  " Set base of secondary signs
+                  :Gitsigns change_base ~1 true
 <
 diffthis({base})                                         *gitsigns.diffthis()*
                 Perform a |vimdiff| on the given file with {base} if it is
@@ -185,6 +182,9 @@ diffthis({base})                                         *gitsigns.diffthis()*
 
                   " Diff against the last commit
                   :Gitsigns diffthis ~1
+
+change_sec_base({base})                               *gitsigns.change_base()*
+                Alias for `change_base({base}, true)` .
 
 update()                                                   *gitsigns.update()*
                 Update signs for the current buffer.
@@ -208,14 +208,20 @@ refresh()                                                 *gitsigns.refresh()*
 select_hunk()                                         *gitsigns.select_hunk()*
                 Select the hunk under the cursor.
 
-toggle_signs()                                       *gitsigns.toggle_signs()*
-                Toggle |gitsigns-config-signcolumn|
+toggle_signs({sec})                                  *gitsigns.toggle_signs()*
+                Toggle `signcolumn` in |gitsigns-config-signs|, or
+                |gitsigns-config-signs_sec| if {sec} is true.
 
-toggle_numhl()                                       *gitsigns.toggle_numhl()*
-                Toggle |gitsigns-config-numhl|
+toggle_numhl({sec})                                  *gitsigns.toggle_numhl()*
+                Toggle `numhl` in |gitsigns-config-signs|, or
+                |gitsigns-config-signs_sec| if {sec} is true.
 
-toggle_linehl()                                     *gitsigns.toggle_linehl()*
-                Toggle |gitsigns-config-linehl|
+toggle_linehl({sec})                                *gitsigns.toggle_linehl()*
+                Toggle `linehl` in |gitsigns-config-signs|, or
+                |gitsigns-config-signs_sec| if {sec} is true.
+
+toggle_staged_signs()                         *gitsigns.toggle_staged_signs()*
+                Toggle |gitsigns-config-staged_signs|.
 
 toggle_current_line_blame()             *gitsigns.toggle_current_line_blame()*
                 Toggle |gitsigns-config-current_line_blame|
@@ -232,17 +238,72 @@ signs                                                  *gitsigns-config-signs*
           delete       = {hl = 'GitSignsDelete', text = '_', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
           topdelete    = {hl = 'GitSignsDelete', text = '‾', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
           changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
+          empty        = {}, -- Unused
+
+          base       = nil,  -- Use index
+          signcolumn = true,
+          numhl      = false,
+          linehl     = false,
         }
 <
-      Configuration for signs:
-        • `hl` specifies the highlight group to use for the sign.
-        • `text` specifies the character to use for the sign.
-        • `numhl` specifies the highlight group to use for the number column
-          (see |gitsigns-config.numhl|).
-        • `linehl` specifies the highlight group to use for the line
-          (see |gitsigns-config.linehl|).
-        • `show_count` to enable showing count of hunk, e.g. number of deleted
-          lines.
+      Fields:
+        • `add`:
+            Sign configuration for added lines. See below.
+
+        • `changed`:
+            Sign configuration for changed lines. See below.
+
+        • `delete`:
+            Sign configuration for deleted lines. See below.
+
+        • `topdelete`:
+            Sign configuration for deleted lines at the top of the buffer.
+            See below.
+
+        • `changedelete`:
+            Sign configuration for changed and deleted lines. See below.
+
+        • `base`:
+             Git revision specifier to diff against.
+
+        • `signcolumn`:
+             Enable/disable symbols in the sign column.
+
+             When enabled the highlights defined in `[sign].hl` and symbols defined
+             in `[sign].text` are used.
+
+        • `numhl`:
+
+             Enable/disable line number highlights.
+
+             When enabled the highlights defined in `[sign].numhl` are used. If
+             the highlight group does not exist, then it is automatically defined
+             and linked to the corresponding highlight group in `[sign].hl`.
+
+        • `linehl`:
+
+             Enable/disable line highlights.
+
+             When enabled the highlights defined in `[sign].numhl` are used. If
+             the highlight group does not exist, then it is automatically defined
+             and linked to the corresponding highlight group in `[sign].hl`.
+
+      Sign Configuration:
+        • `hl`:
+            Highlight group to use for the sign.
+
+        • `text`:
+            Character to use for the sign.
+
+        • `numhl`:
+            Highlight group to use for the number column.
+
+        • `linehl`:
+            Highlight group to use for the line.
+
+        • `show_count`:
+            Show count of hunk, e.g. number of deleted lines.
+
 
       Note if `hl`, `numhl` or `linehl` use a `GitSigns*` highlight and it is
       not defined, it will be automatically derived by searching for other
@@ -254,6 +315,25 @@ signs                                                  *gitsigns-config-signs*
       For example if `signs.add.hl = GitSignsAdd` and `GitSignsAdd` is not
       defined but `GitGutterAdd` is defined, then `GitSignsAdd` will be linked
       to `GitGutterAdd`.
+
+signs_sec                                          *gitsigns-config-signs_sec*
+      Type: `table`
+      Default: >
+        {
+          add          = {hl = 'GitSignsAddSec'   , text = '│*', numhl='GitSignsAddSecNr'   , linehl='GitSignsAddSecLn'    },
+          change       = {hl = 'GitSignsChangeSec', text = '│*', numhl='GitSignsChangeSecNr', linehl='GitSignsChangeSecLn' },
+          delete       = {hl = 'GitSignsDeleteSec', text = '_*', numhl='GitSignsDeleteSecNr', linehl='GitSignsDeleteSecLn' },
+          topdelete    = {hl = 'GitSignsDeleteSec', text = '‾*', numhl='GitSignsDeleteSecNr', linehl='GitSignsDeleteSecLn' },
+          changedelete = {hl = 'GitSignsChangeSec', text = '~*', numhl='GitSignsChangeSecNr', linehl='GitSignsChangeSecLn' },
+          empty        = {hl = 'SignColumn'       , text = ' ' },
+
+          base       = nil,   --  Use default
+          signcolumn = true,
+          numhl      = false,
+          linehl     = false,
+        }
+<
+      Secondary set of signs.
 
 keymaps                                              *gitsigns-config-keymaps*
       Type: `table`
@@ -267,7 +347,6 @@ keymaps                                              *gitsigns-config-keymaps*
           ['n [c'] = { expr = true, "&diff ? '[c' : '<cmd>lua require\"gitsigns\".prev_hunk()<CR>'"},
 
           ['n <leader>hs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
-          ['n <leader>hu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
           ['n <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
           ['n <leader>hR'] = '<cmd>lua require"gitsigns".reset_buffer()<CR>',
           ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
@@ -300,31 +379,25 @@ sign_priority                                  *gitsigns-config-sign_priority*
 
       Priority to use for signs.
 
+staged_signs                                    *gitsigns-config-staged_signs*
+      Type: `boolean`, Default: `false`
+
+      Show signs for staged hunks. The sign configution used for these signes in config.signs_sec.
+
 signcolumn                                        *gitsigns-config-signcolumn*
       Type: `boolean`, Default: `true`
 
-      Enable/disable symbols in the sign column.
-
-      When enabled the highlights defined in `signs.*.hl` and symbols defined
-      in `signs.*.text` are used.
+      DEPRECATED: please use `signcolumn` in |gitsigns-config-signs|.
 
 numhl                                                  *gitsigns-config-numhl*
       Type: `boolean`, Default: `false`
 
-      Enable/disable line number highlights.
-
-      When enabled the highlights defined in `signs.*.numhl` are used. If
-      the highlight group does not exist, then it is automatically defined
-      and linked to the corresponding highlight group in `signs.*.hl`.
+      DEPRECATED: please use `numhl` in |gitsigns-config-signs|.
 
 linehl                                                *gitsigns-config-linehl*
       Type: `boolean`, Default: `false`
 
-      Enable/disable line highlights.
-
-      When enabled the highlights defined in `signs.*.linehl` are used. If
-      the highlight group does not exist, then it is automatically defined
-      and linked to the corresponding highlight group in `signs.*.hl`.
+      DEPRECATED: please use `linehl` in |gitsigns-config-signs|.
 
 diff_algorithm                                *gitsigns-config-diff_algorithm*
       Type: `string`, Default: taken from 'diffopt'

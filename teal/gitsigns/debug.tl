@@ -42,9 +42,6 @@ function M.add_debug_functions(cache: any): {string:function}
           if key == 'compare_text' then
             local item <const> = raw_item as {string}
             return { '...', length=#item, head=item[1] }
-          elseif not vim.tbl_isempty(raw_item) and vim.tbl_contains({
-            'staged_diffs' }, key) then
-            return { '...', length=#vim.tbl_keys(raw_item) }
           elseif key == 'pending_signs' then
             local keys = vim.tbl_keys(raw_item)
             local max <const> = 100

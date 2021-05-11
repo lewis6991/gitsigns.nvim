@@ -132,13 +132,28 @@ set statusline+=%{get(b:,'gitsigns_status','')}
 
 For the current branch use the variable `b:gitsigns_head`.
 
+## Secondary Signs, Staged Hunks and Base Revisions
+
+Gitsigns supports showing signs for two diffs of the same buffer. These signs are configured with `config.signs` and `config.signs_sec` respectively.
+
+One application for a secondary set of signs is for showing staged hunks (hunks in the index but not in `HEAD`). If the default base revision values are used (`config.signs.base=nil` and `config.signs_sec.base=nil`) and `config.staged_signs=true`, Gitsigns will use the secondary set of signs to show staged hunks. If the base revisions are set to any other value then both sets of signs will be shown alongside each other.
+
+For convenience the base revisions can be changed with the action `change_base`:
+
+```viml
+:lua require('gitsigns').change_base('HEAD~10')  " Change revision for main signs
+:GitSigns change_base HEAD~10                    " or use the CLI
+:lua require('gitsigns').change_sec_base('~5')   " Change revision for secondary signs
+:GitSigns change_sec_base ~5
+```
+
 ## TODO
 
-- [ ] Add ability to show staged hunks with different signs (maybe in a different sign column?)
+- [x] Add ability to show staged hunks with different signs (maybe in a different sign column?)
 - [ ] Add ability to show commit in floating window of current line
 - [ ] Allow extra options to be passed to `git diff`
 - [ ] Folding of text around hunks
-- [ ] Diff against working tree instead of index, or diff against any SHA.
+- [x] Diff against working tree instead of index, or diff against any SHA.
 - [ ] Open diff mode of buffer against what gitsigns is comparing to (currently the index)
 - [ ] Show messages when navigating hunks similar to '/' search
 

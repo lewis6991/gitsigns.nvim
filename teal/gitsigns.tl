@@ -46,28 +46,41 @@ local namespace: integer
 
 local record CacheEntry
   file          : string
-  compare_file  : string    -- For use with externl diff
-  base          : string
-  compare_text  : {string}  -- For use with internal diff
-  hunks         : {Hunk}
-  staged_diffs  : {Hunk}
-  pending_signs : {integer:Sign}
   index_watcher : uv.FSPollObj -- Timer object watching the files index
+  head_watcher  : uv.FSPollObj -- Timer object watching HEAD
   git_obj       : git.Obj
   commit        : string
+
+  record Diff
+    base          : string
+    compare_file  : string    -- For use with externl diff
+    compare_text  : {string}  -- For use with internal diff
+    hunks         : {Hunk}
+    pending_signs : {integer:Sign}
+  end
+
+  main: Diff
+  sec:  Diff
 end
 
 local cache: {integer:CacheEntry} = {}
 
-local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk
+local function get_cursor_hunk(bufnr: integer, bcache: CacheEntry, try_sec: boolean): Hunk, boolean
   bufnr = bufnr or current_buf()
-  hunks = hunks or cache[bufnr].hunks
+  bcache = bcache or cache[bufnr]
 
   local lnum = api.nvim_win_get_cursor(0)[1]
-  return gs_hunks.find_hunk(lnum, hunks)
+
+  local ret = gs_hunks.find_hunk(lnum, bcache.main.hunks)
+  if not ret and try_sec then
+    return gs_hunks.find_hunk(lnum, bcache.sec.hunks), true
+  end
+  return ret, false
 end
 
-local function apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: integer, bot: integer)
+local function apply_win_signs0(bufnr: integer, pending: {integer:Sign}, top: integer, bot: integer, sec: boolean)
+  if not pending then return end
+
   -- If called without top or bot, then assume this is the first call after
   -- clearing all the signs
   local first_apply = top == nil
@@ -94,28 +107,49 @@ local function apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: int
     schedule_sign(lnum)
   end
 
-  if first_apply then
-    signs.remove(bufnr)  -- Remove all signs
-
-    -- To stop the sign column width changing too much, if there are signs to be
-    -- added but none of them are visible in the window, then make sure to add at
-    -- least one sign. Only do this on the first call after an update when we all
-    -- the signs have been cleared.
-    if config.use_decoration_api then
-      schedule_sign(next(pending))
-    end
+  -- To stop the sign column width changing too much, if there are signs to be
+  -- added but none of them are visible in the window, then make sure to add at
+  -- least one sign. Only do this on the first call after an update when we all
+  -- the signs have been cleared.
+  if first_apply and config.use_decoration_api then
+    schedule_sign(next(pending))
   end
 
-  signs.add(config, bufnr, scheduled)
+  signs.add(config, bufnr, scheduled, sec)
+end
+
+local function apply_win_signs(bufnr: integer, bcache: CacheEntry, top: integer, bot: integer)
+  bcache = bcache or cache[bufnr]
+  if not bcache then
+    return
+  end
+
+  -- If called without top or bot, then assume this is the first call after
+  -- clearing all the signs
+  local first_apply = top == nil
+
+  if first_apply then
+    signs.remove(bufnr, nil, true)  -- Remove all signs
+    signs.remove(bufnr, nil, false)  -- Remove all signs
+  end
+
+  apply_win_signs0(bufnr, bcache.sec.pending_signs , top, bot, true )
+  apply_win_signs0(bufnr, bcache.main.pending_signs, top, bot, false)
 end
 
 local update_cnt = 0
 
-local function get_compare_object(bcache: CacheEntry, base: string): string
-  base = base or bcache.base
+local function get_compare_object(base: string, bcache: CacheEntry, sec: boolean): string
+  if sec then
+    base = base or bcache.sec.base
+  else
+    base = base or bcache.main.base
+  end
   local prefix: string
   if base then
     prefix = base
+  elseif sec then
+    prefix = 'HEAD'
   elseif bcache.commit then
     -- Buffer is a fugutive commit so compare against the parent of the commit
     prefix = string.format('%s^', bcache.commit)
@@ -125,6 +159,10 @@ local function get_compare_object(bcache: CacheEntry, base: string): string
   end
 
   return string.format('%s:%s', prefix, bcache.git_obj.relpath)
+end
+
+local function staged_signs_enabled(c: CacheEntry): boolean
+  return config.staged_signs and c.main.base == nil or c.sec.base ~= nil
 end
 
 local update0 = async(function(bufnr: integer, bcache: CacheEntry)
@@ -138,27 +176,65 @@ local update0 = async(function(bufnr: integer, bcache: CacheEntry)
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local git_obj = bcache.git_obj
 
-  local compare_object = get_compare_object(bcache)
+  local show_sec = staged_signs_enabled(bcache)
 
-  if config.use_internal_diff then
-    local diff = require('gitsigns.diff')
-    if not bcache.compare_text or config._refresh_staged_on_update then
-      bcache.compare_text = await(git_obj:get_show_text(compare_object))
+  for i, o in ipairs{bcache.main, bcache.sec} do
+    local sec = i==2
+
+    if sec and not show_sec then
+      break
     end
-    bcache.hunks = diff.run_diff(bcache.compare_text, buftext, config.diff_algorithm)
-  else
-    await(git_obj:get_show(compare_object, bcache.compare_file))
-    bcache.hunks = await(git.run_diff(bcache.compare_file, buftext, config.diff_algorithm))
+
+    local compare_object = get_compare_object(o.base, bcache, sec)
+
+    if config.use_internal_diff then
+      local diff = require('gitsigns.diff')
+      if not o.compare_text or config._refresh_staged_on_update then
+        o.compare_text = await(git_obj:get_show_text(compare_object))
+      end
+      o.hunks = diff.run_diff(o.compare_text, buftext, config.diff_algorithm)
+    else
+      await(git_obj:get_show(compare_object, o.compare_file))
+      o.hunks = await(git.run_diff(o.compare_file, buftext, config.diff_algorithm))
+    end
+
+    o.pending_signs = process_hunks(o.hunks)
   end
-  bcache.pending_signs = process_hunks(bcache.hunks)
+
+  -- secondary signs is staged hunks. Simply remove the index signs from the
+  -- HEAD signs.
+  if config.staged_signs and bcache.main.base == nil and bcache.sec.base == nil then
+    local fill_empty = false
+    for i, ms in pairs(bcache.main.pending_signs or {}) do
+      local ps = bcache.sec.pending_signs[i]
+      if ps then
+        if ps.type == ms.type then
+          bcache.sec.pending_signs[i] = nil
+        else
+          fill_empty = true
+        end
+      end
+    end
+
+    -- If there are any main and sec signs on the same line then insert empty
+    -- sec signs on every main sign line to ensure all main signs are aligned.
+    if fill_empty then
+      for i, _ in pairs(bcache.main.pending_signs or {}) do
+        local ps = bcache.sec.pending_signs[i]
+        if not ps then
+          bcache.sec.pending_signs[i] = {type='empty', count=0}
+        end
+      end
+    end
+  end
 
   await(scheduler())
 
   -- Apply signs to the window. Other signs will be added by the decoration
   -- provider as they are drawn.
-  apply_win_signs(bufnr, bcache.pending_signs)
+  apply_win_signs(bufnr, bcache)
 
-  Status:update(bufnr, gs_hunks.get_summary(bcache.hunks, git_obj.abbrev_head))
+  Status:update(bufnr, gs_hunks.get_summary(bcache.main.hunks, git_obj.abbrev_head))
 
   update_cnt = update_cnt + 1
   dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt), bufnr, 'update')
@@ -199,10 +275,10 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
   local w = uv.new_fs_poll()
   w:start(index, config.watch_index.interval, async_void(function(err: string)
     if err then
-      dprint('Index update error: '..err, bufnr, 'watcher_cb')
+      dprint('Index update error: '..err, bufnr, 'index_watcher_cb')
       return
     end
-    dprint('Index update', bufnr, 'watcher_cb')
+    dprint('Index update', bufnr, 'index_watcher_cb')
 
     local bcache = cache[bufnr]
 
@@ -216,17 +292,65 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
 
     local git_obj = bcache.git_obj
 
-    await(git_obj:update_abbrev_head())
+    local old_staged_object = git_obj.staged_object
+
+    await(git_obj:set_file_info())
+
+    if old_staged_object == git_obj.staged_object then
+      dprint('index object for file not changed', bufnr, 'index_watcher_cb')
+      return
+    end
+
+    -- Invalidate
+    bcache.main.compare_text = nil
+    bcache.sec.compare_text = nil
+
+    await(update(bufnr))
+  end))
+  return w
+end
+
+local watch_head = function(bufnr: integer, gitdir: string): uv.FSPollObj
+  dprint('Watching HEAD', bufnr, 'watch_head')
+  -- We watch .git/COMMIT_EDITMSG as this always changes when HEAD changes
+  local head = gitdir..util.path_sep..'COMMIT_EDITMSG'
+  local w = uv.new_fs_poll()
+  w:start(head, config.watch_index.interval, async_void(function(err: string)
+    if err then
+      dprint('HEAD update error: '..err, bufnr, 'head_watcher_cb')
+      return
+    end
+    dprint('HEAD update', bufnr, 'head_watcher_cb')
+
+    local bcache = cache[bufnr]
+
+    if not bcache then
+      -- Very occasionally an external git operation may cause the buffer to
+      -- detach and update the index simultaneously. When this happens this
+      -- handler will trigger but there will be no cache.
+      dprint(string.format('Buffer %s has detached, aborting', bufnr))
+      return
+    end
+
+    local git_obj = bcache.git_obj
+
+    local old_head_object = git_obj.head_object
+
+    await(git_obj:update_head())
 
     await(scheduler())
     Status:update_head(bufnr, git_obj.abbrev_head)
 
-    if not await(git_obj:update_file_info()) then
-      dprint('File not changed', bufnr, 'watcher_cb')
+    await(git_obj:update_head_object())
+
+    if old_head_object == git_obj.head_object then
+      dprint('HEAD object for file not changed', bufnr, 'head_watcher_cb')
       return
     end
 
-    bcache.compare_text = nil -- Invalidate
+    -- Invalidate
+    bcache.main.compare_text = nil
+    bcache.sec.compare_text = nil
 
     await(update(bufnr))
   end))
@@ -236,7 +360,7 @@ end
 local stage_hunk = async_void(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
-  if not bcache then
+  if not bcache or bcache.main.base ~= nil then
     return
   end
 
@@ -245,15 +369,29 @@ local stage_hunk = async_void(function()
     return
   end
 
-  local hunk = get_cursor_hunk(bufnr, bcache.hunks)
-  if not hunk then
-    return
+  local hunk, sec = get_cursor_hunk(bufnr, bcache, true)
+
+  if not hunk then return end
+  local staged_signs_en = staged_signs_enabled(bcache)
+
+  if sec and staged_signs_en then
+    -- Need to offset the hunk if it is staged (already in the index)
+    -- TODO lewis6991 (20/05/21): Test me
+    local offset = 0
+    for _, h in ipairs(bcache.main.hunks) do
+      -- FIXME lewis6991 (20/05/21): This won't handle if the hunks overlap
+      if h.start > hunk.start then
+        break
+      end
+      offset = offset - h.removed.count + h.added.count
+    end
+    dprint('Offset = '..offset, bufnr, 'stage_hunk')
+    hunk.added.start = hunk.added.start - offset
   end
 
-  await(bcache.git_obj:stage_hunks({hunk}))
+  await(bcache.git_obj:stage_hunks({hunk}, sec))
 
-  table.insert(bcache.staged_diffs, hunk)
-  bcache.compare_text = nil -- Invalidate
+  bcache.main.compare_text = nil -- Invalidate
 
   local hunk_signs = process_hunks({hunk})
 
@@ -265,17 +403,19 @@ local stage_hunk = async_void(function()
   --
   -- We cannot update the status bar as that requires a full diff.
   for lnum, _ in pairs(hunk_signs) do
-    signs.remove(bufnr, lnum)
+    signs.remove(bufnr, lnum, sec)
+  end
+  if staged_signs_en then
+    signs.add(config, bufnr, hunk_signs, not sec)
   end
   await(update(bufnr))
 end)
 
 local function reset_hunk(bufnr: integer, hunk: Hunk)
   bufnr = bufnr or current_buf()
-  hunk = hunk or get_cursor_hunk(bufnr)
-  if not hunk then
-    return
-  end
+  hunk = hunk or get_cursor_hunk(bufnr, nil, true)
+
+  if not hunk then return end
 
   local lstart, lend: integer, integer
   if hunk.type == 'delete' then
@@ -289,58 +429,41 @@ local function reset_hunk(bufnr: integer, hunk: Hunk)
     lstart = hunk.start - 1
     lend = hunk.start - 1 + length
   end
-  api.nvim_buf_set_lines(bufnr, lstart, lend, false, gs_hunks.extract_removed(hunk))
+  api.nvim_buf_set_lines(bufnr, lstart, lend, false, gs_hunks.extract_lines(hunk, true))
 end
 
 local reset_buffer = async_void(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
-  if not bcache then
-    return
-  end
+
+  if not bcache then return end
 
   local limit <const> = 1000
   -- Reseting a hunk may change how the rest of the hunks are calculated so we
   -- need to run a full update between each reset.
   for _ = 1, limit do
-    if not bcache.hunks[1] then
+    if not bcache.main.hunks[1] then
       return
     end
-    reset_hunk(bufnr, bcache.hunks[1])
+    reset_hunk(bufnr, bcache.main.hunks[1])
     await(update(bufnr))
   end
   error('Hit maximum limit of hunks to reset')
 end)
 
-local undo_stage_hunk = async_void(function()
-  local bufnr = current_buf()
-  local bcache = cache[bufnr]
-  if not bcache then
-    return
-  end
-
-  local hunk = table.remove(bcache.staged_diffs)
-  if not hunk then
-    print("No hunks to undo")
-    return
-  end
-
-  await(bcache.git_obj:stage_hunks({hunk}, true))
-  bcache.compare_text = nil -- Invalidate
-  await(scheduler())
-  signs.add(config, bufnr, process_hunks({hunk}))
-end)
-
 local stage_buffer = async_void(function()
   local bufnr = current_buf()
-
   local bcache = cache[bufnr]
-  if not bcache then
+
+  if not bcache then return end
+
+  if config.signs.base ~= nil then
+    -- Cannot stage hunks if base is set
     return
   end
 
   -- Only process files with existing hunks
-  local hunks = bcache.hunks
+  local hunks = bcache.main.hunks
   if #hunks == 0 then
     print("No unstaged changes in file to stage")
     return
@@ -353,10 +476,7 @@ local stage_buffer = async_void(function()
 
   await(bcache.git_obj:stage_hunks(hunks))
 
-  for _, hunk in ipairs(hunks) do
-    table.insert(bcache.staged_diffs, hunk)
-  end
-  bcache.compare_text = nil -- Invalidate
+  bcache.main.compare_text = nil -- Invalidate
 
   await(scheduler())
   signs.remove(bufnr)
@@ -366,24 +486,13 @@ end)
 local reset_buffer_index = async_void(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
-  if not bcache then
-    return
-  end
 
-  -- `bcache.staged_diffs` won't contain staged changes outside of current
-  -- neovim session so signs added from this unstage won't be complete They will
-  -- however be fixed by index watcher and properly updated We should implement
-  -- some sort of initial population from git diff, after that this function can
-  -- be improved to check if any staged hunks exists and it can undo changes
-  -- using git apply line by line instead of reseting whole file
-  local hunks = bcache.staged_diffs
-  bcache.staged_diffs = {}
+  if not bcache then return end
 
   await(bcache.git_obj:unstage_file())
-  bcache.compare_text = nil -- Invalidate
+  bcache.main.compare_text = nil -- Invalidate
 
   await(scheduler())
-  signs.add(config, bufnr, process_hunks(hunks))
 end)
 
 local record NavHunkOpts
@@ -393,25 +502,22 @@ end
 
 local function nav_hunk(options: NavHunkOpts)
   local bcache = cache[current_buf()]
-  if not bcache then
-    return
-  end
-  local hunks = bcache.hunks
-  if not hunks or vim.tbl_isempty(hunks) then
-    return
-  end
-  local line = api.nvim_win_get_cursor(0)[1]
-  -- wrap around
+  if not bcache then return end
+
+  local lnum = api.nvim_win_get_cursor(0)[1]
+
   local wrap = options.wrap ~= nil and options.wrap or vim.o.wrapscan
-  local hunk = gs_hunks.find_nearest_hunk(line, hunks, options.forwards, wrap)
+
+  local hunks = gs_hunks.merge(bcache.main.hunks, bcache.sec.hunks)
+  local hunk = gs_hunks.find_nearest_hunk(lnum, hunks, options.forwards, wrap)
+  if not hunk then return end
+
   local row = options.forwards and hunk.start or hunk.vend
-  if row then
-    -- Handle topdelete
-    if row == 0 then
-      row = 1
-    end
-    api.nvim_win_set_cursor(0, {row, 0})
-  end
+
+  -- Handle topdelete
+  if row == 0 then row = 1 end
+
+  api.nvim_win_set_cursor(0, {row, 0})
 end
 
 local function next_hunk(options: NavHunkOpts)
@@ -443,19 +549,17 @@ local function detach(bufnr: integer, keep_signs: boolean)
 
   if not keep_signs then
     signs.remove(bufnr)  -- Remove all signs
+    signs.remove(bufnr, nil, true)  -- Remove all signs
   end
 
   -- Clear status variables
   Status:clear(bufnr)
 
-  os.remove(bcache.compare_file)
+  os.remove(bcache.main.compare_file)
+  os.remove(bcache.sec.compare_file)
 
-  local w = bcache.index_watcher
-  if w then
-    w:stop()
-  else
-    dprint('Index_watcher was nil', bufnr)
-  end
+  bcache.head_watcher:stop()
+  bcache.index_watcher:stop()
 
   cache[bufnr] = nil
 end
@@ -519,26 +623,33 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
     -- Lines added
 
     if last_orig == 0 then
-      -- Note: It seems that
       local placed = signs.get(buf, 1)[1]
+      local place_empty = signs.has_empty(buf)
 
       -- Add 'added' signs only if there wasn't a 'delete' sign above
       if not placed or not vim.startswith(placed, 'GitSignsTopDelete') then
         -- If lines are added, make sure to immediately add the signs
         for i = 1, last_new do
-          signs.add(config, buf, {[i] = {type='add', count=0}})
+          signs.add_one(config, buf, i, 'add')
+          if place_empty then
+            signs.add_empty_sec(config, buf, i)
+          end
         end
       else
         signs.remove(buf, 1)
       end
     else
       local placed = signs.get(buf, last_orig)[last_orig]
+      local place_empty = signs.has_empty(buf)
 
       -- Add 'added' signs only if there wasn't a 'delete' sign above
       if not placed or not vim.startswith(placed, 'GitSignsDelete') then
         -- If lines are added, make sure to immediately add the signs
         for i = last_orig+1, last_new do
-          signs.add(config, buf, {[i] = {type='add', count=0}})
+          signs.add_one(config, buf, i, 'add')
+          if place_empty then
+            signs.add_empty_sec(config, buf, i)
+          end
         end
       end
     end
@@ -549,7 +660,10 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
 
     -- add a 'change' sign if there are no other signs
     if not placed then
-      signs.add(config, buf, {[last_orig] = {type='change', count=0}})
+      signs.add_one(config, buf, last_orig, 'change')
+      if signs.has_empty(buf) then
+        signs.add_empty_sec(config, buf, last_orig)
+      end
     end
   end
 end
@@ -627,7 +741,7 @@ local attach = async(function(cbuf: integer)
     return
   end
 
-  if not config.attach_to_untracked and git_obj.object_name == nil then
+  if not config.attach_to_untracked and git_obj.staged_object == nil then
     dprint('File is untracked', cbuf, 'attach')
     return
   end
@@ -637,13 +751,26 @@ local attach = async(function(cbuf: integer)
   await(scheduler())
 
   cache[cbuf] = {
-    file          = file,
-    commit        = commit,
-    compare_file  = os.tmpname(),
-    compare_text  = nil,
-    hunks         = {},
-    staged_diffs  = {},
+    file   = file,
+    commit = commit,
+
+    main = {
+      compare_file = os.tmpname(),
+      compare_text = nil,
+      hunks        = {},
+      base         = config.signs.base,
+    },
+
+    sec = {
+      compare_file = os.tmpname(),
+      compare_text = nil,
+      hunks        = {},
+      base         = config.signs_sec.base,
+    },
+
     index_watcher = watch_index(cbuf, git_obj.gitdir),
+    head_watcher  = watch_head(cbuf, git_obj.gitdir),
+
     git_obj       = git_obj
   }
 
@@ -675,25 +802,26 @@ end)
 
 local function setup_signs_and_highlights(redefine: boolean)
   -- Define signs
-  for t, sign_name in pairs(signs.sign_map) do
-    local cs = config.signs[t]
+  for i, sign_cfg in ipairs{config.signs, config.signs_sec} do
+    for t, sign_name in pairs(signs.sign_map) do
+      local cs = sign_cfg[t]
 
-    gs_hl.setup_highlight(cs.hl)
+      gs_hl.setup_highlight(cs.hl)
 
-    local enum HlTy 'numhl' 'linehl' end
-    for _, hlty in ipairs({'numhl', 'linehl'} as {HlTy}) do
-      if config[hlty] then
-        gs_hl.setup_other_highlight(cs[hlty], cs.hl)
+      local enum HlTy 'numhl' 'linehl' end
+      for _, hlty in ipairs({'numhl', 'linehl'} as {HlTy}) do
+        if sign_cfg[hlty] then
+          gs_hl.setup_other_highlight(cs[hlty], cs.hl)
+        end
       end
+
+      signs.define(sign_name..(i==2 and 'Sec' or ''), {
+        texthl = cs.hl,
+        text   = sign_cfg.signcolumn and cs.text or nil,
+        numhl  = sign_cfg.numhl      and cs.numhl,
+        linehl = sign_cfg.linehl     and cs.linehl
+      }, redefine)
     end
-
-    signs.define(sign_name, {
-      texthl = cs.hl,
-      text   = config.signcolumn and cs.text or nil,
-      numhl  = config.numhl      and cs.numhl,
-      linehl = config.linehl     and cs.linehl
-    }, redefine)
-
   end
   if config.current_line_blame then
     gs_hl.setup_highlight('GitSignsCurrentLineBlame')
@@ -730,11 +858,7 @@ end
 local function setup_decoration_provider()
   api.nvim_set_decoration_provider(namespace, {
     on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
-      local bcache = cache[bufnr]
-      if not bcache or not bcache.pending_signs then
-        return
-      end
-      apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
+      apply_win_signs(bufnr, nil, top+1, bot+1)
     end
   })
 end
@@ -806,17 +930,23 @@ local setup = async_void(function(cfg: Config)
 end)
 
 local function preview_hunk()
-  local hunk = get_cursor_hunk()
+  local bufnr = current_buf()
+  local bcache = cache[bufnr]
+  local hunk = get_cursor_hunk(bufnr, bcache, true)
+
   if not hunk then return end
 
   local gs_popup = require('gitsigns.popup')
 
-  local _, bufnr = gs_popup.create(hunk.lines, config.preview_config)
-  api.nvim_buf_set_option(bufnr, 'filetype', 'diff')
+  local _, pbufnr = gs_popup.create(hunk.lines, config.preview_config)
+  api.nvim_buf_set_option(pbufnr, 'filetype', 'diff')
 end
 
 local function select_hunk()
-  local hunk = get_cursor_hunk()
+  local bufnr = current_buf()
+  local bcache = cache[bufnr]
+  local hunk = get_cursor_hunk(bufnr, bcache, true)
+
   if not hunk then return end
 
   vim.cmd('normal! '..hunk.start..'GV'..hunk.vend..'G')
@@ -885,7 +1015,7 @@ end
 local _current_line_blame = async_void(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
-  if not bcache or not bcache.git_obj.object_name then
+  if not bcache or not bcache.git_obj.staged_object then
     return
   end
 
@@ -907,23 +1037,32 @@ local function refresh()
   setup_current_line_blame()
   for k, v in pairs(cache) do
     _current_line_blame_reset(k)
-    v.compare_text = nil  -- Invalidate
+    v.main.compare_text = nil  -- Invalidate
+    v.sec.compare_text = nil  -- Invalidate
     void(update)(k, v)
   end
 end
 
-local function toggle_signs()
-  config.signcolumn = not config.signcolumn
+local function toggle_signs(sec: boolean)
+  local scfg = sec and config.signs_sec or config.signs
+  scfg.signcolumn = not scfg.signcolumn
   refresh()
 end
 
-local function toggle_numhl()
-  config.numhl = not config.numhl
+local function toggle_numhl(sec: boolean)
+  local scfg = sec and config.signs_sec or config.signs
+  scfg.numhl = not scfg.numhl
   refresh()
 end
 
-local function toggle_linehl()
-  config.linehl = not config.linehl
+local function toggle_linehl(sec: boolean)
+  local scfg = sec and config.signs_sec or config.signs
+  scfg.linehl = not scfg.linehl
+  refresh()
+end
+
+local function toggle_staged_signs()
+  config.staged_signs = not config.staged_signs
   refresh()
 end
 
@@ -939,11 +1078,12 @@ local function calc_base(base: string): string
   return base
 end
 
-local function change_base(base: string)
+local function change_base(base: string, sec: boolean)
   base = calc_base(base)
   local buf = current_buf()
-  cache[buf].base = base
-  cache[buf].compare_text = nil
+  local obj = sec and cache[buf].sec or cache[buf].main
+  obj.base = base
+  obj.compare_text = nil
   update_debounced(buf)
 end
 
@@ -961,9 +1101,9 @@ end
 
 local function get_bcache_compare_lines(bcache: CacheEntry): {string}
   if config.use_internal_diff then
-    return bcache.compare_text
+    return bcache.main.compare_text
   end
-  return util.file_lines(bcache.compare_file)
+  return util.file_lines(bcache.main.compare_file)
 end
 
 local diffthis = async_void(function(base: string)
@@ -974,7 +1114,7 @@ local diffthis = async_void(function(base: string)
   if api.nvim_win_get_option(0, 'diff') then return end
 
   local text: {string}
-  local comp_obj = get_compare_object(bcache, calc_base(base))
+  local comp_obj = get_compare_object(calc_base(base), bcache)
   if base then
     text = get_show_text(bcache, comp_obj)
   else
@@ -1007,25 +1147,31 @@ end)
 M = {
   update               = update_debounced,
   stage_hunk           = mk_repeatable(stage_hunk),
-  undo_stage_hunk      = mk_repeatable(undo_stage_hunk),
   reset_hunk           = mk_repeatable(reset_hunk),
   stage_buffer         = stage_buffer,
   reset_buffer_index   = reset_buffer_index,
+  reset_buffer         = reset_buffer,
+
   next_hunk            = next_hunk,
   prev_hunk            = prev_hunk,
   select_hunk          = select_hunk,
   preview_hunk         = preview_hunk,
+
   blame_line           = blame_line,
-  reset_buffer         = reset_buffer,
+
   change_base          = change_base,
+  change_sec_base      = function(base: string) change_base(base, true) end,
+
   attach               = void(attach),
   detach               = detach,
   detach_all           = detach_all,
   setup                = setup,
   refresh              = refresh,
+
   toggle_signs         = toggle_signs,
   toggle_linehl        = toggle_linehl,
   toggle_numhl         = toggle_numhl,
+  toggle_staged_signs  = toggle_staged_signs,
 
   diffthis             = diffthis,
 
