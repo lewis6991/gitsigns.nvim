@@ -106,41 +106,42 @@ local M = {}
 
 local type DiffResult = {integer, integer, integer, integer}
 
-local hunk_results: {DiffResult} = {}
-
 local mmba = ffi.new('mmbuffer_t') as MMBuffer
 local mmbb = ffi.new('mmbuffer_t') as MMBuffer
 local xpparam = ffi.new('xpparam_t') as XPParam
-local emitconf = ffi.new('xdemitconf_t') as XDEmitConf
 local emitcb = ffi.new('xdemitcb_t') as any
-
-local hunk_func = ffi.cast('xdl_emit_hunk_consume_func_t', function(
-  start_a: Long, count_a: Long, start_b: Long, count_b: Long
-): number
-  local ca = tonumber(count_a) as integer
-  local cb = tonumber(count_b) as integer
-  local sa = tonumber(start_a) as integer
-  local sb = tonumber(start_b) as integer
-
-  -- Not fully sure why this offset is needed but xdiff does it too
-  -- (see neovim/src/nvim/xdiff/xutils.c:356,368)
-  if ca > 0 then sa = sa + 1 end
-  if cb > 0 then sb = sb + 1 end
-
-  hunk_results[#hunk_results+1] = {sa, ca, sb, cb}
-  return 0
-end)
-
-emitconf.hunk_func = hunk_func as function(Long, Long, Long, Long): integer
 
 local function run_diff_xdl(fa: {string}, fb: {string}, diff_algo: string): {DiffResult}
   mmba.ptr, mmba.size = setup_mmbuffer(fa)
   mmbb.ptr, mmbb.size = setup_mmbuffer(fb)
   xpparam.flags = get_xpparam_flag(diff_algo)
-  hunk_results = {}
+
+  local results: {DiffResult} = {}
+
+  local hunk_func = ffi.cast('xdl_emit_hunk_consume_func_t', function(
+    start_a: Long, count_a: Long, start_b: Long, count_b: Long
+  ): number
+    local ca = tonumber(count_a) as integer
+    local cb = tonumber(count_b) as integer
+    local sa = tonumber(start_a) as integer
+    local sb = tonumber(start_b) as integer
+
+    -- Not fully sure why this offset is needed but xdiff does it too
+    -- (see neovim/src/nvim/xdiff/xutils.c:356,368)
+    if ca > 0 then sa = sa + 1 end
+    if cb > 0 then sb = sb + 1 end
+
+    results[#results+1] = {sa, ca, sb, cb}
+    return 0
+  end)
+
+  local emitconf = ffi.new('xdemitconf_t') as XDEmitConf
+  emitconf.hunk_func = hunk_func as function(Long, Long, Long, Long): integer
+
   local ok = ffi.C.xdl_diff(mmba, mmbb, xpparam, emitconf, emitcb)
-  local results = hunk_results
-  hunk_results = {}
+
+  hunk_func:free()
+
   return ok == 0 and results
 end
 
