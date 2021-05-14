@@ -10,6 +10,7 @@ global record jit
     version: string
     version_num: number
     off: function()
+    off: function(function)
     on: function()
     status: function(): boolean
 end
