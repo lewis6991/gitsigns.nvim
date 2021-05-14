@@ -106,41 +106,42 @@ local M = {}
 
 local DiffResult = {}
 
-local hunk_results = {}
-
 local mmba = ffi.new('mmbuffer_t')
 local mmbb = ffi.new('mmbuffer_t')
 local xpparam = ffi.new('xpparam_t')
-local emitconf = ffi.new('xdemitconf_t')
 local emitcb = ffi.new('xdemitcb_t')
-
-local hunk_func = ffi.cast('xdl_emit_hunk_consume_func_t', function(
-   start_a, count_a, start_b, count_b)
-
-   local ca = tonumber(count_a)
-   local cb = tonumber(count_b)
-   local sa = tonumber(start_a)
-   local sb = tonumber(start_b)
-
-
-
-   if ca > 0 then sa = sa + 1 end
-   if cb > 0 then sb = sb + 1 end
-
-   hunk_results[#hunk_results + 1] = { sa, ca, sb, cb }
-   return 0
-end)
-
-emitconf.hunk_func = hunk_func
 
 local function run_diff_xdl(fa, fb, diff_algo)
    mmba.ptr, mmba.size = setup_mmbuffer(fa)
    mmbb.ptr, mmbb.size = setup_mmbuffer(fb)
    xpparam.flags = get_xpparam_flag(diff_algo)
-   hunk_results = {}
+
+   local results = {}
+
+   local hunk_func = ffi.cast('xdl_emit_hunk_consume_func_t', function(
+      start_a, count_a, start_b, count_b)
+
+      local ca = tonumber(count_a)
+      local cb = tonumber(count_b)
+      local sa = tonumber(start_a)
+      local sb = tonumber(start_b)
+
+
+
+      if ca > 0 then sa = sa + 1 end
+      if cb > 0 then sb = sb + 1 end
+
+      results[#results + 1] = { sa, ca, sb, cb }
+      return 0
+   end)
+
+   local emitconf = ffi.new('xdemitconf_t')
+   emitconf.hunk_func = hunk_func
+
    local ok = ffi.C.xdl_diff(mmba, mmbb, xpparam, emitconf, emitcb)
-   local results = hunk_results
-   hunk_results = {}
+
+   hunk_func:free()
+
    return ok == 0 and results
 end
 
