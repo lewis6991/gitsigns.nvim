@@ -56,9 +56,9 @@ local MMBuffer = {}
 
 
 
-local function mmbuffer(lines)
+local function setup_mmbuffer(lines)
    local text = vim.tbl_isempty(lines) and '' or table.concat(lines, '\n') .. '\n'
-   return ffi.new('mmbuffer_t', text, #text)
+   return text, #text
 end
 
 local XPParam = {}
@@ -69,7 +69,7 @@ local XPParam = {}
 
 
 
-local function xpparam(diff_algo)
+local function get_xpparam_flag(diff_algo)
    local daflag = 0
 
    if diff_algo == 'minimal' then daflag = 1
@@ -77,7 +77,7 @@ local function xpparam(diff_algo)
    elseif diff_algo == 'histogram' then daflag = math.floor(2 ^ 15)
    end
 
-   return ffi.new('xpparam_t', daflag)
+   return daflag
 end
 
 local Long = {}
@@ -104,50 +104,50 @@ local XDEmitConf = {}
 
 local M = {}
 
+local DiffResult = {}
+
+local hunk_results = {}
+
+local mmba = ffi.new('mmbuffer_t')
+local mmbb = ffi.new('mmbuffer_t')
+local xpparam = ffi.new('xpparam_t')
+local emitconf = ffi.new('xdemitconf_t')
+local emitcb = ffi.new('xdemitcb_t')
+
+local hunk_func = ffi.cast('xdl_emit_hunk_consume_func_t', function(
+   start_a, count_a, start_b, count_b)
+
+   local ca = tonumber(count_a)
+   local cb = tonumber(count_b)
+   local sa = tonumber(start_a)
+   local sb = tonumber(start_b)
+
+
+
+   if ca > 0 then sa = sa + 1 end
+   if cb > 0 then sb = sb + 1 end
+
+   hunk_results[#hunk_results + 1] = { sa, ca, sb, cb }
+   return 0
+end)
+
+emitconf.hunk_func = hunk_func
+
+local function run_diff_xdl(fa, fb, diff_algo)
+   mmba.ptr, mmba.size = setup_mmbuffer(fa)
+   mmbb.ptr, mmbb.size = setup_mmbuffer(fb)
+   xpparam.flags = get_xpparam_flag(diff_algo)
+   hunk_results = {}
+   local ok = ffi.C.xdl_diff(mmba, mmbb, xpparam, emitconf, emitcb)
+   local results = hunk_results
+   hunk_results = {}
+   return ok == 0 and results
+end
+
+jit.off(run_diff_xdl)
+
 function M.run_diff(fa, fb, diff_algo)
-   local results = {}
-
-   local jit_status = jit.status()
-
-
-
-   jit.off()
-
-   local hunk_func = ffi.cast('xdl_emit_hunk_consume_func_t', function(
-      start_a, count_a, start_b, count_b)
-
-      local ca = tonumber(count_a)
-      local cb = tonumber(count_b)
-      local sa = tonumber(start_a)
-      local sb = tonumber(start_b)
-
-
-
-      if ca > 0 then sa = sa + 1 end
-      if cb > 0 then sb = sb + 1 end
-
-      table.insert(results, { sa, ca, sb, cb })
-      return 0
-   end)
-
-   local emitconf = ffi.new('xdemitconf_t')
-   emitconf.hunk_func = hunk_func
-
-   local res = ffi.C.xdl_diff(
-   mmbuffer(fa),
-   mmbuffer(fb),
-   xpparam(diff_algo),
-   emitconf,
-   ffi.new('xdemitcb_t'))
-
-
-   assert(res, 'DIFF bad result')
-
-   hunk_func:free()
-
-   if jit_status then
-      jit.on()
-   end
+   local results = run_diff_xdl(fa, fb, diff_algo)
 
    local hunks = {}
 

@@ -56,9 +56,9 @@ local record MMBuffer
   size: number
 end
 
-local function mmbuffer(lines: {string}): MMBuffer
+local function setup_mmbuffer(lines: {string}): number, number
   local text = vim.tbl_isempty(lines) and '' or table.concat(lines, '\n')..'\n'
-  return ffi.new('mmbuffer_t', text, #text)
+  return text as number, #text
 end
 
 local record XPParam
@@ -69,7 +69,7 @@ local record XPParam
   -- size_t anchors_nr;
 end
 
-local function xpparam(diff_algo: string): XPParam
+local function get_xpparam_flag(diff_algo: string): number
   local daflag = 0 -- myers
 
   if     diff_algo == 'minimal'   then daflag = 1
@@ -77,7 +77,7 @@ local function xpparam(diff_algo: string): XPParam
   elseif diff_algo == 'histogram' then daflag = math.floor(2^15)
   end
 
-  return ffi.new('xpparam_t', daflag)
+  return daflag
 end
 
 local record Long
@@ -104,50 +104,50 @@ end
 
 local M = {}
 
+local type DiffResult = {integer, integer, integer, integer}
+
+local hunk_results: {DiffResult} = {}
+
+local mmba = ffi.new('mmbuffer_t') as MMBuffer
+local mmbb = ffi.new('mmbuffer_t') as MMBuffer
+local xpparam = ffi.new('xpparam_t') as XPParam
+local emitconf = ffi.new('xdemitconf_t') as XDEmitConf
+local emitcb = ffi.new('xdemitcb_t') as any
+
+local hunk_func = ffi.cast('xdl_emit_hunk_consume_func_t', function(
+  start_a: Long, count_a: Long, start_b: Long, count_b: Long
+): number
+  local ca = tonumber(count_a) as integer
+  local cb = tonumber(count_b) as integer
+  local sa = tonumber(start_a) as integer
+  local sb = tonumber(start_b) as integer
+
+  -- Not fully sure why this offset is needed but xdiff does it too
+  -- (see neovim/src/nvim/xdiff/xutils.c:356,368)
+  if ca > 0 then sa = sa + 1 end
+  if cb > 0 then sb = sb + 1 end
+
+  hunk_results[#hunk_results+1] = {sa, ca, sb, cb}
+  return 0
+end)
+
+emitconf.hunk_func = hunk_func as function(Long, Long, Long, Long): integer
+
+local function run_diff_xdl(fa: {string}, fb: {string}, diff_algo: string): {DiffResult}
+  mmba.ptr, mmba.size = setup_mmbuffer(fa)
+  mmbb.ptr, mmbb.size = setup_mmbuffer(fb)
+  xpparam.flags = get_xpparam_flag(diff_algo)
+  hunk_results = {}
+  local ok = ffi.C.xdl_diff(mmba, mmbb, xpparam, emitconf, emitcb)
+  local results = hunk_results
+  hunk_results = {}
+  return ok == 0 and results
+end
+
+jit.off(run_diff_xdl)
+
 function M.run_diff(fa: {string}, fb: {string}, diff_algo: string): {Hunk}
-  local results: {{integer, integer, integer, integer}} = {}
-
-  local jit_status = jit.status()
-
-  -- Disable jit as jit-compiling a C call which calls a lua callback will cause
-  -- a crash (see https://luajit.org/ext_ffi_semantics.html#callback).
-  jit.off()
-
-  local hunk_func = ffi.cast('xdl_emit_hunk_consume_func_t', function(
-    start_a: Long, count_a: Long, start_b: Long, count_b: Long
-  ): number
-    local ca = tonumber(count_a) as integer
-    local cb = tonumber(count_b) as integer
-    local sa = tonumber(start_a) as integer
-    local sb = tonumber(start_b) as integer
-
-    -- Not fully sure why this offset is needed but xdiff does it too
-    -- (see neovim/src/nvim/xdiff/xutils.c:356,368)
-    if ca > 0 then sa = sa + 1 end
-    if cb > 0 then sb = sb + 1 end
-
-    table.insert(results, {sa, ca, sb, cb})
-    return 0
-  end)
-
-  local emitconf = ffi.new('xdemitconf_t') as XDEmitConf
-  emitconf.hunk_func = hunk_func as function(Long, Long, Long, Long): number
-
-  local res = ffi.C.xdl_diff(
-    mmbuffer(fa),
-    mmbuffer(fb),
-    xpparam(diff_algo),
-    emitconf,
-    ffi.new('xdemitcb_t')
-  )
-
-  assert(res, 'DIFF bad result')
-
-  hunk_func:free()
-
-  if jit_status then
-    jit.on()
-  end
+  local results = run_diff_xdl(fa, fb, diff_algo)
 
   local hunks: {Hunk} = {}
 
