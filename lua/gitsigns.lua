@@ -5,6 +5,8 @@ local async = a.async
 local async_void = a.async_void
 local scheduler = a.scheduler
 
+local sleep = require('plenary.async_lib.util').sleep
+
 local gs_debounce = require('gitsigns.debounce')
 local debounce_trailing = gs_debounce.debounce_trailing
 
@@ -124,7 +126,7 @@ local function get_compare_object(bcache)
    return string.format('%s:%s', prefix, bcache.git_obj.relpath)
 end
 
-local update = async(function(bufnr, bcache)
+local update0 = async(function(bufnr, bcache)
    bcache = bcache or cache[bufnr]
    if not bcache then
       error('Cache for buffer ' .. bufnr .. ' was nil')
@@ -160,6 +162,32 @@ local update = async(function(bufnr, bcache)
    update_cnt = update_cnt + 1
    dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt), bufnr, 'update')
 end)
+
+
+
+
+
+local update
+do
+   local running = false
+   local scheduled = {}
+   update = async(function(bufnr)
+      scheduled[bufnr] = true
+      if not running then
+         running = true
+         while scheduled[bufnr] do
+            scheduled[bufnr] = false
+            await(update0(bufnr))
+         end
+         running = false
+      else
+
+         while running do
+            await(sleep(100))
+         end
+      end
+   end)
+end
 
 
 local update_debounced
@@ -199,7 +227,7 @@ local watch_index = function(bufnr, gitdir)
 
       bcache.compare_text = nil
 
-      await(update(bufnr, bcache))
+      await(update(bufnr))
    end))
    return w
 end
@@ -238,6 +266,7 @@ local stage_hunk = async_void(function()
    for lnum, _ in pairs(hunk_signs) do
       signs.remove(bufnr, lnum)
    end
+   await(update(bufnr))
 end)
 
 local function reset_hunk(bufnr, hunk)
@@ -277,7 +306,7 @@ local reset_buffer = async_void(function()
          return
       end
       reset_hunk(bufnr, bcache.hunks[1])
-      await(update(bufnr, bcache))
+      await(update(bufnr))
    end
    error('Hit maximum limit of hunks to reset')
 end)
@@ -613,7 +642,7 @@ local attach = async(function(cbuf)
    }
 
 
-   await(update(cbuf, cache[cbuf]))
+   await(update(cbuf))
 
    await(scheduler())
 

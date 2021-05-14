@@ -5,6 +5,8 @@ local async      = a.async
 local async_void = a.async_void
 local scheduler  = a.scheduler
 
+local sleep = require('plenary.async_lib.util').sleep
+
 local gs_debounce       = require('gitsigns.debounce')
 local debounce_trailing = gs_debounce.debounce_trailing
 
@@ -124,7 +126,7 @@ local function get_compare_object(bcache: CacheEntry): string
   return string.format('%s:%s', prefix, bcache.git_obj.relpath)
 end
 
-local update = async(function(bufnr: integer, bcache: CacheEntry)
+local update0 = async(function(bufnr: integer, bcache: CacheEntry)
   bcache = bcache or cache[bufnr]
   if not bcache then
     error('Cache for buffer '..bufnr..' was nil')
@@ -161,8 +163,34 @@ local update = async(function(bufnr: integer, bcache: CacheEntry)
   dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt), bufnr, 'update')
 end)
 
+-- Ensure updates cannot be interleaved.
+-- Since updates are asynchronous we need to make sure an update isn't performed
+-- whilst another one is in progress. If this happens then schedule another
+-- update after the current one has completed.
+local update: a.async_fun1<integer>
+do
+  local running = false
+  local scheduled: {integer:boolean} = {}
+  update = async(function(bufnr: integer)
+    scheduled[bufnr] = true
+    if not running then
+      running = true
+      while scheduled[bufnr] do
+        scheduled[bufnr] = false
+        await(update0(bufnr))
+      end
+      running = false
+    else
+      -- Wait until all updates have finished
+      while running do
+        await(sleep(100))
+      end
+    end
+  end)
+end
+
 -- Define in setup so it can be debounced on updatetime
-local update_debounced: function(integer)
+local update_debounced: function(integer, CacheEntry)
 
 local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
   dprint('Watching index', bufnr, 'watch_index')
@@ -199,7 +227,7 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
 
     bcache.compare_text = nil -- Invalidate
 
-    await(update(bufnr, bcache))
+    await(update(bufnr))
   end))
   return w
 end
@@ -238,6 +266,7 @@ local stage_hunk = async_void(function()
   for lnum, _ in pairs(hunk_signs) do
     signs.remove(bufnr, lnum)
   end
+  await(update(bufnr))
 end)
 
 local function reset_hunk(bufnr: integer, hunk: Hunk)
@@ -277,7 +306,7 @@ local reset_buffer = async_void(function()
       return
     end
     reset_hunk(bufnr, bcache.hunks[1])
-    await(update(bufnr, bcache))
+    await(update(bufnr))
   end
   error('Hit maximum limit of hunks to reset')
 end)
@@ -613,7 +642,7 @@ local attach = async(function(cbuf: integer)
   }
 
   -- Initial update
-  await(update(cbuf, cache[cbuf]))
+  await(update(cbuf))
 
   await(scheduler())
 
