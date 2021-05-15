@@ -56,11 +56,6 @@ local MMBuffer = {}
 
 
 
-local function setup_mmbuffer(lines)
-   local text = vim.tbl_isempty(lines) and '' or table.concat(lines, '\n') .. '\n'
-   return text, #text
-end
-
 local XPParam = {}
 
 
@@ -84,6 +79,10 @@ local Long = {}
 
 
 
+local XDLEmitHunkConsumeFunc = {}
+
+local FindFunc = {}
+
 local XDEmitConf = {}
 
 
@@ -94,9 +93,7 @@ local XDEmitConf = {}
 
 
 
-
-
-
+local XDEmitCB = {}
 
 
 
@@ -109,67 +106,75 @@ local DiffResult = {}
 local mmba = ffi.new('mmbuffer_t')
 local mmbb = ffi.new('mmbuffer_t')
 local xpparam = ffi.new('xpparam_t')
+local emitconf = ffi.new('xdemitconf_t')
 local emitcb = ffi.new('xdemitcb_t')
 
-local function run_diff_xdl(fa, fb, diff_algo)
-   mmba.ptr, mmba.size = setup_mmbuffer(fa)
-   mmbb.ptr, mmbb.size = setup_mmbuffer(fb)
-   xpparam.flags = get_xpparam_flag(diff_algo)
+local hunk_results
 
-   local results = {}
+local hunk_func = function(
+   start_a, count_a, start_b, count_b, _)
 
-   local hunk_func = ffi.cast('xdl_emit_hunk_consume_func_t', function(
-      start_a, count_a, start_b, count_b)
+   hunk_results[#hunk_results + 1] = { start_a, count_a, start_b, count_b }
+   return 0
+end
 
-      local ca = tonumber(count_a)
-      local cb = tonumber(count_b)
-      local sa = tonumber(start_a)
-      local sb = tonumber(start_b)
+local function run_diff_xdl()
+   hunk_results = {}
 
 
 
-      if ca > 0 then sa = sa + 1 end
-      if cb > 0 then sb = sb + 1 end
-
-      results[#results + 1] = { sa, ca, sb, cb }
-      return 0
-   end)
-
-   local emitconf = ffi.new('xdemitconf_t')
-   emitconf.hunk_func = hunk_func
-
+   local hf = ffi.cast('xdl_emit_hunk_consume_func_t', hunk_func)
+   emitconf.hunk_func = hf
    local ok = ffi.C.xdl_diff(mmba, mmbb, xpparam, emitconf, emitcb)
-
-   hunk_func:free()
-
+   hf:free()
+   local results = hunk_results
+   hunk_results = nil
    return ok == 0 and results
 end
 
 jit.off(run_diff_xdl)
 
 function M.run_diff(fa, fb, diff_algo)
-   local results = run_diff_xdl(fa, fb, diff_algo)
+   local text_a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n') .. '\n'
+   local text_b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n') .. '\n'
+   mmba.ptr, mmba.size = text_a, #text_a
+   mmbb.ptr, mmbb.size = text_b, #text_b
+   xpparam.flags = get_xpparam_flag(diff_algo)
+
+   local results = run_diff_xdl()
 
    local hunks = {}
 
    for _, r in ipairs(results) do
-      local rs, rc, as, ac = unpack(r)
+      local rs0, rc0, as0, ac0 = unpack(r)
+      local rs = tonumber(rs0)
+      local rc = tonumber(rc0)
+      local as = tonumber(as0)
+      local ac = tonumber(ac0)
+
+
+
+      if rc > 0 then rs = rs + 1 end
+      if ac > 0 then as = as + 1 end
+
       local hunk = create_hunk(rs, rc, as, ac)
       hunk.head = ('@@ -%d%s +%d%s @@'):format(
       rs, rc > 0 and ',' .. rc or '',
       as, ac > 0 and ',' .. ac or '')
 
+      local lines = {}
       if rc > 0 then
          for i = rs, rs + rc - 1 do
-            table.insert(hunk.lines, '-' .. (fa[i] or ''))
+            lines[#lines + 1] = '-' .. (fa[i] or '')
          end
       end
       if ac > 0 then
          for i = as, as + ac - 1 do
-            table.insert(hunk.lines, '+' .. (fb[i] or ''))
+            lines[#lines + 1] = '+' .. (fb[i] or '')
          end
       end
-      table.insert(hunks, hunk)
+      hunk.lines = lines
+      hunks[#hunks + 1] = hunk
    end
 
    return hunks
