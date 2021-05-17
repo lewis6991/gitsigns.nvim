@@ -994,5 +994,6 @@ describe('gitsigns', function()
   -- overwrite number column
 
   -- TODO Test config.attach_to_untracked
+  -- TODO Add test for #194: Should not attach if file is in a custom git dir
 
 end)
