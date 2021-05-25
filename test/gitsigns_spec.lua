@@ -180,11 +180,17 @@ local test_config = {
     topdelete    = {hl = 'DiffDelete', text = '^'},
     changedelete = {hl = 'DiffChange', text = '%'},
   },
+  signs_sec = {
+    add          = {hl = 'DiffAdd'   , text = '+*'},
+    delete       = {hl = 'DiffDelete', text = '_*'},
+    change       = {hl = 'DiffChange', text = '~*'},
+    topdelete    = {hl = 'DiffDelete', text = '^*'},
+    changedelete = {hl = 'DiffChange', text = '%*'},
+  },
   keymaps = {
     noremap = true,
     buffer = true,
     ['n mhs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
-    ['n mhu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
     ['n mhr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
     ['n mhp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
     ['n mhS'] = '<cmd>lua require"gitsigns".stage_buffer()<CR>',
@@ -342,7 +348,6 @@ describe('gitsigns', function()
         'n  mhp         *@<Cmd>lua require"gitsigns".preview_hunk()<CR>',
         'n  mhr         *@<Cmd>lua require"gitsigns".reset_hunk()<CR>',
         'n  mhs         *@<Cmd>lua require"gitsigns".stage_hunk()<CR>',
-        'n  mhu         *@<Cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
       })
     end)
 
@@ -597,19 +602,6 @@ describe('gitsigns', function()
                               |
         ]]}
 
-        -- Undo stage
-        feed("mhu")
-        sleep(10)
-
-        screen:expect{grid=[[
-          {1:  }This              |
-          {1:  }is                |
-          {1:  }a                 |
-          {2:~ }EDI^T              |
-          {1:  }used              |
-                              |
-        ]]}
-
         -- Add multiple edits
         feed('gg')
         sleep(20)
@@ -622,7 +614,7 @@ describe('gitsigns', function()
           {2:~ }Tha^t              |
           {1:  }is                |
           {1:  }a                 |
-          {2:~ }EDIT              |
+          {1:  }EDIT              |
           {1:  }used              |
                               |
         ]]}
@@ -986,6 +978,91 @@ describe('gitsigns', function()
   --   - internal diff (ffi)
   --   - decoration provider
   describe('diff-int', testsuite(true))
+
+  describe('secondary signs', function()
+    before_each(function()
+      init()
+      config.staged_signs = true
+      exec_lua('gs.setup(...)', config)
+      sleep(10)
+    end)
+
+    it('show staged hunks', function()
+      edit(test_file)
+      feed('3yyp') -- Added lines
+      feed('7gg')
+      feed('dd') -- Remove lines
+      feed('2j')
+      feed('ddx') -- Change delete lines
+      sleep(20)
+      command("Gitsigns stage_hunk")
+      feed('2j')
+      feed('3yyp') -- Added lines
+      sleep(20)
+      command("Gitsigns stage_hunk")
+      screen:expect{grid=[[
+        {1:  }This              |
+        {3:+ }This              |
+        {3:+ }is                |
+        {3:+ }a                 |
+        {1:  }is                |
+        {4:_ }a                 |
+        {1:  }used              |
+        {1:  }for               |
+        {2:%*}itsigns.          |
+        {1:  }The               |
+        {1:  }content           |
+        {3:+*}^content           |
+        {3:+*}doesn't           |
+        {3:+*}matter,           |
+        {1:  }doesn't           |
+        {1:  }matter,           |
+        3 more lines        |
+      ]]}
+      command("Gitsigns stage_hunk")
+      screen:expect{grid=[[
+        {1:  }This              |
+        {3:+ }This              |
+        {3:+ }is                |
+        {3:+ }a                 |
+        {1:  }is                |
+        {4:_ }a                 |
+        {1:  }used              |
+        {1:  }for               |
+        {2:%*}itsigns.          |
+        {1:  }The               |
+        {1:  }content           |
+        {3:+ }^content           |
+        {3:+ }doesn't           |
+        {3:+ }matter,           |
+        {1:  }doesn't           |
+        {1:  }matter,           |
+        3 more lines        |
+      ]]}
+      feed('2gg')
+      sleep(20)
+      command("Gitsigns stage_hunk")
+      screen:expect{grid=[[
+        {1:  }This              |
+        {3:+*}^This              |
+        {3:+*}is                |
+        {3:+*}a                 |
+        {1:  }is                |
+        {4:_ }a                 |
+        {1:  }used              |
+        {1:  }for               |
+        {2:%*}itsigns.          |
+        {1:  }The               |
+        {1:  }content           |
+        {3:+ }content           |
+        {3:+ }doesn't           |
+        {3:+ }matter,           |
+        {1:  }doesn't           |
+        {1:  }matter,           |
+        3 more lines        |
+      ]]}
+    end)
+  end)
 
   -- TODO Add test for current_line_blame
   -- TODO Add test for toggle_current_line_blame

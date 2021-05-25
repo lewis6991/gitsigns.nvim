@@ -178,7 +178,7 @@ local get_repo_info = async(function(path, cmd)
    if not has_abs_gd then
       gitdir = uv.fs_realpath(gitdir)
    end
-   local abbrev_head = process_abbrev_head(gitdir, results[4])
+   local abbrev_head = process_abbrev_head(gitdir, results[3])
    return toplevel, gitdir, abbrev_head
 end)
 
@@ -267,7 +267,11 @@ Obj.update_head = async(function(self)
 end)
 
 Obj.update_head_object = async(function(self)
-   self.head_object = await(self:command({ 'rev-parse', 'HEAD:' .. self.relpath }))[1]
+
+   self.head_object = await(self:command(
+   { 'rev-parse', 'HEAD:' .. self.relpath },
+   { supress_stderr = true }))[
+   1]
 end)
 
 Obj.set_file_info = async(function(self)

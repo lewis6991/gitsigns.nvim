@@ -810,7 +810,7 @@ local function setup_signs_and_highlights(redefine)
 
          local HlTy = {}
          for _, hlty in ipairs({ 'numhl', 'linehl' }) do
-            if sign_cfg[hlty] then
+            if sign_cfg[hlty] and cs.hl then
                gs_hl.setup_other_highlight(cs[hlty], cs.hl)
             end
          end

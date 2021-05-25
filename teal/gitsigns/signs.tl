@@ -51,6 +51,9 @@ local function sign_get(name: string): table
 end
 
 function M.define(name: string, opts: {string:any}, redefine: boolean)
+  if vim.tbl_isempty(opts) then
+    return
+  end
   if redefine then
     sign_define_cache[name] = nil
     vim.fn.sign_undefine(name)
