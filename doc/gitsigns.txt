@@ -2,7 +2,7 @@
 *gitsigns.nvim*
 
 Author:   Lewis Russell <lewis6991@gmail.com>
-Version:  0.1
+Version:  0.1-dev
 Homepage: <https://github.com/lewis6991/gitsigns.nvim>
 License:  MIT license
 
@@ -175,6 +175,16 @@ change_base({base})                                   *gitsigns.change_base()*
                   " Revert to original base
                   :Gitsigns change_base
 <
+diffthis({base})                                         *gitsigns.diffthis()*
+                Perform a |vimdiff| on the given file with {base} if it is
+                given, or with the currently set base (index by default).
+
+                Examples: >
+                  " Diff against the index
+                  :Gitsigns diffthis
+
+                  " Diff against the last commit
+                  :Gitsigns diffthis ~1
 
 update()                                                   *gitsigns.update()*
                 Update signs for the current buffer.

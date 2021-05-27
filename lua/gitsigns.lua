@@ -111,10 +111,11 @@ end
 
 local update_cnt = 0
 
-local function get_compare_object(bcache)
+local function get_compare_object(bcache, base)
+   base = base or bcache.base
    local prefix
-   if bcache.base then
-      prefix = bcache.base
+   if base then
+      prefix = base
    elseif bcache.commit then
 
       prefix = string.format('%s^', bcache.commit)
@@ -931,15 +932,77 @@ local function toggle_current_line_blame()
    refresh()
 end
 
-local function change_base(base)
+local function calc_base(base)
    if base and base:sub(1, 1):match('[~\\^]') then
       base = 'HEAD' .. base
    end
+   return base
+end
+
+local function change_base(base)
+   base = calc_base(base)
    local buf = current_buf()
    cache[buf].base = base
    cache[buf].compare_text = nil
    update_debounced(buf)
 end
+
+local function get_show_text(bcache, comp_obj)
+   if config.use_internal_diff then
+      return await(bcache.git_obj:get_show_text(comp_obj))
+   end
+
+   local compare_file = os.tmpname()
+   await(bcache.git_obj:get_show(comp_obj, compare_file))
+   local text = util.file_lines(compare_file)
+   os.remove(compare_file)
+   return text
+end
+
+local function get_bcache_compare_lines(bcache)
+   if config.use_internal_diff then
+      return bcache.compare_text
+   end
+   return util.file_lines(bcache.compare_file)
+end
+
+local diffthis = async_void(function(base)
+   local bufnr = current_buf()
+   local bcache = cache[bufnr]
+   if not bcache then return end
+
+   if api.nvim_win_get_option(0, 'diff') then return end
+
+   local text
+   local comp_obj = get_compare_object(bcache, calc_base(base))
+   if base then
+      text = get_show_text(bcache, comp_obj)
+   else
+      text = get_bcache_compare_lines(bcache)
+   end
+
+   await(scheduler())
+
+   local ft = api.nvim_buf_get_option(bufnr, 'filetype')
+
+   local bufname = string.format('gitsigns://%s/%s', bcache.git_obj.gitdir, comp_obj)
+
+
+   vim.cmd("keepalt aboveleft vertical split " .. bufname)
+
+   local dbuf = current_buf()
+
+   api.nvim_buf_set_option(dbuf, 'modifiable', true)
+   api.nvim_buf_set_lines(dbuf, 0, -1, false, text)
+   api.nvim_buf_set_option(dbuf, 'modifiable', false)
+
+   api.nvim_buf_set_option(dbuf, 'filetype', ft)
+   api.nvim_buf_set_option(dbuf, 'buftype', 'nowrite')
+
+   vim.cmd(string.format('autocmd! WinClosed <buffer=%d> ++once call nvim_buf_delete(%d, {})', dbuf, dbuf))
+
+   vim.cmd([[windo diffthis]])
+end)
 
 M = {
    update = update_debounced,
@@ -963,6 +1026,8 @@ M = {
    toggle_signs = toggle_signs,
    toggle_linehl = toggle_linehl,
    toggle_numhl = toggle_numhl,
+
+   diffthis = diffthis,
 
 
    _get_config = function()

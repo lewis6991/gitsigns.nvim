@@ -46,4 +46,12 @@ function M.dirname(file)
    return file:match(string.format('^(.+)%s[^%s]+', M.path_sep, M.path_sep))
 end
 
+function M.file_lines(file)
+   local text = {}
+   for line in io.lines(file) do
+      text[#text + 1] = line
+   end
+   return text
+end
+
 return M
