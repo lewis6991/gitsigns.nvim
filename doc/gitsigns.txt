@@ -2,6 +2,7 @@
 *gitsigns.nvim*
 
 Author:   Lewis Russell <lewis6991@gmail.com>
+Version:  0.1
 Homepage: <https://github.com/lewis6991/gitsigns.nvim>
 License:  MIT license
 
