@@ -996,4 +996,6 @@ describe('gitsigns', function()
   -- TODO Test config.attach_to_untracked
   -- TODO Add test for #194: Should not attach if file is in a custom git dir
 
+  -- TODO Add test diffthis
+
 end)
