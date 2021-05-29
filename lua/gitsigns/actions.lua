@@ -42,6 +42,8 @@ local M = {}
 
 
 
+
+
 local function get_cursor_hunk(bufnr, hunks)
    bufnr = bufnr or current_buf()
    hunks = hunks or cache[bufnr].hunks
@@ -336,5 +338,40 @@ M.diffthis = async_void(function(base)
 
    vim.cmd([[windo diffthis]])
 end)
+
+M.get_actions = function()
+   local hunk = get_cursor_hunk()
+
+
+
+
+
+
+
+
+
+
+   local actions_l = {}
+   if hunk then
+      actions_l = {
+         'stage_hunk',
+         'undo_stage_hunk',
+         'reset_hunk',
+         'preview_hunk',
+         'select_hunk',
+      }
+   else
+      actions_l = {
+         'blame_line',
+      }
+   end
+
+   local actions = {}
+   for _, a in ipairs(actions_l) do
+      actions[a] = (M)[a]
+   end
+
+   return actions
+end
 
 return M
