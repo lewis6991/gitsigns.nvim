@@ -40,6 +40,8 @@ local record M
   blame_line         : function -- function()
   change_base        : function(base: string)
   diffthis           : function -- function(base: string)
+
+  get_actions        : function(bufnr: integer, lnum: integer)
 end
 
 local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk
@@ -336,5 +338,40 @@ M.diffthis = async_void(function(base: string)
 
   vim.cmd[[windo diffthis]]
 end)
+
+M.get_actions = function(): {string:function}
+  local hunk = get_cursor_hunk()
+
+  -- Do we want to return these(?):
+  --    - stage_buffer
+  --    - reset_buffer
+  --    - reset_buffer_index
+  --    - next_hunk
+  --    - prev_hunk
+  --    - change_base
+  --    - diffthis
+
+  local actions_l: {string} = {}
+  if hunk then
+    actions_l = {
+      'stage_hunk',
+      'undo_stage_hunk',
+      'reset_hunk',
+      'preview_hunk',
+      'select_hunk',
+    }
+  else
+    actions_l = {
+      'blame_line'
+    }
+  end
+
+  local actions: {string:function} = {}
+  for _, a in ipairs(actions_l) do
+    actions[a] = (M as {string:function})[a]
+  end
+
+  return actions
+end
 
 return M

@@ -185,6 +185,11 @@ diffthis({base})                                         *gitsigns.diffthis()*
 
                   " Diff against the last commit
                   :Gitsigns diffthis ~1
+>
+get_actions()                                         *gitsigns.get_actions()*
+                Get all the available line specific actions for the current
+                buffer at the cursor position. Returns a map of action name to
+                function.
 
 attach()                                                   *gitsigns.attach()*
                 Attach Gitsigns to the current buffer.
