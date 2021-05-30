@@ -11,13 +11,13 @@ local valid_modes = {
 }
 
 local valid_options = {
+   buffer = 'boolean',
    expr = 'boolean',
    noremap = 'boolean',
    nowait = 'boolean',
    script = 'boolean',
    silent = 'boolean',
    unique = 'boolean',
-   buffer = 'boolean',
 }
 
 local function validate_option_keywords(options)
@@ -31,7 +31,7 @@ local function validate_option_keywords(options)
    end
 end
 
-local function apply_mappings(mappings, bufonly)
+local function apply_mappings(mappings)
    validate({
       mappings = { mappings, 'table' },
    })
@@ -72,22 +72,16 @@ local function apply_mappings(mappings, bufonly)
 
          validate_option_keywords(options)
 
-         if bufonly ~= options.buffer then
-            break
-         end
-
          local mode, mapping = key:match("^(.)[ ]*(.+)$")
 
          if not mode or not valid_modes[mode] then
             error("Invalid mode specified for keymapping. mode=" .. mode)
          end
 
-         if options.buffer then
-            options.buffer = nil
-            api.nvim_buf_set_keymap(current_bufnr, mode, mapping, rhs, options)
-         else
-            api.nvim_set_keymap(mode, mapping, rhs, options)
-         end
+
+         options.buffer = nil
+
+         api.nvim_buf_set_keymap(current_bufnr, mode, mapping, rhs, options)
       until true
    end
 end

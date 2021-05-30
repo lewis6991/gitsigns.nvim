@@ -225,8 +225,14 @@ toggle_current_line_blame()             *gitsigns.toggle_current_line_blame()*
 ==============================================================================
 CONFIGURATION                                                *gitsigns-config*
 
+This section describes the configuration fields which can be passed to
+|gitsigns.setup()|. Note fields of type `table` may be marked with extended
+meaning the field is merged with the default, with the user value given higher
+precedence. This allows only specific sub-fields to be configured without
+having to redefine the whole field.
+
 signs                                                  *gitsigns-config-signs*
-      Type: `table`
+      Type: `table[extended]`
       Default: >
         {
           add          = {hl = 'GitSignsAdd'   , text = '│', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
@@ -263,7 +269,6 @@ keymaps                                              *gitsigns-config-keymaps*
         {
           -- Default keymap options
           noremap = true,
-          buffer = true,
 
           ['n ]c'] = { expr = true, "&diff ? ']c' : '<cmd>lua require\"gitsigns\".next_hunk()<CR>'"},
           ['n [c'] = { expr = true, "&diff ? '[c' : '<cmd>lua require\"gitsigns\".prev_hunk()<CR>'"},
@@ -290,8 +295,35 @@ keymaps                                              *gitsigns-config-keymaps*
       `silent`, `unique` and `buffer`.  These options can also be used in
       the top level of the table to define default options for all mappings.
 
+      Since this field is not extended (unlike |gitsigns-config-signs|),
+      mappings defined in this field can be disabled by setting the whole field
+      to `{}`, and |gitsigns-config-on_attach| can instead be used to define
+      mappings.
+
+on_attach                                          *gitsigns-config-on_attach*
+      Type: `function`, Default: `nil`
+
+      Callback called when attaching to a buffer. Mainly used to setup keymaps
+      when `config.keymaps` is empty. The buffer number is passed as the first
+      argument.
+
+      This callback can return `false` to prevent attaching to the buffer.
+
+      Example: >
+        on_attach = function(bufnr)
+          if vim.api.nvim_buf_get_name(bufnr):match(<PATTERN>) then
+            -- Don't attach to specific buffers whose name matches a pattern
+            return false
+          end
+
+          -- Setup keymaps
+          vim.api.nvim_buf_set_keymap(bufnr, 'n', 'hs', '<cmd>lua require"gitsigns".stage_hunk()<CR>', {})
+          ... -- More keymaps
+        end
+<
+
 watch_index                                      *gitsigns-config-watch_index*
-      Type: `table`, Default: `{ interval = 1000 },`
+      Type: `table`, Default: `{ interval = 1000 }`
 
       When opening a file, a libuv watcher is placed on the respective
       `.git/index` file to detect when changes happen to use as a trigger to
@@ -377,7 +409,7 @@ max_file_length                              *gitsigns-config-max_file_length*
       Max file length to attach to.
 
 preview_config                                *gitsigns-config-preview_config*
-      Type: `table`
+      Type: `table[extended]`
       Default: >
         {
           border   = 'single',
@@ -471,7 +503,7 @@ current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
 <
 
 yadm                                                    *gitsigns-config-yadm*
-      Type: `table`, Default: `{ enable = false },`
+      Type: `table`, Default: `{ enable = false }`
 
       yadm configuration.
 

@@ -6,7 +6,6 @@ local async_void = a.async_void
 local scheduler  = a.scheduler
 
 local Status         = require("gitsigns.status")
-local apply_mappings = require('gitsigns.mappings')
 local git            = require('gitsigns.git')
 local gs_hl          = require('gitsigns.highlight')
 local manager        = require('gitsigns.manager')
@@ -212,6 +211,11 @@ local attach = async(function(cbuf: integer)
   -- variable on the main thread.
   await(scheduler())
 
+  if config.on_attach and config.on_attach(cbuf) == false then
+    dprint('User on_attach() returned false', cbuf, 'attach')
+    return
+  end
+
   cache[cbuf] = CacheEntry.new {
     file          = file,
     commit        = commit,
@@ -242,7 +246,9 @@ local attach = async(function(cbuf: integer)
     end
   })
 
-  apply_mappings(config.keymaps as {string:any}, true)
+  if config.keymaps and not vim.tbl_isempty(config.keymaps) then
+    require('gitsigns.mappings')(config.keymaps as {string:any})
+  end
 end)
 
 local function setup_signs_and_highlights(redefine: boolean)
@@ -338,7 +344,6 @@ local setup = async_void(function(cfg: Config)
 
   setup_signs_and_highlights()
   setup_command()
-  apply_mappings(config.keymaps as {string:any}, false)
 
   if config.use_decoration_api then
     -- Calling this before any await calls will stop nvim's intro messages being
