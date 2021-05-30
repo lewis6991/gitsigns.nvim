@@ -91,7 +91,7 @@ local function get_default(field)
     local l = cfg[i]
     if l:match('^    default =') then
       ds = i
-      if l:match('},') then
+      if l:match('},') or l:match('nil,') then
         de = i
         break
       end
@@ -107,8 +107,9 @@ local function get_default(field)
     local l = cfg[i]
     if i == ds then
       l = l:gsub('%s*default = ', '')
-    elseif i == de then
-      l = l:gsub('(}),', '%1')
+    end
+    if i == de then
+      l = l:gsub('(.*),', '%1')
     end
     table.insert(ret, l)
   end
@@ -116,7 +117,18 @@ local function get_default(field)
   return table.concat(ret, '\n')
 end
 
+local function intro()
+  out[[
+This section describes the configuration fields which can be passed to
+|gitsigns.setup()|. Note fields of type `table` may be marked with extended
+meaning the field is merged with the default, with the user value given higher
+precedence. This allows only specific sub-fields to be configured without
+having to redefine the whole field.
+]]
+end
+
 local function gen_config_doc()
+  intro()
   for _, k in ipairs(get_ordered_schema_keys()) do
     local v = config.schema[k]
     local t = ('*gitsigns-config-%s*'):format(k)
@@ -137,13 +149,20 @@ local function gen_config_doc()
       end
     end
 
+    local vtype = (function()
+      if v.type == 'table' and v.deep_extend then
+        return 'table[extended]'
+      end
+      return v.type
+    end)()
+
     if d:find('\n') then
-      out(('      Type: `%s`'):format(v.type))
+      out(('      Type: `%s`'):format(vtype))
       out('      Default: >')
       out('        '..d:gsub('\n([^\n\r])', '\n    %1'))
       out('<')
     else
-      out(('      Type: `%s`, Default: %s'):format(v.type, d))
+      out(('      Type: `%s`, Default: %s'):format(vtype, d))
       out()
     end
 
