@@ -54,6 +54,7 @@ local M = {Config = {SignsConfig = {}, watch_index = {}, yadm = {}, }, }
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -96,7 +97,6 @@ M.schema = {
       default = {
 
          noremap = true,
-         buffer = true,
 
          ['n ]c'] = { expr = true, "&diff ? ']c' : '<cmd>lua require\"gitsigns\".next_hunk()<CR>'" },
          ['n [c'] = { expr = true, "&diff ? '[c' : '<cmd>lua require\"gitsigns\".prev_hunk()<CR>'" },
@@ -122,6 +122,36 @@ M.schema = {
       |map-arguments| which are: `expr`, `noremap`, `nowait`, `script`,
       `silent`, `unique` and `buffer`.  These options can also be used in
       the top level of the table to define default options for all mappings.
+
+      Since this field is not extended (unlike |gitsigns-config-signs|),
+      mappings defined in this field can be disabled by setting the whole field
+      to `{}`, and |gitsigns-config-on_attach| can instead be used to define
+      mappings.
+    ]],
+   },
+
+   on_attach = {
+      type = 'function',
+      default = nil,
+      description = [[
+      Callback called when attaching to a buffer. Mainly used to setup keymaps
+      when `config.keymaps` is empty. The buffer number is passed as the first
+      argument.
+
+      This callback can return `false` to prevent attaching to the buffer.
+
+      Example: >
+        on_attach = function(bufnr)
+          if vim.api.nvim_buf_get_name(bufnr):match(<PATTERN>) then
+            -- Don't attach to specific buffers whose name matches a pattern
+            return false
+          end
+
+          -- Setup keymaps
+          vim.api.nvim_buf_set_keymap(bufnr, 'n', 'hs', '<cmd>lua require"gitsigns".stage_hunk()<CR>', {})
+          ... -- More keymaps
+        end
+<
     ]],
    },
 

@@ -516,6 +516,28 @@ describe('gitsigns', function()
     end)
   end)
 
+  describe('on_attach()', function()
+    it('can prevent attaching to a buffer', function()
+      init(true)
+      exec_lua('config = ...', config)
+      exec_lua[[config.on_attach = function()
+        return false
+      end
+      ]]
+      exec_lua('gs.setup(config)')
+      edit(test_file)
+      sleep(20)
+      match_debug_messages {
+        "run_job: git --no-pager --version",
+        'attach(1): Attaching',
+        p"run_job: git .* config user.name",
+        "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+        p'run_job: git %-%-no%-pager %-%-git%-dir=.* %-%-stage %-%-others %-%-exclude%-standard .*',
+        "attach(1): User on_attach() returned false"
+      }
+    end)
+  end)
+
   local function testsuite(advanced_features)
     return function()
       before_each(function()
