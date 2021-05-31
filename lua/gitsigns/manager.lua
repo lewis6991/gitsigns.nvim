@@ -19,7 +19,7 @@ local eprint = gs_debug.eprint
 local util = require('gitsigns.util')
 local git = require('gitsigns.git')
 local gs_hunks = require("gitsigns.hunks")
-local gs_hl = require('gitsigns.highlight')
+local setup_highlight = require('gitsigns.highlight').setup_highlight
 
 local config = require('gitsigns.config').config
 
@@ -255,13 +255,14 @@ M.setup_signs_and_highlights = function(redefine)
    for t, sign_name in pairs(signs.sign_map) do
       local cs = config.signs[t]
 
-      gs_hl.setup_highlight(cs.hl)
+      setup_highlight(cs.hl)
 
-      local HlTy = {}
-      for _, hlty in ipairs({ 'numhl', 'linehl' }) do
-         if config[hlty] then
-            gs_hl.setup_other_highlight(cs[hlty], cs.hl)
-         end
+      if config.numhl then
+         setup_highlight(cs.numhl)
+      end
+
+      if config.linehl or config.word_diff then
+         setup_highlight(cs.linehl)
       end
 
       signs.define(sign_name, {
@@ -273,7 +274,7 @@ M.setup_signs_and_highlights = function(redefine)
 
    end
    if config.current_line_blame then
-      gs_hl.setup_highlight('GitSignsCurrentLineBlame')
+      setup_highlight('GitSignsCurrentLineBlame')
    end
 end
 

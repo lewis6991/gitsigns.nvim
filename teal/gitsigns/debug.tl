@@ -3,10 +3,11 @@ local M = {
   messages: {string} = {}
 }
 
-function M.dprint(msg: string, bufnr: number, caller: string)
+function M.dprint(obj: any, bufnr: number, caller: string)
   if not M.debug_mode then
     return
   end
+  local msg = type(obj) == 'string' and obj or vim.inspect(obj)
   local name = caller or debug.getinfo(2, 'n').name or ''
   local msg2: string
   if bufnr then
