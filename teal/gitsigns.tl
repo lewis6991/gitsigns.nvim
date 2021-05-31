@@ -2,22 +2,22 @@ local a = require('plenary.async')
 local void      = a.void
 local scheduler = a.util.scheduler
 
-local Status         = require("gitsigns.status")
-local git            = require('gitsigns.git')
-local manager        = require('gitsigns.manager')
-local signs          = require('gitsigns.signs')
-local util           = require('gitsigns.util')
+local Status     = require("gitsigns.status")
+local git        = require('gitsigns.git')
+local manager    = require('gitsigns.manager')
+local signs      = require('gitsigns.signs')
+local util       = require('gitsigns.util')
 
-local gs_cache       = require('gitsigns.cache')
-local cache          = gs_cache.cache
-local CacheEntry     = gs_cache.CacheEntry
+local gs_cache   = require('gitsigns.cache')
+local cache      = gs_cache.cache
+local CacheEntry = gs_cache.CacheEntry
 
-local gs_config      = require('gitsigns.config')
-local Config         = gs_config.Config
-local config         = gs_config.config
+local gs_config  = require('gitsigns.config')
+local Config     = gs_config.Config
+local config     = gs_config.config
 
-local gs_debug       = require("gitsigns.debug")
-local dprint         = gs_debug.dprint
+local gs_debug   = require("gitsigns.debug")
+local dprint     = gs_debug.dprint
 
 local api = vim.api
 local uv = vim.loop
