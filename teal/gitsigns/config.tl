@@ -88,6 +88,8 @@ M.schema = {
       defined highlights in the following order:
         • `GitGutter*`
         • `Signify*`
+        • `Diff*Gutter`
+        • `diff*`
         • `Diff*`
 
       For example if `signs.add.hl = GitSignsAdd` and `GitSignsAdd` is not
