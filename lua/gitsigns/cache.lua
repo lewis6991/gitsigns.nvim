@@ -2,7 +2,10 @@ local Hunk = require("gitsigns.hunks").Hunk
 local Sign = require('gitsigns.signs').Sign
 local GitObj = require('gitsigns.git').Obj
 
+local util = require('gitsigns.util')
+
 local M = {CacheEntry = {}, CacheObj = {}, }
+
 
 
 
@@ -45,6 +48,13 @@ CacheEntry.get_compare_obj = function(self, base)
    end
 
    return string.format('%s:%s', prefix, self.git_obj.relpath)
+end
+
+CacheEntry.get_compare_text = function(self)
+   if self.compare_text then
+      return self.compare_text
+   end
+   return util.file_lines(self.compare_file)
 end
 
 CacheEntry.new = function(o)
