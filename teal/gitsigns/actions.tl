@@ -111,23 +111,15 @@ M.reset_hunk = mk_repeatable(function(bufnr: integer, hunk: Hunk)
   api.nvim_buf_set_lines(bufnr, lstart, lend, false, gs_hunks.extract_removed(hunk))
 end)
 
-M.reset_buffer = async_void(function()
+M.reset_buffer = function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
     return
   end
 
-  local limit <const> = 1000
-  for _ = 1, limit do
-    if not bcache.hunks[1] then
-      return
-    end
-    M.reset_hunk(bufnr, bcache.hunks[1])
-    await(manager.update(bufnr))
-  end
-  error('Hit maximum limit of hunks to reset')
-end)
+  api.nvim_buf_set_lines(bufnr, 0, -1, false, bcache:get_compare_text())
+end
 
 M.undo_stage_hunk = mk_repeatable(async_void(function()
   local bufnr = current_buf()
@@ -310,13 +302,10 @@ M.diffthis = async_void(function(base: string)
   local comp_obj = bcache:get_compare_obj(calc_base(base))
   if base then
     text = await(bcache.git_obj:get_show_text(comp_obj))
-  elseif config.use_internal_diff then
-    text = bcache.compare_text
+    await(scheduler())
   else
-    text = util.file_lines(bcache.compare_file)
+    text = bcache:get_compare_text()
   end
-
-  await(scheduler())
 
   local ft = api.nvim_buf_get_option(bufnr, 'filetype')
 
