@@ -245,14 +245,32 @@ M.select_hunk = function()
    vim.cmd('normal! ' .. hunk.start .. 'GV' .. hunk.vend .. 'G')
 end
 
+local function defer(duration, callback)
+   local timer = vim.loop.new_timer()
+   timer:start(duration, 0, function()
+      timer:stop()
+      timer:close()
+      vim.schedule_wrap(callback)()
+   end)
+   return timer
+end
+
 M.blame_line = async_void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then return end
 
+   local loading = defer(1000, function()
+      popup.create({ 'Loading...' }, config.preview_config)
+   end)
+
+   await(scheduler())
    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
    local lnum = api.nvim_win_get_cursor(0)[1]
    local result = await(bcache.git_obj:run_blame(buftext, lnum))
+   pcall(function()
+      loading:close()
+   end)
 
    local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author_time']))
    local lines = {

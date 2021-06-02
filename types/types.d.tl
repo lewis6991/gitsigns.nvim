@@ -205,6 +205,7 @@ global record vim
     record Timer
       start: function(Timer, number, number, function): number
       stop: function(Timer): number
+      close: function(Timer): number
       again: function(Timer): number
       set_repeat: function(Timer, number): number
       get_repeat: function(Timer): number
@@ -258,6 +259,8 @@ global record vim
     fs_realpath: function(string): string
 
     new_tcp: function()
+
+    sleep: function(integer)
   end
 
   in_fast_event: function(): boolean
