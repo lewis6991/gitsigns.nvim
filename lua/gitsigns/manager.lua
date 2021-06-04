@@ -35,6 +35,8 @@ local M = {}
 
 
 
+
+
 function M.apply_win_signs(bufnr, pending, top, bot)
 
 
@@ -75,6 +77,7 @@ function M.apply_win_signs(bufnr, pending, top, bot)
    end
 
    signs.add(config, bufnr, scheduled)
+
 end
 
 
@@ -132,6 +135,35 @@ M.on_lines = function(buf, last_orig, last_new)
 
    speculate_signs(buf, last_orig, last_new)
    M.update_debounced(buf)
+end
+
+local ns = api.nvim_create_namespace('gitsigns')
+
+M.apply_word_diff = function(bufnr, row)
+   if not cache[bufnr] then return end
+
+   local lnum = row + 1
+
+   for _, hunk in ipairs(cache[bufnr].hunks) do
+      if lnum >= hunk.start and lnum <= hunk.vend then
+         local regions = require('gitsigns.word_diff').process(hunk.lines)
+         for _, region in ipairs(regions) do
+            if region[2] == '+' then
+               local line = region[1]
+               if hunk.start + (line / 2) - 1 == lnum then
+                  local scol = region[3] - 1
+                  local ecol = region[4] - 1
+                  api.nvim_buf_set_extmark(bufnr, ns, row, scol - 1, {
+                     end_col = ecol,
+                     hl_group = 'GitSignsAddLn',
+                     ephemeral = true,
+                  })
+               end
+            end
+         end
+         break
+      end
+   end
 end
 
 local update_cnt = 0

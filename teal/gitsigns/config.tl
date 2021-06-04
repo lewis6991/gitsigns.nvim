@@ -47,6 +47,7 @@ local record M
     end
 
     -- Undocumented
+    _word_diff: boolean
     _refresh_staged_on_update: boolean
 
     _git_version: string
@@ -445,6 +446,14 @@ M.schema = {
     default = 'auto',
     description = [[
       Version of git available. Set to 'auto' to automatically detect.
+    ]]
+  },
+
+  _word_diff = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      High intra-line word differences
     ]]
   },
 
