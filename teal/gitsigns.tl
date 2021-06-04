@@ -352,9 +352,15 @@ local setup = async_void(function(cfg: Config)
       on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
         local bcache = cache[bufnr]
         if not bcache or not bcache.pending_signs then
-          return
+          return false
         end
         manager.apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
+
+        -- Returning false prevents the on_line callbacks
+        return config._word_diff
+      end,
+      on_line = function(_, _, bufnr: integer, row: integer)
+        manager.apply_word_diff(bufnr, row)
       end
     })
   end
