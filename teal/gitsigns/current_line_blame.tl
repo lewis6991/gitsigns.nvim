@@ -40,6 +40,7 @@ M.run = async_void(function()
   api.nvim_buf_set_extmark(bufnr, namespace, lnum-1, 0, {
     id = 1,
     virt_text = config.current_line_blame_formatter(bcache.git_obj.username, result),
+    virt_text_pos = config.current_line_blame_position,
   })
 end)
 
