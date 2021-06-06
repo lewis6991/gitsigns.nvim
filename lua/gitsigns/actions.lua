@@ -206,8 +206,18 @@ local function nav_hunk(options)
    end
    local line = api.nvim_win_get_cursor(0)[1]
 
-   local wrap = options.wrap ~= nil and options.wrap or vim.o.wrapscan
+
+   local wrap = vim.o.wrapscan
+   if options.wrap ~= nil then
+      wrap = options.wrap
+   end
+
    local hunk = gs_hunks.find_nearest_hunk(line, hunks, options.forwards, wrap)
+
+   if hunk == nil then
+      return
+   end
+
    local row = options.forwards and hunk.start or hunk.vend
    if row then
 
