@@ -36,6 +36,7 @@ local record M
     status_formatter: function({string:any}): string
     current_line_blame: boolean
     current_line_blame_formatter: function(string, {string:any}): string
+    current_line_blame_position: string
     preview_config: {string:any}
     attach_to_untracked: boolean
     use_internal_diff: boolean
@@ -351,6 +352,17 @@ M.schema = {
       The highlight group used for the text is `GitSignsCurrentLineBlame`.
     ]]
   },
+
+   current_line_blame_position = {
+      type = 'string',
+      default = 'eol',
+      description = [[
+        Blame annotation position. Available options:
+        - eol: right after eol character (default).
+        - overlay: display over the specified column, without shifting the underlying text.
+        - right_align: display right aligned in the window.
+    ]],
+   },
 
   current_line_blame_formatter = {
     type = 'function',
