@@ -454,6 +454,14 @@ current_line_blame                        *gitsigns-config-current_line_blame*
 
       The highlight group used for the text is `GitSignsCurrentLineBlame`.
 
+current_line_blame_position      *gitsigns-config-current_line_blame_position*
+      Type: `string`, Default: `"eol"`
+
+        Blame annotation position. Available options:
+        - eol: right after eol character (default).
+        - overlay: display over the specified column, without shifting the underlying text.
+        - right_align: display right aligned in the window.
+
 current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
       Type: `function`
       Default: >

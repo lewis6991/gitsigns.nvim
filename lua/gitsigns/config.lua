@@ -55,6 +55,7 @@ local M = {Config = {SignsConfig = {}, watch_index = {}, yadm = {}, }, }
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -349,6 +350,17 @@ M.schema = {
       the current line.
 
       The highlight group used for the text is `GitSignsCurrentLineBlame`.
+    ]],
+   },
+
+   current_line_blame_position = {
+      type = 'string',
+      default = 'eol',
+      description = [[
+        Blame annotation position. Available options:
+        - eol: right after eol character (default).
+        - overlay: display over the specified column, without shifting the underlying text.
+        - right_align: display right aligned in the window.
     ]],
    },
 
