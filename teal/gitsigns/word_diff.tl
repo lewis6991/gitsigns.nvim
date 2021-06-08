@@ -9,9 +9,9 @@ local function get_lcs(s1: string, s2: string): string
   end
 
   local matrix: {{integer}} = {}
-  for i = 1, #s1+1 do
+  for i = 1, #s1 + 1 do
     matrix[i] = {}
-    for j = 1, #s2+1 do
+    for j = 1, #s2 + 1 do
       matrix[i][j] = 0
     end
   end
@@ -21,7 +21,7 @@ local function get_lcs(s1: string, s2: string): string
 
   for i = 2, #s1 + 1 do
     for j = 2, #s2 + 1 do
-      if s1:sub(i, i) == s2:sub(j, j) then
+      if s1:sub(i-1, i-1) == s2:sub(j-1, j-1) then
         matrix[i][j] = 1 + matrix[i-1][j-1]
         if matrix[i][j] > maxlength then
           maxlength = matrix[i][j]
@@ -31,11 +31,11 @@ local function get_lcs(s1: string, s2: string): string
     end
   end
 
-  return s1:sub(endindex - maxlength + 1, endindex)
+  return s1:sub(endindex - maxlength, endindex - 1)
 end
 
 -- Returns 1-based index of last character of common prefix
--- If there is no common prefix, returns -1.
+-- If there is no common prefix, returns 0.
 --
 -- a, b - strings
 --
@@ -43,7 +43,7 @@ end
 local function common_prefix(a: string, b: string): integer
   local len = math.min(#a, #b)
   if len == 0 then
-    return -1
+    return 0
   end
   for i = 1, len do
     if a:sub(i,i) ~= b:sub(i,i) then
@@ -88,6 +88,12 @@ local function diff(rline: string, aline: string, rlinenr: integer, alinenr: int
   local rtext = rline:sub(prefix+1, rsuffix)
   local atext = aline:sub(prefix+1, asuffix)
 
+  -- print('prefix:'..prefix)
+  -- print('rsuffix:'..rsuffix)
+  -- print('asuffix:'..asuffix)
+  -- print('rtext:"'..rtext..'"')
+  -- print('atext:"'..atext..'"')
+
   -- singular insertion
   if rtext == '' then
     if not whole_line or #atext ~= #aline then -- not whole line
@@ -117,20 +123,23 @@ local function diff(rline: string, aline: string, rlinenr: integer, alinenr: int
   -- two deletions
   local k = vim.fn.stridx(rtext, atext)
   if k ~= -1 then
-    regions[#regions+1] = {rlinenr+1, '-', rprefix+prefix         , rprefix+prefix+k}
-    regions[#regions+1] = {rlinenr+1, '-', rprefix+prefix+k+#atext, rprefix+rsuffix-1}
+    regions[#regions+1] = {rlinenr, '-', rprefix+prefix+1         , rprefix+prefix+k}
+    regions[#regions+1] = {rlinenr, '-', rprefix+prefix+1+k+#atext, rprefix+rsuffix}
     return
   end
 
   -- two edits
   local lcs = get_lcs(rtext, atext)
+  -- print('lcs:"'..lcs..'"')
 
   -- TODO do we need to ensure we don't get more than 2 elements when splitting?
   if #lcs > gap_between_regions then
     local redits = vim.split(rtext, lcs, true)
     local aedits = vim.split(atext, lcs, true)
-    diff(redits[1], aedits[1], rlinenr, alinenr, rprefix+prefix+1                , aprefix+prefix+1                , regions, false)
-    diff(redits[2], aedits[2], rlinenr, alinenr, rprefix+prefix+1+#redits[1]+#lcs, aprefix+prefix+1+#aedits[1]+#lcs, regions, false)
+    -- print('diff1')
+    diff(redits[1], aedits[1], rlinenr, alinenr, rprefix+prefix                , aprefix+prefix                , regions, false)
+    -- print('diff2')
+    diff(redits[2], aedits[2], rlinenr, alinenr, rprefix+prefix+#redits[1]+#lcs, aprefix+prefix+#aedits[1]+#lcs, regions, false)
     return
   end
 
@@ -138,12 +147,12 @@ local function diff(rline: string, aline: string, rlinenr: integer, alinenr: int
 
   -- if a change (but not the whole line)
   if not whole_line or ((prefix ~= 0 or rsuffix ~= #rline) and prefix+1 < rsuffix) then
-    regions[#regions+1] = {rlinenr, '-', rprefix+prefix, rprefix+rsuffix-1}
+    regions[#regions+1] = {rlinenr, '-', rprefix+prefix+1, rprefix+rsuffix}
   end
 
   -- if a change (but not the whole line)
   if not whole_line or ((prefix ~= 0 or asuffix ~= #aline) and prefix+1 < asuffix) then
-    regions[#regions+1] = {alinenr, '+', aprefix+prefix, aprefix+asuffix-1}
+    regions[#regions+1] = {alinenr, '+', aprefix+prefix+1, aprefix+asuffix}
   end
 end
 
@@ -187,6 +196,7 @@ function M.process(hunk_body: {string}): {Region}
 
   local regions: {Region}
   regions = {}
+
   -- regions = setmetatable({}, {
   --   __newindex = function(r: {Region}, i: integer, value: Region)
   --     local lno = debug.getinfo(2, "Sl").currentline

@@ -21,7 +21,7 @@ local function get_lcs(s1, s2)
 
    for i = 2, #s1 + 1 do
       for j = 2, #s2 + 1 do
-         if s1:sub(i, i) == s2:sub(j, j) then
+         if s1:sub(i - 1, i - 1) == s2:sub(j - 1, j - 1) then
             matrix[i][j] = 1 + matrix[i - 1][j - 1]
             if matrix[i][j] > maxlength then
                maxlength = matrix[i][j]
@@ -31,7 +31,7 @@ local function get_lcs(s1, s2)
       end
    end
 
-   return s1:sub(endindex - maxlength + 1, endindex)
+   return s1:sub(endindex - maxlength, endindex - 1)
 end
 
 
@@ -43,7 +43,7 @@ end
 local function common_prefix(a, b)
    local len = math.min(#a, #b)
    if len == 0 then
-      return -1
+      return 0
    end
    for i = 1, len do
       if a:sub(i, i) ~= b:sub(i, i) then
@@ -89,6 +89,12 @@ local function diff(rline, aline, rlinenr, alinenr, rprefix, aprefix, regions, w
    local atext = aline:sub(prefix + 1, asuffix)
 
 
+
+
+
+
+
+
    if rtext == '' then
       if not whole_line or #atext ~= #aline then
          regions[#regions + 1] = { alinenr, '+', aprefix + prefix + 1, aprefix + asuffix }
@@ -117,8 +123,8 @@ local function diff(rline, aline, rlinenr, alinenr, rprefix, aprefix, regions, w
 
    local k = vim.fn.stridx(rtext, atext)
    if k ~= -1 then
-      regions[#regions + 1] = { rlinenr + 1, '-', rprefix + prefix, rprefix + prefix + k }
-      regions[#regions + 1] = { rlinenr + 1, '-', rprefix + prefix + k + #atext, rprefix + rsuffix - 1 }
+      regions[#regions + 1] = { rlinenr, '-', rprefix + prefix + 1, rprefix + prefix + k }
+      regions[#regions + 1] = { rlinenr, '-', rprefix + prefix + 1 + k + #atext, rprefix + rsuffix }
       return
    end
 
@@ -126,11 +132,14 @@ local function diff(rline, aline, rlinenr, alinenr, rprefix, aprefix, regions, w
    local lcs = get_lcs(rtext, atext)
 
 
+
    if #lcs > gap_between_regions then
       local redits = vim.split(rtext, lcs, true)
       local aedits = vim.split(atext, lcs, true)
-      diff(redits[1], aedits[1], rlinenr, alinenr, rprefix + prefix + 1, aprefix + prefix + 1, regions, false)
-      diff(redits[2], aedits[2], rlinenr, alinenr, rprefix + prefix + 1 + #redits[1] + #lcs, aprefix + prefix + 1 + #aedits[1] + #lcs, regions, false)
+
+      diff(redits[1], aedits[1], rlinenr, alinenr, rprefix + prefix, aprefix + prefix, regions, false)
+
+      diff(redits[2], aedits[2], rlinenr, alinenr, rprefix + prefix + #redits[1] + #lcs, aprefix + prefix + #aedits[1] + #lcs, regions, false)
       return
    end
 
@@ -138,12 +147,12 @@ local function diff(rline, aline, rlinenr, alinenr, rprefix, aprefix, regions, w
 
 
    if not whole_line or ((prefix ~= 0 or rsuffix ~= #rline) and prefix + 1 < rsuffix) then
-      regions[#regions + 1] = { rlinenr, '-', rprefix + prefix, rprefix + rsuffix - 1 }
+      regions[#regions + 1] = { rlinenr, '-', rprefix + prefix + 1, rprefix + rsuffix }
    end
 
 
    if not whole_line or ((prefix ~= 0 or asuffix ~= #aline) and prefix + 1 < asuffix) then
-      regions[#regions + 1] = { alinenr, '+', aprefix + prefix, aprefix + asuffix - 1 }
+      regions[#regions + 1] = { alinenr, '+', aprefix + prefix + 1, aprefix + asuffix }
    end
 end
 
@@ -187,6 +196,7 @@ function M.process(hunk_body)
 
    local regions
    regions = {}
+
 
 
 
