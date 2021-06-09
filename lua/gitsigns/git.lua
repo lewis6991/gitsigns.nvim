@@ -2,6 +2,7 @@ local a = require('plenary.async_lib.async')
 local JobSpec = require('plenary.job').JobSpec
 local await = a.await
 local async = a.async
+local scheduler = a.scheduler
 
 local gsd = require("gitsigns.debug")
 local util = require('gitsigns.util')
@@ -163,6 +164,10 @@ local get_repo_info = async(function(path, cmd)
 
    local has_abs_gd = check_version({ 2, 13 })
    local git_dir_opt = has_abs_gd and '--absolute-git-dir' or '--git-dir'
+
+
+
+   await(scheduler())
 
    local results = await(command({
       'rev-parse', '--show-toplevel', git_dir_opt, '--abbrev-ref', 'HEAD',
