@@ -397,7 +397,8 @@ Obj.new = a.async(function(file)
 
 
    if M.enable_yadm and not self.gitdir then
-      if #await(command({ 'ls-files', file }, { command = 'yadm' })) ~= 0 then
+      if vim.startswith(file, os.getenv('HOME')) and
+         #await(command({ 'ls-files', file }, { command = 'yadm' })) ~= 0 then
          self.toplevel, self.gitdir, self.abbrev_head = 
          await(get_repo_info(util.dirname(file), 'yadm'))
       end
