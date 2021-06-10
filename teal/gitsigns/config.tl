@@ -37,6 +37,7 @@ local record M
     current_line_blame: boolean
     current_line_blame_formatter: function(string, {string:any}): string
     current_line_blame_position: string
+    current_line_blame_delay: number
     preview_config: {string:any}
     attach_to_untracked: boolean
     use_internal_diff: boolean
@@ -430,6 +431,14 @@ M.schema = {
       Note that the keys map onto the output of: >
         git blame --line-porcelain
 <
+    ]]
+  },
+
+  current_line_blame_delay = {
+    type = 'number',
+    default = 1000,
+    description = [[
+      Sets the delay before blame virtual text is displayed in milliseconds.
     ]]
   },
 

@@ -12,11 +12,28 @@ local current_buf = api.nvim_get_current_buf
 
 local namespace = api.nvim_create_namespace('gitsigns_blame')
 
+local timer = vim.loop.new_timer()
+
 local M = {}
 
 
 
 
+
+
+M.cursor_moved = function()
+   M.reset()
+
+   timer:start(
+   config.current_line_blame_delay,
+   0,
+   vim.schedule_wrap(
+   function()
+      M.run()
+   end))
+
+
+end
 
 M.reset = function(bufnr)
    bufnr = bufnr or current_buf()
@@ -49,14 +66,8 @@ M.setup = function()
    for k, _ in pairs(cache) do
       M.reset(k)
    end
-   if config.current_line_blame then
-      for func, events in pairs({
-            run = 'CursorHold',
-            reset = 'CursorMoved',
-         }) do
-         vim.cmd('autocmd gitsigns_blame ' .. events .. ' * lua require("gitsigns.current_line_blame").' .. func .. '()')
-      end
-   end
+
+   vim.cmd('autocmd gitsigns_blame CursorMoved,CursorMovedI * lua require("gitsigns.current_line_blame").cursor_moved()')
 end
 
 return M
