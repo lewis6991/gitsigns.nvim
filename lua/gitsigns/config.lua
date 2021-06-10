@@ -57,6 +57,7 @@ local M = {Config = {SignsConfig = {}, watch_index = {}, yadm = {}, }, }
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -430,6 +431,14 @@ M.schema = {
       Note that the keys map onto the output of: >
         git blame --line-porcelain
 <
+    ]],
+   },
+
+   current_line_blame_delay = {
+      type = 'number',
+      default = 1000,
+      description = [[
+      Sets the delay before blame virtual text is displayed in milliseconds.
     ]],
    },
 
