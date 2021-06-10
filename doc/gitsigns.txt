@@ -510,6 +510,11 @@ current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
         git blame --line-porcelain
 <
 
+current_line_blame_delay            *gitsigns-config-current_line_blame_delay*
+      Type: `number`, Default: `1000`
+
+      Sets the delay before blame virtual text is displayed in milliseconds.
+
 yadm                                                    *gitsigns-config-yadm*
       Type: `table`, Default: `{ enable = false }`
 
