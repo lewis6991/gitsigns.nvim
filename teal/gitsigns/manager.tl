@@ -143,22 +143,29 @@ M.apply_word_diff = function(bufnr: integer, row: integer)
   if not cache[bufnr] then return end
 
   local lnum = row + 1
+  local cols = #api.nvim_buf_get_lines(bufnr, lnum-1, lnum, false)[1]
 
   for _, hunk in ipairs(cache[bufnr].hunks) do
     if lnum >= hunk.start and lnum <= hunk.vend then
-      local regions = require('gitsigns.word_diff').process(hunk.lines)
+      local size = #hunk.lines / 2
+      local regions = require('gitsigns.diff').run_word_diff(hunk.lines)
       for _, region in ipairs(regions) do
-        if region[2] == '+' then
-          local line = region[1]
-          if hunk.start + (line /2) - 1 == lnum then
-            local scol = region[3]-1
-            local ecol = region[4]-1
-            api.nvim_buf_set_extmark(bufnr, ns, row, scol-1, {
-              end_col = ecol,
-              hl_group = 'GitSignsAddLn',
-              ephemeral = true
-            })
+        local line = region[1]
+        if lnum == hunk.start + line - size - 1
+          and vim.startswith(hunk.lines[line], '+') then
+          local rtype = region[2]
+          local scol = region[3] - 1
+          local ecol = region[4] - 1
+          if ecol > cols then
+            ecol = cols
           end
+          api.nvim_buf_set_extmark(bufnr, ns, row, scol, {
+            end_col = ecol,
+            hl_group = rtype == 'add'    and 'GitSignsAddLn'
+                    or rtype == 'change' and 'GitSignsChangeLn' or
+                                             'GitSignsDeleteLn',
+            ephemeral = true
+          })
         end
       end
       break
@@ -174,6 +181,7 @@ local update0 = async(function(bufnr: integer, bcache: CacheEntry)
     error('Cache for buffer '..bufnr..' was nil')
     return
   end
+  bcache.hunks = nil
 
   await(scheduler())
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
