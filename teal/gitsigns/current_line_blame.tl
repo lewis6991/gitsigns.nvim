@@ -61,8 +61,10 @@ M.setup = function()
     M.reset(k)
   end
 
-  vim.cmd('autocmd gitsigns_blame CursorMoved,CursorMovedI * lua require("gitsigns.current_line_blame").update()')
-  M.update()
+  if config.current_line_blame then
+    vim.cmd('autocmd gitsigns_blame CursorMoved,CursorMovedI * lua require("gitsigns.current_line_blame").update()')
+    M.update()
+  end
 end
 
 return M
