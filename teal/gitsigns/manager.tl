@@ -18,6 +18,7 @@ local Status            = require("gitsigns.status")
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local gs_debug          = require("gitsigns.debug")
 local dprint            = gs_debug.dprint
+local eprint            = gs_debug.eprint
 local util              = require('gitsigns.util')
 local git               = require('gitsigns.git')
 local gs_hunks          = require("gitsigns.hunks")
@@ -178,7 +179,7 @@ local update_cnt = 0
 local update0 = async(function(bufnr: integer, bcache: CacheEntry)
   bcache = bcache or cache[bufnr]
   if not bcache then
-    error('Cache for buffer '..bufnr..' was nil')
+    eprint('Cache for buffer '..bufnr..' was nil')
     return
   end
   bcache.hunks = nil

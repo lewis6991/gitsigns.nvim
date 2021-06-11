@@ -18,13 +18,13 @@ function M.dprint(msg: string, bufnr: number, caller: string)
 end
 
 function M.eprint(msg: string)
-  -- On windows print() crashes in callback threads
-  if vim.in_fast_event() then
+  if M.debug_mode then
+    error(msg)
+  else
+    -- On windows print() crashes in callback threads
     vim.schedule(function()
       print('error: ' .. msg)
     end)
-  else
-    print('error: ' .. msg)
   end
 end
 
