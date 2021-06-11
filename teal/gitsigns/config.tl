@@ -37,7 +37,7 @@ local record M
     current_line_blame: boolean
     current_line_blame_formatter: function(string, {string:any}): string
     current_line_blame_position: string
-    current_line_blame_delay: number
+    current_line_blame_delay: integer
     preview_config: {string:any}
     attach_to_untracked: boolean
     use_internal_diff: boolean

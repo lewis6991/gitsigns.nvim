@@ -213,6 +213,7 @@ global record vim
       get_due_in: function(Timer): number
     end
     new_timer: function(): Timer
+    timer_start: function(Timer, integer, integer, function()): integer | string
 
     new_fs_event: function()
 

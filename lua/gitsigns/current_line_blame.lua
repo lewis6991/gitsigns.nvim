@@ -2,6 +2,7 @@ local a = require('plenary.async_lib.async')
 local await = a.await
 local async_void = a.async_void
 local scheduler = a.scheduler
+local wrap = a.wrap
 
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
@@ -20,27 +21,20 @@ local M = {}
 
 
 
-
-M.cursor_moved = function()
-   M.reset()
-
-   timer:start(
-   config.current_line_blame_delay,
-   0,
-   vim.schedule_wrap(
-   function()
-      M.run()
-   end))
-
-
-end
+local wait_timer = wrap(vim.loop.timer_start, 4)
 
 M.reset = function(bufnr)
    bufnr = bufnr or current_buf()
    api.nvim_buf_del_extmark(bufnr, namespace, 1)
 end
 
-M.run = async_void(function()
+M.update = async_void(function()
+   M.reset()
+
+
+   await(wait_timer(timer, config.current_line_blame_delay, 0))
+   await(scheduler())
+
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache or not bcache.git_obj.object_name then
@@ -67,7 +61,8 @@ M.setup = function()
       M.reset(k)
    end
 
-   vim.cmd('autocmd gitsigns_blame CursorMoved,CursorMovedI * lua require("gitsigns.current_line_blame").cursor_moved()')
+   vim.cmd('autocmd gitsigns_blame CursorMoved,CursorMovedI * lua require("gitsigns.current_line_blame").update()')
+   M.update()
 end
 
 return M
