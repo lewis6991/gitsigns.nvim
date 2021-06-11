@@ -26,7 +26,7 @@ local function is_hl_set(hl_name)
    return exists and color ~= nil
 end
 
-local function hl_link(to, from, reverse)
+local function hl_link0(to, from, reverse)
    if is_hl_set(to) then
       return
    end
@@ -43,6 +43,10 @@ local function hl_link(to, from, reverse)
       vim.cmd(table.concat({ 'highlight', to, fg, bg, 'gui=reverse' }, ' '))
    end
 end
+
+
+
+local hl_link = vim.schedule_wrap(hl_link0)
 
 local stdHl = {
    'DiffAdd',
