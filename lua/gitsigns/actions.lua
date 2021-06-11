@@ -249,10 +249,10 @@ M.preview_hunk = function()
    local _, bufnr = popup.create(hunk.lines, config.preview_config)
    api.nvim_buf_set_option(bufnr, 'filetype', 'diff')
 
-   local regions = require('gitsigns.word_diff').process(hunk.lines)
+   local regions = require('gitsigns.diff').run_word_diff(hunk.lines)
    for _, region in ipairs(regions) do
       local line, scol, ecol = region[1], region[3], region[4]
-      api.nvim_buf_set_extmark(bufnr, ns, line - 1, scol - 1, {
+      api.nvim_buf_set_extmark(bufnr, ns, line - 1, scol, {
          end_col = ecol,
          hl_group = 'TermCursor',
       })
