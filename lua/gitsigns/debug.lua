@@ -18,13 +18,13 @@ function M.dprint(msg, bufnr, caller)
 end
 
 function M.eprint(msg)
+   if M.debug_mode then
+      error(msg)
+   else
 
-   if vim.in_fast_event() then
       vim.schedule(function()
          print('error: ' .. msg)
       end)
-   else
-      print('error: ' .. msg)
    end
 end
 
