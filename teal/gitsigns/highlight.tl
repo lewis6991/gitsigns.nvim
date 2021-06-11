@@ -26,7 +26,7 @@ local function is_hl_set(hl_name: string): boolean
   return exists and color ~= nil
 end
 
-local function hl_link(to: string, from: string, reverse: boolean)
+local function hl_link0(to: string, from: string, reverse: boolean)
   if is_hl_set(to) then
     return
   end
@@ -43,6 +43,10 @@ local function hl_link(to: string, from: string, reverse: boolean)
     vim.cmd(table.concat({'highlight', to, fg, bg, 'gui=reverse'}, ' '))
   end
 end
+
+-- It seems vim.cmd[[highlight ...]] must be run in the main part of the event
+-- loop (non-fast)
+local hl_link = vim.schedule_wrap(hl_link0)
 
 local stdHl = {
   'DiffAdd',
