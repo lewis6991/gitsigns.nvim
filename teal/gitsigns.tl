@@ -187,7 +187,7 @@ local attach = async(function(cbuf: integer)
   await(scheduler())
   Status:update_head(cbuf, git_obj.abbrev_head)
 
-  if vim.startswith(file, git_obj.gitdir) then
+  if vim.startswith(file, git_obj.gitdir..util.path_sep) then
     dprint('In non-standard git dir', cbuf, 'attach')
     return
   end
