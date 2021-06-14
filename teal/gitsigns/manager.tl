@@ -141,7 +141,7 @@ end
 local ns = api.nvim_create_namespace('gitsigns')
 
 M.apply_word_diff = function(bufnr: integer, row: integer)
-  if not cache[bufnr] then return end
+  if not cache[bufnr] or not cache[bufnr].hunks then return end
 
   local lnum = row + 1
   local cols = #api.nvim_buf_get_lines(bufnr, lnum-1, lnum, false)[1]
@@ -157,16 +157,16 @@ M.apply_word_diff = function(bufnr: integer, row: integer)
           local rtype = region[2]
           local scol = region[3] - 1
           local ecol = region[4] - 1
-          if ecol > cols then
-            ecol = cols
+          if scol <= cols then
+            if ecol > cols then ecol = cols end
+            api.nvim_buf_set_extmark(bufnr, ns, row, scol, {
+              end_col = ecol,
+              hl_group = rtype == 'add'    and 'GitSignsAddLn'
+                      or rtype == 'change' and 'GitSignsChangeLn'
+                      or                       'GitSignsDeleteLn',
+              ephemeral = true
+            })
           end
-          api.nvim_buf_set_extmark(bufnr, ns, row, scol, {
-            end_col = ecol,
-            hl_group = rtype == 'add'    and 'GitSignsAddLn'
-                    or rtype == 'change' and 'GitSignsChangeLn' or
-                                             'GitSignsDeleteLn',
-            ephemeral = true
-          })
         end
       end
       break

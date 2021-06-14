@@ -205,6 +205,12 @@ function M.run_word_diff(hunk_body: {string}): {Region}
     local hunks0: {Hunk} = {}
     for _, r in ipairs(run_diff_xdl(a, b)) do
       local rs, rc, as, ac = unpack(r)
+
+      -- Balance of the unknown offset done in hunk_func
+      if rc == 0 then rs = rs + 1 end
+      if ac == 0 then as = as + 1 end
+
+      -- print(string.format('-%d,%d +%d,%d', rs, rc, as, ac))
       hunks0[#hunks0+1] = create_hunk(rs, rc, as, ac)
     end
 
