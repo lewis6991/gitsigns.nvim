@@ -205,6 +205,12 @@ function M.run_word_diff(hunk_body)
       local hunks0 = {}
       for _, r in ipairs(run_diff_xdl(a, b)) do
          local rs, rc, as, ac = unpack(r)
+
+
+         if rc == 0 then rs = rs + 1 end
+         if ac == 0 then as = as + 1 end
+
+
          hunks0[#hunks0 + 1] = create_hunk(rs, rc, as, ac)
       end
 
