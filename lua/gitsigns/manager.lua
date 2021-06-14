@@ -154,13 +154,16 @@ M.apply_word_diff = function(bufnr, row)
             local line = region[1]
             if lnum == hunk.start + line - size - 1 and
                vim.startswith(hunk.lines[line], '+') then
-               local rtype = region[2]
-               local scol = region[3] - 1
-               local ecol = region[4] - 1
+               local rtype, scol, ecol = region[2], region[3], region[4]
                if scol <= cols then
-                  if ecol > cols then ecol = cols end
-                  api.nvim_buf_set_extmark(bufnr, ns, row, scol, {
-                     end_col = ecol,
+                  if ecol > cols then
+                     ecol = cols
+                  elseif ecol == scol then
+
+                     ecol = scol + 1
+                  end
+                  api.nvim_buf_set_extmark(bufnr, ns, row, scol - 1, {
+                     end_col = ecol - 1,
                      hl_group = rtype == 'add' and 'GitSignsAddLn' or
                      rtype == 'change' and 'GitSignsChangeLn' or
                      'GitSignsDeleteLn',
