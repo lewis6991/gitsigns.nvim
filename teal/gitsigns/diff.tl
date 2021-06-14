@@ -235,14 +235,6 @@ function M.run_word_diff(hunk_body: {string}): {Region}
       local rem = {i        , h.type, h.removed.start, h.removed.start + h.removed.count}
       local add = {i+removed, h.type, h.added.start  , h.added.start   + h.added.count}
 
-      -- In order to show 'delete' diffs on the first column
-      if add[3] == 0 then add[3] = add[3] + 1 end
-      if rem[3] == 0 then rem[3] = rem[3] + 1 end
-
-      -- Make sure all regions have a minimum width of 1
-      if add[3] >= add[4] then add[4] = add[3] + 1 end
-      if rem[3] >= rem[4] then rem[4] = rem[3] + 1 end
-
       ret[#ret+1] = rem
       ret[#ret+1] = add
     end
