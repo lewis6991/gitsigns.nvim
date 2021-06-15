@@ -7,7 +7,6 @@ local scheduler  = a.scheduler
 
 local Status         = require("gitsigns.status")
 local git            = require('gitsigns.git')
-local gs_hl          = require('gitsigns.highlight')
 local manager        = require('gitsigns.manager')
 local signs          = require('gitsigns.signs')
 local util           = require('gitsigns.util')
@@ -251,33 +250,6 @@ local attach = async(function(cbuf: integer)
   end
 end)
 
-local function setup_signs_and_highlights(redefine: boolean)
-  -- Define signs
-  for t, sign_name in pairs(signs.sign_map) do
-    local cs = config.signs[t]
-
-    gs_hl.setup_highlight(cs.hl)
-
-    local enum HlTy 'numhl' 'linehl' end
-    for _, hlty in ipairs({'numhl', 'linehl'} as {HlTy}) do
-      if config[hlty] then
-        gs_hl.setup_other_highlight(cs[hlty], cs.hl)
-      end
-    end
-
-    signs.define(sign_name, {
-      texthl = cs.hl,
-      text   = config.signcolumn and cs.text or nil,
-      numhl  = config.numhl      and cs.numhl,
-      linehl = config.linehl     and cs.linehl
-    }, redefine)
-
-  end
-  if config.current_line_blame then
-    gs_hl.setup_highlight('GitSignsCurrentLineBlame')
-  end
-end
-
 -- Needs to be global so can be accessed from v:lua
 local function _complete(arglead: string, line: string): {string}
   local n: integer = #vim.split(line, '%s+')
@@ -324,10 +296,6 @@ local function setup_command()
   }, ' '))
 end
 
-local function setup_current_line_blame()
-  require('gitsigns.current_line_blame').setup()
-end
-
 local setup = async_void(function(cfg: Config)
   gs_config.build(cfg)
   namespace = api.nvim_create_namespace('gitsigns')
@@ -344,7 +312,7 @@ local setup = async_void(function(cfg: Config)
 
   Status.formatter = config.status_formatter as function(Status.StatusObj): string
 
-  setup_signs_and_highlights()
+  manager.setup_signs_and_highlights()
   setup_command()
 
   if config.use_decoration_api then
@@ -391,47 +359,14 @@ local setup = async_void(function(cfg: Config)
     vim.cmd('autocmd gitsigns '..events..' * lua require("gitsigns").'..func..'()')
   end
 
-  setup_current_line_blame()
+  require('gitsigns.current_line_blame').setup()
 end)
-
-local function refresh()
-  setup_signs_and_highlights(true)
-  setup_current_line_blame()
-  for k, v in pairs(cache as {integer:CacheEntry}) do
-    v.compare_text = nil  -- Invalidate
-    void(manager.update)(k, v)
-  end
-end
-
-local function toggle_signs()
-  config.signcolumn = not config.signcolumn
-  refresh()
-end
-
-local function toggle_numhl()
-  config.numhl = not config.numhl
-  refresh()
-end
-
-local function toggle_linehl()
-  config.linehl = not config.linehl
-  refresh()
-end
-
-local function toggle_current_line_blame()
-  config.current_line_blame = not config.current_line_blame
-  refresh()
-end
 
 M = {
   attach        = void(attach),
   detach        = detach,
   detach_all    = detach_all,
   setup         = setup,
-  refresh       = refresh,
-  toggle_signs  = toggle_signs,
-  toggle_linehl = toggle_linehl,
-  toggle_numhl  = toggle_numhl,
 
   -- Internal, API unstable
   _get_config = function(): Config
@@ -441,10 +376,8 @@ M = {
   _complete = _complete,
   _run_func = _run_func,
 
-  toggle_current_line_blame = toggle_current_line_blame,
-
   _update_highlights = function()
-    setup_signs_and_highlights()
+    manager.setup_signs_and_highlights()
   end,
 }
 

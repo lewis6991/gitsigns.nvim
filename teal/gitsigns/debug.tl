@@ -18,6 +18,11 @@ function M.dprint(msg: string, bufnr: number, caller: string)
 end
 
 function M.eprint(msg: string)
+  local info = debug.getinfo(2, 'Sl')
+  if info then
+    msg = string.format('(ERROR) %s(%d): %s', info.short_src, info.currentline, msg)
+  end
+  M.messages[#M.messages+1] = msg
   if M.debug_mode then
     error(msg)
   else
