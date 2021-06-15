@@ -2,14 +2,19 @@ local a = require('plenary.async_lib.async')
 local await      = a.await
 local async_void = a.async_void
 local scheduler  = a.scheduler
+local void       = a.void
 
 local Status        = require("gitsigns.status")
-local cache         = require('gitsigns.cache').cache
 local config        = require('gitsigns.config').config
 local mk_repeatable = require('gitsigns.repeat').mk_repeatable
 local popup         = require('gitsigns.popup')
 local signs         = require('gitsigns.signs')
 local util          = require('gitsigns.util')
+local manager       = require('gitsigns.manager')
+
+local gs_cache       = require('gitsigns.cache')
+local cache          = gs_cache.cache
+local CacheEntry     = gs_cache.CacheEntry
 
 local gs_hunks = require('gitsigns.hunks')
 local Hunk = gs_hunks.Hunk
@@ -43,6 +48,12 @@ local record M
 
   _set_user_range    : function(range: {integer, integer})
   get_actions        : function(bufnr: integer, lnum: integer)
+
+  refresh            : function()
+  toggle_signs       : function()
+  toggle_numhl       : function()
+  toggle_linehl      : function()
+  toggle_current_line_blame : function()
 end
 
 local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk
@@ -99,7 +110,7 @@ M.stage_hunk = mk_repeatable(async_void(function(range: {integer, integer})
 
   local hunks = {}
 
-  if range is {integer, integer} and range[1] ~= range[2] then
+  if range and range[1] ~= range[2] then
     valid_range = true
     table.sort(range)
     hunks = get_range_hunks(bufnr, bcache.hunks, range)
@@ -138,7 +149,7 @@ M.reset_hunk = mk_repeatable(function(range: {integer, integer})
   local bufnr: integer = current_buf()
   local hunks = {}
 
-  if range is {integer, integer} and range[1] ~= range[2] then
+  if range and range[1] ~= range[2] then
     table.sort(range)
     hunks = get_range_hunks(bufnr, nil, range)
   else
@@ -427,7 +438,7 @@ M.diffthis = async_void(function(base: string)
 end)
 
 M._set_user_range = function(range: {integer, integer})
-  if range is {integer, integer} and range[1] ~= range[2] then
+  if range and range[1] ~= range[2] then
     user_range = range
   else
     user_range = nil
@@ -467,6 +478,35 @@ M.get_actions = function(): {string:function}
   end
 
   return actions
+end
+
+M.refresh = function()
+  manager.setup_signs_and_highlights(true)
+  require('gitsigns.current_line_blame').setup()
+  for k, v in pairs(cache as {integer:CacheEntry}) do
+    v.compare_text = nil  -- Invalidate
+    void(manager.update)(k, v)
+  end
+end
+
+M.toggle_signs = function()
+  config.signcolumn = not config.signcolumn
+  M.refresh()
+end
+
+M.toggle_numhl = function()
+  config.numhl = not config.numhl
+  M.refresh()
+end
+
+M.toggle_linehl = function()
+  config.linehl = not config.linehl
+  M.refresh()
+end
+
+M.toggle_current_line_blame = function()
+  config.current_line_blame = not config.current_line_blame
+  M.refresh()
 end
 
 return M

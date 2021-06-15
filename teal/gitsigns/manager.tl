@@ -22,6 +22,7 @@ local eprint            = gs_debug.eprint
 local util              = require('gitsigns.util')
 local git               = require('gitsigns.git')
 local gs_hunks          = require("gitsigns.hunks")
+local gs_hl             = require('gitsigns.highlight')
 
 local config         = require('gitsigns.config').config
 
@@ -36,6 +37,7 @@ local record M
   apply_word_diff: function(buf: integer, row: integer)
 
   setup: function()
+  setup_signs_and_highlights: function(redefine: boolean)
 end
 
 function M.apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: integer, bot: integer)
@@ -249,6 +251,33 @@ end
 
 M.setup = function()
   M.update_debounced = debounce_trailing(config.update_debounce, void(M.update)) as function(integer)
+end
+
+M.setup_signs_and_highlights = function(redefine: boolean)
+  -- Define signs
+  for t, sign_name in pairs(signs.sign_map) do
+    local cs = config.signs[t]
+
+    gs_hl.setup_highlight(cs.hl)
+
+    local enum HlTy 'numhl' 'linehl' end
+    for _, hlty in ipairs({'numhl', 'linehl'} as {HlTy}) do
+      if config[hlty] then
+        gs_hl.setup_other_highlight(cs[hlty], cs.hl)
+      end
+    end
+
+    signs.define(sign_name, {
+      texthl = cs.hl,
+      text   = config.signcolumn and cs.text or nil,
+      numhl  = config.numhl      and cs.numhl,
+      linehl = config.linehl     and cs.linehl
+    }, redefine)
+
+  end
+  if config.current_line_blame then
+    gs_hl.setup_highlight('GitSignsCurrentLineBlame')
+  end
 end
 
 return M
