@@ -19,7 +19,7 @@ Super fast git decorations implemented purely in lua/teal.
 - Asynchronous using [luv](https://github.com/luvit/luv/blob/master/docs.md)
 - Navigation between hunks
 - Stage hunks (with undo)
-- Preview diffs of hunks
+- Preview diffs of hunks (with word diff)
 - Customisable (signs, highlights, mappings, etc)
 - Status bar integration
 - Git blame a specific line using virtual text.
