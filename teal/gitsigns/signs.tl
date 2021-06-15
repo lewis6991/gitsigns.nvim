@@ -7,6 +7,7 @@ local record M
     "GitSignsChange"
     "GitSignsTopDelete"
     "GitSignsChangeDelete"
+    "GitSignsEmpty"
   end
 
   enum SignType
@@ -15,6 +16,7 @@ local record M
     "change"
     "topdelete"
     "changedelete"
+    "empty"
   end
 
   record Sign
@@ -31,6 +33,7 @@ M.sign_map = {
   change       = "GitSignsChange",
   topdelete    = "GitSignsTopDelete",
   changedelete = "GitSignsChangeDelete",
+  empty        = "GitSignsEmpty",
 }
 
 local ns = 'gitsigns_ns'
@@ -57,48 +60,68 @@ function M.define(name: string, opts: {string:any}, redefine: boolean)
   end
 end
 
-function M.remove(bufnr: integer, lnum: integer)
-  vim.fn.sign_unplace(ns, {buffer = bufnr, id = lnum})
+function M.remove(bufnr: integer, lnum: integer, sec: boolean)
+  local sec_sfx = sec and 'Sec' or ''
+  vim.fn.sign_unplace(ns..sec_sfx, {buffer = bufnr, id = lnum})
 end
 
-function M.add(cfg: Config, bufnr: integer, signs: {integer:M.Sign})
-  if not cfg.signcolumn and not cfg.numhl and not cfg.linehl then
-    -- Don't place signs if it won't show anything
-    return
+function M.add(cfg: Config, bufnr: integer, signs: {integer:M.Sign}, sec: boolean)
+  local sec_sfx = sec and 'Sec' or ''
+
+  local sign_cfg = sec and cfg.signs_sec or cfg.signs
+
+  if not sign_cfg.signcolumn and not sign_cfg.numhl and not sign_cfg.linehl then
+   -- Don't place signs if it won't show anything
+   return
   end
+
   for lnum, s in pairs(signs) do
-    local stype: string = M.sign_map[s.type]
+    local stype: string = M.sign_map[s.type]..sec_sfx
     local count = s.count
 
-    local cs = cfg.signs[s.type]
-    if cfg.signcolumn and cs.show_count and count then
+    local cs = sign_cfg[s.type]
+    if sign_cfg.signcolumn and cs.show_count and count then
       local cc = cfg.count_chars
       local count_suffix = cc[count] and tostring(count) or (cc['+'] and 'Plus') or ''
       local count_char   = cc[count]                     or  cc['+']             or ''
       stype = stype..count_suffix
       M.define(stype, {
         texthl = cs.hl,
-        text   = cfg.signcolumn and cs.text..count_char or '',
-        numhl  = cfg.numhl      and cs.numhl,
-        linehl = cfg.linehl     and cs.linehl
+        text   = sign_cfg.signcolumn and cs.text..count_char or '',
+        numhl  = sign_cfg.numhl      and cs.numhl,
+        linehl = sign_cfg.linehl     and cs.linehl
       })
     end
 
-    vim.fn.sign_place(lnum, ns, stype, bufnr, {
-      lnum = lnum, priority = cfg.sign_priority
+    vim.fn.sign_place(lnum, ns..sec_sfx, stype, bufnr, {
+      lnum = lnum,
+      priority = cfg.sign_priority - (sec and 1 or 0)
     })
   end
 end
 
 -- Return map of line number to sign name. Can't use SignName as signs with
 -- counts have a suffix on their name.
-function M.get(bufnr: integer, lnum: integer): {integer:string}
-  local placed = vim.fn.sign_getplaced(bufnr, {group=ns, id=lnum})[1].signs
+function M.get(bufnr: integer, lnum: integer, sec: boolean): {integer:string}
+  local sec_sfx = sec and 'Sec' or ''
+  local placed = vim.fn.sign_getplaced(bufnr, {group=ns..sec_sfx, id=lnum})[1].signs
   local ret = {}
   for _, s in ipairs(placed) do
     ret[s.id] = s.name
   end
   return ret
+end
+
+function M.has_empty(buf: integer): boolean
+  return not vim.tbl_isempty(M.get(buf, nil, true))
+end
+
+function M.add_one(cfg: Config, buf: integer, lnum: integer, stype: M.SignType)
+  M.add(cfg, buf, {[lnum] = {type=stype, count=0}})
+end
+
+function M.add_empty_sec(cfg: Config, buf: integer, lnum: integer)
+  M.add(cfg, buf, {[lnum] = {type='empty', count=0}}, true)
 end
 
 return M

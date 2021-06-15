@@ -118,17 +118,26 @@ function M.create_patch(relpath: string, hunks: {Hunk}, mode_bits: string, inver
   }
 
   for _, process_hunk in ipairs(hunks) do
-    local start, pre_count, now_count =
-    process_hunk.removed.start, process_hunk.removed.count, process_hunk.added.count
-
-    if process_hunk.type == 'add' then
-      start = start + 1
-    end
+    local start:integer
+    local pre_count:integer
+    local now_count:integer
 
     local lines = process_hunk.lines
 
-    if invert then
-      pre_count, now_count = now_count, pre_count
+    if not invert then
+      start, pre_count, now_count =
+        process_hunk.removed.start, process_hunk.removed.count, process_hunk.added.count
+
+      if process_hunk.type == 'add' then
+        start = start + 1
+      end
+    else
+      start, pre_count, now_count =
+        process_hunk.added.start, process_hunk.added.count, process_hunk.removed.count
+
+      if process_hunk.type == 'delete' then
+        start = start + 1
+      end
 
       lines = vim.tbl_map(function(l: string): string
         if vim.startswith(l, '+') then
@@ -206,12 +215,141 @@ function M.find_nearest_hunk(lnum: number, hunks: {Hunk}, forwards: boolean, wra
   return ret
 end
 
-function M.extract_removed(hunk: Hunk): {string}
+function M.merge(a: {Hunk}, b: {Hunk}): {Hunk}
+  if not a and not b then return end
+  a, b = a or {}, b or {}
+  local max = math.max(#a, #b)
+
+  local ai = 1
+  local bi = 1
+
+  local r: {Hunk} = {}
+
+  -- For every iteration:
+  --   - r[i] must be assigned non-nil
+  --   - Atleast ai or bi must be incremented
+  for i = 1, max do
+    local ah, bh = a[ai], b[bi]
+    if not ah or ah.start > bh.start then
+      r[i] = bh
+      bi = bi + 1
+    elseif not bh or ah.start < bh.start then
+      r[i] = ah
+      ai = ai + 1
+    else
+      -- if they begin on the same line, place the shorter one first so
+      -- navigating backwards works
+      if ah.vend <= bh.vend then
+        r[i] = ah
+        r[i] = bh
+      else
+        r[i] = bh
+        r[i] = ah
+      end
+      ai = ai + 1
+      bi = bi + 1
+    end
+  end
+
+  return r
+end
+
+function M.extract_lines(hunk: Hunk, removed: boolean): {string}
   return vim.tbl_map(function(l: string): string
     return string.sub(l, 2, -1)
   end, vim.tbl_filter(function(l: string): boolean
-    return vim.startswith(l, '-')
+    return vim.startswith(l, removed and '-' or '+')
   end, hunk.lines)) as {string}
 end
+
+-- local function compare_new(a: Hunk, b: Hunk): boolean
+--   if a.added.start ~= b.added.start then
+--     return false
+--   end
+
+--   if a.added.count ~= b.added.count then
+--     return false
+--   end
+
+--   local a_lines = M.extract_lines(a, false)
+--   local b_lines = M.extract_lines(b, false)
+
+--   for i = 1, #a_lines do
+--     if a_lines[i] ~= b_lines[i] then
+--       return false
+--     end
+--   end
+
+--   return true
+-- end
+
+-- Return hunks in a using b's hunks as a filter. Only compare the 'new' section
+-- of the hunk.
+--
+-- Eg. Given:
+--
+--     a = {
+--         1 = '@@ -24 +25,1 @@',
+--         2 = '@@ -32 +34,1 @@',
+--         3 = '@@ -37 +40,1 @@'
+--     }
+--
+--     b = {
+--         1 = '@@ -26 +25,1 @@'
+--     }
+--
+-- Since a[1] and b[1] introduce the same changes to the buffer (both have
+-- +25,1), we exclude this hunk in the output so we return:
+--
+--     {
+--         1 = '@@ -32 +34,1 @@',
+--         2 = '@@ -37 +40,1 @@'
+--     }
+--
+-- function M.filter_new(a: {Hunk}, b: {Hunk}): {Hunk}
+--   if not a and not b then return end
+--   a, b = a or {}, b or {}
+--   local max = math.max(#a, #b)
+
+--   local ai = 1
+--   local bi = 1
+
+--   local r: {Hunk} = {}
+
+--   for _ = 1, max do
+--     local ah, bh = a[ai], b[bi]
+--     if not ah then
+--       -- Reached the end of a
+--       break
+--     end
+--     if not bh then
+--       -- Reached the end of b, add remainder of a
+--       for n = ai, #a do
+--         r[#r+1] = a[n]
+--       end
+--       break
+--     end
+--     if ah.start > bh.start then
+--       -- a pointer is ahead of b; increment b pointer
+--       bi = bi + 1
+--     elseif ah.start < bh.start then
+--       -- b pointer is ahead of a; add ah to ret and increment a pointer
+--       r[#r+1] = ah
+--       ai = ai + 1
+--     else
+--       -- ah and bh start on the same line, if hunks have the same changes then
+--       -- skip (filtered) otherwise add ah to ret and increment both hunk
+--       -- pointers
+--       if not compare_new(ah, bh) then
+--         r[#r+1] = ah
+--       end
+--       ai = ai + 1
+--       bi = bi + 1
+--     end
+--   end
+
+--   return r
+-- end
+
 
 return M

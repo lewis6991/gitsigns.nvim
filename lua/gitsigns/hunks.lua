@@ -118,17 +118,26 @@ function M.create_patch(relpath, hunks, mode_bits, invert)
    }
 
    for _, process_hunk in ipairs(hunks) do
-      local start, pre_count, now_count = 
-      process_hunk.removed.start, process_hunk.removed.count, process_hunk.added.count
-
-      if process_hunk.type == 'add' then
-         start = start + 1
-      end
+      local start
+      local pre_count
+      local now_count
 
       local lines = process_hunk.lines
 
-      if invert then
-         pre_count, now_count = now_count, pre_count
+      if not invert then
+         start, pre_count, now_count = 
+         process_hunk.removed.start, process_hunk.removed.count, process_hunk.added.count
+
+         if process_hunk.type == 'add' then
+            start = start + 1
+         end
+      else
+         start, pre_count, now_count = 
+         process_hunk.added.start, process_hunk.added.count, process_hunk.removed.count
+
+         if process_hunk.type == 'delete' then
+            start = start + 1
+         end
 
          lines = vim.tbl_map(function(l)
             if vim.startswith(l, '+') then
@@ -206,12 +215,141 @@ function M.find_nearest_hunk(lnum, hunks, forwards, wrap)
    return ret
 end
 
-function M.extract_removed(hunk)
+function M.merge(a, b)
+   if not a and not b then return end
+   a, b = a or {}, b or {}
+   local max = math.max(#a, #b)
+
+   local ai = 1
+   local bi = 1
+
+   local r = {}
+
+
+
+
+   for i = 1, max do
+      local ah, bh = a[ai], b[bi]
+      if not ah or ah.start > bh.start then
+         r[i] = bh
+         bi = bi + 1
+      elseif not bh or ah.start < bh.start then
+         r[i] = ah
+         ai = ai + 1
+      else
+
+
+         if ah.vend <= bh.vend then
+            r[i] = ah
+            r[i] = bh
+         else
+            r[i] = bh
+            r[i] = ah
+         end
+         ai = ai + 1
+         bi = bi + 1
+      end
+   end
+
+   return r
+end
+
+function M.extract_lines(hunk, removed)
    return vim.tbl_map(function(l)
       return string.sub(l, 2, -1)
    end, vim.tbl_filter(function(l)
-      return vim.startswith(l, '-')
+      return vim.startswith(l, removed and '-' or '+')
    end, hunk.lines))
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 return M

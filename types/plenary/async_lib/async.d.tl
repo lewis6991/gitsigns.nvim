@@ -1,10 +1,11 @@
 local record Async
-  type future  = function             (function)
-  type future0 = function             (function())
-  type future1 = function<A1>         (function(A1))
-  type future2 = function<A1,A2>      (function(A1,A2))
-  type future3 = function<A1,A2,A3>   (function(A1,A2,A3))
-  type future4 = function<A1,A2,A3,A4>(function(A1,A2,A3,A4))
+  type future  = function                (function)
+  type future0 = function                (function())
+  type future1 = function<A1>            (function(A1))
+  type future2 = function<A1,A2>         (function(A1,A2))
+  type future3 = function<A1,A2,A3>      (function(A1,A2,A3))
+  type future4 = function<A1,A2,A3,A4>   (function(A1,A2,A3,A4))
+  type future5 = function<A1,A2,A3,A4,A5>(function(A1,A2,A3,A4,A5))
 
   type async_fun0   = function                           ()            : future0
   type async_fun0_1 = function <R1>                      ()            : future1<R1>
@@ -16,6 +17,7 @@ local record Async
   type async_fun1_2 = function <A1,R1,R2>                (A1)          : future2<R1,R2>
   type async_fun1_3 = function <A1,R1,R2,R3>             (A1)          : future3<R1,R2,R3>
   type async_fun1_4 = function <A1,R1,R2,R3,R4>          (A1)          : future4<R1,R2,R3,R4>
+  type async_fun1_5 = function <A1,R1,R2,R3,R4,R5>       (A1)          : future5<R1,R2,R3,R4,R5>
   type async_fun2   = function <A1,A2>                   (A1,A2)       : future0
   type async_fun2_1 = function <A1,A2,R1>                (A1,A2)       : future1<R1>
   type async_fun2_2 = function <A1,A2,R1,R2>             (A1,A2)       : future2<R1,R2>
@@ -36,11 +38,12 @@ local record Async
   type async_fun5_1 = function <A1,A2,A3,A4,A5,R1>          (A1,A2,A3,A4,A5) : future1<R1>
   type async_fun5_4 = function <A1,A2,A3,A4,A5,R1,R2,R3,R4> (A1,A2,A3,A4,A5) : future4<R1,R2,R3,R4>
 
-  await: function              (future0             ): ()
-  await: function<A1>          (future1<A1>         ): A1
-  await: function<A1,A2>       (future2<A1,A2>      ): A1,A2
-  await: function<A1,A2,A3>    (future3<A1,A2,A3>   ): A1,A2,A3
-  await: function<A1,A2,A3,A4> (future4<A1,A2,A3,A4>): A1,A2,A3,A4
+  await: function                 (future0                ): ()
+  await: function<A1>             (future1<A1>            ): A1
+  await: function<A1,A2>          (future2<A1,A2>         ): A1,A2
+  await: function<A1,A2,A3>       (future3<A1,A2,A3>      ): A1,A2,A3
+  await: function<A1,A2,A3,A4>    (future4<A1,A2,A3,A4>   ): A1,A2,A3,A4
+  await: function<A1,A2,A3,A4,A5> (future5<A1,A2,A3,A4,A5>): A1,A2,A3,A4,A5
 
   async: function<R1,R2,R3>               (function()            : R1,R2,R3   ): async_fun0_3 <R1,R2,R3>
   async: function<R1,R2>                  (function()            : R1,R2      ): async_fun0_2 <R1,R2>

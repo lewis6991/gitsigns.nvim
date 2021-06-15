@@ -4,13 +4,17 @@ local async_void = a.async_void
 local scheduler  = a.scheduler
 
 local Status        = require("gitsigns.status")
-local cache         = require('gitsigns.cache').cache
 local config        = require('gitsigns.config').config
 local manager       = require('gitsigns.manager')
 local mk_repeatable = require('gitsigns.repeat').mk_repeatable
 local popup         = require('gitsigns.popup')
 local signs         = require('gitsigns.signs')
 local util          = require('gitsigns.util')
+local dprint        = require("gitsigns.debug").dprint
+
+local gs_cache      = require('gitsigns.cache')
+local cache         = gs_cache.cache
+local CacheEntry    = gs_cache.CacheEntry
 
 local gs_hunks = require('gitsigns.hunks')
 local Hunk = gs_hunks.Hunk
@@ -25,7 +29,6 @@ end
 
 local record M
   stage_hunk         : function -- function()
-  undo_stage_hunk    : function -- function()
   reset_hunk         : function -- function(bufnr: integer, hunk: Hunk)
 
   stage_buffer       : function -- function()
@@ -38,24 +41,30 @@ local record M
   select_hunk        : function()
 
   blame_line         : function -- function()
-  change_base        : function(base: string)
+  change_base        : function(base: string, sec: boolean)
+  change_sec_base    : function(base: string)
   diffthis           : function -- function(base: string)
 
   get_actions        : function(bufnr: integer, lnum: integer)
 end
 
-local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk
+local function get_cursor_hunk(bufnr: integer, bcache: CacheEntry, try_sec: boolean): Hunk, boolean
   bufnr = bufnr or current_buf()
-  hunks = hunks or cache[bufnr].hunks
+  bcache = bcache or cache[bufnr]
 
   local lnum = api.nvim_win_get_cursor(0)[1]
-  return gs_hunks.find_hunk(lnum, hunks)
+
+  local ret = gs_hunks.find_hunk(lnum, bcache.main.hunks)
+  if not ret and try_sec then
+    return gs_hunks.find_hunk(lnum, bcache.sec.hunks), true
+  end
+  return ret, false
 end
 
 M.stage_hunk = mk_repeatable(async_void(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
-  if not bcache then
+  if not bcache or bcache.main.base ~= nil then
     return
   end
 
@@ -64,37 +73,50 @@ M.stage_hunk = mk_repeatable(async_void(function()
     return
   end
 
-  local hunk = get_cursor_hunk(bufnr, bcache.hunks)
-  if not hunk then
-    return
+  local hunk, sec = get_cursor_hunk(bufnr, bcache, true)
+
+  if not hunk then return end
+  local staged_signs_en = bcache:staged_signs_enabled(config.staged_signs)
+
+  if sec and staged_signs_en then
+    -- Need to offset the hunk if it is staged (already in the index)
+    -- TODO lewis6991 (20/05/21): Test me
+    local offset = 0
+    for _, h in ipairs(bcache.main.hunks) do
+      -- FIXME lewis6991 (20/05/21): This won't handle if the hunks overlap
+      if h.start > hunk.start then
+        break
+      end
+      offset = offset - h.removed.count + h.added.count
+    end
+    dprint('Offset = '..offset, bufnr, 'stage_hunk')
+    hunk.added.start = hunk.added.start - offset
   end
 
-  await(bcache.git_obj:stage_hunks({hunk}))
+  await(bcache.git_obj:stage_hunks({hunk}, sec))
 
-  table.insert(bcache.staged_diffs, hunk)
-  bcache.compare_text = nil -- Invalidate
+  bcache.main.compare_text = nil -- Invalidate
 
   local hunk_signs = gs_hunks.process_hunks({hunk})
 
   await(scheduler())
 
-  -- If watch_index is enabled then that will eventually kick in and update the
-  -- signs, however for  smoother UX we can update the signs immediately without
-  -- running a full diff.
-  --
-  -- We cannot update the status bar as that requires a full diff.
+  -- Speculatively update signs
   for lnum, _ in pairs(hunk_signs) do
-    signs.remove(bufnr, lnum)
+    signs.remove(bufnr, lnum, sec)
   end
+  if staged_signs_en then
+    signs.add(config, bufnr, hunk_signs, not sec)
+  end
+
   await(manager.update(bufnr))
 end))
 
 M.reset_hunk = mk_repeatable(function(bufnr: integer, hunk: Hunk)
   bufnr = bufnr or current_buf()
   hunk = hunk or get_cursor_hunk(bufnr)
-  if not hunk then
-    return
-  end
+
+  if not hunk then return end
 
   local lstart, lend: integer, integer
   if hunk.type == 'delete' then
@@ -108,7 +130,7 @@ M.reset_hunk = mk_repeatable(function(bufnr: integer, hunk: Hunk)
     lstart = hunk.start - 1
     lend = hunk.start - 1 + length
   end
-  api.nvim_buf_set_lines(bufnr, lstart, lend, false, gs_hunks.extract_removed(hunk))
+  api.nvim_buf_set_lines(bufnr, lstart, lend, false, gs_hunks.extract_lines(hunk, true))
 end)
 
 M.reset_buffer = function()
@@ -121,35 +143,19 @@ M.reset_buffer = function()
   api.nvim_buf_set_lines(bufnr, 0, -1, false, bcache:get_compare_text())
 end
 
-M.undo_stage_hunk = mk_repeatable(async_void(function()
-  local bufnr = current_buf()
-  local bcache = cache[bufnr]
-  if not bcache then
-    return
-  end
-
-  local hunk = table.remove(bcache.staged_diffs)
-  if not hunk then
-    print("No hunks to undo")
-    return
-  end
-
-  await(bcache.git_obj:stage_hunks({hunk}, true))
-  bcache.compare_text = nil -- Invalidate
-  await(scheduler())
-  signs.add(config, bufnr, gs_hunks.process_hunks({hunk}))
-end))
-
 M.stage_buffer = async_void(function()
   local bufnr = current_buf()
-
   local bcache = cache[bufnr]
-  if not bcache then
+
+  if not bcache then return end
+
+  if config.signs.base ~= nil then
+    -- Cannot stage hunks if base is set
     return
   end
 
   -- Only process files with existing hunks
-  local hunks = bcache.hunks
+  local hunks = bcache.main.hunks
   if #hunks == 0 then
     print("No unstaged changes in file to stage")
     return
@@ -162,10 +168,7 @@ M.stage_buffer = async_void(function()
 
   await(bcache.git_obj:stage_hunks(hunks))
 
-  for _, hunk in ipairs(hunks) do
-    table.insert(bcache.staged_diffs, hunk)
-  end
-  bcache.compare_text = nil -- Invalidate
+  bcache.main.compare_text = nil -- Invalidate
 
   await(scheduler())
   signs.remove(bufnr)
@@ -175,36 +178,24 @@ end)
 M.reset_buffer_index = async_void(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
-  if not bcache then
-    return
-  end
 
-  -- `bcache.staged_diffs` won't contain staged changes outside of current
-  -- neovim session so signs added from this unstage won't be complete They will
-  -- however be fixed by index watcher and properly updated We should implement
-  -- some sort of initial population from git diff, after that this function can
-  -- be improved to check if any staged hunks exists and it can undo changes
-  -- using git apply line by line instead of reseting whole file
-  local hunks = bcache.staged_diffs
-  bcache.staged_diffs = {}
+  if not bcache then return end
 
   await(bcache.git_obj:unstage_file())
-  bcache.compare_text = nil -- Invalidate
+  bcache.main.compare_text = nil -- Invalidate
+  if bcache:staged_signs_enabled(config.staged_signs) then
+    bcache.sec.compare_text = nil -- Invalidate
+  end
 
   await(scheduler())
-  signs.add(config, bufnr, gs_hunks.process_hunks(hunks))
+  await(manager.update(bufnr))
 end)
 
 local function nav_hunk(options: NavHunkOpts)
   local bcache = cache[current_buf()]
-  if not bcache then
-    return
-  end
-  local hunks = bcache.hunks
-  if not hunks or vim.tbl_isempty(hunks) then
-    return
-  end
-  local line = api.nvim_win_get_cursor(0)[1]
+  if not bcache then return end
+
+  local lnum = api.nvim_win_get_cursor(0)[1]
 
   -- wrap around
   local wrap = vim.o.wrapscan
@@ -212,20 +203,15 @@ local function nav_hunk(options: NavHunkOpts)
     wrap = options.wrap
   end
 
-  local hunk = gs_hunks.find_nearest_hunk(line, hunks, options.forwards, wrap)
-
-  if hunk == nil then
-    return
-  end
+  local hunks = gs_hunks.merge(bcache.main.hunks, bcache.sec.hunks)
+  local hunk = gs_hunks.find_nearest_hunk(lnum, hunks, options.forwards, wrap)
+  if not hunk then return end
 
   local row = options.forwards and hunk.start or hunk.vend
-  if row then
-    -- Handle topdelete
-    if row == 0 then
-      row = 1
-    end
-    api.nvim_win_set_cursor(0, {row, 0})
-  end
+
+  -- Handle topdelete
+  if row == 0 then row = 1 end
+  api.nvim_win_set_cursor(0, {row, 0})
 end
 
 M.next_hunk = function(options: NavHunkOpts)
@@ -243,7 +229,7 @@ end
 local ns = api.nvim_create_namespace('gitsigns')
 
 M.preview_hunk = function()
-  local hunk = get_cursor_hunk()
+  local hunk, _ = get_cursor_hunk(nil, nil, true)
   if not hunk then return end
 
   local _, bufnr = popup.create(hunk.lines, config.preview_config)
@@ -323,11 +309,17 @@ local function calc_base(base: string): string
   return base
 end
 
-M.change_base = function(base: string)
+M.change_base = function(base: string, sec: boolean)
   base = calc_base(base)
   local buf = current_buf()
-  cache[buf].base = base
-  cache[buf].compare_text = nil
+  local obj = sec and cache[buf].sec or cache[buf].main
+  obj.base = base
+  obj.compare_text = nil
+  manager.update_debounced(buf)
+end
+
+M.change_sec_base = function(base: string)
+  M.change_base(base, true)
 end
 
 M.diffthis = async_void(function(base: string)
@@ -383,7 +375,6 @@ M.get_actions = function(): {string:function}
   if hunk then
     actions_l = {
       'stage_hunk',
-      'undo_stage_hunk',
       'reset_hunk',
       'preview_hunk',
       'select_hunk',
