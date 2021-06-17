@@ -120,24 +120,32 @@ end
 
 local command = a.wrap(function(args, spec, callback)
    local result = {}
+   local reserr
    spec = spec or {}
    spec.command = spec.command or 'git'
    spec.args = { '--no-pager', unpack(args) }
    spec.on_stdout = spec.on_stdout or function(_, line)
       table.insert(result, line)
    end
-   if not spec.supress_stderr then
-      spec.on_stderr = spec.on_stderr or function(err, line)
+   spec.on_stderr = spec.on_stderr or function(err, line)
+      if not spec.supress_stderr then
          if err then gsd.eprint(err) end
          if line then gsd.eprint(line) end
       end
+      if not reserr then
+         reserr = ''
+      else
+         reserr = reserr .. '\n'
+      end
+      if err then reserr = reserr .. err end
+      if line then reserr = reserr .. line end
    end
    local old_on_exit = spec.on_exit
    spec.on_exit = function()
       if old_on_exit then
          old_on_exit()
       end
-      callback(result)
+      callback(result, reserr)
    end
    util.run_job(spec)
 end, 3)

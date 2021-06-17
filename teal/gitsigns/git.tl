@@ -71,12 +71,12 @@ local record M
     mode_bits     : string
     has_conflicts : boolean
 
-    command              : function(Obj, {string}, GJobSpec): a.future1<{string}>
+    command              : function(Obj, {string}, GJobSpec): a.future2<{string}, string>
     update_abbrev_head   : function(Obj): a.future0
     update_file_info     : function(Obj): a.future1<boolean>
     unstage_file         : function(Obj, string, string): a.future0
     get_show             : function(Obj, string, string): a.future0
-    get_show_text        : function(Obj, string): a.future1<{string}>
+    get_show_text        : function(Obj, string): a.future2<{string}, string>
     run_blame            : function(Obj, {string}, number): a.future1<M.BlameInfo>
     file_info            : function(Obj): a.future4<string, string, string, boolean>
     ensure_file_in_index : function(Obj): a.future0
@@ -118,26 +118,34 @@ local function check_version(version: {number,number,number}): boolean
   return true
 end
 
-local command = a.wrap(function(args: {string}, spec: GJobSpec, callback: function({string}))
+local command = a.wrap(function(args: {string}, spec: GJobSpec, callback: function({string}, string))
   local result: {string} = {}
+  local reserr: string
   spec = spec or {}
   spec.command = spec.command or 'git'
   spec.args = {'--no-pager', unpack(args) }
   spec.on_stdout = spec.on_stdout or function(_, line: string)
     table.insert(result, line)
   end
-  if not spec.supress_stderr then
-    spec.on_stderr = spec.on_stderr or function(err: string, line: string)
+  spec.on_stderr = spec.on_stderr or function(err: string, line: string)
+    if not spec.supress_stderr then
       if err  then gsd.eprint(err)  end
       if line then gsd.eprint(line) end
     end
+    if not reserr then
+      reserr = ''
+    else
+      reserr = reserr..'\n'
+    end
+    if err  then reserr = reserr..err  end
+    if line then reserr = reserr..line end
   end
   local old_on_exit = spec.on_exit
   spec.on_exit = function()
     if old_on_exit then
       old_on_exit()
     end
-    callback(result)
+    callback(result, reserr)
   end
   util.run_job(spec as JobSpec)
 end, 3)
@@ -260,7 +268,7 @@ end)
 --------------------------------------------------------------------------------
 
 --- Run git command the with the objects gitdir and toplevel
-Obj.command = async(function(self: Obj, args: {string}, spec: GJobSpec): {string}
+Obj.command = async(function(self: Obj, args: {string}, spec: GJobSpec): {string}, string
   spec = spec or {}
   spec.cwd = self.toplevel
   return await(command({'--git-dir='..self.gitdir, unpack(args)}, spec))
@@ -315,7 +323,7 @@ Obj.unstage_file = async(function(self: Obj)
 end)
 
 --- Get version of file in the index, return array lines
-Obj.get_show_text = async(function(self: Obj, object: string): {string}
+Obj.get_show_text = async(function(self: Obj, object: string): {string}, string
   return await(self:command({'show', object}, {
     supress_stderr = true
   }))
