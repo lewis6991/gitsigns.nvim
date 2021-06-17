@@ -408,9 +408,14 @@ M.diffthis = async_void(function(base: string)
   if api.nvim_win_get_option(0, 'diff') then return end
 
   local text: {string}
+  local err: string
   local comp_obj = bcache:get_compare_obj(calc_base(base))
   if base then
-    text = await(bcache.git_obj:get_show_text(comp_obj))
+    text, err = await(bcache.git_obj:get_show_text(comp_obj))
+    if err then
+      print(err)
+      return
+    end
     await(scheduler())
   else
     text = bcache:get_compare_text()
