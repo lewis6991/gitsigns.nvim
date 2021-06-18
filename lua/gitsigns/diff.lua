@@ -1,6 +1,8 @@
 local create_hunk = require("gitsigns.hunks").create_hunk
 local Hunk = require('gitsigns.hunks').Hunk
 
+local List = require('plenary.collections.py_list')
+
 local ffi = require("ffi")
 
 ffi.cdef([[
@@ -116,7 +118,7 @@ local function run_diff_xdl(fa, fb, diff_algo)
    mmbb.ptr, mmbb.size = setup_mmbuffer(fb)
    xpparam.flags = get_xpparam_flag(diff_algo)
 
-   local results = {}
+   local results = List.new({})
 
    local hunk_func = ffi.cast('xdl_emit_hunk_consume_func_t', function(
       start_a, count_a, start_b, count_b)
@@ -131,7 +133,7 @@ local function run_diff_xdl(fa, fb, diff_algo)
       if ca > 0 then sa = sa + 1 end
       if cb > 0 then sb = sb + 1 end
 
-      results[#results + 1] = { sa, ca, sb, cb }
+      results:push({ sa, ca, sb, cb })
       return 0
    end)
 
@@ -193,7 +195,7 @@ function M.run_word_diff(hunk_body)
       return {}
    end
 
-   local ret = {}
+   local ret = List.new({})
 
    for i = 1, removed do
 
@@ -202,7 +204,7 @@ function M.run_word_diff(hunk_body)
 
       local a, b = vim.split(rline, ''), vim.split(aline, '')
 
-      local hunks0 = {}
+      local hunks0 = List.new({})
       for _, r in ipairs(run_diff_xdl(a, b)) do
          local rs, rc, as, ac = unpack(r)
 
@@ -211,11 +213,11 @@ function M.run_word_diff(hunk_body)
          if ac == 0 then as = as + 1 end
 
 
-         hunks0[#hunks0 + 1] = create_hunk(rs, rc, as, ac)
+         hunks0:push(create_hunk(rs, rc, as, ac))
       end
 
 
-      local hunks = { hunks0[1] }
+      local hunks = List.new({ hunks0[1] })
       for i = 2, #hunks0 do
          local h, n = hunks[#hunks], hunks0[i]
          if not h or not n then break end
@@ -227,7 +229,7 @@ function M.run_word_diff(hunk_body)
                h.type = 'change'
             end
          else
-            hunks[#hunks + 1] = n
+            hunks:push(n)
          end
       end
 
@@ -235,8 +237,8 @@ function M.run_word_diff(hunk_body)
          local rem = { i, h.type, h.removed.start, h.removed.start + h.removed.count }
          local add = { i + removed, h.type, h.added.start, h.added.start + h.added.count }
 
-         ret[#ret + 1] = rem
-         ret[#ret + 1] = add
+         ret:push(rem)
+         ret:push(add)
       end
    end
    return ret

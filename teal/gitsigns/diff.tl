@@ -1,6 +1,8 @@
 local create_hunk = require("gitsigns.hunks").create_hunk
 local Hunk        = require('gitsigns.hunks').Hunk
 
+local List = require('plenary.collections.py_list')
+
 local ffi = require("ffi")
 
 ffi.cdef[[
@@ -111,12 +113,12 @@ local mmbb = ffi.new('mmbuffer_t') as MMBuffer
 local xpparam = ffi.new('xpparam_t') as XPParam
 local emitcb = ffi.new('xdemitcb_t') as any
 
-local function run_diff_xdl(fa: {string}, fb: {string}, diff_algo: string): {DiffResult}
+local function run_diff_xdl(fa: {string}, fb: {string}, diff_algo: string): List<DiffResult>
   mmba.ptr, mmba.size = setup_mmbuffer(fa)
   mmbb.ptr, mmbb.size = setup_mmbuffer(fb)
   xpparam.flags = get_xpparam_flag(diff_algo)
 
-  local results: {DiffResult} = {}
+  local results: List<DiffResult> = List.new{}
 
   local hunk_func = ffi.cast('xdl_emit_hunk_consume_func_t', function(
     start_a: Long, count_a: Long, start_b: Long, count_b: Long
@@ -131,7 +133,7 @@ local function run_diff_xdl(fa: {string}, fb: {string}, diff_algo: string): {Dif
     if ca > 0 then sa = sa + 1 end
     if cb > 0 then sb = sb + 1 end
 
-    results[#results+1] = {sa, ca, sb, cb}
+    results:push {sa, ca, sb, cb}
     return 0
   end)
 
@@ -193,7 +195,7 @@ function M.run_word_diff(hunk_body: {string}): {Region}
     return {}
   end
 
-  local ret: {Region} = {}
+  local ret = List.new{} as List<Region>
 
   for i = 1, removed do
     -- pair lines by position
@@ -202,7 +204,7 @@ function M.run_word_diff(hunk_body: {string}): {Region}
 
     local a, b = vim.split(rline, ''), vim.split(aline, '')
 
-    local hunks0: {Hunk} = {}
+    local hunks0 = List.new{} as List<Hunk>
     for _, r in ipairs(run_diff_xdl(a, b)) do
       local rs, rc, as, ac = unpack(r)
 
@@ -211,11 +213,11 @@ function M.run_word_diff(hunk_body: {string}): {Region}
       if ac == 0 then as = as + 1 end
 
       -- print(string.format('-%d,%d +%d,%d', rs, rc, as, ac))
-      hunks0[#hunks0+1] = create_hunk(rs, rc, as, ac)
+      hunks0:push(create_hunk(rs, rc, as, ac))
     end
 
     -- Denoise the hunks
-    local hunks = {hunks0[1]}
+    local hunks = List.new{hunks0[1]}
     for i = 2, #hunks0 do
       local h, n = hunks[#hunks], hunks0[i]
       if not h or not n then break end
@@ -227,7 +229,7 @@ function M.run_word_diff(hunk_body: {string}): {Region}
           h.type = 'change'
         end
       else
-        hunks[#hunks+1] = n
+        hunks:push(n)
       end
     end
 
@@ -235,8 +237,8 @@ function M.run_word_diff(hunk_body: {string}): {Region}
       local rem = {i        , h.type, h.removed.start, h.removed.start + h.removed.count}
       local add = {i+removed, h.type, h.added.start  , h.added.start   + h.added.count}
 
-      ret[#ret+1] = rem
-      ret[#ret+1] = add
+      ret:push(rem)
+      ret:push(add)
     end
   end
   return ret
