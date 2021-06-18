@@ -1,10 +1,7 @@
-local a = require('plenary.async_lib.async')
-local await = a.await
-local async = a.async
+local a = require('plenary.async')
 local void = a.void
-local scheduler = a.scheduler
-
-local sleep = require('plenary.async_lib.util').sleep
+local scheduler = a.util.scheduler
+local sleep = a.util.sleep
 
 local gs_cache = require('gitsigns.cache')
 local CacheEntry = gs_cache.CacheEntry
@@ -181,7 +178,7 @@ end
 
 local update_cnt = 0
 
-local update0 = async(function(bufnr, bcache)
+local update0 = function(bufnr, bcache)
    bcache = bcache or cache[bufnr]
    if not bcache then
       eprint('Cache for buffer ' .. bufnr .. ' was nil')
@@ -189,7 +186,7 @@ local update0 = async(function(bufnr, bcache)
    end
    bcache.hunks = nil
 
-   await(scheduler())
+   scheduler()
    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
    local git_obj = bcache.git_obj
 
@@ -198,16 +195,16 @@ local update0 = async(function(bufnr, bcache)
    if config.use_internal_diff then
       local diff = require('gitsigns.diff')
       if not bcache.compare_text or config._refresh_staged_on_update then
-         bcache.compare_text = await(git_obj:get_show_text(compare_object))
+         bcache.compare_text = git_obj:get_show_text(compare_object)
       end
       bcache.hunks = diff.run_diff(bcache.compare_text, buftext, config.diff_algorithm)
    else
-      await(git_obj:get_show(compare_object, bcache.compare_file))
-      bcache.hunks = await(git.run_diff(bcache.compare_file, buftext, config.diff_algorithm))
+      git_obj:get_show(compare_object, bcache.compare_file)
+      bcache.hunks = git.run_diff(bcache.compare_file, buftext, config.diff_algorithm)
    end
    bcache.pending_signs = gs_hunks.process_hunks(bcache.hunks)
 
-   await(scheduler())
+   scheduler()
 
 
 
@@ -222,7 +219,7 @@ local update0 = async(function(bufnr, bcache)
    if config.debug_mode then
       api.nvim_set_var('gs_dev', update_str)
    end
-end)
+end
 
 
 
@@ -231,22 +228,22 @@ end)
 do
    local running = false
    local scheduled = {}
-   M.update = async(function(bufnr)
+   M.update = function(bufnr, bcache)
       scheduled[bufnr] = true
       if not running then
          running = true
          while scheduled[bufnr] do
             scheduled[bufnr] = false
-            await(update0(bufnr))
+            update0(bufnr, bcache)
          end
          running = false
       else
 
          while running do
-            await(sleep(100))
+            sleep(100)
          end
       end
-   end)
+   end
 end
 
 M.setup = function()

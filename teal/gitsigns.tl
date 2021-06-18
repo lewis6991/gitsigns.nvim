@@ -1,9 +1,6 @@
-local a = require('plenary.async_lib.async')
-local void       = a.void
-local await      = a.await
-local async      = a.async
-local async_void = a.async_void
-local scheduler  = a.scheduler
+local a = require('plenary.async')
+local void      = a.void
+local scheduler = a.util.scheduler
 
 local Status         = require("gitsigns.status")
 local git            = require('gitsigns.git')
@@ -34,7 +31,7 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
   dprint('Watching index', bufnr, 'watch_index')
   local index = gitdir..util.path_sep..'index'
   local w = uv.new_fs_poll()
-  w:start(index, config.watch_index.interval, async_void(function(err: string)
+  w:start(index, config.watch_index.interval, void(function(err: string)
     if err then
       dprint('Index update error: '..err, bufnr, 'watcher_cb')
       return
@@ -53,19 +50,19 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
 
     local git_obj = bcache.git_obj
 
-    await(git_obj:update_abbrev_head())
+    git_obj:update_abbrev_head()
 
-    await(scheduler())
+    scheduler()
     Status:update_head(bufnr, git_obj.abbrev_head)
 
-    if not await(git_obj:update_file_info()) then
+    if not git_obj:update_file_info() then
       dprint('File not changed', bufnr, 'watcher_cb')
       return
     end
 
     bcache.compare_text = nil -- Invalidate
 
-    await(manager.update(bufnr))
+    manager.update(bufnr, bcache)
   end))
   return w
 end
@@ -138,8 +135,8 @@ local function in_git_dir(file: string): boolean
   return false
 end
 
-local attach = async(function(cbuf: integer)
-  await(scheduler())
+local attach = function(cbuf: integer)
+  scheduler()
   cbuf = cbuf or current_buf()
   if cache[cbuf] then
     dprint('Already attached', cbuf, 'attach')
@@ -176,14 +173,14 @@ local attach = async(function(cbuf: integer)
     return
   end
 
-  local git_obj = await(git.Obj.new(file))
+  local git_obj = git.Obj.new(file)
 
   if not git_obj.gitdir then
     dprint('Not in git repo', cbuf, 'attach')
     return
   end
 
-  await(scheduler())
+  scheduler()
   Status:update_head(cbuf, git_obj.abbrev_head)
 
   if vim.startswith(file, git_obj.gitdir..util.path_sep) then
@@ -208,7 +205,7 @@ local attach = async(function(cbuf: integer)
 
   -- On windows os.tmpname() crashes in callback threads so initialise this
   -- variable on the main thread.
-  await(scheduler())
+  scheduler()
 
   if config.on_attach and config.on_attach(cbuf) == false then
     dprint('User on_attach() returned false', cbuf, 'attach')
@@ -223,9 +220,9 @@ local attach = async(function(cbuf: integer)
   }
 
   -- Initial update
-  await(manager.update(cbuf))
+  manager.update(cbuf, cache[cbuf])
 
-  await(scheduler())
+  scheduler()
 
   api.nvim_buf_attach(cbuf, false, {
     on_lines = function(_, buf: integer, _, first: integer, last_orig: integer, last_new: integer, byte_count: integer): boolean
@@ -248,7 +245,7 @@ local attach = async(function(cbuf: integer)
   if config.keymaps and not vim.tbl_isempty(config.keymaps) then
     require('gitsigns.mappings')(config.keymaps as {string:any})
   end
-end)
+end
 
 -- Needs to be global so can be accessed from v:lua
 local function _complete(arglead: string, line: string): {string}
@@ -296,7 +293,7 @@ local function setup_command()
   }, ' '))
 end
 
-local setup = async_void(function(cfg: Config)
+local setup = void(function(cfg: Config)
   gs_config.build(cfg)
   namespace = api.nvim_create_namespace('gitsigns')
 
@@ -336,15 +333,15 @@ local setup = async_void(function(cfg: Config)
   end
 
   git.enable_yadm = config.yadm.enable
-  await(git.set_version(config._git_version))
-  await(scheduler())
+  git.set_version(config._git_version)
+  scheduler()
 
   -- Attach to all open buffers
   for _, buf in ipairs(api.nvim_list_bufs()) do
     if    api.nvim_buf_is_loaded(buf)
       and api.nvim_buf_get_name(buf) ~= '' then
-      await(attach(buf))
-      await(scheduler())
+      attach(buf)
+      scheduler()
     end
   end
 
