@@ -11,7 +11,7 @@ local function bufnr_calc_width(buf, lines)
             width = len
          end
       end
-      return width
+      return width + 1
    end)
 end
 
@@ -31,6 +31,12 @@ function popup.create(lines, opts)
    opts1.width = opts1.width or bufnr_calc_width(bufnr, lines)
 
    local win_id = api.nvim_open_win(bufnr, false, opts1)
+
+   if opts1.style == 'minimal' then
+
+
+      api.nvim_win_set_option(win_id, 'signcolumn', 'no')
+   end
 
    vim.lsp.util.close_preview_autocmd({ 'CursorMoved', 'CursorMovedI' }, win_id)
 
