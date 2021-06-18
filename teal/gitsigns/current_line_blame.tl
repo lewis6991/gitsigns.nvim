@@ -1,8 +1,7 @@
-local a = require('plenary.async_lib.async')
-local await      = a.await
-local async_void = a.async_void
-local scheduler  = a.scheduler
-local wrap       = a.wrap
+local a = require('plenary.async')
+local wrap      = a.wrap
+local void      = a.void
+local scheduler = a.util.scheduler
 
 local cache  = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
@@ -28,12 +27,12 @@ M.reset = function(bufnr: integer)
   api.nvim_buf_del_extmark(bufnr, namespace, 1)
 end
 
-M.update = async_void(function()
+M.update = void(function()
   M.reset()
 
   -- Note because the same timer is re-used, this call has a debouncing effect.
-  await(wait_timer(timer, config.current_line_blame_delay, 0))
-  await(scheduler())
+  wait_timer(timer, config.current_line_blame_delay, 0)
+  scheduler()
 
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -43,9 +42,9 @@ M.update = async_void(function()
 
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = await(bcache.git_obj:run_blame(buftext, lnum))
+  local result = bcache.git_obj:run_blame(buftext, lnum)
 
-  await(scheduler())
+  scheduler()
 
   M.reset(bufnr)
   api.nvim_buf_set_extmark(bufnr, namespace, lnum-1, 0, {

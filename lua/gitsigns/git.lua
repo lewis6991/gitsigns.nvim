@@ -1,8 +1,5 @@
-local a = require('plenary.async_lib.async')
+local a = require('plenary.async')
 local JobSpec = require('plenary.job').JobSpec
-local await = a.await
-local async = a.async
-local scheduler = a.scheduler
 
 local gsd = require("gitsigns.debug")
 local util = require('gitsigns.util')
@@ -167,7 +164,7 @@ local function process_abbrev_head(gitdir, head_str)
    return head_str
 end
 
-local get_repo_info = async(function(path, cmd)
+local get_repo_info = function(path, cmd)
 
 
    local has_abs_gd = check_version({ 2, 13 })
@@ -175,15 +172,15 @@ local get_repo_info = async(function(path, cmd)
 
 
 
-   await(scheduler())
+   a.util.scheduler()
 
-   local results = await(command({
+   local results = command({
       'rev-parse', '--show-toplevel', git_dir_opt, '--abbrev-ref', 'HEAD',
    }, {
       command = cmd or 'git',
       supress_stderr = true,
       cwd = path,
-   }))
+   })
 
    local toplevel = results[1]
    local gitdir = results[2]
@@ -192,7 +189,7 @@ local get_repo_info = async(function(path, cmd)
    end
    local abbrev_head = process_abbrev_head(gitdir, results[3])
    return toplevel, gitdir, abbrev_head
-end)
+end
 
 local function write_to_file(path, text)
    local f = io.open(path, 'wb')
@@ -203,7 +200,7 @@ local function write_to_file(path, text)
    f:close()
 end
 
-M.run_diff = async(function(
+M.run_diff = function(
    staged,
    text,
    diff_algo)
@@ -229,7 +226,7 @@ M.run_diff = async(function(
 
 
 
-   await(command({
+   command({
       '-c', 'core.safecrlf=false',
       'diff',
       '--color=never',
@@ -246,53 +243,53 @@ M.run_diff = async(function(
             table.insert(results[#results].lines, line)
          end
       end,
-   }))
+   })
    os.remove(buffile)
    return results
-end)
+end
 
-M.set_version = async(function(version)
+M.set_version = function(version)
    if version ~= 'auto' then
       M.version = parse_version(version)
       return
    end
-   local results = await(command({ '--version' }))
+   local results = command({ '--version' })
    local line = results[1]
    assert(startswith(line, 'git version'), 'Unexpected output: ' .. line)
    local parts = vim.split(line, '%s+')
    M.version = parse_version(parts[3])
-end)
+end
 
 
 
 
 
 
-Obj.command = async(function(self, args, spec)
+Obj.command = function(self, args, spec)
    spec = spec or {}
    spec.cwd = self.toplevel
-   return await(command({ '--git-dir=' .. self.gitdir, unpack(args) }, spec))
-end)
+   return command({ '--git-dir=' .. self.gitdir, unpack(args) }, spec)
+end
 
-Obj.update_abbrev_head = async(function(self)
-   _, _, self.abbrev_head = await(get_repo_info(self.toplevel))
-end)
+Obj.update_abbrev_head = function(self)
+   _, _, self.abbrev_head = get_repo_info(self.toplevel)
+end
 
-Obj.update_file_info = async(function(self)
+Obj.update_file_info = function(self)
    local old_object_name = self.object_name
-   _, self.object_name, self.mode_bits, self.has_conflicts = await(self:file_info())
+   _, self.object_name, self.mode_bits, self.has_conflicts = self:file_info()
 
    return old_object_name ~= self.object_name
-end)
+end
 
-Obj.file_info = async(function(self)
-   local results = await(self:command({
+Obj.file_info = function(self)
+   local results = self:command({
       'ls-files',
       '--stage',
       '--others',
       '--exclude-standard',
       self.file,
-   }))
+   })
 
    local relpath
    local object_name
@@ -316,36 +313,36 @@ Obj.file_info = async(function(self)
       end
    end
    return relpath, object_name, mode_bits, has_conflict
-end)
+end
 
-Obj.unstage_file = async(function(self)
-   await(self:command({ 'reset', self.file }))
-end)
+Obj.unstage_file = function(self)
+   self:command({ 'reset', self.file })
+end
 
 
-Obj.get_show_text = async(function(self, object)
-   return await(self:command({ 'show', object }, {
+Obj.get_show_text = function(self, object)
+   return self:command({ 'show', object }, {
       supress_stderr = true,
-   }))
-end)
+   })
+end
 
 
-Obj.get_show = async(function(self, object, output_file)
+Obj.get_show = function(self, object, output_file)
 
 
    local outf = io.open(output_file, 'wb')
-   await(self:command({ 'show', object }, {
+   self:command({ 'show', object }, {
       supress_stderr = true,
       on_stdout = function(_, line)
          outf:write(line)
          outf:write('\n')
       end,
-   }))
+   })
    outf:close()
-end)
+end
 
-Obj.run_blame = async(function(self, lines, lnum)
-   local results = await(self:command({
+Obj.run_blame = function(self, lines, lnum)
+   local results = self:command({
       'blame',
       '--contents', '-',
       '-L', lnum .. ',+1',
@@ -353,7 +350,7 @@ Obj.run_blame = async(function(self, lines, lnum)
       self.file,
    }, {
       writer = lines,
-   }))
+   })
    if #results == 0 then
       return {}
    end
@@ -372,48 +369,48 @@ Obj.run_blame = async(function(self, lines, lnum)
       end
    end
    return ret
-end)
+end
 
-Obj.ensure_file_in_index = async(function(self)
+Obj.ensure_file_in_index = function(self)
    if not self.object_name or self.has_conflicts then
       if not self.object_name then
 
-         await(self:command({ 'add', '--intent-to-add', self.file }))
+         self:command({ 'add', '--intent-to-add', self.file })
       else
 
 
          local info = table.concat({ self.mode_bits, self.object_name, self.relpath }, ',')
-         await(self:command({ 'update-index', '--add', '--cacheinfo', info }))
+         self:command({ 'update-index', '--add', '--cacheinfo', info })
       end
 
 
-      _, self.object_name, self.mode_bits, self.has_conflicts = await(self:file_info())
+      _, self.object_name, self.mode_bits, self.has_conflicts = self:file_info()
    end
-end)
+end
 
-Obj.stage_hunks = async(function(self, hunks, invert)
-   await(self:ensure_file_in_index())
-   await(self:command({
+Obj.stage_hunks = function(self, hunks, invert)
+   self:ensure_file_in_index()
+   self:command({
       'apply', '--cached', '--unidiff-zero', '-',
    }, {
       writer = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert),
-   }))
-end)
+   })
+end
 
-Obj.new = a.async(function(file)
+Obj.new = function(file)
    local self = setmetatable({}, { __index = Obj })
 
    self.file = file
-   self.username = await(command({ 'config', 'user.name' }))[1]
+   self.username = command({ 'config', 'user.name' })[1]
    self.toplevel, self.gitdir, self.abbrev_head = 
-   await(get_repo_info(util.dirname(file)))
+   get_repo_info(util.dirname(file))
 
 
    if M.enable_yadm and not self.gitdir then
       if vim.startswith(file, os.getenv('HOME')) and
-         #await(command({ 'ls-files', file }, { command = 'yadm' })) ~= 0 then
+         #command({ 'ls-files', file }, { command = 'yadm' }) ~= 0 then
          self.toplevel, self.gitdir, self.abbrev_head = 
-         await(get_repo_info(util.dirname(file), 'yadm'))
+         get_repo_info(util.dirname(file), 'yadm')
       end
    end
 
@@ -422,9 +419,9 @@ Obj.new = a.async(function(file)
    end
 
    self.relpath, self.object_name, self.mode_bits, self.has_conflicts = 
-   await(self:file_info())
+   self:file_info()
 
    return self
-end)
+end
 
 return M

@@ -1,8 +1,6 @@
-local a = require('plenary.async_lib.async')
-local await = a.await
-local async_void = a.async_void
-local scheduler = a.scheduler
+local a = require('plenary.async')
 local void = a.void
+local scheduler = a.util.scheduler
 
 local Status = require("gitsigns.status")
 local config = require('gitsigns.config').config
@@ -94,7 +92,7 @@ local function get_range_hunks(bufnr, hunks, range, strict)
    return ret
 end
 
-M.stage_hunk = mk_repeatable(async_void(function(range)
+M.stage_hunk = mk_repeatable(void(function(range)
    range = range or user_range
    local valid_range = false
    local bufnr = current_buf()
@@ -122,7 +120,7 @@ M.stage_hunk = mk_repeatable(async_void(function(range)
       return
    end
 
-   await(bcache.git_obj:stage_hunks(hunks))
+   bcache.git_obj:stage_hunks(hunks)
 
    for _, hunk in ipairs(hunks) do
       table.insert(bcache.staged_diffs, hunk)
@@ -132,7 +130,7 @@ M.stage_hunk = mk_repeatable(async_void(function(range)
 
    local hunk_signs = gs_hunks.process_hunks(hunks)
 
-   await(scheduler())
+   scheduler()
 
 
 
@@ -191,7 +189,7 @@ M.reset_buffer = function()
    api.nvim_buf_set_lines(bufnr, 0, -1, false, bcache:get_compare_text())
 end
 
-M.undo_stage_hunk = mk_repeatable(async_void(function()
+M.undo_stage_hunk = mk_repeatable(void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -204,13 +202,13 @@ M.undo_stage_hunk = mk_repeatable(async_void(function()
       return
    end
 
-   await(bcache.git_obj:stage_hunks({ hunk }, true))
+   bcache.git_obj:stage_hunks({ hunk }, true)
    bcache.compare_text = nil
-   await(scheduler())
+   scheduler()
    signs.add(config, bufnr, gs_hunks.process_hunks({ hunk }))
 end))
 
-M.stage_buffer = async_void(function()
+M.stage_buffer = void(function()
    local bufnr = current_buf()
 
    local bcache = cache[bufnr]
@@ -230,19 +228,19 @@ M.stage_buffer = async_void(function()
       return
    end
 
-   await(bcache.git_obj:stage_hunks(hunks))
+   bcache.git_obj:stage_hunks(hunks)
 
    for _, hunk in ipairs(hunks) do
       table.insert(bcache.staged_diffs, hunk)
    end
    bcache.compare_text = nil
 
-   await(scheduler())
+   scheduler()
    signs.remove(bufnr)
    Status:clear_diff(bufnr)
 end)
 
-M.reset_buffer_index = async_void(function()
+M.reset_buffer_index = void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -258,10 +256,10 @@ M.reset_buffer_index = async_void(function()
    local hunks = bcache.staged_diffs
    bcache.staged_diffs = {}
 
-   await(bcache.git_obj:unstage_file())
+   bcache.git_obj:unstage_file()
    bcache.compare_text = nil
 
-   await(scheduler())
+   scheduler()
    signs.add(config, bufnr, gs_hunks.process_hunks(hunks))
 end)
 
@@ -346,7 +344,7 @@ local function defer(duration, callback)
    return timer
 end
 
-M.blame_line = async_void(function()
+M.blame_line = void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then return end
@@ -355,10 +353,10 @@ M.blame_line = async_void(function()
       popup.create({ 'Loading...' }, config.preview_config)
    end)
 
-   await(scheduler())
+   scheduler()
    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
    local lnum = api.nvim_win_get_cursor(0)[1]
-   local result = await(bcache.git_obj:run_blame(buftext, lnum))
+   local result = bcache.git_obj:run_blame(buftext, lnum)
    pcall(function()
       loading:close()
    end)
@@ -369,7 +367,7 @@ M.blame_line = async_void(function()
       result.summary,
    }
 
-   await(scheduler())
+   scheduler()
 
    local _, pbufnr = popup.create(lines, config.preview_config)
 
@@ -395,14 +393,15 @@ end
 
 M.change_base = function(base)
    local buf = current_buf()
-   if cache[buf] == nil then return end
+   local bcache = cache[buf]
+   if bcache == nil then return end
    base = calc_base(base)
-   cache[buf].base = base
-   cache[buf].compare_text = nil
-   a.void(manager.update)(buf)
+   bcache.base = base
+   bcache.compare_text = nil
+   a.void(manager.update)(buf, bcache)
 end
 
-M.diffthis = async_void(function(base)
+M.diffthis = void(function(base)
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then return end
@@ -413,12 +412,12 @@ M.diffthis = async_void(function(base)
    local err
    local comp_obj = bcache:get_compare_obj(calc_base(base))
    if base then
-      text, err = await(bcache.git_obj:get_show_text(comp_obj))
+      text, err = bcache.git_obj:get_show_text(comp_obj)
       if err then
          print(err)
          return
       end
-      await(scheduler())
+      scheduler()
    else
       text = bcache:get_compare_text()
    end
@@ -487,14 +486,14 @@ M.get_actions = function()
    return actions
 end
 
-M.refresh = function()
+M.refresh = void(function()
    manager.setup_signs_and_highlights(true)
    require('gitsigns.current_line_blame').setup()
    for k, v in pairs(cache) do
       v.compare_text = nil
-      void(manager.update)(k, v)
+      manager.update(k, v)
    end
-end
+end)
 
 M.toggle_signs = function()
    config.signcolumn = not config.signcolumn
