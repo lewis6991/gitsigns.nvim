@@ -6,6 +6,7 @@ FILTER=.*
 BUSTED_ARGS = \
     --lpath=$(PJ_ROOT)/lua/?.lua \
     --lpath=$(PJ_ROOT)/plenary.nvim/lua/?.lua \
+    --lpath=$(PJ_ROOT)/plenary.nvim/lua/?/init.lua \
     --filter=$(FILTER)
 
 TEST_FILE = $(PJ_ROOT)/test/gitsigns_spec.lua
