@@ -27,6 +27,7 @@ test: neovim plenary.nvim
 		CMAKE_BUILD_TYPE=Release \
 		BUSTED_ARGS="$(BUSTED_ARGS)" \
 		TEST_FILE="$(TEST_FILE)"
+	-@stty sane
 
 .PHONY: tl-check
 tl-check:
