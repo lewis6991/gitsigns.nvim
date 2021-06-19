@@ -394,10 +394,12 @@ local function calc_base(base: string): string
 end
 
 M.change_base = function(base: string)
-  base = calc_base(base)
   local buf = current_buf()
+  if cache[buf] == nil then return end
+  base = calc_base(base)
   cache[buf].base = base
   cache[buf].compare_text = nil
+  a.void(manager.update)(buf)
 end
 
 M.diffthis = async_void(function(base: string)

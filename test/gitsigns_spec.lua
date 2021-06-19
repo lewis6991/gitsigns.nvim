@@ -13,7 +13,8 @@ local matches       = helpers.matches
 local sleep         = helpers.sleep
 local split         = helpers.split
 local get_buf_var   = helpers.curbufmeths.get_var
-local system        = helpers.funcs.system
+local fn            = helpers.funcs
+local system        = fn.system
 
 local function check_status(status)
   eq(status.head, get_buf_var('gitsigns_head'))
@@ -535,6 +536,44 @@ describe('gitsigns', function()
         p'run_job: git %-%-no%-pager %-%-git%-dir=.* %-%-stage %-%-others %-%-exclude%-standard .*',
         "attach(1): User on_attach() returned false"
       }
+    end)
+  end)
+
+  describe('change_base()', function()
+    it('works', function()
+      screen:try_resize(20, 4)
+
+      init()
+      edit(test_file)
+
+      feed('oEDIT<esc>')
+      command('write')
+
+      git{'add', test_file}
+      git{"commit", "-m", "commit on main"}
+
+      -- Don't setup gitsigns until the repo has two commits
+      exec_lua('gs.setup(...)', config)
+
+      screen:expect{
+        grid=[[
+          This                |
+          EDI^T                |
+          is                  |
+          < 19L, 103C written |
+        ]],
+        condition = function()
+          return fn.exists('#gitsigns') > 0
+        end,
+      }
+
+      command('Gitsigns change_base ~')
+      screen:expect[[
+        {1:  }This              |
+        {3:+ }EDI^T              |
+        {1:  }is                |
+        < 19L, 103C written |
+      ]]
     end)
   end)
 
