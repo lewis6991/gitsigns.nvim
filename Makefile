@@ -3,14 +3,6 @@ export PJ_ROOT=$(PWD)
 
 FILTER=.*
 
-BUSTED_ARGS = \
-    --lpath=$(PJ_ROOT)/lua/?.lua \
-    --lpath=$(PJ_ROOT)/plenary.nvim/lua/?.lua \
-    --lpath=$(PJ_ROOT)/plenary.nvim/lua/?/init.lua \
-    --filter=$(FILTER)
-
-TEST_FILE = $(PJ_ROOT)/test/gitsigns_spec.lua
-
 INIT_LUAROCKS := eval $$(luarocks --lua-version=5.1 path) &&
 
 .DEFAULT_GOAL := build
@@ -22,12 +14,24 @@ neovim:
 plenary.nvim:
 	git clone --depth 1 https://github.com/nvim-lua/plenary.nvim
 
+export VIMRUNTIME=$(PWD)/neovim/runtime
+
 .PHONY: test
 test: neovim plenary.nvim
-	make -C neovim functionaltest \
-		CMAKE_BUILD_TYPE=Release \
-		BUSTED_ARGS="$(BUSTED_ARGS)" \
-		TEST_FILE="$(TEST_FILE)"
+	$(INIT_LUAROCKS) neovim/.deps/usr/bin/busted \
+		-v \
+		--lazy \
+		--helper=$(PWD)/test/preload.lua \
+		--output test.busted.outputHandlers.nvim \
+		--lpath=$(PWD)/neovim/?.lua \
+		--lpath=$(PWD)/neovim/build/?.lua \
+		--lpath=$(PWD)/neovim/runtime/lua/?.lua \
+		--lpath=$(PWD)/?.lua \
+		--lpath=$(PWD)/lua/?.lua \
+		--lpath=$(PWD)/plenary.nvim/lua/?.lua \
+		--lpath=$(PWD)/plenary.nvim/lua/?/init.lua \
+		--filter=$(FILTER) \
+		$(PWD)/test
 	-@stty sane
 
 .PHONY: tl-check

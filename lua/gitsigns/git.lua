@@ -391,7 +391,7 @@ end
 Obj.stage_hunks = function(self, hunks, invert)
    self:ensure_file_in_index()
    self:command({
-      'apply', '--cached', '--unidiff-zero', '-',
+      'apply', '--whitespace=nowarn', '--cached', '--unidiff-zero', '-',
    }, {
       writer = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert),
    })
