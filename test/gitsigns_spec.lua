@@ -1,7 +1,7 @@
 -- vim: foldnestmax=5:
 
-local helpers = require('test.functional.helpers')(after_each)
 local Screen = require('test.functional.ui.screen')
+local helpers = require('test.gs_helpers')
 
 local clear         = helpers.clear
 local command       = helpers.command
@@ -9,190 +9,40 @@ local exec_capture  = helpers.exec_capture
 local feed          = helpers.feed
 local exec_lua      = helpers.exec_lua
 local eq            = helpers.eq
-local matches       = helpers.matches
-local sleep         = helpers.sleep
 local split         = helpers.split
 local get_buf_var   = helpers.curbufmeths.get_var
 local fn            = helpers.funcs
 local system        = fn.system
+local init          = helpers.init
+local wait          = helpers.wait
+local write_to_file = helpers.write_to_file
+local edit          = helpers.edit
+local cleanup       = helpers.cleanup
+local test_file     = helpers.test_file
+local git           = helpers.git
+local scratch       = helpers.scratch
+local newfile       = helpers.newfile
+local debug_messages = helpers.debug_messages
+local match_dag     = helpers.match_dag
+local match_debug_messages = helpers.match_debug_messages
+local match_lines   = helpers.match_lines
+local p             = helpers.p
+local setup         = helpers.setup
+local test_config   = helpers.test_config
+
+local it = helpers.it(it)
 
 local function check_status(status)
-  eq(status.head, get_buf_var('gitsigns_head'))
-  eq(status, get_buf_var("gitsigns_status_dict"))
-end
-
-local scratch = os.getenv('PJ_ROOT')..'/scratch'
-local gitdir = scratch..'/.git'
-local test_file = scratch..'/dummy.txt'
-local newfile = scratch.."/newfile.txt"
-
-local test_file_text = {
-  'This', 'is', 'a', 'file', 'used', 'for', 'testing', 'gitsigns.', 'The',
-  'content', 'doesn\'t', 'matter,', 'it', 'just', 'needs', 'to', 'be', 'static.'
-}
-
-local function write_to_file(path, text)
-  local f = io.open(path, 'wb')
-  for _, l in ipairs(text) do
-    f:write(l)
-    f:write('\n')
-  end
-  f:close()
-end
-
-local function git(args)
-  system{"git", "-C", scratch, unpack(args)}
-end
-
-local function cleanup()
-  system{"rm", "-rf", scratch}
-end
-
-local function setup_git()
-  git{"init"}
-
-  -- Always force color to test settings don't interfere with gitsigns systems
-  -- commands (addresses #23)
-  git{'config', 'color.branch'     , 'always'}
-  git{'config', 'color.ui'         , 'always'}
-  git{'config', 'color.diff'       , 'always'}
-  git{'config', 'color.interactive', 'always'}
-  git{'config', 'color.status'     , 'always'}
-  git{'config', 'color.grep'       , 'always'}
-  git{'config', 'color.pager'      , 'true'}
-  git{'config', 'color.decorate'   , 'always'}
-  git{'config', 'color.showbranch' , 'always'}
-
-  git{'config', 'user.email', 'tester@com.com'}
-  git{'config', 'user.name' , 'tester'}
-
-  git{'config', 'init.defaultBranch', 'master'}
-end
-
-local function init(no_add)
-  cleanup()
-  system{"mkdir", scratch}
-  setup_git()
-  system{"touch", test_file}
-  write_to_file(test_file, test_file_text)
-  if not no_add then
-    git{"add", test_file}
-    git{"commit", "-m", "init commit"}
-  end
-end
-
-local function command_fmt(str, ...)
-  command(str:format(...))
-end
-
-local function edit(path)
-  command_fmt("edit %s", path)
+  wait(function()
+    eq(1, fn.exists('b:gitsigns_head'))
+    eq(status.head, get_buf_var('gitsigns_head'))
+    eq(status, get_buf_var("gitsigns_status_dict"))
+  end)
 end
 
 local function buf_var_exists(name)
   return pcall(get_buf_var, name)
 end
-
-local function match_lines(lines, spec)
-  local i = 1
-  for lid, line in ipairs(lines) do
-    if line ~= '' then
-      local s = spec[i]
-      if s then
-        if s.pattern then
-          matches(s.text, line)
-        else
-          eq(s, line)
-        end
-      else
-        local extra = {}
-        for j=lid,#lines do
-          table.insert(extra, lines[j])
-        end
-        error('Unexpected extra text:\n    '..table.concat(extra, '\n    '))
-      end
-      i = i + 1
-    end
-  end
-  if i < #spec then
-    error(('Did not match pattern \'%s\''):format(spec[i]))
-  end
-end
-
-local function match_lines2(lines, spec)
-  local i = 1
-  for _, line in ipairs(lines) do
-    if line ~= '' then
-      local s = spec[i]
-      if s then
-        if s.pattern then
-          if string.match(line, s.text) then
-            i = i + 1
-          end
-        elseif s.next then
-          eq(s.text, line)
-          i = i + 1
-        else
-          if s == line then
-            i = i + 1
-          end
-        end
-      end
-    end
-  end
-
-  if i < #spec + 1 then
-    local unmatched = {}
-    for j = i, #spec do
-      table.insert(unmatched, spec[j].text or spec[j])
-    end
-    error(('Did not match patterns:\n    - %s'):format(table.concat(unmatched, '\n    - ')))
-  end
-end
-
-local function debug_messages()
-  return exec_lua("return require'gitsigns'.debug_messages(true)")
-end
-
-local function match_debug_messages(spec)
-  match_lines(debug_messages(), spec)
-end
-
-local function match_dag(lines, spec)
-  for _, s in ipairs(spec) do
-    match_lines2(lines, {s})
-  end
-end
-
-local function p(str)
-  return {text=str, pattern=true}
-end
-
-local function n(str)
-  return {text=str, next=true}
-end
-
-local test_config = {
-  debug_mode = true,
-  signs = {
-    add          = {hl = 'DiffAdd'   , text = '+'},
-    delete       = {hl = 'DiffDelete', text = '_'},
-    change       = {hl = 'DiffChange', text = '~'},
-    topdelete    = {hl = 'DiffDelete', text = '^'},
-    changedelete = {hl = 'DiffChange', text = '%'},
-  },
-  keymaps = {
-    noremap = true,
-    buffer = true,
-    ['n mhs'] = '<cmd>lua require"gitsigns.actions".stage_hunk()<CR>',
-    ['n mhu'] = '<cmd>lua require"gitsigns.actions".undo_stage_hunk()<CR>',
-    ['n mhr'] = '<cmd>lua require"gitsigns.actions".reset_hunk()<CR>',
-    ['n mhp'] = '<cmd>lua require"gitsigns.actions".preview_hunk()<CR>',
-    ['n mhS'] = '<cmd>lua require"gitsigns.actions".stage_buffer()<CR>',
-    ['n mhU'] = '<cmd>lua require"gitsigns.actions".reset_buffer_index()<CR>',
-  },
-  update_debounce = 5,
-}
 
 describe('gitsigns', function()
   local screen
@@ -217,7 +67,6 @@ describe('gitsigns', function()
 
     -- Make gitisigns available
     exec_lua('package.path = ...', package.path)
-    exec_lua('gs = require("gitsigns")')
     config = helpers.deepcopy(test_config)
   end)
 
@@ -228,7 +77,7 @@ describe('gitsigns', function()
 
   it('can run basic setup', function()
     screen:try_resize(60,6)
-    exec_lua('gs.setup()')
+    setup()
     screen:expect{grid=[[
       ^                                                            |
       {6:~                                                           }|
@@ -243,21 +92,22 @@ describe('gitsigns', function()
     screen:try_resize(20,6)
     init(true)
     config.watch_index = {interval = 5}
-    exec_lua('gs.setup(...)', config)
+    setup(config)
     edit(test_file)
-    sleep(40)
 
-    match_dag(debug_messages(), {
-      "run_job: git --no-pager --version",
-      'attach(1): Attaching',
-      p'run_job: git .* config user.name',
-      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
-      p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard '..test_file),
-      'watch_index(1): Watching index',
-      'watcher_cb(1): Index update error: ENOENT',
-      p'run_job: git .* show :0:dummy.txt',
-      'update(1): updates: 1, jobs: 5'
-    })
+    wait(function()
+      match_dag(debug_messages(), {
+        "run_job: git --no-pager --version",
+        'attach(1): Attaching',
+        p'run_job: git .* config user.name',
+        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard '..test_file),
+        'watch_index(1): Watching index',
+        'watcher_cb(1): Index update error: ENOENT',
+        p'run_job: git .* show :0:dummy.txt',
+        'update(1): updates: 1, jobs: 5'
+      })
+    end)
 
     screen:expect{grid=[[
       {3:+ }^This              |
@@ -269,7 +119,6 @@ describe('gitsigns', function()
     ]]}
 
     git{"add", test_file}
-    sleep(20)
 
     screen:expect{grid=[[
       ^This                |
@@ -283,11 +132,9 @@ describe('gitsigns', function()
 
   it('can open files not in a git repo', function()
     screen:try_resize(60,6)
-    exec_lua('gs.setup(...)', config)
+    setup(config)
     local tmpfile = os.tmpname()
-    sleep(100)
     edit(tmpfile)
-    sleep(100)
     screen:expect{grid=[[
       ^                                                            |
       {6:~                                                           }|
@@ -296,11 +143,8 @@ describe('gitsigns', function()
       {6:~                                                           }|
                                                                   |
     ]]}
-    sleep(100)
     feed('iline<esc>')
-    sleep(100)
     command("write")
-    sleep(102)
     screen:expect{grid=([[
       lin^e                                                        |
       {6:~                                                           }|
@@ -309,6 +153,7 @@ describe('gitsigns', function()
       {6:~                                                           }|
       "%s" 1L, 5C written                            |
     ]]):format(tmpfile)}
+
     match_debug_messages {
       "run_job: git --no-pager --version",
       'attach(1): Attaching',
@@ -325,31 +170,29 @@ describe('gitsigns', function()
   describe('when attaching', function()
     before_each(function()
       init()
-      exec_lua('gs.setup(...)', config)
-      sleep(10)
+      setup(config)
     end)
 
     it('can setup mappings', function()
       edit(test_file)
-      sleep(20)
+      wait(function()
+        local res = split(exec_capture('nmap <buffer>'), '\n')
+        table.sort(res)
 
-      local res = split(exec_capture('nmap <buffer>'), '\n')
-      table.sort(res)
-
-      -- Check all keymaps get set
-      match_lines(res, {
-        'n  mhS         *@<Cmd>lua require"gitsigns.actions".stage_buffer()<CR>',
-        'n  mhU         *@<Cmd>lua require"gitsigns.actions".reset_buffer_index()<CR>',
-        'n  mhp         *@<Cmd>lua require"gitsigns.actions".preview_hunk()<CR>',
-        'n  mhr         *@<Cmd>lua require"gitsigns.actions".reset_hunk()<CR>',
-        'n  mhs         *@<Cmd>lua require"gitsigns.actions".stage_hunk()<CR>',
-        'n  mhu         *@<Cmd>lua require"gitsigns.actions".undo_stage_hunk()<CR>',
-      })
+        -- Check all keymaps get set
+        match_lines(res, {
+          'n  mhS         *@<Cmd>lua require"gitsigns".stage_buffer()<CR>',
+          'n  mhU         *@<Cmd>lua require"gitsigns".reset_buffer_index()<CR>',
+          'n  mhp         *@<Cmd>lua require"gitsigns".preview_hunk()<CR>',
+          'n  mhr         *@<Cmd>lua require"gitsigns".reset_hunk()<CR>',
+          'n  mhs         *@<Cmd>lua require"gitsigns".stage_hunk()<CR>',
+          'n  mhu         *@<Cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
+        })
+      end)
     end)
 
     it('does not attach inside .git', function()
       edit(scratch..'/.git/index')
-      sleep(20)
 
       match_debug_messages {
         "run_job: git --no-pager --version",
@@ -365,7 +208,6 @@ describe('gitsigns', function()
 
       system{"touch", ignored_file}
       edit(ignored_file)
-      sleep(20)
 
       match_debug_messages {
         "run_job: git --no-pager --version",
@@ -381,7 +223,6 @@ describe('gitsigns', function()
 
     it('doesn\'t attach to non-existent files', function()
       edit(newfile)
-      sleep(10)
 
       match_debug_messages {
         "run_job: git --no-pager --version",
@@ -420,87 +261,6 @@ describe('gitsigns', function()
     end)
   end)
 
-  describe('highlights', function()
-    it('get set up correctly', function()
-      command("set termguicolors")
-
-      config.signs.add.hl = nil
-      config.signs.change.hl = nil
-      config.signs.delete.hl = nil
-      config.signs.changedelete.hl = nil
-      config.signs.topdelete.hl = nil
-      config.numhl = true
-      config.linehl = true
-
-      exec_lua('gs.setup(...)', config)
-      sleep(10)
-
-      match_dag(debug_messages(), {
-        p'Deriving GitSignsChangeNr from GitSignsChange',
-        p'Deriving GitSignsChangeLn from GitSignsChange',
-        p'Deriving GitSignsDelete from DiffDelete',
-        p'Deriving GitSignsDeleteNr from GitSignsDelete',
-        p'Deriving GitSignsDeleteLn from GitSignsDelete',
-        p'Deriving GitSignsAdd from DiffAdd',
-        p'Deriving GitSignsAddNr from GitSignsAdd',
-        p'Deriving GitSignsAddLn from GitSignsAdd',
-        p'Deriving GitSignsDeleteNr from GitSignsDelete',
-        p'Deriving GitSignsDeleteLn from GitSignsDelete',
-        p'Deriving GitSignsChangeNr from GitSignsChange',
-        p'Deriving GitSignsChangeLn from GitSignsChange'
-      })
-
-      eq('GitSignsChange xxx gui=reverse guibg=#ffbbff',
-        exec_capture('hi GitSignsChange'))
-
-      eq('GitSignsDelete xxx gui=reverse guifg=#0000ff guibg=#e0ffff',
-        exec_capture('hi GitSignsDelete'))
-
-      eq('GitSignsAdd    xxx gui=reverse guibg=#add8e6',
-        exec_capture('hi GitSignsAdd'))
-    end)
-
-    it('update when colorscheme changes', function()
-      command("set termguicolors")
-
-      config.signs.add.hl = nil
-      config.signs.change.hl = nil
-      config.signs.delete.hl = nil
-      config.signs.changedelete.hl = nil
-      config.signs.topdelete.hl = nil
-      config.linehl = true
-
-      exec_lua('gs.setup(...)', config)
-      sleep(10)
-
-      eq('GitSignsChange xxx gui=reverse guibg=#ffbbff',
-        exec_capture('hi GitSignsChange'))
-
-      eq('GitSignsDelete xxx gui=reverse guifg=#0000ff guibg=#e0ffff',
-        exec_capture('hi GitSignsDelete'))
-
-      eq('GitSignsAdd    xxx gui=reverse guibg=#add8e6',
-        exec_capture('hi GitSignsAdd'))
-
-      eq('GitSignsAddLn  xxx gui=reverse guibg=#add8e6',
-        exec_capture('hi GitSignsAddLn'))
-
-      command('colorscheme blue')
-
-      eq('GitSignsChange xxx gui=reverse guifg=#000000 guibg=#006400',
-        exec_capture('hi GitSignsChange'))
-
-      eq('GitSignsDelete xxx gui=reverse guifg=#000000 guibg=#ff7f50',
-        exec_capture('hi GitSignsDelete'))
-
-      eq('GitSignsAdd    xxx gui=reverse guifg=#000000 guibg=#6a5acd',
-        exec_capture('hi GitSignsAdd'))
-
-      eq('GitSignsAddLn  xxx gui=reverse guifg=#000000 guibg=#6a5acd',
-        exec_capture('hi GitSignsAddLn'))
-    end)
-  end)
-
   describe('current line blame', function()
     it('doesn\'t error on untracked files', function()
       command("set updatetime=1")
@@ -508,8 +268,7 @@ describe('gitsigns', function()
       screen:detach()
       screen:attach({ext_messages=true})
       config.current_line_blame = true
-      exec_lua('gs.setup(...)', config)
-      sleep(20)
+      setup(config)
       edit(newfile)
       feed("iline<esc>")
       command("write")
@@ -520,21 +279,25 @@ describe('gitsigns', function()
   describe('on_attach()', function()
     it('can prevent attaching to a buffer', function()
       init(true)
+
+      -- Functions can't be serialized over rpc so need to setup config
+      -- remotely
       exec_lua('config = ...', config)
       exec_lua[[config.on_attach = function()
         return false
-      end
-      ]]
-      exec_lua('gs.setup(config)')
+      end]]
+      exec_lua('require("gitsigns").setup(config)')
+      wait(function()
+        exec_capture('au gitsigns')
+      end)
       edit(test_file)
-      sleep(20)
       match_debug_messages {
         "run_job: git --no-pager --version",
         'attach(1): Attaching',
         p"run_job: git .* config user.name",
         "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
         p'run_job: git %-%-no%-pager %-%-git%-dir=.* %-%-stage %-%-others %-%-exclude%-standard .*',
-        "attach(1): User on_attach() returned false"
+        "attach(1): User on_attach() returned false",
       }
     end)
   end)
@@ -553,7 +316,7 @@ describe('gitsigns', function()
       git{"commit", "-m", "commit on main"}
 
       -- Don't setup gitsigns until the repo has two commits
-      exec_lua('gs.setup(...)', config)
+      setup(config)
 
       screen:expect{
         grid=[[
@@ -586,7 +349,7 @@ describe('gitsigns', function()
       end)
 
       it('apply basic signs', function()
-        exec_lua('gs.setup(...)', config)
+        setup(config)
         edit(test_file)
         command("set signcolumn=yes")
 
@@ -599,7 +362,6 @@ describe('gitsigns', function()
         feed("dd") -- Delete
         feed("j")
         feed("ddx") -- Change delete
-        sleep(10)
 
         -- screen:snapshot_util()
         screen:expect{grid=[[
@@ -626,16 +388,15 @@ describe('gitsigns', function()
 
       it('perform actions', function()
         screen:try_resize(20,6)
-        exec_lua('gs.setup(...)', config)
+        setup(config)
         edit(test_file)
         command("set signcolumn=yes")
 
         feed("jjj")
         feed("cc")
-        sleep(20)
         feed("EDIT<esc>")
-        sleep(10)
 
+        -- screen:snapshot_util()
         screen:expect{grid=[[
           {1:  }This              |
           {1:  }is                |
@@ -647,7 +408,6 @@ describe('gitsigns', function()
 
         -- Stage
         feed("mhs")
-        sleep(10)
 
         screen:expect{grid=[[
           {1:  }This              |
@@ -657,10 +417,10 @@ describe('gitsigns', function()
           {1:  }used              |
                               |
         ]]}
+        check_status {head='master', added=0, changed=0, removed=0}
 
         -- Undo stage
         feed("mhu")
-        sleep(10)
 
         screen:expect{grid=[[
           {1:  }This              |
@@ -670,14 +430,12 @@ describe('gitsigns', function()
           {1:  }used              |
                               |
         ]]}
+        check_status {head='master', added=0, changed=1, removed=0}
 
         -- Add multiple edits
         feed('gg')
-        sleep(20)
         feed('cc')
-        sleep(20)
         feed('That<esc>')
-        sleep(10)
 
         screen:expect{grid=[[
           {2:~ }Tha^t              |
@@ -687,10 +445,10 @@ describe('gitsigns', function()
           {1:  }used              |
                               |
         ]]}
+        check_status {head='master', added=0, changed=2, removed=0}
 
         -- Stage buffer
         feed("mhS")
-        sleep(10)
 
         screen:expect{grid=[[
           {1:  }Tha^t              |
@@ -700,10 +458,10 @@ describe('gitsigns', function()
           {1:  }used              |
                               |
         ]]}
+        check_status {head='master', added=0, changed=0, removed=0}
 
         -- Unstage buffer
         feed("mhU")
-        sleep(10)
 
         screen:expect{grid=[[
           {2:~ }Tha^t              |
@@ -713,10 +471,10 @@ describe('gitsigns', function()
           {1:  }used              |
                               |
         ]]}
+        check_status {head='master', added=0, changed=2, removed=0}
 
         -- Reset
         feed("mhr")
-        sleep(10)
 
         screen:expect{grid=[[
           {1:  }Thi^s              |
@@ -726,12 +484,12 @@ describe('gitsigns', function()
           {1:  }used              |
                               |
         ]]}
-
+        check_status {head='master', added=0, changed=1, removed=0}
       end)
 
       it('can enable numhl', function()
         config.numhl = true
-        exec_lua('gs.setup(...)', config)
+        setup(config)
         edit(test_file)
         command("set signcolumn=no")
         command("set number")
@@ -744,9 +502,7 @@ describe('gitsigns', function()
         feed("3j")
         feed("dd") -- Delete
         feed("j")
-        sleep(40)
         feed("ddx") -- Change delete
-        sleep(100)
 
         -- screen:snapshot_util()
         screen:expect{grid=[[
@@ -772,12 +528,18 @@ describe('gitsigns', function()
 
       it('attaches to newly created files', function()
         screen:try_resize(4, 4)
-        exec_lua('gs.setup(...)', config)
+        setup(config)
         edit(newfile)
-        sleep(100)
-        exec_lua('gs.clear_debug()')
+        match_debug_messages{
+          'run_job: git --no-pager --version',
+          'attach(1): Attaching',
+          'run_job: git --no-pager config user.name',
+          'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+          p'run_job: git .* ls%-files .*',
+          'attach(1): Not a file',
+        }
+        command('Gitsigns clear_debug')
         command("write")
-        sleep(40)
 
         local messages = {
           "attach(1): Attaching",
@@ -799,23 +561,24 @@ describe('gitsigns', function()
 
         check_status {head='master', added=1, changed=0, removed=0}
 
-        screen:expect{grid=([[
+        screen:expect{grid=[[
           {3:+ }^          |
           {6:~           }|
           {6:~           }|
           <0C written |
-        ]]):format(jobs)}
+        ]]}
 
       end)
 
       it('can add untracked files to the index', function()
         screen:try_resize(10, 4)
-        exec_lua('gs.setup(...)', config)
+        setup(config)
 
         edit(newfile)
         feed("iline<esc>")
+        check_status {head='master'}
         command("write")
-        sleep(20)
+        check_status {head='master', added=1, changed=0, removed=0}
 
         -- screen:snapshot_util()
         screen:expect{grid=[[
@@ -826,8 +589,8 @@ describe('gitsigns', function()
         ]]}
 
         feed('mhs') -- Stage the file (add file to index)
-        sleep(20)
 
+        check_status {head='master', added=0, changed=0, removed=0}
         screen:expect{grid=[[
           lin^e        |
           {6:~           }|
@@ -839,7 +602,7 @@ describe('gitsigns', function()
 
       it('tracks files in new repos', function()
         screen:try_resize(10, 4)
-        exec_lua('gs.setup(...)', config)
+        setup(config)
         system{"touch", newfile}
         edit(newfile)
 
@@ -876,7 +639,7 @@ describe('gitsigns', function()
       end)
 
       it('can detach from buffers', function()
-        exec_lua('gs.setup(...)', config)
+        setup(config)
         edit(test_file)
         command("set signcolumn=yes")
 
@@ -889,7 +652,6 @@ describe('gitsigns', function()
         feed("dd") -- Delete
         feed("j")
         feed("ddx") -- Change delete
-        sleep(10)
 
         screen:expect{grid=[[
           {4:^ }is                |
@@ -911,7 +673,7 @@ describe('gitsigns', function()
                               |
         ]]}
 
-        exec_lua('gs.detach()')
+        command('Gitsigns detach')
 
         screen:expect{grid=[[
           {1:  }is                |
@@ -945,17 +707,16 @@ describe('gitsigns', function()
 
       it('can stages file with merge conflicts', function()
         screen:try_resize(40, 8)
-        exec_lua('gs.setup(...)', config)
+        setup(config)
         command("set signcolumn=yes")
 
         -- Edit a file and commit it on main branch
         edit(test_file)
+        check_status {head='master', added=0, changed=0, removed=0}
         feed('iedit')
-        sleep(20)
+        check_status {head='master', added=0, changed=1, removed=0}
         command("write")
-        sleep(20)
         command("bdelete")
-        sleep(20)
         git{'add', test_file}
         git{"commit", "-m", "commit on main"}
 
@@ -963,20 +724,18 @@ describe('gitsigns', function()
         git{'checkout', '-B', 'abranch'}
         git{'reset', '--hard', 'HEAD~1'}
         edit(test_file)
+        check_status {head='abranch', added=0, changed=0, removed=0}
         feed('idiff')
-        sleep(20)
+        check_status {head='abranch', added=0, changed=1, removed=0}
         command("write")
         command("bdelete")
         git{'add', test_file}
         git{"commit", "-m", "commit on branch"}
-        sleep(20)
-
         git{"rebase", "master"}
-        sleep(20)
 
         -- test_file should have a conflict
         edit(test_file)
-        sleep(50)
+        check_status {head='(rebasing)', added=4, changed=1, removed=0}
         screen:expect{grid=[[
           {2:~ }^<<<<<<< HEAD                          |
           {3:+ }editThis                              |
@@ -990,6 +749,7 @@ describe('gitsigns', function()
 
         exec_lua('require("gitsigns.actions").stage_hunk()')
 
+        check_status {head='(rebasing)', added=0, changed=0, removed=0}
         screen:expect{grid=[[
           {1:  }^<<<<<<< HEAD                          |
           {1:  }editThis                              |
@@ -1005,7 +765,7 @@ describe('gitsigns', function()
 
       it('handle files with spaces', function()
         screen:try_resize(20,6)
-        exec_lua('gs.setup(...)', config)
+        setup(config)
         command("set signcolumn=yes")
 
         local spacefile = scratch..'/a b c d'
@@ -1024,7 +784,6 @@ describe('gitsigns', function()
         ]]}
 
         git{'add', spacefile}
-        sleep(100)
         edit(spacefile)
 
         screen:expect{grid=[[

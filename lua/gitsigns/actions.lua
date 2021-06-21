@@ -140,6 +140,7 @@ M.stage_hunk = mk_repeatable(void(function(range)
    for lnum, _ in pairs(hunk_signs) do
       signs.remove(bufnr, lnum)
    end
+   a.void(manager.update)(bufnr)
 end))
 
 M.reset_hunk = mk_repeatable(function(range)
@@ -206,6 +207,7 @@ M.undo_stage_hunk = mk_repeatable(void(function()
    bcache.compare_text = nil
    scheduler()
    signs.add(config, bufnr, gs_hunks.process_hunks({ hunk }))
+   manager.update(bufnr)
 end))
 
 M.stage_buffer = void(function()
@@ -261,6 +263,7 @@ M.reset_buffer_index = void(function()
 
    scheduler()
    signs.add(config, bufnr, gs_hunks.process_hunks(hunks))
+   a.void(manager.update)(bufnr)
 end)
 
 local function nav_hunk(options)
