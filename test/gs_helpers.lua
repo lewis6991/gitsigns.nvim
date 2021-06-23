@@ -5,10 +5,14 @@ local exec_lua = helpers.exec_lua
 local matches  = helpers.matches
 local exec_capture = helpers.exec_capture
 local eq       = helpers.eq
+local fn       = helpers.funcs
+local get_buf_var = helpers.curbufmeths.get_var
 
 local timeout = 4000
 
 local M = helpers
+
+M.inspect = require('vim.inspect')
 
 M.scratch   = os.getenv('PJ_ROOT')..'/scratch'
 M.gitdir    = M.scratch..'/.git'
@@ -213,6 +217,52 @@ M.it = function(it)
     id = id+1
     return it(name..' #'..id, test)
   end
+end
+
+function M.check(attrs)
+  attrs = attrs or {}
+  M.wait(function()
+    local status = attrs.status
+    local signs  = attrs.signs
+
+    if status then
+      if next(status) == nil then
+        eq(0, fn.exists('b:gitsigns_head'))
+        eq(0, fn.exists('b:gitsigns_status_dict'))
+      else
+        eq(1, fn.exists('b:gitsigns_head'))
+        eq(status.head, get_buf_var('gitsigns_head'))
+        eq(status, get_buf_var("gitsigns_status_dict"))
+      end
+    end
+
+    if signs then
+      local act = {
+        added        = 0,
+        changed      = 0,
+        delete       = 0,
+        changedelete = 0,
+        topdelete    = 0,
+      }
+
+      for k, _ in pairs(act) do
+        signs[k] = signs[k] or 0
+      end
+
+      local buf_signs = fn.sign_getplaced("%", {group='gitsigns_ns'})[1].signs
+
+      for _, s in ipairs(buf_signs) do
+        if     s.name == "GitSignsAdd"          then act.added        = act.added   + 1
+        elseif s.name == "GitSignsChange"       then act.changed      = act.changed + 1
+        elseif s.name == "GitSignsDelete"       then act.delete       = act.delete + 1
+        elseif s.name == "GitSignsChangeDelete" then act.changedelete = act.changedelete + 1
+        elseif s.name == "GitSignsTopDelete"    then act.topdelete    = act.topdelete + 1
+        end
+      end
+
+      eq(signs, act, M.inspect(buf_signs))
+    end
+  end)
 end
 
 return M

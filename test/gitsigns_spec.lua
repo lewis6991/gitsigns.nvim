@@ -8,7 +8,6 @@ local command       = helpers.command
 local exec_capture  = helpers.exec_capture
 local feed          = helpers.feed
 local exec_lua      = helpers.exec_lua
-local eq            = helpers.eq
 local split         = helpers.split
 local get_buf_var   = helpers.curbufmeths.get_var
 local fn            = helpers.funcs
@@ -29,20 +28,9 @@ local match_lines   = helpers.match_lines
 local p             = helpers.p
 local setup         = helpers.setup
 local test_config   = helpers.test_config
+local check         = helpers.check
 
 local it = helpers.it(it)
-
-local function check_status(status)
-  wait(function()
-    eq(1, fn.exists('b:gitsigns_head'))
-    eq(status.head, get_buf_var('gitsigns_head'))
-    eq(status, get_buf_var("gitsigns_status_dict"))
-  end)
-end
-
-local function buf_var_exists(name)
-  return pcall(get_buf_var, name)
-end
 
 describe('gitsigns', function()
   local screen
@@ -78,14 +66,7 @@ describe('gitsigns', function()
   it('can run basic setup', function()
     screen:try_resize(60,6)
     setup()
-    screen:expect{grid=[[
-      ^                                                            |
-      {6:~                                                           }|
-      {6:~                                                           }|
-      {6:~                                                           }|
-      {6:~                                                           }|
-                                                                  |
-    ]]}
+    check { status = {}, signs = {} }
   end)
 
   it('index watcher works on a fresh repo', function()
@@ -109,25 +90,17 @@ describe('gitsigns', function()
       })
     end)
 
-    screen:expect{grid=[[
-      {3:+ }^This              |
-      {3:+ }is                |
-      {3:+ }a                 |
-      {3:+ }file              |
-      {3:+ }used              |
-                          |
-    ]]}
+    check {
+      status = {head='HEAD', added=18, changed=0, removed=0},
+      signs = {added=7}
+    }
 
     git{"add", test_file}
 
-    screen:expect{grid=[[
-      ^This                |
-      is                  |
-      a                   |
-      file                |
-      used                |
-                          |
-    ]]}
+    check {
+      status = {head='HEAD', added=0, changed=0, removed=0},
+      signs = {}
+    }
   end)
 
   it('can open files not in a git repo', function()
@@ -135,24 +108,10 @@ describe('gitsigns', function()
     setup(config)
     local tmpfile = os.tmpname()
     edit(tmpfile)
-    screen:expect{grid=[[
-      ^                                                            |
-      {6:~                                                           }|
-      {6:~                                                           }|
-      {6:~                                                           }|
-      {6:~                                                           }|
-                                                                  |
-    ]]}
+
     feed('iline<esc>')
+    helpers.sleep(10)
     command("write")
-    screen:expect{grid=([[
-      lin^e                                                        |
-      {6:~                                                           }|
-      {6:~                                                           }|
-      {6:~                                                           }|
-      {6:~                                                           }|
-      "%s" 1L, 5C written                            |
-    ]]):format(tmpfile)}
 
     match_debug_messages {
       "run_job: git --no-pager --version",
@@ -218,7 +177,7 @@ describe('gitsigns', function()
         "attach(1): Cannot resolve file in repo",
       }
 
-      check_status {head='master'}
+      check {status = {head='master'}}
     end)
 
     it('doesn\'t attach to non-existent files', function()
@@ -233,7 +192,7 @@ describe('gitsigns', function()
         "attach(1): Not a file",
       }
 
-      check_status {head='master'}
+      check {status = {head='master'}}
 
     end)
 
@@ -318,25 +277,17 @@ describe('gitsigns', function()
       -- Don't setup gitsigns until the repo has two commits
       setup(config)
 
-      screen:expect{
-        grid=[[
-          This                |
-          EDI^T                |
-          is                  |
-          < 19L, 103C written |
-        ]],
-        condition = function()
-          return fn.exists('#gitsigns') > 0
-        end,
+      check {
+        status = {head='master', added=0, changed=0, removed=0},
+        signs  = {}
       }
 
       command('Gitsigns change_base ~')
-      screen:expect[[
-        {1:  }This              |
-        {3:+ }EDI^T              |
-        {1:  }is                |
-        < 19L, 103C written |
-      ]]
+
+      check {
+        status = {head='master', added=1, changed=0, removed=0},
+        signs  = {added=1}
+      }
     end)
   end)
 
@@ -363,26 +314,10 @@ describe('gitsigns', function()
         feed("j")
         feed("ddx") -- Change delete
 
-        -- screen:snapshot_util()
-        screen:expect{grid=[[
-          {4:^ }is                |
-          {1:  }a                 |
-          {3:+ }                  |
-          {1:  }file              |
-          {2:~ }sed               |
-          {1:  }for               |
-          {4:_ }testing           |
-          {1:  }The               |
-          {2:% }^oesn't            |
-          {1:  }matter,           |
-          {1:  }it                |
-          {1:  }just              |
-          {1:  }needs             |
-          {1:  }to                |
-          {1:  }be                |
-          {1:  }static.           |
-                              |
-        ]]}
+        check {
+          status = {head='master', added=1, changed=2, removed=3},
+          signs  = {topdelete=1, changedelete=1, added=1, delete=1, changed=1}
+        }
 
       end)
 
@@ -396,95 +331,60 @@ describe('gitsigns', function()
         feed("cc")
         feed("EDIT<esc>")
 
-        -- screen:snapshot_util()
-        screen:expect{grid=[[
-          {1:  }This              |
-          {1:  }is                |
-          {1:  }a                 |
-          {2:~ }EDI^T              |
-          {1:  }used              |
-                              |
-        ]]}
+        check {
+          status = {head='master', added=0, changed=1, removed=0},
+          signs  = {changed=1}
+        }
 
         -- Stage
         feed("mhs")
 
-        screen:expect{grid=[[
-          {1:  }This              |
-          {1:  }is                |
-          {1:  }a                 |
-          {1:  }EDI^T              |
-          {1:  }used              |
-                              |
-        ]]}
-        check_status {head='master', added=0, changed=0, removed=0}
+        check {
+          status = {head='master', added=0, changed=0, removed=0},
+          signs  = {}
+        }
 
         -- Undo stage
         feed("mhu")
 
-        screen:expect{grid=[[
-          {1:  }This              |
-          {1:  }is                |
-          {1:  }a                 |
-          {2:~ }EDI^T              |
-          {1:  }used              |
-                              |
-        ]]}
-        check_status {head='master', added=0, changed=1, removed=0}
+        check {
+          status = {head='master', added=0, changed=1, removed=0},
+          signs  = {changed=1}
+        }
 
         -- Add multiple edits
         feed('gg')
         feed('cc')
         feed('That<esc>')
 
-        screen:expect{grid=[[
-          {2:~ }Tha^t              |
-          {1:  }is                |
-          {1:  }a                 |
-          {2:~ }EDIT              |
-          {1:  }used              |
-                              |
-        ]]}
-        check_status {head='master', added=0, changed=2, removed=0}
+        check {
+          status = {head='master', added=0, changed=2, removed=0},
+          signs  = {changed=2}
+        }
 
         -- Stage buffer
         feed("mhS")
 
-        screen:expect{grid=[[
-          {1:  }Tha^t              |
-          {1:  }is                |
-          {1:  }a                 |
-          {1:  }EDIT              |
-          {1:  }used              |
-                              |
-        ]]}
-        check_status {head='master', added=0, changed=0, removed=0}
+        check {
+          status = {head='master', added=0, changed=0, removed=0},
+          signs  = {}
+        }
 
         -- Unstage buffer
         feed("mhU")
 
-        screen:expect{grid=[[
-          {2:~ }Tha^t              |
-          {1:  }is                |
-          {1:  }a                 |
-          {2:~ }EDIT              |
-          {1:  }used              |
-                              |
-        ]]}
-        check_status {head='master', added=0, changed=2, removed=0}
+        check {
+          status = {head='master', added=0, changed=2, removed=0},
+          signs  = {changed=2}
+        }
 
         -- Reset
         feed("mhr")
 
-        screen:expect{grid=[[
-          {1:  }Thi^s              |
-          {1:  }is                |
-          {1:  }a                 |
-          {2:~ }EDIT              |
-          {1:  }used              |
-                              |
-        ]]}
-        check_status {head='master', added=0, changed=1, removed=0}
+        check {
+          status = {head='master', added=0, changed=1, removed=0},
+          signs  = {changed=1}
+        }
       end)
 
       it('can enable numhl', function()
@@ -559,14 +459,10 @@ describe('gitsigns', function()
 
         match_debug_messages(messages)
 
-        check_status {head='master', added=1, changed=0, removed=0}
-
-        screen:expect{grid=[[
-          {3:+ }^          |
-          {6:~           }|
-          {6:~           }|
-          <0C written |
-        ]]}
+        check {
+          status = {head='master', added=1, changed=0, removed=0},
+          signs  = {added=1}
+        }
 
       end)
 
@@ -576,27 +472,21 @@ describe('gitsigns', function()
 
         edit(newfile)
         feed("iline<esc>")
-        check_status {head='master'}
-        command("write")
-        check_status {head='master', added=1, changed=0, removed=0}
+        check{ status = {head='master'}}
 
-        -- screen:snapshot_util()
-        screen:expect{grid=[[
-          {3:+ }lin^e      |
-          {6:~           }|
-          {6:~           }|
-          <5C written |
-        ]]}
+        command("write")
+
+        check {
+          status = {head='master', added=1, changed=0, removed=0},
+          signs  = {added=1}
+        }
 
         feed('mhs') -- Stage the file (add file to index)
 
-        check_status {head='master', added=0, changed=0, removed=0}
-        screen:expect{grid=[[
-          lin^e        |
-          {6:~           }|
-          {6:~           }|
-          <5C written |
-        ]]}
+        check {
+          status = {head='master', added=0, changed=0, removed=0},
+          signs  = {}
+        }
 
       end)
 
@@ -609,32 +499,24 @@ describe('gitsigns', function()
         feed("iEDIT<esc>")
         command("write")
 
-        screen:expect{grid=[[
-          {3:+ }EDI^T      |
-          {6:~           }|
-          {6:~           }|
-          <5C written |
-        ]]}
+        check {
+          status = {head='master', added=1, changed=0, removed=0},
+          signs  = {added=1}
+        }
 
-        -- Stage
         git{"add", newfile}
 
-        screen:expect{grid=[[
-          EDI^T        |
-          {6:~           }|
-          {6:~           }|
-          <5C written |
-        ]]}
+        check {
+          status = {head='master', added=0, changed=0, removed=0},
+          signs  = {}
+        }
 
-        -- Reset
         git{"reset"}
 
-        screen:expect{grid=[[
-          {3:+ }EDI^T      |
-          {6:~           }|
-          {6:~           }|
-          <5C written |
-        ]]}
+        check {
+          status = {head='master', added=1, changed=0, removed=0},
+          signs  = {added=1}
+        }
 
       end)
 
@@ -653,56 +535,14 @@ describe('gitsigns', function()
         feed("j")
         feed("ddx") -- Change delete
 
-        screen:expect{grid=[[
-          {4:^ }is                |
-          {1:  }a                 |
-          {3:+ }                  |
-          {1:  }file              |
-          {2:~ }sed               |
-          {1:  }for               |
-          {4:_ }testing           |
-          {1:  }The               |
-          {2:% }^oesn't            |
-          {1:  }matter,           |
-          {1:  }it                |
-          {1:  }just              |
-          {1:  }needs             |
-          {1:  }to                |
-          {1:  }be                |
-          {1:  }static.           |
-                              |
-        ]]}
+        check {
+          status = {head='master', added=1, changed=2, removed=3},
+          signs  = {topdelete=1, added=1, changed=1, delete=1, changedelete=1}
+        }
 
         command('Gitsigns detach')
 
-        screen:expect{grid=[[
-          {1:  }is                |
-          {1:  }a                 |
-          {1:  }                  |
-          {1:  }file              |
-          {1:  }sed               |
-          {1:  }for               |
-          {1:  }testing           |
-          {1:  }The               |
-          {1:  }^oesn't            |
-          {1:  }matter,           |
-          {1:  }it                |
-          {1:  }just              |
-          {1:  }needs             |
-          {1:  }to                |
-          {1:  }be                |
-          {1:  }static.           |
-                              |
-        ]]}
-
-        assert(not buf_var_exists('gitsigns_head'),
-          'gitsigns_status_dict should not be defined')
-
-        assert(not buf_var_exists('gitsigns_status_dict'),
-          'gitsigns_head should not be defined')
-
-        assert(not buf_var_exists('gitsigns_status'),
-          'gitsigns_status should not be defined')
+        check { status = {}, signs = {} }
       end)
 
       it('can stages file with merge conflicts', function()
@@ -712,9 +552,9 @@ describe('gitsigns', function()
 
         -- Edit a file and commit it on main branch
         edit(test_file)
-        check_status {head='master', added=0, changed=0, removed=0}
+        check{ status = {head='master', added=0, changed=0, removed=0} }
         feed('iedit')
-        check_status {head='master', added=0, changed=1, removed=0}
+        check{ status = {head='master', added=0, changed=1, removed=0} }
         command("write")
         command("bdelete")
         git{'add', test_file}
@@ -724,9 +564,9 @@ describe('gitsigns', function()
         git{'checkout', '-B', 'abranch'}
         git{'reset', '--hard', 'HEAD~1'}
         edit(test_file)
-        check_status {head='abranch', added=0, changed=0, removed=0}
+        check{ status = {head='abranch', added=0, changed=0, removed=0} }
         feed('idiff')
-        check_status {head='abranch', added=0, changed=1, removed=0}
+        check{ status = {head='abranch', added=0, changed=1, removed=0} }
         command("write")
         command("bdelete")
         git{'add', test_file}
@@ -735,31 +575,17 @@ describe('gitsigns', function()
 
         -- test_file should have a conflict
         edit(test_file)
-        check_status {head='(rebasing)', added=4, changed=1, removed=0}
-        screen:expect{grid=[[
-          {2:~ }^<<<<<<< HEAD                          |
-          {3:+ }editThis                              |
-          {3:+ }=======                               |
-          {3:+ }idiffThis                             |
-          {3:+ }>>>>>>> {MATCH:.......} (commit on branch)    |
-          {1:  }is                                    |
-          {1:  }a                                     |
-          {7:-- INSERT --}                            |
-        ]]}
+        check {
+          status = {head='(rebasing)', added=4, changed=1, removed=0},
+          signs = {changed=1, added=4}
+        }
 
         exec_lua('require("gitsigns.actions").stage_hunk()')
 
-        check_status {head='(rebasing)', added=0, changed=0, removed=0}
-        screen:expect{grid=[[
-          {1:  }^<<<<<<< HEAD                          |
-          {1:  }editThis                              |
-          {1:  }=======                               |
-          {1:  }idiffThis                             |
-          {1:  }>>>>>>> {MATCH:.......} (commit on branch)    |
-          {1:  }is                                    |
-          {1:  }a                                     |
-          {7:-- INSERT --}                            |
-        ]]}
+        check {
+          status = {head='(rebasing)', added=0, changed=0, removed=0},
+          signs = {}
+        }
 
       end)
 
@@ -774,26 +600,18 @@ describe('gitsigns', function()
 
         edit(spacefile)
 
-        screen:expect{grid=[[
-          {3:+ }^spaces            |
-          {3:+ }in                |
-          {3:+ }file              |
-          {6:~                   }|
-          {6:~                   }|
-                              |
-        ]]}
+        check {
+          status = {head='master', added=3, removed=0, changed=0},
+          signs = {added=3}
+        }
 
         git{'add', spacefile}
         edit(spacefile)
 
-        screen:expect{grid=[[
-          {1:  }^spaces            |
-          {1:  }in                |
-          {1:  }file              |
-          {6:~                   }|
-          {6:~                   }|
-                              |
-        ]]}
+        check {
+          status = {head='master', added=0, removed=0, changed=0},
+          signs = {}
+        }
 
       end)
     end
