@@ -189,6 +189,10 @@ change_base({base})                                   *gitsigns.change_base()*
                   " Revert to original base
                   :Gitsigns change_base
 <
+
+                For a more complete list of ways to specify bases, see
+                |gitsigns-revision|.
+
 diffthis({base})                                         *gitsigns.diffthis()*
                 Perform a |vimdiff| on the given file with {base} if it is
                 given, or with the currently set base (index by default).
@@ -199,6 +203,10 @@ diffthis({base})                                         *gitsigns.diffthis()*
 
                   " Diff against the last commit
                   :Gitsigns diffthis ~1
+<
+
+                For a more complete list of ways to specify bases, see
+                |gitsigns-revision|.
 >
 get_actions()                                         *gitsigns.get_actions()*
                 Get all the available line specific actions for the current
@@ -541,3 +549,68 @@ debug_mode                                        *gitsigns-config-debug_mode*
 
       Print diagnostic messages.
 
+==============================================================================
+COMMAND                                                      *gitsigns-command*
+
+                                                                    *:Gitsigns*
+:Gitsigns {subcmd} {args}  Run a Gitsigns commands. {subcmd} can be any
+                           function documented in |gitsigns-functions|.
+                           {args} are processed as |<f-args>|.
+
+                           Note this command is equivalent to:
+                             `:lua require('gitsigns').{subcmd}({args})`
+
+                           Examples: >
+                             :Gitsigns diffthis HEAD~1
+                             :Gitsigns blame_line
+                             :Gitsigns toggle_signs
+                             :Gitsigns toggle_current_line_blame
+                             :Gitsigns change_base ~
+                             :Gitsigns reset_buffer
+
+==============================================================================
+SPECIFYING OBJECTS                          *gitsigns-object* *gitsigns-revision*
+
+Gitsigns objects are Git revisions as defined in the
+"SPECIFYING REVISIONS" section in the gitrevisions(7) man page. For commands that accept an
+optional base, the default is the file in the index. Examples:
+
+Object        Meaning ~
+@             Version of file in the commit referenced by @ aka HEAD
+main          Version of file in the commit referenced by main
+main^         Version of file in the parent of the commit referenced by main
+main~         "
+main~1        "
+main...other  Version of file in the merge base of main and other
+@^            Version of file in the parent of HEAD
+@~2           Version of file in the grandparent of HEAD
+92eb3dd       Version of file in the commit 92eb3dd
+:1            The file's common ancestor during a conflict
+:2            The alternate file in the target branch during a conflict
+
+==============================================================================
+STATUSLINE                                               *gitsigns-statusline*
+
+                                *b:gitsigns_status* *b:gitsigns_status_dict*
+The buffer variables `b:gitsigns_status` and `b:gitsigns_status_dict` are
+provided. `b:gitsigns_status` is formatted using `config.status_formatter`
+. `b:gitsigns_status_dict` is a dictionary with the keys `added`, `removed`,
+`changed` and `head`.
+
+Example:
+>
+    set statusline+=%{get(b:,'gitsigns_status','')}
+<
+                                                             *b:gitsigns_head*
+Use `b:gitsigns_head` to return the name of the current branch. If the current
+HEAD is detached then this will be an empty string.
+
+==============================================================================
+TEXT OBJECTS                                             *gitsigns-textobject*
+
+Since text objects are defined via keymaps, these are exposed and configurable
+via the config, see |gitsigns-config-keymaps|. The lua implementation is
+exposed through |gitsigns.select_hunk()|.
+
+------------------------------------------------------------------------------
+vim:tw=78:ts=8:ft=help:norl:
