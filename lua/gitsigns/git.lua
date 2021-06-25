@@ -83,6 +83,8 @@ local M = {BlameInfo = {}, Version = {}, Obj = {}, }
 
 
 
+
+
 local Obj = M.Obj
 
 local function parse_version(version)
@@ -282,13 +284,13 @@ Obj.update_file_info = function(self)
    return old_object_name ~= self.object_name
 end
 
-Obj.file_info = function(self)
+Obj.file_info = function(self, file)
    local results = self:command({
       'ls-files',
       '--stage',
       '--others',
       '--exclude-standard',
-      self.file,
+      file or self.file,
    })
 
    local relpath
@@ -395,6 +397,23 @@ Obj.stage_hunks = function(self, hunks, invert)
    }, {
       writer = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert),
    })
+end
+
+Obj.has_moved = function(self)
+   local out = self:command({ 'diff', '--name-status', '-C', '--cached' })
+   local orig_relpath = self.orig_relpath or self.relpath
+   for _, l in ipairs(out) do
+      local parts = vim.split(l, '%s+')
+      if #parts == 3 then
+         local orig, new = parts[2], parts[3]
+         if orig_relpath == orig then
+            self.orig_relpath = orig_relpath
+            self.relpath = new
+            self.file = self.toplevel .. '/' .. new
+            return new
+         end
+      end
+   end
 end
 
 Obj.new = function(file)

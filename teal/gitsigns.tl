@@ -27,6 +27,39 @@ local M: {string:function} = {}
 
 local namespace: integer
 
+local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: string)
+  local git_obj = bcache.git_obj
+  local do_update = false
+
+  local new_name = git_obj:has_moved()
+  if new_name then
+    dprint('File moved to '..new_name, bufnr)
+    git_obj.relpath = new_name
+    if not git_obj.orig_relpath then
+      git_obj.orig_relpath = old_relpath
+    end
+    do_update = true
+  elseif git_obj.orig_relpath then
+    local orig_file = git_obj.toplevel..util.path_sep..git_obj.orig_relpath
+    if git_obj:file_info(orig_file) then
+      dprint('Moved file reset', bufnr)
+      git_obj.relpath = git_obj.orig_relpath
+      git_obj.orig_relpath = nil
+      do_update = true
+    end
+  else
+    -- File removed from index, do nothing
+  end
+
+  if do_update then
+    git_obj.file = git_obj.toplevel..util.path_sep..git_obj.relpath
+    bcache.file = git_obj.file
+    bcache.git_obj:update_file_info()
+    scheduler()
+    api.nvim_buf_set_name(bufnr, bcache.file)
+  end
+end
+
 local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
   dprint('Watching index', bufnr, 'watch_index')
   local index = gitdir..util.path_sep..'index'
@@ -55,9 +88,18 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
     scheduler()
     Status:update_head(bufnr, git_obj.abbrev_head)
 
+    local was_tracked = git_obj.object_name ~= nil
+    local old_relpath = git_obj.relpath
+
     if not git_obj:update_file_info() then
       dprint('File not changed', bufnr, 'watcher_cb')
       return
+    end
+
+    if config.watch_index.follow_files and was_tracked and not git_obj.object_name then
+      -- File was tracked but is no longer tracked. Must of been removed or
+      -- moved. Check if it was moved and switch to it.
+      handle_moved(bufnr, bcache, old_relpath)
     end
 
     bcache.compare_text = nil -- Invalidate
