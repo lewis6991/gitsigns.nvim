@@ -556,6 +556,16 @@ yadm                                                    *gitsigns-config-yadm*
 
       yadm configuration.
 
+word_diff                                          *gitsigns-config-word_diff*
+      Type: `boolean`, Default: `false`
+
+      Highlight intra-line word differences in the buffer.
+
+      Uses the highlights:
+        • GitSignsAddLn
+        • GitSignsChangeLn
+        • GitSignsDeleteLn
+
 debug_mode                                        *gitsigns-config-debug_mode*
       Type: `boolean`, Default: `false`
 
