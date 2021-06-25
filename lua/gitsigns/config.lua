@@ -471,11 +471,16 @@ M.schema = {
     ]],
    },
 
-   _word_diff = {
+   word_diff = {
       type = 'boolean',
       default = false,
       description = [[
-      High intra-line word differences
+      Highlight intra-line word differences in the buffer.
+
+      Uses the highlights:
+        • GitSignsAddLn
+        • GitSignsChangeLn
+        • GitSignsDeleteLn
     ]],
    },
 

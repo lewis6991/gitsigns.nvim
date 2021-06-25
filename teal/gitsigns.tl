@@ -366,7 +366,7 @@ local setup = void(function(cfg: Config)
         manager.apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
 
         -- Returning false prevents the on_line callbacks
-        return config._word_diff
+        return config.word_diff
       end,
       on_line = function(_, _, bufnr: integer, row: integer)
         manager.apply_word_diff(bufnr, row)

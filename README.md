@@ -25,6 +25,7 @@ Super fast git decorations implemented purely in lua/teal.
 - Git blame a specific line using virtual text.
 - Hunk text object
 - Automatically follow files moved in the index.
+- Live intra-line word diff
 - Support for [yadm](https://yadm.io/)
 
 ## Requirements
@@ -108,7 +109,8 @@ require('gitsigns').setup {
     ['x ih'] = ':<C-U>lua require"gitsigns.actions".select_hunk()<CR>'
   },
   watch_index = {
-    interval = 1000
+    interval = 1000,
+    follow_files = true
   },
   current_line_blame = false,
   current_line_blame_delay = 1000,
@@ -116,6 +118,7 @@ require('gitsigns').setup {
   sign_priority = 6,
   update_debounce = 100,
   status_formatter = nil, -- Use default
+  word_diff = false,
   use_decoration_api = true,
   use_internal_diff = true,  -- If luajit is present
 }
