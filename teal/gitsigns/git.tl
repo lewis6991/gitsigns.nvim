@@ -64,6 +64,7 @@ local record M
     abbrev_head   : string
     username      : string
     relpath       : string
+    orig_relpath  : string -- Use for tracking moved files
     object_name   : string
     mode_bits     : string
     has_conflicts : boolean
@@ -75,9 +76,10 @@ local record M
     get_show             : function(Obj, string, string)
     get_show_text        : function(Obj, string): {string}, string
     run_blame            : function(Obj, {string}, number): M.BlameInfo
-    file_info            : function(Obj): string, string, string, boolean
+    file_info            : function(Obj, string): string, string, string, boolean
     ensure_file_in_index : function(Obj)
     stage_hunks          : function(Obj, {Hunk}, boolean)
+    has_moved            : function(Obj): string
     new                  : function(string): Obj
   end
 
@@ -282,13 +284,13 @@ Obj.update_file_info = function(self: Obj): boolean
   return old_object_name ~= self.object_name
 end
 
-Obj.file_info = function(self: Obj): string, string, string, boolean
+Obj.file_info = function(self: Obj, file: string): string, string, string, boolean
   local results = self:command({
     'ls-files',
     '--stage',
     '--others',
     '--exclude-standard',
-    self.file
+    file or self.file
   })
 
   local relpath: string
@@ -395,6 +397,23 @@ Obj.stage_hunks = function(self: Obj, hunks: {Hunk}, invert: boolean)
   }, {
     writer = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert)
   })
+end
+
+Obj.has_moved = function(self: Obj): string
+  local out = self:command{'diff', '--name-status', '-C', '--cached'}
+  local orig_relpath = self.orig_relpath or self.relpath
+  for _, l in ipairs(out) do
+    local parts = vim.split(l, '%s+')
+    if #parts == 3 then
+      local orig, new = parts[2], parts[3]
+      if orig_relpath == orig then
+        self.orig_relpath = orig_relpath
+        self.relpath = new
+        self.file = self.toplevel..'/'..new
+        return new
+      end
+    end
+  end
 end
 
 Obj.new = function(file: string): Obj

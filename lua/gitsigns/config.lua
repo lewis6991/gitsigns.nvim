@@ -58,6 +58,7 @@ local M = {Config = {SignsConfig = {}, watch_index = {}, yadm = {}, }, }
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -162,11 +163,21 @@ M.schema = {
 
    watch_index = {
       type = 'table',
-      default = { interval = 1000 },
+      default = {
+         interval = 1000,
+         follow_files = true,
+      },
       description = [[
       When opening a file, a libuv watcher is placed on the respective
       `.git/index` file to detect when changes happen to use as a trigger to
       update signs.
+
+      Fields:
+        • `interval`:
+            Interval the watcher waits between polls of `.git/index` is milliseconds.
+
+        • `follow_files`:
+            If a file is moved with `git mv`, switch the buffer to the new location.
     ]],
    },
 
