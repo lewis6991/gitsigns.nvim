@@ -6,7 +6,11 @@ local SchemaElem = {}
 
 
 
-local M = {Config = {SignsConfig = {}, watch_index = {}, yadm = {}, }, }
+local M = {Config = {SignsConfig = {}, watch_index = {}, current_line_blame_formatter_opts = {}, yadm = {}, }, }
+
+
+
+
 
 
 
@@ -370,6 +374,19 @@ M.schema = {
     ]],
    },
 
+   current_line_blame_formatter_opts = {
+      type = 'table',
+      deep_extend = true,
+      default = {
+         relative_time = false,
+      },
+      description = [[
+      Option override for the current line blame annotation. Available options:
+
+      - relative_time: boolean
+    ]],
+   },
+
    current_line_blame_position = {
       type = 'string',
       default = 'eol',
@@ -383,7 +400,7 @@ M.schema = {
 
    current_line_blame_formatter = {
       type = 'function',
-      default = function(name, blame_info)
+      default = function(name, blame_info, opts)
          if blame_info.author == name then
             blame_info.author = 'You'
          end
@@ -392,29 +409,45 @@ M.schema = {
          if blame_info.author == 'Not Committed Yet' then
             text = blame_info.author
          else
+            local date_time
+
+            if opts.relative_time then
+               date_time = require('gitsigns.util').get_relative_time(tonumber(blame_info['author_time']))
+            else
+               date_time = os.date('%Y-%m-%d', tonumber(blame_info['author_time']))
+            end
+
             text = string.format(
             '%s, %s - %s',
             blame_info.author,
-            os.date('%Y-%m-%d', tonumber(blame_info['author_time'])),
+            date_time,
             blame_info.summary)
 
          end
 
          return { { ' ' .. text, 'GitSignsCurrentLineBlame' } }
       end,
-      default_help = [[function(name, blame_info)
+      default_help = [[function(name, blame_info, opts)
       if blame_info.author == name then
         blame_info.author = 'You'
       end
 
-      local text
+      local text: string
       if blame_info.author == 'Not Committed Yet' then
         text = blame_info.author
       else
+        local date_time: string
+
+        if opts.relative_time then
+          date_time = require('gitsigns.util').get_relative_time(tonumber(blame_info['author_time']))
+        else
+          date_time = os.date('%Y-%m-%d', tonumber(blame_info['author_time']))
+        end
+
         text = string.format(
           '%s, %s - %s',
           blame_info.author,
-          os.date('%Y-%m-%d', tonumber(blame_info['author_time'])),
+          date_time,
           blame_info.summary
         )
       end

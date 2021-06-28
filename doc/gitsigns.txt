@@ -496,6 +496,17 @@ current_line_blame                        *gitsigns-config-current_line_blame*
 
       The highlight group used for the text is `GitSignsCurrentLineBlame`.
 
+current_line_blame_formatter_opts*gitsigns-config-current_line_blame_formatter_opts*
+      Type: `table[extended]`
+      Default: >
+        {
+            relative_time = false
+        }
+<
+      Option override for the current line blame annotation. Available options:
+
+      - relative_time: boolean
+
 current_line_blame_position      *gitsigns-config-current_line_blame_position*
       Type: `string`, Default: `"eol"`
 
@@ -507,19 +518,27 @@ current_line_blame_position      *gitsigns-config-current_line_blame_position*
 current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
       Type: `function`
       Default: >
-        function(name, blame_info)
+        function(name, blame_info, opts)
           if blame_info.author == name then
             blame_info.author = 'You'
           end
 
-          local text
+          local text: string
           if blame_info.author == 'Not Committed Yet' then
             text = blame_info.author
           else
+            local date_time: string
+
+            if opts.relative_time then
+              date_time = require('gitsigns.util').get_relative_time(tonumber(blame_info['author_time']))
+            else
+              date_time = os.date('%Y-%m-%d', tonumber(blame_info['author_time']))
+            end
+
             text = string.format(
               '%s, %s - %s',
               blame_info.author,
-              os.date('%Y-%m-%d', tonumber(blame_info['author_time'])),
+              date_time,
               blame_info.summary
             )
           end
@@ -642,3 +661,5 @@ exposed through |gitsigns.select_hunk()|.
 
 ------------------------------------------------------------------------------
 vim:tw=78:ts=8:ft=help:norl:
+
+
