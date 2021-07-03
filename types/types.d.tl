@@ -191,6 +191,7 @@ global record vim
     diffopt: string
     wrapscan: boolean
     updatetime: number
+    shortmess: string
   end
 
 

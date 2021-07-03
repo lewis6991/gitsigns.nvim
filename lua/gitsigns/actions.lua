@@ -26,6 +26,7 @@ local NavHunkOpts = {}
 
 
 
+
 local M = {}
 
 
@@ -283,9 +284,18 @@ local function nav_hunk(options)
       wrap = options.wrap
    end
 
-   local hunk = gs_hunks.find_nearest_hunk(line, hunks, options.forwards, wrap)
+   local hunk, index = gs_hunks.find_nearest_hunk(line, hunks, options.forwards, wrap)
+
+
+   local show_navigation_msg = not string.find(vim.o.shortmess, 'S')
+   if options.navigation_message ~= nil then
+      show_navigation_msg = options.navigation_message
+   end
 
    if hunk == nil then
+      if show_navigation_msg then
+         vim.api.nvim_echo({ { 'No more hunks', 'WarningMsg' } }, false, {})
+      end
       return
    end
 
@@ -296,6 +306,11 @@ local function nav_hunk(options)
          row = 1
       end
       api.nvim_win_set_cursor(0, { row, 0 })
+
+      if index ~= nil and show_navigation_msg then
+         vim.api.nvim_echo({ { string.format('Hunk %d of %d', index, #hunks), 'None' } }, false, {})
+      end
+
    end
 end
 
