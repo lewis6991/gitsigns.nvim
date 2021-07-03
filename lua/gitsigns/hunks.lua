@@ -188,11 +188,13 @@ end
 
 function M.find_nearest_hunk(lnum, hunks, forwards, wrap)
    local ret
+   local index
    if forwards then
       for i = 1, #hunks do
          local hunk = hunks[i]
          if hunk.start > lnum then
             ret = hunk
+            index = i
             break
          end
       end
@@ -201,14 +203,16 @@ function M.find_nearest_hunk(lnum, hunks, forwards, wrap)
          local hunk = hunks[i]
          if hunk.vend < lnum then
             ret = hunk
+            index = i
             break
          end
       end
    end
    if not ret and wrap then
-      ret = hunks[forwards and 1 or #hunks]
+      index = forwards and 1 or #hunks
+      ret = hunks[index]
    end
-   return ret
+   return ret, index
 end
 
 function M.extract_removed(hunk)
