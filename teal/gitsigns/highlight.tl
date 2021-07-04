@@ -52,7 +52,7 @@ end
 
 -- Setup a GitSign* highlight by deriving it from other potentially present
 -- highlights.
-local function setup_highlight0(hl_name: string)
+M.setup_highlight = function(hl_name: string)
   if not isGitSignHl(hl_name) then
     return
   end
@@ -73,7 +73,5 @@ local function setup_highlight0(hl_name: string)
 
   dprint(('Unable to setup highlight %s'):format(hl_name))
 end
-
-M.setup_highlight = vim.schedule_wrap(setup_highlight0) as function(string)
 
 return M

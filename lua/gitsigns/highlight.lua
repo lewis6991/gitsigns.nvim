@@ -52,7 +52,7 @@ end
 
 
 
-local function setup_highlight0(hl_name)
+M.setup_highlight = function(hl_name)
    if not isGitSignHl(hl_name) then
       return
    end
@@ -73,7 +73,5 @@ local function setup_highlight0(hl_name)
 
    dprint(('Unable to setup highlight %s'):format(hl_name))
 end
-
-M.setup_highlight = vim.schedule_wrap(setup_highlight0)
 
 return M
