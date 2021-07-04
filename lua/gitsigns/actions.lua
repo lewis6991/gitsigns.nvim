@@ -347,7 +347,7 @@ local function defer(duration, callback)
    return timer
 end
 
-M.blame_line = void(function()
+M.blame_line = void(function(full)
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then return end
@@ -364,27 +364,49 @@ M.blame_line = void(function()
       loading:close()
    end)
 
-   local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author_time']))
-   local lines = {
-      ('%s %s (%s):'):format(result.abbrev_sha, result.author, date),
-      result.summary,
-   }
+   local is_committed = tonumber('0x' .. result.sha) ~= 0
+   if is_committed then
+      local body = {}
+      if full then
+         body = bcache.git_obj:command({ 'show', '-s', '--format=%b', result.sha })
 
-   scheduler()
+         while body[#body] == '' do
+            body[#body] = nil
+         end
 
-   local _, pbufnr = popup.create(lines, config.preview_config)
+         if #body > 0 then
+            body = { '', unpack(body) }
+         end
+      end
 
-   local p1 = #result.abbrev_sha
-   local p2 = #result.author
-   local p3 = #date
+      local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author_time']))
 
-   local function add_highlight(hlgroup, line, start, length)
-      api.nvim_buf_add_highlight(pbufnr, -1, hlgroup, line, start, start + length)
+      local lines = {
+         ('%s %s (%s):'):format(result.abbrev_sha, result.author, date),
+         result.summary,
+         unpack(body),
+      }
+
+      scheduler()
+      local _, pbufnr = popup.create(lines, config.preview_config)
+
+      local p1 = #result.abbrev_sha
+      local p2 = #result.author
+      local p3 = #date
+
+      local function add_highlight(hlgroup, line, start, length)
+         api.nvim_buf_add_highlight(pbufnr, -1, hlgroup, line, start, start + length)
+      end
+
+      add_highlight('Directory', 0, 0, p1)
+      add_highlight('MoreMsg', 0, p1 + 1, p2)
+      add_highlight('Label', 0, p1 + p2 + 2, p3 + 2)
+   else
+      local lines = { result.author }
+      scheduler()
+      local _, pbufnr = popup.create(lines, config.preview_config)
+      api.nvim_buf_add_highlight(pbufnr, -1, 'MoreMsg', 0, 0, #result.author)
    end
-
-   add_highlight('Directory', 0, 0, p1)
-   add_highlight('MoreMsg', 0, p1 + 1, p2)
-   add_highlight('Label', 0, p1 + p2 + 2, p3 + 2)
 end)
 
 local function calc_base(base)
