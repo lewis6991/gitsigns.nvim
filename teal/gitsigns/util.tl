@@ -4,6 +4,7 @@ local gsd = require("gitsigns.debug")
 
 local record M
   path_sep: string
+  is_unix: boolean
   job_cnt: integer
 end
 
@@ -29,17 +30,17 @@ function M.get_jit_os(): string
   return
 end
 
-M.path_sep = (function(): string
-  local jit_os = M.get_jit_os()
-  if jit_os then
-    if jit_os == 'linux' or jit_os == 'osx' then
-      return '/'
-    else
-      return '\\'
-    end
-  else
-    return package.config:sub(1, 1)
+local jit_os: string
+
+if jit then
+  jit_os = jit.os:lower()
+end
+
+M.is_unix = (function(): boolean
+  if jit_os == 'linux' or jit_os == 'osx' then
+    return true
   end
+  return false
 end)()
 
 function M.dirname(file: string): string
@@ -52,6 +53,23 @@ function M.file_lines(file: string): {string}
     text[#text+1] = line
   end
   return text
+end
+
+M.path_sep = (function(): string
+  if jit_os then
+    if M.is_unix then
+      return '/'
+    end
+    return '\\'
+  end
+  return package.config:sub(1, 1)
+end)()
+
+function M.tmpname(): string
+  if M.is_unix then
+    return os.tmpname()
+  end
+  return vim.fn.tempname()
 end
 
 return M
