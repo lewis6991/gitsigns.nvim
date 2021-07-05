@@ -7,6 +7,7 @@ local M = {}
 
 
 
+
 M.job_cnt = 0
 
 function M.path_exists(path)
@@ -29,17 +30,17 @@ function M.get_jit_os()
    return
 end
 
-M.path_sep = (function()
-   local jit_os = M.get_jit_os()
-   if jit_os then
-      if jit_os == 'linux' or jit_os == 'osx' then
-         return '/'
-      else
-         return '\\'
-      end
-   else
-      return package.config:sub(1, 1)
+local jit_os
+
+if jit then
+   jit_os = jit.os:lower()
+end
+
+M.is_unix = (function()
+   if jit_os == 'linux' or jit_os == 'osx' then
+      return true
    end
+   return false
 end)()
 
 function M.dirname(file)
@@ -52,6 +53,23 @@ function M.file_lines(file)
       text[#text + 1] = line
    end
    return text
+end
+
+M.path_sep = (function()
+   if jit_os then
+      if M.is_unix then
+         return '/'
+      end
+      return '\\'
+   end
+   return package.config:sub(1, 1)
+end)()
+
+function M.tmpname()
+   if M.is_unix then
+      return os.tmpname()
+   end
+   return vim.fn.tempname()
 end
 
 return M

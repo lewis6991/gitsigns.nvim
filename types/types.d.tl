@@ -181,6 +181,7 @@ global record vim
     sign_undefine: function(string): number
     strdisplaywidth: function(string, integer): integer
     stridx: function(haystack: string, needle: string, start: integer): integer
+    tempname: function(): string
   end
 
   cmd: function(string): any

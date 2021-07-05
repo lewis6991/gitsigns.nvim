@@ -194,7 +194,10 @@ local get_repo_info = function(path, cmd)
 end
 
 local function write_to_file(path, text)
-   local f = io.open(path, 'wb')
+   local f, err = io.open(path, 'wb')
+   if f == nil then
+      error(err)
+   end
    for _, l in ipairs(text) do
       f:write(l)
       f:write('\n')
@@ -209,7 +212,12 @@ M.run_diff = function(
 
    local results = {}
 
-   local buffile = os.tmpname() .. '_buf'
+   if not util.is_unix then
+
+      a.util.scheduler()
+   end
+
+   local buffile = util.tmpname() .. '_buf'
    write_to_file(buffile, text)
 
 
@@ -332,7 +340,10 @@ end
 Obj.get_show = function(self, object, output_file)
 
 
-   local outf = io.open(output_file, 'wb')
+   local outf, err = io.open(output_file, 'wb')
+   if outf == nil then
+      error(err)
+   end
    self:command({ 'show', object }, {
       supress_stderr = true,
       on_stdout = function(_, line)
