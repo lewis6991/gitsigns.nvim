@@ -113,6 +113,10 @@ next_hunk({opts})                                           *gitsigns.next_hunk(
                             • {wrap}: (boolean)
                               Whether to loop around file or not. Defaults
                               to the value 'wrapscan'
+                            • {navigation_message}: (boolean)
+                              Whether to show navigation messages or not.
+                              Looks at 'shortmess' for default behaviour.
+ 
 
 prev_hunk({opts})                                       *gitsigns.prev_hunk()*
                 Jump to the previous hunk in the current buffer. Respects
