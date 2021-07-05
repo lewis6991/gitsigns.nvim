@@ -194,7 +194,10 @@ local get_repo_info = function(path: string, cmd: string): string,string,string
 end
 
 local function write_to_file(path: string, text: {string})
-  local f = io.open(path, 'wb')
+  local f, err = io.open(path, 'wb')
+  if f == nil then
+    error(err)
+  end
   for _, l in ipairs(text) do
     f:write(l)
     f:write('\n')
@@ -209,7 +212,12 @@ M.run_diff = function(
 ): {Hunk}
   local results: {Hunk} = {}
 
-  local buffile = os.tmpname()..'_buf'
+  if not util.is_unix then
+    -- tmpname must not be called in a callback on windows
+    a.util.scheduler()
+  end
+
+  local buffile = util.tmpname()..'_buf'
   write_to_file(buffile, text)
 
   -- Taken from gitgutter, diff.vim:
@@ -332,7 +340,10 @@ end
 Obj.get_show = function(self: Obj, object: string, output_file: string)
   -- On windows 'w' mode use \r\n instead of \n, see:
   -- https://stackoverflow.com/a/43967013
-  local outf = io.open(output_file, 'wb')
+  local outf, err = io.open(output_file, 'wb')
+  if outf == nil then
+    error(err)
+  end
   self:command({'show', object}, {
     supress_stderr = true,
     on_stdout = function(_, line: string)

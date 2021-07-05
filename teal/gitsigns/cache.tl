@@ -60,7 +60,7 @@ end
 CacheEntry.new = function(o: CacheEntry): CacheEntry
   o.hunks        = o.hunks        or {}
   o.staged_diffs = o.staged_diffs or {}
-  o.compare_file = o.compare_file or os.tmpname()
+  o.compare_file = o.compare_file or util.tmpname()
   return setmetatable(o, {__index = CacheEntry})
 end
 
