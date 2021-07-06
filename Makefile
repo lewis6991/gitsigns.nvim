@@ -7,8 +7,10 @@ INIT_LUAROCKS := eval $$(luarocks --lua-version=5.1 path) &&
 
 .DEFAULT_GOAL := build
 
+NEOVIM_BRANCH := master
+
 neovim:
-	git clone --depth 1 https://github.com/neovim/neovim
+	git clone --depth 1 https://github.com/neovim/neovim --branch $(NEOVIM_BRANCH)
 	make -C $@
 
 plenary.nvim:
