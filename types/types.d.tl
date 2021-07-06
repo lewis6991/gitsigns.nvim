@@ -200,6 +200,10 @@ global record vim
     diff: boolean
   end
 
+  record v
+    vim_did_enter: integer
+  end
+
   record lsp
     record util
       close_preview_autocmd: function ({string}, number)
