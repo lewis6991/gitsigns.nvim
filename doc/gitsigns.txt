@@ -116,7 +116,7 @@ next_hunk({opts})                                           *gitsigns.next_hunk(
                             • {navigation_message}: (boolean)
                               Whether to show navigation messages or not.
                               Looks at 'shortmess' for default behaviour.
- 
+
 
 prev_hunk({opts})                                       *gitsigns.prev_hunk()*
                 Jump to the previous hunk in the current buffer. Respects
@@ -364,7 +364,7 @@ watch_index                                      *gitsigns-config-watch_index*
       `.git/index` file to detect when changes happen to use as a trigger to
       update signs.
 
-      Fields:
+      Fields: ~
         • `interval`:
             Interval the watcher waits between polls of `.git/index` is milliseconds.
 
@@ -496,24 +496,29 @@ current_line_blame                        *gitsigns-config-current_line_blame*
 
       The highlight group used for the text is `GitSignsCurrentLineBlame`.
 
-current_line_blame_formatter_opts*gitsigns-config-current_line_blame_formatter_opts*
+current_line_blame_formatter_opts
+                           *gitsigns-config-current_line_blame_formatter_opts*
       Type: `table[extended]`
       Default: >
         {
             relative_time = false
         }
 <
-      Option override for the current line blame annotation. Available options:
+      Options for the current line blame annotation formatter.
 
-      - relative_time: boolean
+      Fields: ~
+        • relative_time: boolean
 
 current_line_blame_position      *gitsigns-config-current_line_blame_position*
       Type: `string`, Default: `"eol"`
 
-        Blame annotation position. Available options:
-        - eol: right after eol character (default).
-        - overlay: display over the specified column, without shifting the underlying text.
-        - right_align: display right aligned in the window.
+        Blame annotation position.
+
+        Available values:
+          `eol`         Right after eol character.
+          `overlay`     Display over the specified column, without shifting
+                      the underlying text.
+          `right_align` Display right aligned in the window.
 
 current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
       Type: `function`
@@ -523,11 +528,11 @@ current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
             blame_info.author = 'You'
           end
 
-          local text: string
+          local text
           if blame_info.author == 'Not Committed Yet' then
             text = blame_info.author
           else
-            local date_time: string
+            local date_time
 
             if opts.relative_time then
               date_time = require('gitsigns.util').get_relative_time(tonumber(blame_info['author_time']))
@@ -535,41 +540,42 @@ current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
               date_time = os.date('%Y-%m-%d', tonumber(blame_info['author_time']))
             end
 
-            text = string.format(
-              '%s, %s - %s',
-              blame_info.author,
-              date_time,
-              blame_info.summary
-            )
+            text = string.format('%s, %s - %s', blame_info.author, date_time, blame_info.summary)
           end
 
           return {{' '..text, 'GitSignsCurrentLineBlame'}}
         end
 <
       Function used to format the virtual text of
-      |gitsigns-config-current_line_blame|. The first argument {name} is the
-      git user name returned from: >
-        git config user.name
-<
-      The second argument {blame_info} is a table with the following keys:
-      - abbrev_sha: string
-      - orig_lnum: integer
-      - final_lnum: integer
-      - author: string
-      - author_mail: string
-      - author_time: integer
-      - author_tz: string
-      - committer: string
-      - committer_mail: string
-      - committer_time: integer
-      - committer_tz: string
-      - summary: string
-      - previous: string
-      - filename: string
+      |gitsigns-config-current_line_blame|.
 
-      Note that the keys map onto the output of: >
-        git blame --line-porcelain
-<
+      Parameters: ~
+        {name}       Git user name returned from `git config user.name` .
+        {blame_info} Table with the following keys:
+                       • `abbrev_sha`: string
+                       • `orig_lnum`: integer
+                       • `final_lnum`: integer
+                       • `author`: string
+                       • `author_mail`: string
+                       • `author_time`: integer
+                       • `author_tz`: string
+                       • `committer`: string
+                       • `committer_mail`: string
+                       • `committer_time`: integer
+                       • `committer_tz`: string
+                       • `summary`: string
+                       • `previous`: string
+                       • `filename`: string
+
+                     Note that the keys map onto the output of:
+                       `git blame --line-porcelain`
+
+        {opts}       Passed directly from
+                     |gitsigns-config-current_line_blame_formatter_opts|.
+
+      Return: ~
+        The result of this function is passed directly to the `opts.virt_text`
+        field of |nvim_buf_set_extmark|.
 
 current_line_blame_delay            *gitsigns-config-current_line_blame_delay*
       Type: `number`, Default: `1000`
@@ -594,7 +600,8 @@ word_diff                                          *gitsigns-config-word_diff*
 debug_mode                                        *gitsigns-config-debug_mode*
       Type: `boolean`, Default: `false`
 
-      Print diagnostic messages.
+      Enables debug logging and makes the following functions
+      available: `dump_cache`, `debug_messages`, `clear_debug`.
 
 ==============================================================================
 COMMAND                                                      *gitsigns-command*
@@ -618,9 +625,9 @@ COMMAND                                                      *gitsigns-command*
 ==============================================================================
 SPECIFYING OBJECTS                          *gitsigns-object* *gitsigns-revision*
 
-Gitsigns objects are Git revisions as defined in the
-"SPECIFYING REVISIONS" section in the gitrevisions(7) man page. For commands that accept an
-optional base, the default is the file in the index. Examples:
+Gitsigns objects are Git revisions as defined in the "SPECIFYING REVISIONS"
+section in the gitrevisions(7) man page. For commands that accept an optional
+base, the default is the file in the index. Examples:
 
 Object        Meaning ~
 @             Version of file in the commit referenced by @ aka HEAD
@@ -638,7 +645,7 @@ main...other  Version of file in the merge base of main and other
 ==============================================================================
 STATUSLINE                                               *gitsigns-statusline*
 
-                                *b:gitsigns_status* *b:gitsigns_status_dict*
+                                    *b:gitsigns_status* *b:gitsigns_status_dict*
 The buffer variables `b:gitsigns_status` and `b:gitsigns_status_dict` are
 provided. `b:gitsigns_status` is formatted using `config.status_formatter`
 . `b:gitsigns_status_dict` is a dictionary with the keys `added`, `removed`,
