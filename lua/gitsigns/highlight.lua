@@ -66,7 +66,14 @@ M.setup_highlight = function(hl_name)
    for _, d in ipairs(hls[hl_name]) do
       if is_hl_set(d) then
          dprint(('Deriving %s from %s'):format(hl_name, d))
-         vim.cmd(('highlight link %s %s'):format(hl_name, d))
+         local hl_cmd = ('highlight link %s %s'):format(hl_name, d)
+
+
+         if vim.v.vim_did_enter == 1 then
+            vim.cmd(hl_cmd)
+         else
+            vim.cmd(('autocmd VimEnter * ++once %s'):format(hl_cmd))
+         end
          return
       end
    end
