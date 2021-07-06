@@ -19,6 +19,8 @@ jobs:
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    env:
+      NEOVIM_BRANCH: v0.5.0
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -61,8 +63,14 @@ jobs:
       - name: Check lua files are built from latest teal
         run: make tl-ensure
 
+      - name: Cache neovim
+        uses: actions/cache@v2
+        with:
+          path: neovim
+          key: build-${{env.NEOVIM_BRANCH}}
+
       - name: Build Neovim
-        run: make neovim
+        run: make neovim NEOVIM_BRANCH=$NEOVIM_BRANCH
 
       - name: Run Test
         run: make test
