@@ -132,7 +132,12 @@ local function gen_config_doc()
   for _, k in ipairs(get_ordered_schema_keys()) do
     local v = config.schema[k]
     local t = ('*gitsigns-config-%s*'):format(k)
-    out(('%-30s%48s'):format(k, t))
+    if #k + #t < 80 then
+      out(('%-29s %48s'):format(k, t))
+    else
+      out(('%-29s'):format(k))
+      out(('%78s'):format(t))
+    end
 
     local d
     if v.default_help ~= nil then

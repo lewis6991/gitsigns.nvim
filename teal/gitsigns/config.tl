@@ -178,7 +178,7 @@ M.schema = {
       `.git/index` file to detect when changes happen to use as a trigger to
       update signs.
 
-      Fields:
+      Fields: ~
         • `interval`:
             Interval the watcher waits between polls of `.git/index` is milliseconds.
 
@@ -381,9 +381,10 @@ M.schema = {
         relative_time = false
     },
     description = [[
-      Option override for the current line blame annotation. Available options:
+      Options for the current line blame annotation formatter.
 
-      - relative_time: boolean
+      Fields: ~
+        • relative_time: boolean
     ]]
   },
 
@@ -391,10 +392,13 @@ M.schema = {
       type = 'string',
       default = 'eol',
       description = [[
-        Blame annotation position. Available options:
-        - eol: right after eol character (default).
-        - overlay: display over the specified column, without shifting the underlying text.
-        - right_align: display right aligned in the window.
+        Blame annotation position.
+
+        Available values:
+          `eol`         Right after eol character.
+          `overlay`     Display over the specified column, without shifting
+                      the underlying text.
+          `right_align` Display right aligned in the window.
     ]],
    },
 
@@ -417,12 +421,7 @@ M.schema = {
           date_time = os.date('%Y-%m-%d', tonumber(blame_info['author_time']))
         end
 
-        text = string.format(
-          '%s, %s - %s',
-          blame_info.author,
-          date_time,
-          blame_info.summary
-        )
+        text = string.format('%s, %s - %s', blame_info.author, date_time, blame_info.summary)
       end
 
       return {{' '..text, 'GitSignsCurrentLineBlame'}}
@@ -432,11 +431,11 @@ M.schema = {
         blame_info.author = 'You'
       end
 
-      local text: string
+      local text
       if blame_info.author == 'Not Committed Yet' then
         text = blame_info.author
       else
-        local date_time: string
+        local date_time
 
         if opts.relative_time then
           date_time = require('gitsigns.util').get_relative_time(tonumber(blame_info['author_time']))
@@ -444,41 +443,42 @@ M.schema = {
           date_time = os.date('%Y-%m-%d', tonumber(blame_info['author_time']))
         end
 
-        text = string.format(
-          '%s, %s - %s',
-          blame_info.author,
-          date_time,
-          blame_info.summary
-        )
+        text = string.format('%s, %s - %s', blame_info.author, date_time, blame_info.summary)
       end
 
       return {{' '..text, 'GitSignsCurrentLineBlame'}}
     end]],
     description = [[
       Function used to format the virtual text of
-      |gitsigns-config-current_line_blame|. The first argument {name} is the
-      git user name returned from: >
-        git config user.name
-<
-      The second argument {blame_info} is a table with the following keys:
-      - abbrev_sha: string
-      - orig_lnum: integer
-      - final_lnum: integer
-      - author: string
-      - author_mail: string
-      - author_time: integer
-      - author_tz: string
-      - committer: string
-      - committer_mail: string
-      - committer_time: integer
-      - committer_tz: string
-      - summary: string
-      - previous: string
-      - filename: string
+      |gitsigns-config-current_line_blame|.
 
-      Note that the keys map onto the output of: >
-        git blame --line-porcelain
-<
+      Parameters: ~
+        {name}       Git user name returned from `git config user.name` .
+        {blame_info} Table with the following keys:
+                       • `abbrev_sha`: string
+                       • `orig_lnum`: integer
+                       • `final_lnum`: integer
+                       • `author`: string
+                       • `author_mail`: string
+                       • `author_time`: integer
+                       • `author_tz`: string
+                       • `committer`: string
+                       • `committer_mail`: string
+                       • `committer_time`: integer
+                       • `committer_tz`: string
+                       • `summary`: string
+                       • `previous`: string
+                       • `filename`: string
+
+                     Note that the keys map onto the output of:
+                       `git blame --line-porcelain`
+
+        {opts}       Passed directly from
+                     |gitsigns-config-current_line_blame_formatter_opts|.
+
+      Return: ~
+        The result of this function is passed directly to the `opts.virt_text`
+        field of |nvim_buf_set_extmark|.
     ]]
   },
 
@@ -533,7 +533,8 @@ M.schema = {
     type = 'boolean',
     default = false,
     description = [[
-      Print diagnostic messages.
+      Enables debug logging and makes the following functions
+      available: `dump_cache`, `debug_messages`, `clear_debug`.
     ]]
   }
 }
