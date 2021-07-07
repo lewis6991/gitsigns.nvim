@@ -351,7 +351,15 @@ local setup = void(function(cfg)
 
    Status.formatter = config.status_formatter
 
-   manager.setup_signs_and_highlights()
+
+
+
+   if vim.v.vim_did_enter == 1 then
+      manager.setup_signs_and_highlights()
+   else
+      vim.cmd([[autocmd VimEnter * ++once lua require('gitsigns.manager').setup_signs_and_highlights()]])
+   end
+
    setup_command()
 
    if config.use_decoration_api then
