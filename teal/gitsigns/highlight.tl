@@ -66,14 +66,7 @@ M.setup_highlight = function(hl_name: string)
   for _, d in ipairs(hls[hl_name as GitSignHl]) do
     if is_hl_set(d) then
       dprint(('Deriving %s from %s'):format(hl_name, d))
-      local hl_cmd = ('highlight default link %s %s'):format(hl_name, d)
-      -- Run highlight commands in an autocmd so they are run after any `syntax
-      -- clear` commands triggered by colorschemes.
-      if vim.v.vim_did_enter == 1 then
-        vim.cmd(hl_cmd)
-      else
-        vim.cmd(('autocmd VimEnter * ++once %s'):format(hl_cmd))
-      end
+      vim.cmd(('highlight default link %s %s'):format(hl_name, d))
       return
     end
   end

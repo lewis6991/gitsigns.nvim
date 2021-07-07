@@ -351,7 +351,15 @@ local setup = void(function(cfg: Config)
 
   Status.formatter = config.status_formatter as function(Status.StatusObj): string
 
-  manager.setup_signs_and_highlights()
+  -- Make sure highlights are setup on or after VimEnter so the colorscheme is
+  -- loaded. Do not set them up with vim.schedule as this removes the intro
+  -- message.
+  if vim.v.vim_did_enter == 1 then
+    manager.setup_signs_and_highlights()
+  else
+    vim.cmd[[autocmd VimEnter * ++once lua require('gitsigns.manager').setup_signs_and_highlights()]]
+  end
+
   setup_command()
 
   if config.use_decoration_api then
