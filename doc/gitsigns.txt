@@ -245,6 +245,9 @@ toggle_numhl()                                       *gitsigns.toggle_numhl()*
 toggle_linehl()                                     *gitsigns.toggle_linehl()*
                 Toggle |gitsigns-config-linehl|
 
+toggle_word_diff()                               *gitsigns.toggle_word_diff()*
+                Toggle |gitsigns-config-word_diff|
+
 toggle_current_line_blame()             *gitsigns.toggle_current_line_blame()*
                 Toggle |gitsigns-config-current_line_blame|
 
