@@ -52,6 +52,7 @@ local record M
   toggle_signs       : function()
   toggle_numhl       : function()
   toggle_linehl      : function()
+  toggle_word_diff   : function()
   toggle_current_line_blame : function()
 end
 
@@ -547,6 +548,11 @@ end
 
 M.toggle_linehl = function()
   config.linehl = not config.linehl
+  M.refresh()
+end
+
+M.toggle_word_diff = function()
+  config.word_diff = not config.word_diff
   M.refresh()
 end
 
