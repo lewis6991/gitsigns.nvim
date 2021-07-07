@@ -382,25 +382,21 @@ M.blame_line = void(function(full: boolean)
 
   local is_committed = tonumber('0x'..result.sha) ~= 0
   if is_committed then
-    local body = {}
+    local commit_message = {}
     if full then
-      body = bcache.git_obj:command({'show', '-s', '--format=%b', result.sha})
-
-      while body[#body] == '' do
-        body[#body] = nil
-      end
-
-      if #body > 0 then
-        body = {'', unpack(body)}
-      end
+       commit_message = bcache.git_obj:command({ 'show', '-s', '--format=%B', result.sha })
+       while commit_message[#commit_message] == '' do
+          commit_message[#commit_message] = nil
+       end
+    else
+       commit_message = {result.summary}
     end
 
     local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author_time']))
 
     local lines = {
       ('%s %s (%s):'):format(result.abbrev_sha, result.author, date),
-      result.summary,
-      unpack(body)
+      unpack(commit_message)
     }
 
     scheduler()
