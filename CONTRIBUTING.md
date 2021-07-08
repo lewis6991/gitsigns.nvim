@@ -78,3 +78,12 @@ require('lspconfig').diagnosticls.setup{
 }
 ```
 
+## [null-ls.nvim](https://github.com/jose-elias-alvarez/null-ls.nvim) config for teal
+
+```
+local null_ls = require("null-ls")
+
+null_ls.setup {sources = {
+  null_ls.builtins.diagnostics.teal
+}}
+```
