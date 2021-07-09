@@ -56,7 +56,7 @@ local record M
   toggle_current_line_blame : function()
 end
 
-local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk
+local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk, integer
   bufnr = bufnr or current_buf()
   hunks = hunks or cache[bufnr].hunks
 
@@ -307,6 +307,9 @@ local function nav_hunk(options: NavHunkOpts)
       row = 1
     end
     api.nvim_win_set_cursor(0, {row, 0})
+    if pcall(api.nvim_buf_get_var, 0, '_gitsigns_preview_open') then
+      vim.schedule(M.preview_hunk)
+    end
 
     if index ~= nil and show_navigation_msg then
         vim.api.nvim_echo({{string.format('Hunk %d of %d', index, #hunks), 'None'}}, false, {})
@@ -330,16 +333,30 @@ end
 local ns = api.nvim_create_namespace('gitsigns')
 
 M.preview_hunk = function()
-  local hunk = get_cursor_hunk()
+  local cbuf = current_buf()
+  local bcache = cache[cbuf]
+  local hunk, index = get_cursor_hunk(cbuf, bcache.hunks)
+
   if not hunk then return end
 
-  local _, bufnr = popup.create(hunk.lines, config.preview_config)
+  local lines = {
+    ('Hunk %d of %d'):format(index, #bcache.hunks),
+    unpack(hunk.lines)
+  }
+
+  local _, bufnr = popup.create(lines, config.preview_config)
   api.nvim_buf_set_option(bufnr, 'filetype', 'diff')
 
+  api.nvim_buf_add_highlight(bufnr, -1, 'Title', 0, 0, -1)
+
+  api.nvim_buf_set_var(cbuf, '_gitsigns_preview_open', true)
+  vim.cmd[[autocmd CursorMoved,CursorMovedI <buffer> ++once unlet b:_gitsigns_preview_open]]
+
   local regions = require('gitsigns.diff').run_word_diff(hunk.lines)
+  local offset = #lines - #hunk.lines
   for _, region in ipairs(regions) do
     local line, scol, ecol = region[1], region[3], region[4]
-    api.nvim_buf_set_extmark(bufnr as integer, ns, line-1, scol, {
+    api.nvim_buf_set_extmark(bufnr as integer, ns, line + offset - 1, scol, {
       end_col = ecol,
       hl_group = 'TermCursor'
     })

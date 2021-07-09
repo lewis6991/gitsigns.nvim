@@ -175,13 +175,13 @@ function M.get_summary(hunks, head)
 end
 
 function M.find_hunk(lnum, hunks)
-   for _, hunk in ipairs(hunks) do
+   for i, hunk in ipairs(hunks) do
       if lnum == 1 and hunk.start == 0 and hunk.vend == 0 then
-         return hunk
+         return hunk, i
       end
 
       if hunk.start <= lnum and hunk.vend >= lnum then
-         return hunk
+         return hunk, i
       end
    end
 end
