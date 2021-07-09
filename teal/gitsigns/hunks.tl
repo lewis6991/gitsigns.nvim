@@ -174,21 +174,21 @@ function M.get_summary(hunks: {Hunk}, head: string): StatusObj
   return status
 end
 
-function M.find_hunk(lnum: number, hunks: {Hunk}): Hunk
-  for _, hunk in ipairs(hunks) do
+function M.find_hunk(lnum: number, hunks: {Hunk}): Hunk, integer
+  for i, hunk in ipairs(hunks) do
     if lnum == 1 and hunk.start == 0 and hunk.vend == 0 then
-      return hunk
+      return hunk, i
     end
 
     if hunk.start <= lnum and hunk.vend >= lnum then
-      return hunk
+      return hunk, i
     end
   end
 end
 
-function M.find_nearest_hunk(lnum: number, hunks: {Hunk}, forwards: boolean, wrap: boolean): Hunk, number
+function M.find_nearest_hunk(lnum: number, hunks: {Hunk}, forwards: boolean, wrap: boolean): Hunk, integer
   local ret: Hunk
-  local index: number
+  local index: integer
   if forwards then
     for i = 1, #hunks do
       local hunk = hunks[i]
