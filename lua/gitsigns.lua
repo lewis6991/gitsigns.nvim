@@ -25,6 +25,17 @@ local current_buf = api.nvim_get_current_buf
 
 local M = {}
 
+
+
+
+
+
+
+
+
+
+
+
 local namespace
 
 local handle_moved = function(bufnr, bcache, old_relpath)
@@ -115,7 +126,7 @@ end
 
 
 
-local function detach(bufnr, keep_signs)
+M.detach = function(bufnr, keep_signs)
    bufnr = bufnr or current_buf()
    dprint('Detached', bufnr)
    local bcache = cache[bufnr]
@@ -134,9 +145,9 @@ local function detach(bufnr, keep_signs)
    cache:destroy(bufnr)
 end
 
-local function detach_all()
+M.detach_all = function()
    for k, _ in pairs(cache) do
-      detach(k)
+      M.detach(k)
    end
 end
 
@@ -177,9 +188,7 @@ local function in_git_dir(file)
    return false
 end
 
-local attach = function(cbuf)
-   scheduler()
-   cbuf = cbuf or current_buf()
+local attach0 = function(cbuf)
    if cache[cbuf] then
       dprint('Already attached', cbuf, 'attach')
       return
@@ -280,7 +289,7 @@ local attach = function(cbuf)
          manager.update_debounced(buf)
       end,
       on_detach = function(_, buf)
-         detach(buf, true)
+         M.detach(buf, true)
       end,
    })
 
@@ -290,7 +299,25 @@ local attach = function(cbuf)
 end
 
 
-local function _complete(arglead, line)
+
+
+local attach_running = {}
+
+local attach = function(cbuf)
+   cbuf = cbuf or current_buf()
+   if attach_running[cbuf] then
+      dprint('Attach in progress', cbuf, 'attach')
+      return
+   end
+   attach_running[cbuf] = true
+   attach0(cbuf)
+   attach_running[cbuf] = nil
+end
+
+local M0 = M
+
+
+M._complete = function(arglead, line)
    local n = #vim.split(line, '%s+')
 
    local matches = {}
@@ -306,20 +333,20 @@ local function _complete(arglead, line)
       end
 
       get_matches(require('gitsigns.actions'))
-      get_matches(M)
+      get_matches(M0)
    end
    return matches
 end
 
-local function _run_func(range, func, ...)
+M._run_func = function(range, func, ...)
    local actions = require('gitsigns.actions')
    actions._set_user_range(range)
    if type(actions[func]) == 'function' then
       actions[func](...)
       return
    end
-   if type(M[func]) == 'function' then
-      M[func](...)
+   if type(M0[func]) == 'function' then
+      M0[func](...)
       return
    end
 end
@@ -335,7 +362,7 @@ local function setup_command()
    }, ' '))
 end
 
-local setup = void(function(cfg)
+M.setup = void(function(cfg)
    gs_config.build(cfg)
    namespace = api.nvim_create_namespace('gitsigns')
 
@@ -343,7 +370,7 @@ local setup = void(function(cfg)
 
    if config.debug_mode then
       for nm, f in pairs(gs_debug.add_debug_functions(cache)) do
-         M[nm] = f
+         M0[nm] = f
       end
    end
 
@@ -409,24 +436,16 @@ local setup = void(function(cfg)
    require('gitsigns.current_line_blame').setup()
 end)
 
-M = {
-   attach = void(attach),
-   detach = detach,
-   detach_all = detach_all,
-   setup = setup,
+M.attach = void(attach)
 
 
-   _get_config = function()
-      return config
-   end,
+M._get_config = function()
+   return config
+end
 
-   _complete = _complete,
-   _run_func = _run_func,
-
-   _update_highlights = function()
-      manager.setup_signs_and_highlights()
-   end,
-}
+M._update_highlights = function()
+   manager.setup_signs_and_highlights()
+end
 
 setmetatable(M, {
    __index = function(_, f)
