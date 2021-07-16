@@ -97,7 +97,7 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
     git_obj:update_abbrev_head()
 
     scheduler()
-    Status:update_head(bufnr, git_obj.abbrev_head)
+    Status:update(bufnr, { head = git_obj.abbrev_head})
 
     local was_tracked = git_obj.object_name ~= nil
     local old_relpath = git_obj.relpath
@@ -232,7 +232,11 @@ local attach0 = function(cbuf: integer)
   end
 
   scheduler()
-  Status:update_head(cbuf, git_obj.abbrev_head)
+  Status:update(cbuf, {
+    head   = git_obj.abbrev_head,
+    root   = git_obj.toplevel,
+    gitdir = git_obj.gitdir,
+  })
 
   if vim.startswith(file, git_obj.gitdir..util.path_sep) then
     dprint('In non-standard git dir', cbuf, 'attach')
