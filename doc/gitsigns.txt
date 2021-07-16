@@ -651,8 +651,14 @@ STATUSLINE                                               *gitsigns-statusline*
                                     *b:gitsigns_status* *b:gitsigns_status_dict*
 The buffer variables `b:gitsigns_status` and `b:gitsigns_status_dict` are
 provided. `b:gitsigns_status` is formatted using `config.status_formatter`
-. `b:gitsigns_status_dict` is a dictionary with the keys `added`, `removed`,
-`changed` and `head`.
+. `b:gitsigns_status_dict` is a dictionary with the keys:
+
+        • `added` - Number of added lines.
+        • `changed` - Number of changed lines.
+        • `removed` - Number of removed lines.
+        • `head` - Name of current branch.
+        • `root` - Top level directory of the working tree.
+        • `gitdir` - .git directory.
 
 Example:
 >

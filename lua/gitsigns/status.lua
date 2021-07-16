@@ -7,9 +7,10 @@ local StatusObj = {}
 
 
 
+
+
 local Status = {
    StatusObj = StatusObj,
-   status = {},
    formatter = nil,
 }
 
@@ -17,12 +18,13 @@ function Status:update(bufnr, status)
    if not api.nvim_buf_is_loaded(bufnr) then
       return
    end
-   if status then
-      self.status = status
+   local has_bstatus, bstatus = pcall(api.nvim_buf_get_var, bufnr, 'gitsigns_status_dict')
+   if has_bstatus then
+      status = vim.tbl_extend('force', bstatus, status)
    end
-   api.nvim_buf_set_var(bufnr, 'gitsigns_head', self.status.head or '')
-   api.nvim_buf_set_var(bufnr, 'gitsigns_status_dict', self.status)
-   api.nvim_buf_set_var(bufnr, 'gitsigns_status', self.formatter(self.status))
+   api.nvim_buf_set_var(bufnr, 'gitsigns_head', status.head or '')
+   api.nvim_buf_set_var(bufnr, 'gitsigns_status_dict', status)
+   api.nvim_buf_set_var(bufnr, 'gitsigns_status', self.formatter(status))
 end
 
 function Status:clear(bufnr)
@@ -35,19 +37,7 @@ function Status:clear(bufnr)
 end
 
 function Status:clear_diff(bufnr)
-   local new_status = {
-      added = 0,
-      removed = 0,
-      changed = 0,
-      head = self.status.head or '',
-   }
-
-   self:update(bufnr, new_status)
-end
-
-function Status:update_head(bufnr, head)
-   self.status.head = head
-   Status:update(bufnr)
+   self:update(bufnr, { added = 0, removed = 0, changed = 0 })
 end
 
 return Status
