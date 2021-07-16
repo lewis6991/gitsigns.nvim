@@ -210,7 +210,9 @@ local update0 = function(bufnr, bcache)
 
    M.apply_win_signs(bufnr, bcache.pending_signs)
 
-   Status:update(bufnr, gs_hunks.get_summary(bcache.hunks, git_obj.abbrev_head))
+   local summary = gs_hunks.get_summary(bcache.hunks)
+   summary.head = git_obj.abbrev_head
+   Status:update(bufnr, summary)
 
    update_cnt = update_cnt + 1
 

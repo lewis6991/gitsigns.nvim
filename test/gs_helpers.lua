@@ -232,7 +232,15 @@ function M.check(attrs)
       else
         eq(1, fn.exists('b:gitsigns_head'))
         eq(status.head, get_buf_var('gitsigns_head'))
-        eq(status, get_buf_var("gitsigns_status_dict"))
+
+        local bstatus = get_buf_var("gitsigns_status_dict")
+
+        for _, i in ipairs{'added', 'changed', 'removed', 'head'} do
+          eq(status[i], bstatus[i])
+        end
+        for i, v in pairs(status) do
+          eq(v, bstatus[i])
+        end
       end
     end
 
