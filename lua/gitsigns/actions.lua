@@ -350,7 +350,7 @@ M.preview_hunk = function()
    api.nvim_buf_add_highlight(bufnr, -1, 'Title', 0, 0, -1)
 
    api.nvim_buf_set_var(cbuf, '_gitsigns_preview_open', true)
-   vim.cmd([[autocmd CursorMoved,CursorMovedI <buffer> ++once unlet b:_gitsigns_preview_open]])
+   vim.cmd([[autocmd CursorMoved,CursorMovedI <buffer> ++once silent! unlet b:_gitsigns_preview_open]])
 
    local regions = require('gitsigns.diff').run_word_diff(hunk.lines)
    local offset = #lines - #hunk.lines
