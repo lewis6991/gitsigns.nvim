@@ -298,7 +298,7 @@ local attach0 = function(cbuf)
    })
 
    if config.keymaps and not vim.tbl_isempty(config.keymaps) then
-      require('gitsigns.mappings')(config.keymaps)
+      require('gitsigns.mappings')(config.keymaps, cbuf)
    end
 end
 

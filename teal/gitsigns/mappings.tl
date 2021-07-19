@@ -31,7 +31,7 @@ local function validate_option_keywords(options: table)
   end
 end
 
-local function apply_mappings(mappings: {string:any})
+local function apply_mappings(mappings: {string:any}, bufnr: integer)
   validate {
     mappings = { mappings, 'table' };
   }
@@ -44,8 +44,6 @@ local function apply_mappings(mappings: {string:any})
     end
   end
 
-  -- May or may not be used.
-  local current_bufnr = api.nvim_get_current_buf()
   for key, opts in pairs(mappings) do
     repeat
       -- Skip any inline default keywords.
@@ -81,7 +79,7 @@ local function apply_mappings(mappings: {string:any})
       -- In case users haven't updated their config.
       options.buffer = nil
 
-      api.nvim_buf_set_keymap(current_bufnr, mode, mapping, rhs, options)
+      api.nvim_buf_set_keymap(bufnr, mode, mapping, rhs, options)
     until true
   end
 end
