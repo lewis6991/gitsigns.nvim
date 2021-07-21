@@ -3,13 +3,50 @@ local M = {
   messages: {string} = {}
 }
 
-function M.dprint(obj: any, bufnr: number, caller: string)
+local function getvarvalue(name: string): any
+  local value: any
+  local found: boolean
+
+  -- try local variables
+  local i = 1
+  while true do
+    local n, v = debug.getlocal(3 as function, i) as (string, any)
+    if not n then break end
+    if n == name then
+      value = v
+      found = true
+    end
+    i = i + 1
+  end
+  if found then return value end
+
+  -- try upvalues
+  local func = debug.getinfo(3).func as function
+  i = 1
+  while true do
+    local n, v = debug.getupvalue(func, i) as (string, any)
+    if not n then break end
+    if n == name then return v end
+    i = i + 1
+  end
+
+  -- not found; get global
+  return getfenv(func)[name]
+end
+
+function M.dprint(obj: any, caller: string)
   if not M.debug_mode then
     return
   end
-  local msg = type(obj) == 'string' and obj or vim.inspect(obj)
-  local name = caller or debug.getinfo(2, 'n').name or ''
+  local msg = obj is string and obj or vim.inspect(obj)
+  local name: string = caller
+  if not name then
+    local name0 = debug.getinfo(2, 'n').name or ''
+    name = name0:gsub('(.*)%d+$', '%1')
+  end
   local msg2: string
+
+  local bufnr = getvarvalue('bufnr') or getvarvalue('cbuf')
   if bufnr then
     msg2 = string.format('%s(%s): %s', name, bufnr, msg)
   else

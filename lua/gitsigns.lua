@@ -44,7 +44,7 @@ local handle_moved = function(bufnr, bcache, old_relpath)
 
    local new_name = git_obj:has_moved()
    if new_name then
-      dprint('File moved to ' .. new_name, bufnr)
+      dprint('File moved to ' .. new_name)
       git_obj.relpath = new_name
       if not git_obj.orig_relpath then
          git_obj.orig_relpath = old_relpath
@@ -53,7 +53,7 @@ local handle_moved = function(bufnr, bcache, old_relpath)
    elseif git_obj.orig_relpath then
       local orig_file = git_obj.toplevel .. util.path_sep .. git_obj.orig_relpath
       if git_obj:file_info(orig_file) then
-         dprint('Moved file reset', bufnr)
+         dprint('Moved file reset')
          git_obj.relpath = git_obj.orig_relpath
          git_obj.orig_relpath = nil
          do_update = true
@@ -72,15 +72,15 @@ local handle_moved = function(bufnr, bcache, old_relpath)
 end
 
 local watch_index = function(bufnr, gitdir)
-   dprint('Watching index', bufnr, 'watch_index')
+   dprint('Watching index')
    local index = gitdir .. util.path_sep .. 'index'
    local w = uv.new_fs_poll()
    w:start(index, config.watch_index.interval, void(function(err)
       if err then
-         dprint('Index update error: ' .. err, bufnr, 'watcher_cb')
+         dprint('Index update error: ' .. err, 'watcher_cb')
          return
       end
-      dprint('Index update', bufnr, 'watcher_cb')
+      dprint('Index update', 'watcher_cb')
 
       local bcache = cache[bufnr]
 
@@ -103,7 +103,7 @@ local watch_index = function(bufnr, gitdir)
       local old_relpath = git_obj.relpath
 
       if not git_obj:update_file_info() then
-         dprint('File not changed', bufnr, 'watcher_cb')
+         dprint('File not changed', 'watcher_cb')
          return
       end
 
@@ -128,10 +128,10 @@ end
 
 M.detach = function(bufnr, keep_signs)
    bufnr = bufnr or current_buf()
-   dprint('Detached', bufnr)
+   dprint('Detached')
    local bcache = cache[bufnr]
    if not bcache then
-      dprint('Cache was nil', bufnr)
+      dprint('Cache was nil')
       return
    end
 
@@ -167,7 +167,7 @@ local function get_buf_path(bufnr)
          sub_module_path = sub_module_path:gsub("^/modules", "")
          file = root_path .. sub_module_path .. real_path
          file = uv.fs_realpath(file)
-         dprint(("Fugitive buffer for file '%s' from path '%s'"):format(file, orig_path), bufnr)
+         dprint(("Fugitive buffer for file '%s' from path '%s'"):format(file, orig_path))
          if file then
             return file, commit
          else
@@ -190,44 +190,44 @@ end
 
 local attach0 = function(cbuf)
    if cache[cbuf] then
-      dprint('Already attached', cbuf, 'attach')
+      dprint('Already attached')
       return
    end
-   dprint('Attaching', cbuf, 'attach')
+   dprint('Attaching')
 
    if not api.nvim_buf_is_loaded(cbuf) then
-      dprint('Non-loaded buffer', cbuf, 'attach')
+      dprint('Non-loaded buffer')
       return
    end
 
    if api.nvim_buf_line_count(cbuf) > config.max_file_length then
-      dprint('Exceeds max_file_length', cbuf, 'attach')
+      dprint('Exceeds max_file_length')
       return
    end
 
    if api.nvim_buf_get_option(cbuf, 'buftype') ~= '' then
-      dprint('Non-normal buffer', cbuf, 'attach')
+      dprint('Non-normal buffer')
       return
    end
 
    local file, commit = get_buf_path(cbuf)
 
    if in_git_dir(file) then
-      dprint('In git dir', cbuf, 'attach')
+      dprint('In git dir')
       return
    end
 
    local file_dir = util.dirname(file)
 
    if not file_dir or not util.path_exists(file_dir) then
-      dprint('Not a path', cbuf, 'attach')
+      dprint('Not a path')
       return
    end
 
    local git_obj = git.Obj.new(file)
 
    if not git_obj.gitdir then
-      dprint('Not in git repo', cbuf, 'attach')
+      dprint('Not in git repo')
       return
    end
 
@@ -239,22 +239,22 @@ local attach0 = function(cbuf)
    })
 
    if vim.startswith(file, git_obj.gitdir .. util.path_sep) then
-      dprint('In non-standard git dir', cbuf, 'attach')
+      dprint('In non-standard git dir')
       return
    end
 
    if not util.path_exists(file) or uv.fs_stat(file).type == 'directory' then
-      dprint('Not a file', cbuf, 'attach')
+      dprint('Not a file')
       return
    end
 
    if not git_obj.relpath then
-      dprint('Cannot resolve file in repo', cbuf, 'attach')
+      dprint('Cannot resolve file in repo')
       return
    end
 
    if not config.attach_to_untracked and git_obj.object_name == nil then
-      dprint('File is untracked', cbuf, 'attach')
+      dprint('File is untracked')
       return
    end
 
@@ -263,7 +263,7 @@ local attach0 = function(cbuf)
    scheduler()
 
    if config.on_attach and config.on_attach(cbuf) == false then
-      dprint('User on_attach() returned false', cbuf, 'attach')
+      dprint('User on_attach() returned false')
       return
    end
 
@@ -288,9 +288,9 @@ local attach0 = function(cbuf)
          end
          return manager.on_lines(buf, last_orig, last_new)
       end,
-      on_reload = function(_, buf)
-         dprint('Reload', buf, 'on_reload')
-         manager.update_debounced(buf)
+      on_reload = function(_, bufnr)
+         dprint('Reload', 'on_reload')
+         manager.update_debounced(bufnr)
       end,
       on_detach = function(_, buf)
          M.detach(buf, true)
@@ -310,7 +310,7 @@ local attach_running = {}
 local attach = function(cbuf)
    cbuf = cbuf or current_buf()
    if attach_running[cbuf] then
-      dprint('Attach in progress', cbuf, 'attach')
+      dprint('Attach in progress', 'attach')
       return
    end
    attach_running[cbuf] = true
