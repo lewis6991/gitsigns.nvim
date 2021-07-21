@@ -19,7 +19,6 @@ local Hunk = gs_hunks.Hunk
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
-local user_range
 
 local NavHunkOpts = {}
 
@@ -28,6 +27,7 @@ local NavHunkOpts = {}
 
 
 local M = {}
+
 
 
 
@@ -95,7 +95,7 @@ local function get_range_hunks(bufnr, hunks, range, strict)
 end
 
 M.stage_hunk = mk_repeatable(void(function(range)
-   range = range or user_range
+   range = range or M.user_range
    local valid_range = false
    local bufnr = current_buf()
    local bcache = cache[bufnr]
@@ -146,7 +146,7 @@ M.stage_hunk = mk_repeatable(void(function(range)
 end))
 
 M.reset_hunk = mk_repeatable(function(range)
-   range = range or user_range
+   range = range or M.user_range
    local bufnr = current_buf()
    local hunks = {}
 
@@ -496,14 +496,6 @@ M.diffthis = void(function(base)
 
    vim.cmd([[windo diffthis]])
 end)
-
-M._set_user_range = function(range)
-   if range and range[1] ~= range[2] then
-      user_range = range
-   else
-      user_range = nil
-   end
-end
 
 M.get_actions = function()
    local hunk = get_cursor_hunk()
