@@ -216,11 +216,7 @@ local update0 = function(bufnr, bcache)
 
    update_cnt = update_cnt + 1
 
-   local update_str = string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt)
-   dprint(update_str, bufnr, 'update')
-   if config.debug_mode then
-      api.nvim_set_var('gs_dev', update_str)
-   end
+   dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt))
 end
 
 
