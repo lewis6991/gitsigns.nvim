@@ -58,7 +58,7 @@ CacheEntry.get_compare_text = function(self)
 end
 
 CacheEntry.new = function(o)
-   o.hunks = o.hunks or {}
+   o.hunks = o.hunks
    o.staged_diffs = o.staged_diffs or {}
    o.compare_file = o.compare_file or util.tmpname()
    return setmetatable(o, { __index = CacheEntry })
