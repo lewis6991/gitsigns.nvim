@@ -34,6 +34,7 @@ test: neovim plenary.nvim
 		--lpath=$(PWD)/plenary.nvim/lua/?/init.lua \
 		--filter=$(FILTER) \
 		$(PWD)/test
+
 	-@stty sane
 
 .PHONY: tl-check
