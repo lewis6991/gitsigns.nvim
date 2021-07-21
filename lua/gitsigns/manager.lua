@@ -194,9 +194,7 @@ local update0 = function(bufnr, bcache)
 
    local compare_object = bcache.get_compare_obj(bcache)
 
-   if not bcache.compare_text or config._refresh_staged_on_update then
-      bcache.compare_text = git_obj:get_show_text(compare_object)
-   end
+
 
    local run_diff
    if config.use_internal_diff then
@@ -204,6 +202,11 @@ local update0 = function(bufnr, bcache)
    else
       run_diff = require('gitsigns.diff_ext').run_diff
    end
+
+   if not bcache.compare_text or config._refresh_staged_on_update then
+      bcache.compare_text = git_obj:get_show_text(compare_object)
+   end
+
    bcache.hunks = run_diff(bcache.compare_text, buftext, config.diff_algorithm)
    bcache.pending_signs = gs_hunks.process_hunks(bcache.hunks)
 

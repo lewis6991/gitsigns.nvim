@@ -194,16 +194,19 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
 
   local compare_object = bcache.get_compare_obj(bcache)
 
-  if not bcache.compare_text or config._refresh_staged_on_update then
-    bcache.compare_text = git_obj:get_show_text(compare_object)
-  end
-
+  -- Make sure these requires are done in the main event.
+  -- See https://github.com/neovim/neovim/issues/15147
   local run_diff: function({string}, {string}, string): {Hunk}
   if config.use_internal_diff then
     run_diff = require('gitsigns.diff_ffi').run_diff
   else
     run_diff = require('gitsigns.diff_ext').run_diff
   end
+
+  if not bcache.compare_text or config._refresh_staged_on_update then
+    bcache.compare_text = git_obj:get_show_text(compare_object)
+  end
+
   bcache.hunks = run_diff(bcache.compare_text, buftext, config.diff_algorithm)
   bcache.pending_signs = gs_hunks.process_hunks(bcache.hunks)
 
