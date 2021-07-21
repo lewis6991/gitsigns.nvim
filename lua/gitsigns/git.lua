@@ -84,7 +84,6 @@ local M = {BlameInfo = {}, Version = {}, Obj = {}, }
 
 
 
-
 local Obj = M.Obj
 
 local function parse_version(version)
@@ -117,7 +116,7 @@ local function check_version(version)
    return true
 end
 
-local command = a.wrap(function(args, spec, callback)
+M.command = a.wrap(function(args, spec, callback)
    local result = {}
    local reserr
    spec = spec or {}
@@ -176,7 +175,7 @@ local get_repo_info = function(path, cmd)
 
    a.util.scheduler()
 
-   local results = command({
+   local results = M.command({
       'rev-parse', '--show-toplevel', git_dir_opt, '--abbrev-ref', 'HEAD',
    }, {
       command = cmd or 'git',
@@ -193,77 +192,12 @@ local get_repo_info = function(path, cmd)
    return toplevel, gitdir, abbrev_head
 end
 
-local function write_to_file(path, text)
-   local f, err = io.open(path, 'wb')
-   if f == nil then
-      error(err)
-   end
-   for _, l in ipairs(text) do
-      f:write(l)
-      f:write('\n')
-   end
-   f:close()
-end
-
-M.run_diff = function(
-   staged,
-   text,
-   diff_algo)
-
-   local results = {}
-
-   if not util.is_unix then
-
-      a.util.scheduler()
-   end
-
-   local buffile = util.tmpname() .. '_buf'
-   write_to_file(buffile, text)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-   command({
-      '-c', 'core.safecrlf=false',
-      'diff',
-      '--color=never',
-      '--diff-algorithm=' .. diff_algo,
-      '--patch-with-raw',
-      '--unified=0',
-      staged,
-      buffile,
-   }, {
-      on_stdout = function(_, line)
-         if startswith(line, '@@') then
-            table.insert(results, gs_hunks.parse_diff_line(line))
-         elseif #results > 0 then
-            table.insert(results[#results].lines, line)
-         end
-      end,
-   })
-   os.remove(buffile)
-   return results
-end
-
 M.set_version = function(version)
    if version ~= 'auto' then
       M.version = parse_version(version)
       return
    end
-   local results = command({ '--version' })
+   local results = M.command({ '--version' })
    local line = results[1]
    assert(startswith(line, 'git version'), 'Unexpected output: ' .. line)
    local parts = vim.split(line, '%s+')
@@ -278,7 +212,7 @@ end
 Obj.command = function(self, args, spec)
    spec = spec or {}
    spec.cwd = self.toplevel
-   return command({ '--git-dir=' .. self.gitdir, unpack(args) }, spec)
+   return M.command({ '--git-dir=' .. self.gitdir, unpack(args) }, spec)
 end
 
 Obj.update_abbrev_head = function(self)
@@ -334,24 +268,6 @@ Obj.get_show_text = function(self, object)
    return self:command({ 'show', object }, {
       supress_stderr = true,
    })
-end
-
-
-Obj.get_show = function(self, object, output_file)
-
-
-   local outf, err = io.open(output_file, 'wb')
-   if outf == nil then
-      error(err)
-   end
-   self:command({ 'show', object }, {
-      supress_stderr = true,
-      on_stdout = function(_, line)
-         outf:write(line)
-         outf:write('\n')
-      end,
-   })
-   outf:close()
 end
 
 Obj.run_blame = function(self, lines, lnum)
@@ -431,14 +347,14 @@ Obj.new = function(file)
    local self = setmetatable({}, { __index = Obj })
 
    self.file = file
-   self.username = command({ 'config', 'user.name' })[1]
+   self.username = M.command({ 'config', 'user.name' })[1]
    self.toplevel, self.gitdir, self.abbrev_head = 
    get_repo_info(util.dirname(file))
 
 
    if M.enable_yadm and not self.gitdir then
       if vim.startswith(file, os.getenv('HOME')) and
-         #command({ 'ls-files', file }, { command = 'yadm' }) ~= 0 then
+         #M.command({ 'ls-files', file }, { command = 'yadm' }) ~= 0 then
          self.toplevel, self.gitdir, self.abbrev_head = 
          get_repo_info(util.dirname(file), 'yadm')
       end
