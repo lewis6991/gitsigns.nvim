@@ -228,19 +228,26 @@ function M.check(attrs)
 
     if status then
       if next(status) == nil then
-        eq(0, fn.exists('b:gitsigns_head'))
-        eq(0, fn.exists('b:gitsigns_status_dict'))
+        eq(0, fn.exists('b:gitsigns_head'),
+          'b:gitsigns_head is unexpectedly set')
+        eq(0, fn.exists('b:gitsigns_status_dict'),
+          'b:gitsigns_status_dict is unexpectedly set')
       else
-        eq(1, fn.exists('b:gitsigns_head'))
-        eq(status.head, get_buf_var('gitsigns_head'))
+        eq(1, fn.exists('b:gitsigns_head'),
+          'b:gitsigns_head is not set')
+        eq(status.head, get_buf_var('gitsigns_head'),
+          'b:gitsigns_head does not match')
 
         local bstatus = get_buf_var("gitsigns_status_dict")
 
         for _, i in ipairs{'added', 'changed', 'removed', 'head'} do
-          eq(status[i], bstatus[i])
+          eq(status[i], bstatus[i],
+            string.format("status['%s'] did not match gitsigns_status_dict", i))
         end
+        -- Catch any extra keys
         for i, v in pairs(status) do
-          eq(v, bstatus[i])
+          eq(v, bstatus[i],
+            string.format("status['%s'] did not match gitsigns_status_dict", i))
         end
       end
     end

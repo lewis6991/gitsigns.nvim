@@ -185,6 +185,7 @@ local update0 = function(bufnr, bcache)
       eprint('Cache for buffer ' .. bufnr .. ' was nil')
       return
    end
+   local old_hunks = bcache.hunks
    bcache.hunks = nil
 
    scheduler()
@@ -207,14 +208,15 @@ local update0 = function(bufnr, bcache)
    end
 
    bcache.hunks = run_diff(bcache.compare_text, buftext, config.diff_algorithm)
-   bcache.pending_signs = gs_hunks.process_hunks(bcache.hunks)
 
    scheduler()
+   if gs_hunks.compare_heads(bcache.hunks, old_hunks) then
+      bcache.pending_signs = gs_hunks.process_hunks(bcache.hunks)
 
 
 
-   M.apply_win_signs(bufnr, bcache.pending_signs)
-
+      M.apply_win_signs(bufnr, bcache.pending_signs)
+   end
    local summary = gs_hunks.get_summary(bcache.hunks)
    summary.head = git_obj.abbrev_head
    Status:update(bufnr, summary)
