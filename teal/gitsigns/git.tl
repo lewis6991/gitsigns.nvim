@@ -55,7 +55,7 @@ local record M
   enable_yadm: boolean
 
   set_version: function(string)
-  run_diff   : function(string, {string}, string): {Hunk}
+  command    : function(args: {string}, spec: GJobSpec): {string}, string
 
   record Obj
     toplevel      : string
@@ -73,7 +73,6 @@ local record M
     update_abbrev_head   : function(Obj)
     update_file_info     : function(Obj): boolean
     unstage_file         : function(Obj, string, string)
-    get_show             : function(Obj, string, string)
     get_show_text        : function(Obj, string): {string}, string
     run_blame            : function(Obj, {string}, number): M.BlameInfo
     file_info            : function(Obj, string): string, string, string, boolean
@@ -117,7 +116,7 @@ local function check_version(version: {number,number,number}): boolean
   return true
 end
 
-local command = a.wrap(function(args: {string}, spec: GJobSpec, callback: function({string}, string))
+M.command = a.wrap(function(args: {string}, spec: GJobSpec, callback: function({string}, string))
   local result: {string} = {}
   local reserr: string
   spec = spec or {}
@@ -176,7 +175,7 @@ local get_repo_info = function(path: string, cmd: string): string,string,string
   --   https://github.com/lewis6991/gitsigns.nvim/pull/215
   a.util.scheduler()
 
-  local results = command({
+  local results = M.command({
     'rev-parse', '--show-toplevel', git_dir_opt, '--abbrev-ref', 'HEAD',
   }, {
     command = cmd or 'git',
@@ -193,77 +192,12 @@ local get_repo_info = function(path: string, cmd: string): string,string,string
   return toplevel, gitdir, abbrev_head
 end
 
-local function write_to_file(path: string, text: {string})
-  local f, err = io.open(path, 'wb')
-  if f == nil then
-    error(err)
-  end
-  for _, l in ipairs(text) do
-    f:write(l)
-    f:write('\n')
-  end
-  f:close()
-end
-
-M.run_diff = function(
-  staged: string,
-  text: {string},
-  diff_algo: string
-): {Hunk}
-  local results: {Hunk} = {}
-
-  if not util.is_unix then
-    -- tmpname must not be called in a callback on windows
-    a.util.scheduler()
-  end
-
-  local buffile = util.tmpname()..'_buf'
-  write_to_file(buffile, text)
-
-  -- Taken from gitgutter, diff.vim:
-  --
-  -- If a file has CRLF line endings and git's core.autocrlf is true, the file
-  -- in git's object store will have LF line endings. Writing it out via
-  -- git-show will produce a file with LF line endings.
-  --
-  -- If this last file is one of the files passed to git-diff, git-diff will
-  -- convert its line endings to CRLF before diffing -- which is what we want
-  -- but also by default outputs a warning on stderr.
-  --
-  --   warning: LF will be replace by CRLF in <temp file>.
-  --   The file will have its original line endings in your working directory.
-  --
-  -- We can safely ignore the warning, we turn it off by passing the '-c
-  -- "core.safecrlf=false"' argument to git-diff.
-
-  command({
-      '-c', 'core.safecrlf=false',
-      'diff',
-      '--color=never',
-      '--diff-algorithm='..diff_algo,
-      '--patch-with-raw',
-      '--unified=0',
-      staged,
-      buffile,
-    }, {
-    on_stdout = function(_, line: string)
-      if startswith(line, '@@') then
-        table.insert(results, gs_hunks.parse_diff_line(line))
-      elseif #results > 0 then
-        table.insert(results[#results].lines, line)
-      end
-    end
-  })
-  os.remove(buffile)
-  return results
-end
-
 M.set_version = function(version: string)
   if version ~= 'auto' then
     M.version = parse_version(version)
     return
   end
-  local results = command{'--version'}
+  local results = M.command{'--version'}
   local line = results[1]
   assert(startswith(line, 'git version'), 'Unexpected output: '..line)
   local parts = vim.split(line, '%s+')
@@ -278,7 +212,7 @@ end
 Obj.command = function(self: Obj, args: {string}, spec: GJobSpec): {string}, string
   spec = spec or {}
   spec.cwd = self.toplevel
-  return command({'--git-dir='..self.gitdir, unpack(args)}, spec)
+  return M.command({'--git-dir='..self.gitdir, unpack(args)}, spec)
 end
 
 Obj.update_abbrev_head = function(self: Obj)
@@ -326,7 +260,7 @@ Obj.file_info = function(self: Obj, file: string): string, string, string, boole
 end
 
 Obj.unstage_file = function(self: Obj)
-    self:command{'reset', self.file }
+  self:command{'reset', self.file }
 end
 
 --- Get version of file in the index, return array lines
@@ -334,24 +268,6 @@ Obj.get_show_text = function(self: Obj, object: string): {string}, string
   return self:command({'show', object}, {
     supress_stderr = true
   })
-end
-
---- Get version of file in the index, write lines to file
-Obj.get_show = function(self: Obj, object: string, output_file: string)
-  -- On windows 'w' mode use \r\n instead of \n, see:
-  -- https://stackoverflow.com/a/43967013
-  local outf, err = io.open(output_file, 'wb')
-  if outf == nil then
-    error(err)
-  end
-  self:command({'show', object}, {
-    supress_stderr = true,
-    on_stdout = function(_, line: string)
-      outf:write(line)
-      outf:write('\n')
-    end
-  })
-  outf:close()
 end
 
 Obj.run_blame = function(self: Obj, lines: {string}, lnum: number): M.BlameInfo
@@ -431,14 +347,14 @@ Obj.new = function(file: string): Obj
   local self = setmetatable({} as Obj, {__index = Obj})
 
   self.file = file
-  self.username = command({'config', 'user.name'})[1]
+  self.username = M.command({'config', 'user.name'})[1]
   self.toplevel, self.gitdir, self.abbrev_head =
     get_repo_info(util.dirname(file))
 
   -- Try yadm
   if M.enable_yadm and not self.gitdir then
     if vim.startswith(file, os.getenv('HOME'))
-      and #command({'ls-files', file}, {command = 'yadm'}) ~= 0 then
+      and #M.command({'ls-files', file}, {command = 'yadm'}) ~= 0 then
       self.toplevel, self.gitdir, self.abbrev_head =
         get_repo_info(util.dirname(file), 'yadm')
     end
