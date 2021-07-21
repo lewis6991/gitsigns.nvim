@@ -352,14 +352,16 @@ M.preview_hunk = function()
   api.nvim_buf_set_var(cbuf, '_gitsigns_preview_open', true)
   vim.cmd[[autocmd CursorMoved,CursorMovedI <buffer> ++once silent! unlet b:_gitsigns_preview_open]]
 
-  local regions = require('gitsigns.diff').run_word_diff(hunk.lines)
-  local offset = #lines - #hunk.lines
-  for _, region in ipairs(regions) do
-    local line, scol, ecol = region[1], region[3], region[4]
-    api.nvim_buf_set_extmark(bufnr as integer, ns, line + offset - 1, scol, {
-      end_col = ecol,
-      hl_group = 'TermCursor'
-    })
+  if config.use_internal_diff then
+    local regions = require('gitsigns.diff_ffi').run_word_diff(hunk.lines)
+    local offset = #lines - #hunk.lines
+    for _, region in ipairs(regions) do
+      local line, scol, ecol = region[1], region[3], region[4]
+      api.nvim_buf_set_extmark(bufnr as integer, ns, line + offset - 1, scol, {
+        end_col = ecol,
+        hl_group = 'TermCursor'
+      })
+    end
   end
 end
 

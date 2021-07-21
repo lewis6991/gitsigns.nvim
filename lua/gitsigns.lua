@@ -408,7 +408,7 @@ M.setup = void(function(cfg)
             manager.apply_win_signs(bufnr, bcache.pending_signs, top + 1, bot + 1)
 
 
-            return config.word_diff
+            return config.word_diff and config.use_internal_diff
          end,
          on_line = function(_, _, bufnr, row)
             manager.apply_word_diff(bufnr, row)
