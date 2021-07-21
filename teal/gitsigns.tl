@@ -320,14 +320,14 @@ end
 
 local M0 = M as {string:function}
 
--- Needs to be global so can be accessed from v:lua
 M._complete = function(arglead: string, line: string): {string}
   local n: integer = #vim.split(line, '%s+')
 
   local matches: {string} = {}
   if n == 2 then
-    local function get_matches(t: {string:any})
-      for func, _ in pairs(t) do
+    local actions = require('gitsigns.actions') as {string:function}
+    for _, m in ipairs{actions, M0} do
+      for func, _ in pairs(m) do
         if vim.startswith(func, '_') then
           -- exclude
         elseif vim.startswith(func, arglead) then
@@ -335,18 +335,21 @@ M._complete = function(arglead: string, line: string): {string}
         end
       end
     end
-
-    get_matches(require('gitsigns.actions') as {string:function})
-    get_matches(M0)
   end
   return matches
 end
 
 M._run_func = function(range: {integer, integer}, func: string, ...: any)
-  local actions = require('gitsigns.actions') as {string:function}
-  actions._set_user_range(range)
-  if type(actions[func]) == 'function' then
-    actions[func](...)
+  local actions = require('gitsigns.actions')
+  local actions0 = actions as {string:function}
+  if type(actions0[func]) == 'function' then
+    if range and range[1] ~= range[2] then
+      actions.user_range = range
+    else
+      actions.user_range = nil
+    end
+    actions0[func](...)
+    actions.user_range = nil
     return
   end
   if type(M0[func]) == 'function' then

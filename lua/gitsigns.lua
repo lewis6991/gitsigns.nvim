@@ -320,14 +320,14 @@ end
 
 local M0 = M
 
-
 M._complete = function(arglead, line)
    local n = #vim.split(line, '%s+')
 
    local matches = {}
    if n == 2 then
-      local function get_matches(t)
-         for func, _ in pairs(t) do
+      local actions = require('gitsigns.actions')
+      for _, m in ipairs({ actions, M0 }) do
+         for func, _ in pairs(m) do
             if vim.startswith(func, '_') then
 
             elseif vim.startswith(func, arglead) then
@@ -335,18 +335,21 @@ M._complete = function(arglead, line)
             end
          end
       end
-
-      get_matches(require('gitsigns.actions'))
-      get_matches(M0)
    end
    return matches
 end
 
 M._run_func = function(range, func, ...)
    local actions = require('gitsigns.actions')
-   actions._set_user_range(range)
-   if type(actions[func]) == 'function' then
-      actions[func](...)
+   local actions0 = actions
+   if type(actions0[func]) == 'function' then
+      if range and range[1] ~= range[2] then
+         actions.user_range = range
+      else
+         actions.user_range = nil
+      end
+      actions0[func](...)
+      actions.user_range = nil
       return
    end
    if type(M0[func]) == 'function' then
