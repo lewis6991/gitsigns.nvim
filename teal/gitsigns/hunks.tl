@@ -223,4 +223,18 @@ function M.extract_removed(hunk: Hunk): {string}
   end, hunk.lines)) as {string}
 end
 
+function M.compare_heads(a: {Hunk}, b: {Hunk}): boolean
+  if (a == nil) ~= (b == nil) then
+    return true
+  elseif a and #a ~= #b then
+    return true
+  end
+  for i, ah in ipairs(a) do
+    if b[i].head ~= ah.head then
+      return true
+    end
+  end
+  return false
+end
+
 return M
