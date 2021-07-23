@@ -511,6 +511,7 @@ M.schema = {
       default = false,
       description = [[
       Highlight intra-line word differences in the buffer.
+      Requires `config.use_internal_diff = true` .
 
       Uses the highlights:
         • GitSignsAddLn
