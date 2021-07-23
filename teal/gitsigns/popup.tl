@@ -20,7 +20,12 @@ function popup.create(lines: {string}, opts: {string:any}): number, number
   local bufnr = api.nvim_create_buf(false, true)
   assert(bufnr, "Failed to create buffer")
 
+  -- In case nvim was opened with '-M'
+  api.nvim_buf_set_option(bufnr, 'modifiable', true)
+
   api.nvim_buf_set_lines(bufnr, 0, -1, true, lines)
+
+  api.nvim_buf_set_option(bufnr, 'modifiable', false)
 
   -- Set tabstop before calculating the buffer width so that the correct width
   -- is calculated

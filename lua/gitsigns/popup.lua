@@ -20,7 +20,12 @@ function popup.create(lines, opts)
    local bufnr = api.nvim_create_buf(false, true)
    assert(bufnr, "Failed to create buffer")
 
+
+   api.nvim_buf_set_option(bufnr, 'modifiable', true)
+
    api.nvim_buf_set_lines(bufnr, 0, -1, true, lines)
+
+   api.nvim_buf_set_option(bufnr, 'modifiable', false)
 
 
 
