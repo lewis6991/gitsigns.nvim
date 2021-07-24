@@ -8,9 +8,9 @@ local DiffResult = {}
 local run_diff_xdl
 
 if vim.xdl_diff then
-   run_diff_xdl = require('gitsigns.diff.xdl_diff_nlua')
+   run_diff_xdl = require('gitsigns.diff_int.xdl_diff_nlua')
 else
-   run_diff_xdl = require('gitsigns.diff.xdl_diff_ffi')
+   run_diff_xdl = require('gitsigns.diff_int.xdl_diff_ffi')
 end
 
 function M.run_diff(fa, fb, diff_algo)

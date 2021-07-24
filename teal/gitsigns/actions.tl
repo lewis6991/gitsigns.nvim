@@ -353,7 +353,7 @@ M.preview_hunk = function()
   vim.cmd[[autocmd CursorMoved,CursorMovedI <buffer> ++once silent! unlet b:_gitsigns_preview_open]]
 
   if config.use_internal_diff then
-    local regions = require('gitsigns.diff_ffi').run_word_diff(hunk.lines)
+    local regions = require('gitsigns.diff_int').run_word_diff(hunk.lines)
     local offset = #lines - #hunk.lines
     for _, region in ipairs(regions) do
       local line, scol, ecol = region[1], region[3], region[4]

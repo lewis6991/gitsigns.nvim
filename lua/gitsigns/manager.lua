@@ -150,7 +150,7 @@ M.apply_word_diff = function(bufnr, row)
    for _, hunk in ipairs(cache[bufnr].hunks) do
       if lnum >= hunk.start and lnum <= hunk.vend then
          local size = #hunk.lines / 2
-         local regions = require('gitsigns.diff_ffi').run_word_diff(hunk.lines)
+         local regions = require('gitsigns.diff_int').run_word_diff(hunk.lines)
          for _, region in ipairs(regions) do
             local line = region[1]
             if lnum == hunk.start + line - size - 1 and
@@ -198,7 +198,7 @@ local update0 = function(bufnr, bcache)
 
    local run_diff
    if config.use_internal_diff then
-      run_diff = require('gitsigns.diff_ffi').run_diff
+      run_diff = require('gitsigns.diff_int').run_diff
    else
       run_diff = require('gitsigns.diff_ext').run_diff
    end

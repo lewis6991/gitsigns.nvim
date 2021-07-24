@@ -327,4 +327,6 @@ global record vim
 
   wait: function(number, function, number, boolean)
 
+  xdl_diff: function(string, string, table)
+
 end
