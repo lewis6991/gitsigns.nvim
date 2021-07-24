@@ -353,17 +353,20 @@ M.schema = {
    use_internal_diff = {
       type = 'boolean',
       default = function()
-         if not jit or jit.os == "Windows" then
+         if vim.diff then
+            return true
+         elseif not jit or jit.os == "Windows" then
             return false
          else
             return true
          end
       end,
-      default_help = "`true` if luajit is present (windows unsupported)",
+      default_help = "`true` if `vim.diff` or luajit is present. Windows unsupported on v0.5",
       description = [[
       Use Neovim's built in xdiff library for running diffs.
 
-      This uses LuaJIT's FFI interface.
+      Note Neovim v0.5 uses LuaJIT's FFI interface, whereas v0.5+ uses
+      `vim.diff`.
     ]],
    },
 
