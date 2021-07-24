@@ -227,6 +227,8 @@ global record vim
 
   deepcopy: function<T>(T): T
 
+  diff: function(string|{string}, string|{string}, table)
+
   record o
     diffopt: string
     wrapscan: boolean

@@ -153,7 +153,7 @@ Feature                                                  | gitsigns             
 ---------------------------------------------------------|----------------------|-----------------------------------------------|--------
 Shows signs for added, modified, and removed lines       | :white_check_mark:   | :white_check_mark:                            |
 Asynchronous                                             | :white_check_mark:   | :white_check_mark:                            |
-Runs diffs in-process (no IO or pipes)                   | :white_check_mark: * |                                               | * Via FFI and soon via [lua](https://github.com/neovim/neovim/pull/14536)
+Runs diffs in-process (no IO or pipes)                   | :white_check_mark: * |                                               | * Via [lua](https://github.com/neovim/neovim/pull/14536) or FFI.
 Only adds signs for drawn lines                          | :white_check_mark: * |                                               | * Via Neovims decoration API
 Updates immediately                                      | :white_check_mark:   | *                                             | * Triggered on CursorHold
 Ensures signs are always up to date                      | :white_check_mark: * |                                               | * Watches the git index to do so

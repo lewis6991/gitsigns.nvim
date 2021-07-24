@@ -14,13 +14,13 @@ feature set which includes (but not limited to):
   • Provides signs in the |signcolumn| to show changed/added/removed lines.
   • Mappings to operate on hunks to stage, undo or reset against Git's index.
 
-Gitsigns is implemented entirely in Lua which is built into Neovim and because
-of this requires no external dependencies. This is unlike other plugins that
-require python, node, etc, which need to communicate with Neovim using |RPC|.
-By default, Gitsigns also uses Neovim's built-in diff library and runs
-in-process via LuaJIT's FFI module. This is unlike other similar plugins that
-need to run `git-diff` as an external process which is less efficient, has
-tighter bottlenecks and requires file IO.
+Gitsigns is implemented entirely in Lua which is built into Neovim and
+requires no external dependencies other than git. This is unlike other plugins
+that require python, node, etc, which need to communicate with Neovim using
+|RPC|.  By default, Gitsigns also uses Neovim's built-in diff library
+(`vim.diff`) unlike other similar plugins that need to run `git-diff` as an
+external process which is less efficient, has tighter bottlenecks and requires
+file IO.
 
 ==============================================================================
 USAGE                                                         *gitsigns-usage*
@@ -519,11 +519,12 @@ update_debounce                              *gitsigns-config-update_debounce*
       Debounce time for updates (in milliseconds).
 
 use_internal_diff                          *gitsigns-config-use_internal_diff*
-      Type: `boolean`, Default: `true` if luajit is present (windows unsupported)
+      Type: `boolean`, Default: `true` if `vim.diff` or luajit is present. Windows unsupported on v0.5
 
       Use Neovim's built in xdiff library for running diffs.
 
-      This uses LuaJIT's FFI interface.
+      Note Neovim v0.5 uses LuaJIT's FFI interface, whereas v0.5+ uses
+      `vim.diff`.
 
 current_line_blame                        *gitsigns-config-current_line_blame*
       Type: `boolean`, Default: `false`
