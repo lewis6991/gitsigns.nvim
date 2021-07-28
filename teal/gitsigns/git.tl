@@ -79,6 +79,7 @@ local record M
     ensure_file_in_index : function(Obj)
     stage_hunks          : function(Obj, {Hunk}, boolean)
     has_moved            : function(Obj): string
+    files_changed        : function(Obj): {string}
     new                  : function(string): Obj
   end
 
@@ -341,6 +342,18 @@ Obj.has_moved = function(self: Obj): string
       end
     end
   end
+end
+
+Obj.files_changed = function(self: Obj): {string}
+  local ret: {string} = {}
+  self:command({'status', '--porcelain'}, {
+    on_stdout = function(_, line: string)
+      if line:sub(1, 2):match('^.M') then
+        ret[#ret+1] = line:sub(4, -1)
+      end
+    end
+  })
+  return ret
 end
 
 Obj.new = function(file: string): Obj
