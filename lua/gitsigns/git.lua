@@ -84,6 +84,7 @@ local M = {BlameInfo = {}, Version = {}, Obj = {}, }
 
 
 
+
 local Obj = M.Obj
 
 local function parse_version(version)
@@ -341,6 +342,18 @@ Obj.has_moved = function(self)
          end
       end
    end
+end
+
+Obj.files_changed = function(self)
+   local ret = {}
+   self:command({ 'status', '--porcelain' }, {
+      on_stdout = function(_, line)
+         if line:sub(1, 2):match('^.M') then
+            ret[#ret + 1] = line:sub(4, -1)
+         end
+      end,
+   })
+   return ret
 end
 
 Obj.new = function(file)

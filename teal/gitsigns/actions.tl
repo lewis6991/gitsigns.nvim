@@ -44,6 +44,9 @@ local record M
   change_base        : function(base: string)
   diffthis           : function -- function(base: string)
 
+  setqflist          : function(target:integer|string)
+  setloclist         : function(nr: integer, target:integer|string)
+
   user_range         : {integer, integer}
 
   get_actions        : function(bufnr: integer, lnum: integer)
@@ -497,6 +500,78 @@ M.diffthis = void(function(base: string)
   vim.cmd(string.format('autocmd! WinClosed <buffer=%d> ++once call nvim_buf_delete(%d, {})', dbuf, dbuf))
 
   vim.cmd[[windo diffthis]]
+end)
+
+local function hunks_to_qflist(buf_or_filename: number|string, hunks: {Hunk}, qflist: {vim.fn.QFItem})
+  for i, hunk in ipairs(hunks) do
+    qflist[#qflist+1] = {
+      bufnr    = buf_or_filename is number and (buf_or_filename as integer) or nil,
+      filename = buf_or_filename is string and buf_or_filename or nil,
+      lnum = hunk.start,
+      text = string.format('Lines %d-%d (%d/%d)',
+      hunk.start, hunk.vend, i, #hunks),
+    }
+  end
+end
+
+local function run_diff(a: {string}, b: {string}): {Hunk}
+  if config.use_internal_diff then
+    return require('gitsigns.diff_ffi').run_diff(a, b, config.diff_algorithm)
+  else
+    return require('gitsigns.diff_ext').run_diff(a, b, config.diff_algorithm)
+  end
+end
+
+local function buildqflist(target: integer|string): {vim.fn.QFItem}
+  target = target or current_buf()
+  if target == 0 then target = current_buf() end
+  local qflist: {vim.fn.QFItem} = {}
+
+  if type(target) == 'number' then
+    local bufnr = target as integer
+    if not cache[bufnr] then return end
+    hunks_to_qflist(bufnr, cache[bufnr].hunks, qflist)
+  elseif target == 'attached' or target == 'all' then
+    local gitdirs_done: {string:boolean} = {}
+    for bufnr, bcache in pairs(cache as {integer:CacheEntry}) do
+      hunks_to_qflist(bufnr, bcache.hunks, qflist)
+
+      if target == 'all' then
+        local git_obj = bcache.git_obj
+        if not gitdirs_done[git_obj.gitdir] then
+          for _, f in ipairs(git_obj:files_changed()) do
+            local f_abs = git_obj.toplevel..'/'..f
+            local hunks = run_diff(
+              git_obj:get_show_text(':0:'..f),
+              util.file_lines(f_abs)
+            )
+            hunks_to_qflist(f_abs, hunks, qflist)
+          end
+        end
+        gitdirs_done[git_obj.gitdir] = true
+      end
+    end
+  end
+  return qflist
+end
+
+M.setqflist = void(function(target: integer|string)
+  local qflist = buildqflist(target)
+  scheduler()
+  vim.fn.setqflist({}, ' ', {
+    items = qflist,
+    title = 'Hunks'
+  })
+end)
+
+M.setloclist = void(function(nr: integer, target: integer|string)
+  nr = nr or 0
+  local qflist = buildqflist(target)
+  scheduler()
+  vim.fn.setloclist(nr, {}, ' ', {
+    items = qflist,
+    title = 'Hunks'
+  })
 end)
 
 M.get_actions = function(): {string:function}

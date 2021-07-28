@@ -235,6 +235,27 @@ refresh()                                                 *gitsigns.refresh()*
 select_hunk()                                         *gitsigns.select_hunk()*
                 Select the hunk under the cursor.
 
+setqflist({target})                                      *gitsigns.setqflist()*
+                Populate the quickfix list with hunks.
+
+                Parameters: ~
+                    {target} (integer or string):
+                             Specifies which files hunks are collected from.
+                             Possible values.
+                             • [integer]: The buffer with the matching buffer
+                               number. `0` for current buffer (default).
+                             • `"attached"`: All attached buffers.
+                             • `"all"`: All modified files for each git
+                               directory of all attached buffers.
+
+setloclist({nr}, {target})                             *gitsigns.setloclist()*
+                Populate the location list with hunks.
+
+                Parameters: ~
+                    {nr}     (integer): Window number or the |window-ID|.
+                             `0` for the current window (default).
+                    {target} (integer or string): See |gitsigns.setqflist()|.
+
 toggle_signs()                                       *gitsigns.toggle_signs()*
                 Toggle |gitsigns-config-signcolumn|
 

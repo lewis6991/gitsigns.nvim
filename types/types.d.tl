@@ -162,6 +162,31 @@ global record vim
     join: function({any}, string): string
     getpos: function(string): {integer}
     expand: function(string): string
+
+    record QFItem
+      bufnr: integer
+      filename: string
+      lnum: integer
+      nr: integer
+      text: string
+      type: string
+    end
+
+    record QFWhat
+      context: any
+      efm: string
+      id: integer
+      idx: integer
+      items: {QFItem}
+      lines: {string}
+      nr: integer
+      quickfixtextfunc: string
+      title: string
+    end
+
+    setqflist: function(list: {QFItem}, action: string, what: QFWhat)
+    setloclist: function(nr: integer, list: {QFItem}, action: string, what: QFWhat)
+
     sign_unplace: function(string, {string:any})
     sign_place: function(number, string, string, string | number, {string:any})
     sign_getdefined: function(string): table
