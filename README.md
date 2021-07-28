@@ -147,7 +147,6 @@ For the current branch use the variable `b:gitsigns_head`.
 - [ ] Folding of text around hunks
 - [ ] Show messages when navigating hunks similar to '/' search
 - [ ] Stage partial hunks
-- [ ] Add hunks to quickfix/location list
 
 ## Comparison with [vim-gitgutter](https://github.com/airblade/vim-gitgutter)
 
@@ -172,7 +171,7 @@ Hunk text object                                         | :white_check_mark:   
 Diff against index or any commit                         | :white_check_mark:   | :white_check_mark:                            |
 Folding of unchanged text                                |                      | :white_check_mark:                            |
 Fold text showing whether folded lines have been changed |                      | :white_check_mark:                            |
-Load hunk locations into the quickfix or location list   |                      | :white_check_mark:                            |
+Load hunk locations into the quickfix or location list   | :white_check_mark:   | :white_check_mark:                            |
 Optional line highlighting                               | :white_check_mark:   | :white_check_mark:                            |
 Optional line number highlighting                        | :white_check_mark:   | :white_check_mark:                            |
 Optional counts on signs                                 | :white_check_mark:   |                                               |

@@ -192,7 +192,7 @@ local update0 = function(bufnr, bcache)
    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
    local git_obj = bcache.git_obj
 
-   local compare_object = bcache.get_compare_obj(bcache)
+   local compare_object = bcache:get_compare_obj()
 
 
 
