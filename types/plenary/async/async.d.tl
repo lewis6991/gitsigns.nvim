@@ -86,11 +86,6 @@ local record Async
 
   void: function(function): function
   run: function(function, function)
-
-  record util
-    sleep: function(integer)
-    scheduler: function()
-  end
 end
 
 return Async
