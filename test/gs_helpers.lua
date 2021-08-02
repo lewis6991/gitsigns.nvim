@@ -176,6 +176,7 @@ local function match_lines2(lines, spec)
     for j = i, #spec do
       table.insert(unmatched, spec[j].text or spec[j])
     end
+    -- print(table.concat(lines, '\n'))
     error(('Did not match patterns:\n    - %s'):format(table.concat(unmatched, '\n    - ')))
   end
 end

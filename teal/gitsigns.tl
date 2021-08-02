@@ -27,7 +27,7 @@ local record M
   setup      : function(cfg: Config)
   detach     : function(bufnr: integer, keep_signs: boolean)
   detach_all : function()
-  attach     : function(cbuf: integer)
+  attach     : function(cbuf: integer, trigger: string)
 
   -- Internal, API unstable
   _get_config        : function(): Config
@@ -192,7 +192,7 @@ end
 
 local attach_disabled = false
 
-local attach0 = function(cbuf: integer)
+local attach0 = function(cbuf: integer, aucmd: string)
   if attach_disabled then
     dprint('attaching is disabled')
     return
@@ -202,7 +202,12 @@ local attach0 = function(cbuf: integer)
     dprint('Already attached')
     return
   end
-  dprint('Attaching')
+
+  if aucmd then
+    dprint(string.format('Attaching (trigger=%s)', aucmd))
+  else
+    dprint('Attaching')
+  end
 
   if not api.nvim_buf_is_loaded(cbuf) then
     dprint('Non-loaded buffer')
@@ -324,14 +329,14 @@ end
 -- performed whilst another one is in progress.
 local attach_running: {integer:boolean} = {}
 
-local attach = function(cbuf: integer)
+local attach = function(cbuf: integer, trigger: string)
   cbuf = cbuf or current_buf()
   if attach_running[cbuf] then
     dprint('Attach in progress', 'attach')
     return
   end
   attach_running[cbuf] = true
-  attach0(cbuf)
+  attach0(cbuf, trigger)
   attach_running[cbuf] = nil
 end
 
@@ -441,26 +446,26 @@ M.setup = void(function(cfg: Config)
   for _, buf in ipairs(api.nvim_list_bufs()) do
     if    api.nvim_buf_is_loaded(buf)
       and api.nvim_buf_get_name(buf) ~= '' then
-      attach(buf)
+      attach(buf, 'setup')
       scheduler()
     end
   end
 
-  -- set up augroup, clear it if setup is run twice.
-  vim.cmd('augroup gitsigns | autocmd! | augroup END')
+  vim.cmd[[
+    augroup gitsigns
+      autocmd!
+      autocmd VimLeavePre  * lua _G.package.loaded.gitsigns.detach_all()
+      autocmd ColorScheme  * lua _G.package.loaded.gitsigns._update_highlights()
+      autocmd BufRead      * lua _G.package.loaded.gitsigns.attach(nil, 'BufRead')
+      autocmd BufNewFile   * lua _G.package.loaded.gitsigns.attach(nil, 'BufNewFile')
+      autocmd BufWritePost * lua _G.package.loaded.gitsigns.attach(nil, 'BufWritePost')
 
-  for func, events in pairs{
-    attach             = 'BufRead,BufNewFile,BufWritePost',
-    detach_all         = 'VimLeavePre',
-    _update_highlights = 'ColorScheme',
-  } do
-    vim.cmd('autocmd gitsigns '..events..' * lua require("gitsigns").'..func..'()')
-  end
-
-  -- vimpgrep creates and deletes lots of buffers so attaching to each one will
-  -- waste lots of resource and even slow down vimgrep.
-  vim.cmd[[autocmd gitsigns QuickFixCmdPre  *vimgrep* lua _G.package.loaded.gitsigns._attach_disable()]]
-  vim.cmd[[autocmd gitsigns QuickFixCmdPost *vimgrep* lua _G.package.loaded.gitsigns._attach_enable()]]
+      " vimpgrep creates and deletes lots of buffers so attaching to each one will
+      " waste lots of resource and even slow down vimgrep.
+      autocmd QuickFixCmdPre  *vimgrep* lua _G.package.loaded.gitsigns._attach_disable()
+      autocmd QuickFixCmdPost *vimgrep* lua _G.package.loaded.gitsigns._attach_enable()
+    augroup END
+  ]]
 
   require('gitsigns.current_line_blame').setup()
 end)
