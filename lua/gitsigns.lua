@@ -36,6 +36,8 @@ local M = {}
 
 
 
+
+
 local namespace
 
 local handle_moved = function(bufnr, bcache, old_relpath)
@@ -188,7 +190,14 @@ local function in_git_dir(file)
    return false
 end
 
+local attach_disabled = false
+
 local attach0 = function(cbuf)
+   if attach_disabled then
+      dprint('attaching is disabled')
+      return
+   end
+
    if cache[cbuf] then
       dprint('Already attached')
       return
@@ -300,6 +309,14 @@ local attach0 = function(cbuf)
    if config.keymaps and not vim.tbl_isempty(config.keymaps) then
       require('gitsigns.mappings')(config.keymaps, cbuf)
    end
+end
+
+M._attach_enable = function()
+   attach_disabled = false
+end
+
+M._attach_disable = function()
+   attach_disabled = true
 end
 
 
@@ -439,6 +456,11 @@ M.setup = void(function(cfg)
       }) do
       vim.cmd('autocmd gitsigns ' .. events .. ' * lua require("gitsigns").' .. func .. '()')
    end
+
+
+
+   vim.cmd([[autocmd gitsigns QuickFixCmdPre  *vimgrep* lua _G.package.loaded.gitsigns._attach_disable()]])
+   vim.cmd([[autocmd gitsigns QuickFixCmdPost *vimgrep* lua _G.package.loaded.gitsigns._attach_enable()]])
 
    require('gitsigns.current_line_blame').setup()
 end)

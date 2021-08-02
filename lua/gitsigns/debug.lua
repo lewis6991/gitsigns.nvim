@@ -46,7 +46,9 @@ function M.dprint(obj, caller)
    end
    local msg2
 
-   local bufnr = getvarvalue('bufnr') or getvarvalue('cbuf')
+   local bufnr = getvarvalue('bufnr') or
+   getvarvalue('cbuf') or
+   getvarvalue('buf')
    if bufnr then
       msg2 = string.format('%s(%s): %s', name, bufnr, msg)
    else
