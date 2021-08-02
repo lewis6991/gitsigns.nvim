@@ -29,6 +29,7 @@ local p             = helpers.p
 local setup         = helpers.setup
 local test_config   = helpers.test_config
 local check         = helpers.check
+local eq            = helpers.eq
 
 local it = helpers.it(it)
 
@@ -624,6 +625,33 @@ describe('gitsigns', function()
   --   - internal diff (ffi)
   --   - decoration provider
   describe('diff-int', testsuite(true))
+
+  it('can handle vimgrep', function()
+    screen:detach()
+    screen:attach({ext_messages=true})
+    init()
+
+    write_to_file(scratch..'/t1.txt', {'hello ben'})
+    write_to_file(scratch..'/t2.txt', {'hello ben'})
+    write_to_file(scratch..'/t3.txt', {'hello lewis'})
+
+    setup(config)
+
+    helpers.exc_exec("vimgrep ben "..scratch..'/*')
+
+    screen:expect{messages = {{
+      kind = "quickfix", content = { { "(1 of 2): hello ben" } },
+    }}}
+
+    eq({
+      'run_job: git --no-pager --version',
+      'attach(2): attaching is disabled',
+      'attach(3): attaching is disabled',
+      'attach(4): attaching is disabled',
+      'attach(5): attaching is disabled',
+    }, exec_lua[[return require'gitsigns'.debug_messages(true)]])
+
+  end)
 
   -- TODO Add test for current_line_blame
   -- TODO Add test for toggle_current_line_blame
