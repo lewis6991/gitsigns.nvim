@@ -80,7 +80,7 @@ describe('gitsigns', function()
     wait(function()
       match_dag(debug_messages(), {
         "run_job: git --no-pager --version",
-        'attach(1): Attaching',
+        'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard '..test_file),
@@ -116,11 +116,11 @@ describe('gitsigns', function()
 
     match_debug_messages {
       "run_job: git --no-pager --version",
-      'attach(1): Attaching',
+      'attach(1): Attaching (trigger=BufRead)',
       p"run_job: git .* config user.name",
       "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
       'attach(1): Not in git repo',
-      'attach(1): Attaching',
+      'attach(1): Attaching (trigger=BufWritePost)',
       'run_job: git --no-pager config user.name',
       'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       'attach(1): Not in git repo'
@@ -156,7 +156,7 @@ describe('gitsigns', function()
 
       match_debug_messages {
         "run_job: git --no-pager --version",
-        'attach(1): Attaching',
+        'attach(1): Attaching (trigger=BufRead)',
         'attach(1): In git dir'
       }
     end)
@@ -171,7 +171,7 @@ describe('gitsigns', function()
 
       match_debug_messages {
         "run_job: git --no-pager --version",
-        "attach(1): Attaching",
+        'attach(1): Attaching (trigger=BufRead)',
         p"run_job: git .* config user.name",
         "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
         p"run_job: git .* ls%-files .*/dummy_ignored.txt",
@@ -186,7 +186,7 @@ describe('gitsigns', function()
 
       match_debug_messages {
         "run_job: git --no-pager --version",
-        "attach(1): Attaching",
+        'attach(1): Attaching (trigger=BufNewFile)',
         p"run_job: git .* config user.name",
         "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
         p("run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard "..newfile),
@@ -202,7 +202,7 @@ describe('gitsigns', function()
 
       match_debug_messages {
         "run_job: git --no-pager --version",
-        "attach(1): Attaching",
+        'attach(1): Attaching (trigger=BufNewFile)',
         "attach(1): Not a path",
       }
 
@@ -215,7 +215,7 @@ describe('gitsigns', function()
       command("copen")
       match_debug_messages {
         "run_job: git --no-pager --version",
-        "attach(2): Attaching",
+        'attach(2): Attaching (trigger=BufRead)',
         "attach(2): Non-normal buffer",
       }
     end)
@@ -253,7 +253,7 @@ describe('gitsigns', function()
       edit(test_file)
       match_debug_messages {
         "run_job: git --no-pager --version",
-        'attach(1): Attaching',
+        'attach(1): Attaching (trigger=BufRead)',
         p"run_job: git .* config user.name",
         "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
         p'run_job: git %-%-no%-pager %-%-git%-dir=.* %-%-stage %-%-others %-%-exclude%-standard .*',
@@ -433,7 +433,7 @@ describe('gitsigns', function()
         edit(newfile)
         match_debug_messages{
           'run_job: git --no-pager --version',
-          'attach(1): Attaching',
+          'attach(1): Attaching (trigger=BufNewFile)',
           'run_job: git --no-pager config user.name',
           'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
           p'run_job: git .* ls%-files .*',
@@ -443,7 +443,7 @@ describe('gitsigns', function()
         command("write")
 
         local messages = {
-          "attach(1): Attaching",
+          'attach(1): Attaching (trigger=BufWritePost)',
           p"run_job: git .* config user.name",
           "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
           p"run_job: git .* ls%-files .*",

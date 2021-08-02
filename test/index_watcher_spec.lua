@@ -36,7 +36,7 @@ describe('index_watcher', function()
 
     match_debug_messages {
       "run_job: git --no-pager --version",
-      'attach(1): Attaching',
+      'attach(1): Attaching (trigger=BufRead)',
       p"run_job: git .* config user.name",
       "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
       p('run_job: git .* ls%-files .* '..test_file),
