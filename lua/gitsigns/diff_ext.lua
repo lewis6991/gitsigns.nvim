@@ -3,7 +3,7 @@ local git = require('gitsigns.git')
 local gs_hunks = require("gitsigns.hunks")
 local Hunk = gs_hunks.Hunk
 local util = require('gitsigns.util')
-local a = require('plenary.async')
+local scheduler = require('plenary.async.util').scheduler
 
 local M = {}
 
@@ -31,7 +31,7 @@ M.run_diff = function(
 
    if not util.is_unix then
 
-      a.util.scheduler()
+      scheduler()
    end
 
    local file_buf = util.tmpname() .. '_buf'

@@ -1,4 +1,5 @@
-local a = require('plenary.async')
+local wrap = require('plenary.async.async').wrap
+local scheduler = require('plenary.async.util').scheduler
 local JobSpec = require('plenary.job').JobSpec
 
 local gsd = require("gitsigns.debug")
@@ -117,7 +118,7 @@ local function check_version(version)
    return true
 end
 
-M.command = a.wrap(function(args, spec, callback)
+M.command = wrap(function(args, spec, callback)
    local result = {}
    local reserr
    spec = spec or {}
@@ -174,7 +175,7 @@ local get_repo_info = function(path, cmd)
 
 
 
-   a.util.scheduler()
+   scheduler()
 
    local results = M.command({
       'rev-parse', '--show-toplevel', git_dir_opt, '--abbrev-ref', 'HEAD',

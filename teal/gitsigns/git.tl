@@ -1,4 +1,5 @@
-local a = require('plenary.async')
+local wrap = require('plenary.async.async').wrap
+local scheduler = require('plenary.async.util').scheduler
 local JobSpec = require('plenary.job').JobSpec
 
 local gsd = require("gitsigns.debug")
@@ -117,7 +118,7 @@ local function check_version(version: {number,number,number}): boolean
   return true
 end
 
-M.command = a.wrap(function(args: {string}, spec: GJobSpec, callback: function({string}, string))
+M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({string}, string))
   local result: {string} = {}
   local reserr: string
   spec = spec or {}
@@ -174,7 +175,7 @@ local get_repo_info = function(path: string, cmd: string): string,string,string
 
   -- Wait for internal scheduler to settle before running command
   --   https://github.com/lewis6991/gitsigns.nvim/pull/215
-  a.util.scheduler()
+  scheduler()
 
   local results = M.command({
     'rev-parse', '--show-toplevel', git_dir_opt, '--abbrev-ref', 'HEAD',
