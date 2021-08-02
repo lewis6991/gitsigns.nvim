@@ -216,8 +216,8 @@ function M.run_word_diff(hunk_body: {string}): {Region}
 
     -- Denoise the hunks
     local hunks = {hunks0[1]}
-    for i = 2, #hunks0 do
-      local h, n = hunks[#hunks], hunks0[i]
+    for j = 2, #hunks0 do
+      local h, n = hunks[#hunks], hunks0[j]
       if not h or not n then break end
       if n.added.start - h.added.start - h.added.count < gaps_between_regions  then
         h.added.count   = n.added.start   + n.added.count   - h.added.start
