@@ -1,7 +1,6 @@
-local a = require('plenary.async')
-local void      = a.void
-local scheduler = a.util.scheduler
-local sleep     = a.util.sleep
+local void = require('plenary.async.async').void
+local async_util = require('plenary.async.util')
+local scheduler = async_util.scheduler
 
 local gs_cache = require('gitsigns.cache')
 local CacheEntry = gs_cache.CacheEntry
@@ -244,7 +243,7 @@ do
     else
       -- Wait until all updates have finished
       while running do
-        sleep(100)
+        async_util.sleep(100)
       end
     end
   end

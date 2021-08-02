@@ -1,6 +1,5 @@
-local a = require('plenary.async')
-local void      = a.void
-local scheduler = a.util.scheduler
+local void      = require('plenary.async.async').void
+local scheduler = require('plenary.async.util').scheduler
 
 local Status        = require("gitsigns.status")
 local config        = require('gitsigns.config').config
@@ -145,7 +144,7 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
   for lnum, _ in pairs(hunk_signs) do
     signs.remove(bufnr, lnum)
   end
-  a.void(manager.update)(bufnr)
+  void(manager.update)(bufnr)
 end))
 
 M.reset_hunk = mk_repeatable(function(range: {integer, integer})
@@ -268,7 +267,7 @@ M.reset_buffer_index = void(function()
 
   scheduler()
   signs.add(config, bufnr, gs_hunks.process_hunks(hunks))
-  a.void(manager.update)(bufnr)
+  void(manager.update)(bufnr)
 end)
 
 local function nav_hunk(options: NavHunkOpts)
@@ -457,7 +456,7 @@ M.change_base = function(base: string)
   base = calc_base(base)
   bcache.base = base
   bcache.compare_text = nil
-  a.void(manager.update)(buf, bcache)
+  void(manager.update)(buf, bcache)
 end
 
 M.diffthis = void(function(base: string)
