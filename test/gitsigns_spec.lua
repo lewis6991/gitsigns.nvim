@@ -40,7 +40,7 @@ describe('gitsigns', function()
   before_each(function()
     clear()
     screen = Screen.new(20, 17)
-    screen:attach()
+    screen:attach({ext_messages=true})
 
     screen:set_default_attr_ids({
       [1] = {foreground = Screen.colors.DarkBlue, background = Screen.colors.WebGray};
@@ -93,7 +93,7 @@ describe('gitsigns', function()
 
     check {
       status = {head='HEAD', added=18, changed=0, removed=0},
-      signs = {added=7}
+      signs = {added=8}
     }
 
     git{"add", test_file}
@@ -225,8 +225,6 @@ describe('gitsigns', function()
     it('doesn\'t error on untracked files', function()
       command("set updatetime=1")
       init(true)
-      screen:detach()
-      screen:attach({ext_messages=true})
       config.current_line_blame = true
       setup(config)
       edit(newfile)
@@ -423,7 +421,7 @@ describe('gitsigns', function()
           {5: 14 }to              |
           {5: 15 }be              |
           {5: 16 }static.         |
-                              |
+          {6:~                   }|
         ]]}
       end)
 
@@ -627,8 +625,6 @@ describe('gitsigns', function()
   describe('diff-int', testsuite(true))
 
   it('can handle vimgrep', function()
-    screen:detach()
-    screen:attach({ext_messages=true})
     init()
 
     write_to_file(scratch..'/t1.txt', {'hello ben'})
