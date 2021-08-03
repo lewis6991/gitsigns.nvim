@@ -273,6 +273,16 @@ Obj.get_show_text = function(self: Obj, object: string): {string}, string
 end
 
 Obj.run_blame = function(self: Obj, lines: {string}, lnum: number): M.BlameInfo
+  if not self.object_name then
+    -- As we support attaching to untracked files we need to return something if
+    -- the file isn't isn't tracked in git.
+    return {
+      author             = 'Not Committed Yet',
+      ['author-mail']    = '<not.committed.yet>',
+      committer          = 'Not Committed Yet',
+      ['committer-mail'] = '<not.committed.yet>',
+    }
+  end
   local results = self:command({
       'blame',
       '--contents', '-',
