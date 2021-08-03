@@ -1,19 +1,19 @@
 local helpers = require('test.gs_helpers')
 
-local clear         = helpers.clear
-local exec_lua      = helpers.exec_lua
-local edit          = helpers.edit
-local eq            = helpers.eq
-local init          = helpers.init
-local cleanup       = helpers.cleanup
-local command       = helpers.command
-local test_config   = helpers.test_config
+local clear           = helpers.clear
+local exec_lua        = helpers.exec_lua
+local edit            = helpers.edit
+local eq              = helpers.eq
+local setup_test_repo = helpers.setup_test_repo
+local cleanup         = helpers.cleanup
+local command         = helpers.command
+local test_config     = helpers.test_config
 local match_debug_messages = helpers.match_debug_messages
-local p             = helpers.p
-local setup         = helpers.setup
-local test_file     = helpers.test_file
-local git           = helpers.git
-local get_buf_name  = helpers.curbufmeths.get_name
+local p               = helpers.p
+local setup_gitsigns  = helpers.setup_gitsigns
+local test_file       = helpers.test_file
+local git             = helpers.git
+local get_buf_name    = helpers.curbufmeths.get_name
 
 local it = helpers.it(it)
 
@@ -30,8 +30,8 @@ describe('index_watcher', function()
   end)
 
   it('can follow moved files', function()
-    init()
-    setup(test_config)
+    setup_test_repo()
+    setup_gitsigns(test_config)
     edit(test_file)
 
     match_debug_messages {

@@ -1,12 +1,12 @@
-local helpers = require('test.functional.helpers')(nil)
+local helpers = require('test.functional.helpers')()
 
-local system   = helpers.funcs.system
-local exec_lua = helpers.exec_lua
-local matches  = helpers.matches
+local system       = helpers.funcs.system
+local exec_lua     = helpers.exec_lua
+local matches      = helpers.matches
 local exec_capture = helpers.exec_capture
-local eq       = helpers.eq
-local fn       = helpers.funcs
-local get_buf_var = helpers.curbufmeths.get_var
+local eq           = helpers.eq
+local fn           = helpers.funcs
+local get_buf_var  = helpers.curbufmeths.get_var
 
 local timeout = 4000
 
@@ -76,7 +76,7 @@ function M.setup_git()
   M.git{'config', 'init.defaultBranch', 'master'}
 end
 
-function M.init(no_add)
+function M.setup_test_repo(no_add)
   M.cleanup()
   system{"mkdir", M.scratch}
   M.setup_git()
@@ -88,7 +88,7 @@ function M.init(no_add)
   end
 end
 
-function M.wait(cond)
+function M.expectf(cond)
   local duration = 0
   local interval = 5
   while duration < timeout do
@@ -200,14 +200,19 @@ function M.match_dag(lines, spec)
 end
 
 function M.match_debug_messages(spec)
-  M.wait(function()
+  M.expectf(function()
     M.match_lines(M.debug_messages(), spec)
   end)
 end
 
-function M.setup(config)
-  exec_lua([[require('gitsigns').setup(...)]], config)
-  M.wait(function()
+function M.setup_gitsigns(config, extra)
+  extra = extra or ''
+  exec_lua([[
+      local config = ...
+    ]]..extra..[[
+      require('gitsigns').setup(...)
+    ]], config)
+  M.expectf(function()
     exec_capture('au gitsigns')
   end)
 end
@@ -222,7 +227,7 @@ end
 
 function M.check(attrs)
   attrs = attrs or {}
-  M.wait(function()
+  M.expectf(function()
     local status = attrs.status
     local signs  = attrs.signs
 
