@@ -25,13 +25,14 @@ local wait_timer = wrap(vim.loop.timer_start, 4)
 M.reset = function(bufnr)
    bufnr = bufnr or current_buf()
    api.nvim_buf_del_extmark(bufnr, namespace, 1)
+   pcall(api.nvim_buf_del_var, bufnr, 'gitsigns_blame_line_dict')
 end
 
 M.update = void(function()
    M.reset()
 
 
-   wait_timer(timer, config.current_line_blame_delay, 0)
+   wait_timer(timer, config.current_line_blame_opts.delay, 0)
    scheduler()
 
    local bufnr = current_buf()
@@ -47,15 +48,19 @@ M.update = void(function()
    scheduler()
 
    M.reset(bufnr)
-   api.nvim_buf_set_extmark(bufnr, namespace, lnum - 1, 0, {
-      id = 1,
-      virt_text = config.current_line_blame_formatter(
-      bcache.git_obj.username,
-      result,
-      config.current_line_blame_formatter_opts),
 
-      virt_text_pos = config.current_line_blame_position,
-   })
+   api.nvim_buf_set_var(bufnr, 'gitsigns_blame_line_dict', result)
+   if config.current_line_blame_opts.virt_text then
+      api.nvim_buf_set_extmark(bufnr, namespace, lnum - 1, 0, {
+         id = 1,
+         virt_text = config.current_line_blame_formatter(
+         bcache.git_obj.username,
+         result,
+         config.current_line_blame_formatter_opts),
+
+         virt_text_pos = config.current_line_blame_opts.virt_text_pos,
+      })
+   end
 end)
 
 M.setup = function()

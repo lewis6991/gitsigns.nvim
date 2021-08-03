@@ -533,6 +533,30 @@ current_line_blame                        *gitsigns-config-current_line_blame*
 
       The highlight group used for the text is `GitSignsCurrentLineBlame`.
 
+current_line_blame_opts              *gitsigns-config-current_line_blame_opts*
+      Type: `table[extended]`
+      Default: >
+        {
+          virt_text = true,
+          virt_text_pos = 'eol',
+          delay = 1000
+        }
+<
+      Options for the current line blame annotation.
+
+      Fields: ~
+        • virt_text: boolean
+          Whether to show a virtual text blame annotation.
+        • virt_text_delat: integer
+          Sets the delay (in milliseconds) before blame virtual text is
+          displayed.
+        • virt_text_pos: string
+          Blame annotation position. Available values:
+            `eol`         Right after eol character.
+            `overlay`     Display over the specified column, without
+                          shifting the underlying text.
+            `right_align` Display right aligned in the window.
+
 current_line_blame_formatter_opts
                            *gitsigns-config-current_line_blame_formatter_opts*
       Type: `table[extended]`
@@ -545,17 +569,6 @@ current_line_blame_formatter_opts
 
       Fields: ~
         • relative_time: boolean
-
-current_line_blame_position      *gitsigns-config-current_line_blame_position*
-      Type: `string`, Default: `"eol"`
-
-        Blame annotation position.
-
-        Available values:
-          `eol`         Right after eol character.
-          `overlay`     Display over the specified column, without shifting
-                      the underlying text.
-          `right_align` Display right aligned in the window.
 
 current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
       Type: `function`
@@ -613,11 +626,6 @@ current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
       Return: ~
         The result of this function is passed directly to the `opts.virt_text`
         field of |nvim_buf_set_extmark|.
-
-current_line_blame_delay            *gitsigns-config-current_line_blame_delay*
-      Type: `number`, Default: `1000`
-
-      Sets the delay before blame virtual text is displayed in milliseconds.
 
 yadm                                                    *gitsigns-config-yadm*
       Type: `table`, Default: `{ enable = false }`
@@ -702,6 +710,11 @@ Example:
                                                              *b:gitsigns_head*
 Use `b:gitsigns_head` to return the name of the current branch. If the current
 HEAD is detached then this will be an empty string.
+
+                                                  *b:gitsigns_blame_line_dict*
+If *gitsigns-config-current_line_blame* is enabled, then contains dictionary
+of the blame object for current line. For complete list of keys, see the
+{blame_info} argument from |gitsigns-config-current_line_blame_formatter|.
 
 ==============================================================================
 TEXT OBJECTS                                             *gitsigns-textobject*
