@@ -219,6 +219,24 @@ describe('gitsigns', function()
         "attach(2): Non-normal buffer",
       }
     end)
+
+    it('can run get_hunks()', function()
+      edit(test_file)
+      feed("iline1<esc>")
+      feed("oline2<esc>")
+
+      wait(function()
+        eq({{
+            head = '@@ -1,1 +1,2 @@',
+            type = 'change',
+            lines = { '-This', '+line1This', '+line2' },
+            added   = { count = 2, start = 1 },
+            removed = { count = 1, start = 1 },
+          }},
+          exec_lua[[return require'gitsigns'.get_hunks()]]
+        )
+      end)
+    end)
   end)
 
   describe('current line blame', function()
@@ -661,3 +679,5 @@ describe('gitsigns', function()
   -- TODO Add test diffthis
 
 end)
+
+-- vim: foldminlines=1

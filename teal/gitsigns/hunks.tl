@@ -12,9 +12,6 @@ local record M
     type: Type
     head: string
     lines: {string}
-    start: integer
-    dend: integer
-    vend: integer
 
     record Node
       start: integer
@@ -23,6 +20,11 @@ local record M
 
     added: Node
     removed: Node
+
+    -- API unstable
+    start: integer
+    dend: integer
+    vend: integer
   end
 end
 

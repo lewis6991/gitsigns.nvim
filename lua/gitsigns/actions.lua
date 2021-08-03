@@ -58,6 +58,7 @@ local M = {}
 
 
 
+
 local function get_cursor_hunk(bufnr, hunks)
    bufnr = bufnr or current_buf()
    hunks = hunks or cache[bufnr].hunks
@@ -372,6 +373,22 @@ M.select_hunk = function()
    if not hunk then return end
 
    vim.cmd('normal! ' .. hunk.start .. 'GV' .. hunk.vend .. 'G')
+end
+
+M.get_hunks = function(bufnr)
+   bufnr = current_buf()
+   if not cache[bufnr] then return end
+   local ret = {}
+   for _, h in ipairs(cache[bufnr].hunks) do
+      ret[#ret + 1] = {
+         head = h.head,
+         lines = h.lines,
+         type = h.type,
+         added = h.added,
+         removed = h.removed,
+      }
+   end
+   return ret
 end
 
 local function defer(duration, callback)
