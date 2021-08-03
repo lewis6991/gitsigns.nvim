@@ -37,12 +37,26 @@ local record M
     status_formatter: function({string:any}): string
 
     current_line_blame: boolean
-    current_line_blame_formatter: function(string, {string:any}, current_line_blame_formatter_opts): string
+
     record current_line_blame_formatter_opts
-        relative_time: boolean
+      relative_time: boolean
     end
-    current_line_blame_position: string
-    current_line_blame_delay: integer
+
+    current_line_blame_formatter: function(string, {string:any}, current_line_blame_formatter_opts): string
+
+    record current_line_blame_opts
+      virt_text: boolean
+
+      enum VirtTextPos
+        'eol'
+        'overlay'
+        'right_align'
+      end
+      virt_text_pos: VirtTextPos
+
+      delay: integer
+    end
+
     preview_config: {string:any}
     attach_to_untracked: boolean
     use_internal_diff: boolean
@@ -364,6 +378,32 @@ M.schema = {
     ]]
   },
 
+  current_line_blame_opts = {
+    type = 'table',
+    deep_extend = true,
+    default = {
+      virt_text = true,
+      virt_text_pos = 'eol',
+      delay = 1000
+    },
+    description = [[
+      Options for the current line blame annotation.
+
+      Fields: ~
+        • virt_text: boolean
+          Whether to show a virtual text blame annotation.
+        • virt_text_delat: integer
+          Sets the delay (in milliseconds) before blame virtual text is
+          displayed.
+        • virt_text_pos: string
+          Blame annotation position. Available values:
+            `eol`         Right after eol character.
+            `overlay`     Display over the specified column, without
+                          shifting the underlying text.
+            `right_align` Display right aligned in the window.
+    ]]
+  },
+
   current_line_blame_formatter_opts = {
     type = 'table',
     deep_extend = true,
@@ -377,20 +417,6 @@ M.schema = {
         • relative_time: boolean
     ]]
   },
-
-   current_line_blame_position = {
-      type = 'string',
-      default = 'eol',
-      description = [[
-        Blame annotation position.
-
-        Available values:
-          `eol`         Right after eol character.
-          `overlay`     Display over the specified column, without shifting
-                      the underlying text.
-          `right_align` Display right aligned in the window.
-    ]],
-   },
 
   current_line_blame_formatter = {
     type = 'function',
@@ -469,14 +495,6 @@ M.schema = {
       Return: ~
         The result of this function is passed directly to the `opts.virt_text`
         field of |nvim_buf_set_extmark|.
-    ]]
-  },
-
-  current_line_blame_delay = {
-    type = 'number',
-    default = 1000,
-    description = [[
-      Sets the delay before blame virtual text is displayed in milliseconds.
     ]]
   },
 
@@ -562,6 +580,22 @@ local function handle_deprecated(cfg: {string:any})
   if cfg.use_decoration_api then
     print('Gitsigns: use_decoration_api is now removed; ignoring')
     cfg.use_decoration_api = nil
+  end
+
+  if cfg.current_line_blame_delay then
+    local opts = (cfg.current_line_blame_opts or {}) as M.Config.current_line_blame_opts
+    opts.delay = cfg.current_line_blame_delay as integer
+    print('Gitsigns: current_line_blame_delay is deprecated, please use current_line_blame_opts.delay')
+    cfg.current_line_blame_opts = opts
+    cfg.current_line_blame_delay = nil
+  end
+
+  if cfg.current_line_blame_position then
+    local opts = (cfg.current_line_blame_opts or {}) as M.Config.current_line_blame_opts
+    opts.virt_text_pos = cfg.current_line_blame_position as M.Config.current_line_blame_opts.VirtTextPos
+    print('Gitsigns: current_line_blame_opts is deprecated, please use current_line_blame_opts.virt_text_pos')
+    cfg.current_line_blame_opts = opts
+    cfg.current_line_blame_post = nil
   end
 end
 
