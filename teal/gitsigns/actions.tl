@@ -38,6 +38,7 @@ local record M
   prev_hunk          : function(NavHunkOpts)
   preview_hunk       : function()
   select_hunk        : function()
+  get_hunks          : function(bufnr: integer): {Hunk}
 
   blame_line         : function -- function()
   change_base        : function(base: string)
@@ -372,6 +373,22 @@ M.select_hunk = function()
   if not hunk then return end
 
   vim.cmd('normal! '..hunk.start..'GV'..hunk.vend..'G')
+end
+
+M.get_hunks = function(bufnr: integer): {Hunk}
+  bufnr = current_buf()
+  if not cache[bufnr] then return end
+  local ret: {Hunk} = {}
+  for _, h in ipairs(cache[bufnr].hunks) do
+    ret[#ret+1] = {
+      head    = h.head,
+      lines   = h.lines,
+      type    = h.type,
+      added   = h.added,
+      removed = h.removed
+    }
+  end
+  return ret
 end
 
 local function defer(duration: integer, callback: function()): vim.loop.Timer

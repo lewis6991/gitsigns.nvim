@@ -235,6 +235,28 @@ refresh()                                                 *gitsigns.refresh()*
 select_hunk()                                         *gitsigns.select_hunk()*
                 Select the hunk under the cursor.
 
+get_hunks({bufnr})                                      *gitsigns.get_hunks()*
+                Get hunk array for specified buffer.
+
+                Parameters: ~
+                    {bufnr} integer: Buffer number, if not provided (or 0)
+                            will use current buffer.
+
+                Return: ~
+                   Array of hunk objects. Each hunk object has keys:
+                     • `"type"`: String with possible values: "add", "change",
+                       "delete"
+                     • `"head"`: Header that appears in the unified diff
+                       output.
+                     • `"lines"`: Line contents of the hunks prefixed with
+                       either `"-"` or `"+"`.
+                     • `"removed"`: Sub-table with fields:
+                       • `"start"`: Line number (1-based)
+                       • `"count"`: Line count
+                     • `"added"`: Sub-table with fields:
+                       • `"start"`: Line number (1-based)
+                       • `"count"`: Line count
+
 setqflist({target})                                      *gitsigns.setqflist()*
                 Populate the quickfix list with hunks.
 
