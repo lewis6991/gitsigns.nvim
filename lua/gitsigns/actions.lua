@@ -401,7 +401,7 @@ M.blame_line = void(function(full)
       loading:close()
    end)
 
-   local is_committed = tonumber('0x' .. result.sha) ~= 0
+   local is_committed = bcache.git_obj.object_name and tonumber('0x' .. result.sha) ~= 0
    if is_committed then
       local commit_message = {}
       if full then

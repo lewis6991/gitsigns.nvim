@@ -273,6 +273,16 @@ Obj.get_show_text = function(self, object)
 end
 
 Obj.run_blame = function(self, lines, lnum)
+   if not self.object_name then
+
+
+      return {
+         author = 'Not Committed Yet',
+         ['author-mail'] = '<not.committed.yet>',
+         committer = 'Not Committed Yet',
+         ['committer-mail'] = '<not.committed.yet>',
+      }
+   end
    local results = self:command({
       'blame',
       '--contents', '-',
