@@ -55,17 +55,8 @@ build = {
 	   ["gitsigns.status"] = "lua/gitsigns/status.lua",
 	   ["gitsigns.util"] = "lua/gitsigns/util.lua",
    },
-   -- copy_directories = {
-	   -- -- "ftplugin",
-	   -- 'lua'
-   -- }
+   copy_directories = {
+	   -- "ftplugin",
+	   'doc'
+   }
 }
-
--- if _MODREV == 'git' then
---    dependencies[#dependencies + 1] = 'ldoc'
-
---    source = {
---       url = 'git://github.com/luaposix/luaposix.git',
---    }
--- end
-
