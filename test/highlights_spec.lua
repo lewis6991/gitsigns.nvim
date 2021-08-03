@@ -9,11 +9,11 @@ local exec_capture  = helpers.exec_capture
 
 local cleanup       = helpers.cleanup
 local test_config   = helpers.test_config
-local wait          = helpers.wait
+local expectf       = helpers.expectf
 local match_dag     = helpers.match_dag
 local debug_messages = helpers.debug_messages
 local p             = helpers.p
-local setup         = helpers.setup
+local setup_gitsigns = helpers.setup_gitsigns
 
 local it = helpers.it(it)
 
@@ -61,7 +61,7 @@ describe('highlights', function()
 
     exec_lua('gs.setup(...)', config)
 
-    wait(function()
+    expectf(function()
       match_dag(debug_messages(), {
         p'Deriving GitSignsAdd from DiffAdd',
         p'Deriving GitSignsAddLn from DiffAdd',
@@ -94,9 +94,9 @@ describe('highlights', function()
     config.signs.topdelete.hl = nil
     config.linehl = true
 
-    setup(config)
+    setup_gitsigns(config)
 
-    wait(function()
+    expectf(function()
       eq('GitSignsChange xxx links to DiffChange',
         exec_capture('hi GitSignsChange'))
 
@@ -112,7 +112,7 @@ describe('highlights', function()
 
     command('colorscheme blue')
 
-    wait(function()
+    expectf(function()
       eq('GitSignsChange xxx links to DiffChange',
         exec_capture('hi GitSignsChange'))
 
