@@ -59,19 +59,19 @@ M.setup_highlight = function(hl_name)
 
    if is_hl_set(hl_name) then
 
-      dprint(('Highlight %s is already defined'):format(hl_name))
+      dprint('Highlight %s is already defined', hl_name)
       return
    end
 
    for _, d in ipairs(hls[hl_name]) do
       if is_hl_set(d) then
-         dprint(('Deriving %s from %s'):format(hl_name, d))
+         dprint('Deriving %s from %s', hl_name, d)
          vim.cmd(('highlight default link %s %s'):format(hl_name, d))
          return
       end
    end
 
-   dprint(('Unable to setup highlight %s'):format(hl_name))
+   dprint('Unable to setup highlight %s', hl_name)
 end
 
 return M
