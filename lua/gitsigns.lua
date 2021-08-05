@@ -36,7 +36,6 @@ local M = {}
 
 
 
-
 local namespace
 
 local handle_moved = function(bufnr, bcache, old_relpath)
@@ -473,10 +472,6 @@ end)
 
 M.attach = void(attach)
 
-
-M._get_config = function()
-   return config
-end
 
 M._update_highlights = function()
    manager.setup_signs_and_highlights()
