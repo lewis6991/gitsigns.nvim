@@ -526,13 +526,6 @@ use_internal_diff                          *gitsigns-config-use_internal_diff*
 
       This uses LuaJIT's FFI interface.
 
-use_decoration_api                        *gitsigns-config-use_decoration_api*
-      Type: `boolean`, Default: `true`
-
-      Use Neovim's decoration API to apply signs. This should improve
-      performance on large files since signs will only be applied to drawn
-      lines as opposed to all lines in the buffer.
-
 current_line_blame                        *gitsigns-config-current_line_blame*
       Type: `boolean`, Default: `false`
 

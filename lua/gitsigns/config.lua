@@ -62,7 +62,6 @@ local M = {Config = {SignsConfig = {}, watch_index = {}, current_line_blame_form
 
 
 
-
 M.config = {}
 
 M.schema = {
@@ -353,16 +352,6 @@ M.schema = {
     ]],
    },
 
-   use_decoration_api = {
-      type = 'boolean',
-      default = true,
-      description = [[
-      Use Neovim's decoration API to apply signs. This should improve
-      performance on large files since signs will only be applied to drawn
-      lines as opposed to all lines in the buffer.
-    ]],
-   },
-
    current_line_blame = {
       type = 'boolean',
       default = false,
@@ -560,8 +549,17 @@ local function resolve_default(v)
    end
 end
 
+local function handle_deprecated(cfg)
+   if cfg.use_decoration_api then
+      print('Gitsigns: use_decoration_api is now removed; ignoring')
+      cfg.use_decoration_api = nil
+   end
+end
+
 function M.build(user_config)
    user_config = user_config or {}
+
+   handle_deprecated(user_config)
 
    validate_config(user_config)
 

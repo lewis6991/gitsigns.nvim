@@ -43,14 +43,9 @@ function M.apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: integer
   -- clearing all the signs
   local first_apply = top == nil
 
-  if config.use_decoration_api then
-    -- Just apply to signs visible in window
-    top = top or vim.fn.line('w0')
-    bot = bot or vim.fn.line('w$')
-  else
-    top = top or 1
-    bot = bot or vim.fn.line('$')
-  end
+  -- Just apply to signs visible in window
+  top = top or vim.fn.line('w0')
+  bot = bot or vim.fn.line('w$')
 
   local scheduled: {integer:Sign} = {}
 
@@ -72,9 +67,7 @@ function M.apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: integer
     -- added but none of them are visible in the window, then make sure to add at
     -- least one sign. Only do this on the first call after an update when we all
     -- the signs have been cleared.
-    if config.use_decoration_api then
-      schedule_sign(next(pending))
-    end
+    schedule_sign(next(pending))
   end
 
   signs.add(config, bufnr, scheduled)
