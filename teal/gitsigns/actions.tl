@@ -276,8 +276,18 @@ local function nav_hunk(options: NavHunkOpts)
   if not bcache then
     return
   end
+
+  -- show navigation message
+  local show_navigation_msg = not string.find(vim.o.shortmess, 'S')
+  if options.navigation_message ~= nil then
+      show_navigation_msg = options.navigation_message
+  end
+
   local hunks = bcache.hunks
   if not hunks or vim.tbl_isempty(hunks) then
+    if show_navigation_msg then
+      vim.api.nvim_echo({{'No hunks', 'WarningMsg'}}, false, {})
+    end
     return
   end
   local line = api.nvim_win_get_cursor(0)[1]
@@ -289,12 +299,6 @@ local function nav_hunk(options: NavHunkOpts)
   end
 
   local hunk, index = gs_hunks.find_nearest_hunk(line, hunks, options.forwards, wrap)
-
-  -- show navigation message
-  local show_navigation_msg = not string.find(vim.o.shortmess, 'S')
-  if options.navigation_message ~= nil then
-      show_navigation_msg = options.navigation_message
-  end
 
   if hunk == nil then
     if show_navigation_msg then
