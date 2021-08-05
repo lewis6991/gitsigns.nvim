@@ -43,14 +43,9 @@ function M.apply_win_signs(bufnr, pending, top, bot)
 
    local first_apply = top == nil
 
-   if config.use_decoration_api then
 
-      top = top or vim.fn.line('w0')
-      bot = bot or vim.fn.line('w$')
-   else
-      top = top or 1
-      bot = bot or vim.fn.line('$')
-   end
+   top = top or vim.fn.line('w0')
+   bot = bot or vim.fn.line('w$')
 
    local scheduled = {}
 
@@ -72,9 +67,7 @@ function M.apply_win_signs(bufnr, pending, top, bot)
 
 
 
-      if config.use_decoration_api then
-         schedule_sign(next(pending))
-      end
+      schedule_sign(next(pending))
    end
 
    signs.add(config, bufnr, scheduled)

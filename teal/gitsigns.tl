@@ -418,25 +418,23 @@ M.setup = void(function(cfg: Config)
 
   setup_command()
 
-  if config.use_decoration_api then
-    -- Calling this before any await calls will stop nvim's intro messages being
-    -- displayed
-    api.nvim_set_decoration_provider(namespace, {
-      on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
-        local bcache = cache[bufnr]
-        if not bcache or not bcache.pending_signs then
-          return false
-        end
-        manager.apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
-
-        -- Returning false prevents the on_line callbacks
-        return config.word_diff and config.use_internal_diff
-      end,
-      on_line = function(_, _, bufnr: integer, row: integer)
-        manager.apply_word_diff(bufnr, row)
+  -- Calling this before any await calls will stop nvim's intro messages being
+  -- displayed
+  api.nvim_set_decoration_provider(namespace, {
+    on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
+      local bcache = cache[bufnr]
+      if not bcache or not bcache.pending_signs then
+        return false
       end
-    })
-  end
+      manager.apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
+
+      -- Returning false prevents the on_line callbacks
+      return config.word_diff and config.use_internal_diff
+    end,
+    on_line = function(_, _, bufnr: integer, row: integer)
+      manager.apply_word_diff(bufnr, row)
+    end
+  })
 
   git.enable_yadm = config.yadm.enable
   git.set_version(config._git_version)

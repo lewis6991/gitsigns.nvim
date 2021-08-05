@@ -303,11 +303,10 @@ describe('gitsigns', function()
     end)
   end)
 
-  local function testsuite(advanced_features)
+  local function testsuite(internal_diff)
     return function()
       before_each(function()
-        config.use_decoration_api = advanced_features
-        config.use_internal_diff = advanced_features
+        config.use_internal_diff = internal_diff
         setup_test_repo()
       end)
 
@@ -460,11 +459,11 @@ describe('gitsigns', function()
           p'run_job: git .* show :0:newfile.txt'
         }
 
-        if not advanced_features then
+        if not internal_diff then
           table.insert(messages, p'run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*')
         end
 
-        local jobs = advanced_features and 8 or 9
+        local jobs = internal_diff and 8 or 9
         table.insert(messages, "update(1): updates: 1, jobs: "..jobs)
 
         match_debug_messages(messages)
