@@ -189,6 +189,16 @@ global record vim
 
     sign_unplace: function(string, {string:any})
     sign_place: function(number, string, string, string | number, {string:any})
+
+    record SignPlaceItem
+      buffer: integer
+      group: string
+      id: integer
+      lnum: integer
+      name: string
+      priority: integer
+    end
+    sign_placelist: function({SignPlaceItem})
     sign_getdefined: function(string): table
 
     record SignPlacedInfo

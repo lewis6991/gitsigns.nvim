@@ -66,6 +66,7 @@ function M.add(cfg, bufnr, signs)
 
       return
    end
+   local to_place = {}
    for lnum, s in pairs(signs) do
       local stype = M.sign_map[s.type]
       local count = s.count
@@ -84,10 +85,16 @@ function M.add(cfg, bufnr, signs)
          })
       end
 
-      vim.fn.sign_place(lnum, ns, stype, bufnr, {
-         lnum = lnum, priority = cfg.sign_priority,
-      })
+      to_place[#to_place + 1] = {
+         id = lnum,
+         group = ns,
+         name = stype,
+         buffer = bufnr,
+         lnum = lnum,
+         priority = cfg.sign_priority,
+      }
    end
+   vim.fn.sign_placelist(to_place)
 end
 
 

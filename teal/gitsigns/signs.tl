@@ -66,6 +66,7 @@ function M.add(cfg: Config, bufnr: integer, signs: {integer:M.Sign})
     -- Don't place signs if it won't show anything
     return
   end
+  local to_place: {vim.fn.SignPlaceItem} = {}
   for lnum, s in pairs(signs) do
     local stype: string = M.sign_map[s.type]
     local count = s.count
@@ -84,10 +85,16 @@ function M.add(cfg: Config, bufnr: integer, signs: {integer:M.Sign})
       })
     end
 
-    vim.fn.sign_place(lnum, ns, stype, bufnr, {
-      lnum = lnum, priority = cfg.sign_priority
-    })
+    to_place[#to_place+1] = {
+      id       = lnum,
+      group    = ns,
+      name     = stype,
+      buffer   = bufnr,
+      lnum     = lnum,
+      priority = cfg.sign_priority
+    }
   end
+  vim.fn.sign_placelist(to_place)
 end
 
 -- Return map of line number to sign name. Can't use SignName as signs with
