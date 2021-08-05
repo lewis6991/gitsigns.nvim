@@ -29,7 +29,6 @@ local record M
   attach     : function(cbuf: integer, trigger: string)
 
   -- Internal, API unstable
-  _get_config        : function(): Config
   _update_highlights : function()
   _run_func          : function(range: {integer, integer}, func: string, ...: any)
   _complete          : function(arglead: string, line: string): {string}
@@ -474,10 +473,6 @@ end)
 M.attach = void(attach)
 
 -- Internal, API unstable
-M._get_config = function(): Config
-  return config
-end
-
 M._update_highlights = function()
   manager.setup_signs_and_highlights()
 end
