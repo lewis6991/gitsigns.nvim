@@ -45,7 +45,7 @@ local handle_moved = function(bufnr, bcache, old_relpath)
 
    local new_name = git_obj:has_moved()
    if new_name then
-      dprint('File moved to ' .. new_name)
+      dprint('File moved to %s', new_name)
       git_obj.relpath = new_name
       if not git_obj.orig_relpath then
          git_obj.orig_relpath = old_relpath
@@ -77,11 +77,12 @@ local watch_index = function(bufnr, gitdir)
    local index = gitdir .. util.path_sep .. 'index'
    local w = uv.new_fs_poll()
    w:start(index, config.watch_index.interval, void(function(err)
+      local __FUNC__ = 'watcher_cb'
       if err then
-         dprint('Index update error: ' .. err, 'watcher_cb')
+         dprint('Index update error: %s', err)
          return
       end
-      dprint('Index update', 'watcher_cb')
+      dprint('Index update')
 
       local bcache = cache[bufnr]
 
@@ -89,7 +90,7 @@ local watch_index = function(bufnr, gitdir)
 
 
 
-         dprint(string.format('Buffer %s has detached, aborting', bufnr))
+         dprint('Has detached, aborting')
          return
       end
 
@@ -104,7 +105,7 @@ local watch_index = function(bufnr, gitdir)
       local old_relpath = git_obj.relpath
 
       if not git_obj:update_file_info() then
-         dprint('File not changed', 'watcher_cb')
+         dprint('File not changed')
          return
       end
 
@@ -168,7 +169,7 @@ local function get_buf_path(bufnr)
          sub_module_path = sub_module_path:gsub("^/modules", "")
          file = root_path .. sub_module_path .. real_path
          file = uv.fs_realpath(file)
-         dprint(("Fugitive buffer for file '%s' from path '%s'"):format(file, orig_path))
+         dprint("Fugitive buffer for file '%s' from path '%s'", file, orig_path)
          if file then
             return file, commit
          else
@@ -203,7 +204,7 @@ local attach0 = function(cbuf, aucmd)
    end
 
    if aucmd then
-      dprint(string.format('Attaching (trigger=%s)', aucmd))
+      dprint('Attaching (trigger=%s)', aucmd)
    else
       dprint('Attaching')
    end
@@ -302,7 +303,8 @@ local attach0 = function(cbuf, aucmd)
          return manager.on_lines(buf, last_orig, last_new)
       end,
       on_reload = function(_, bufnr)
-         dprint('Reload', 'on_reload')
+         local __FUNC__ = 'on_reload'
+         dprint('Reload')
          manager.update_debounced(bufnr)
       end,
       on_detach = function(_, buf)
@@ -331,7 +333,7 @@ local attach_running = {}
 local attach = function(cbuf, trigger)
    cbuf = cbuf or current_buf()
    if attach_running[cbuf] then
-      dprint('Attach in progress', 'attach')
+      dprint('Attach in progress')
       return
    end
    attach_running[cbuf] = true

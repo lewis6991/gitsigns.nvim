@@ -130,7 +130,7 @@ end
 
 M.on_lines = function(buf: integer, last_orig: integer, last_new: integer): boolean
   if not cache[buf] then
-    dprint('Cache for buffer '..buf..' was nil. Detaching')
+    dprint('Cache for buffer %d was nil. Detaching', buf)
     return true
   end
 
@@ -223,7 +223,7 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
 
   update_cnt = update_cnt + 1
 
-  dprint(string.format('updates: %s, jobs: %s', update_cnt, util.job_cnt))
+  dprint('updates: %s, jobs: %s', update_cnt, util.job_cnt)
 end
 
 -- Ensure updates cannot be interleaved.
