@@ -691,7 +691,7 @@ provided. `b:gitsigns_status` is formatted using `config.status_formatter`
         • `added` - Number of added lines.
         • `changed` - Number of changed lines.
         • `removed` - Number of removed lines.
-        • `head` - Name of current branch.
+        • `head` - Name of current HEAD (branch or short commit hash).
         • `root` - Top level directory of the working tree.
         • `gitdir` - .git directory.
 
@@ -700,8 +700,8 @@ Example:
     set statusline+=%{get(b:,'gitsigns_status','')}
 <
                                                              *b:gitsigns_head*
-Use `b:gitsigns_head` to return the name of the current branch. If the current
-HEAD is detached then this will be an empty string.
+Use `b:gitsigns_head` to return the name of the current HEAD (usually branch
+name). If the current HEAD is detached then this will be a short commit hash.
 
 ==============================================================================
 TEXT OBJECTS                                             *gitsigns-textobject*

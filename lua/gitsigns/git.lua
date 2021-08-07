@@ -150,7 +150,7 @@ M.command = wrap(function(args, spec, callback)
    util.run_job(spec)
 end, 3)
 
-local function process_abbrev_head(gitdir, head_str)
+local function process_abbrev_head(gitdir, head_str, path, cmd)
    if not gitdir then
       return head_str
    end
@@ -161,7 +161,12 @@ local function process_abbrev_head(gitdir, head_str)
       elseif gsd.debug_mode then
          return head_str
       else
-         return ''
+         local hash_tbl = M.command({ 'rev-parse', '--short', 'HEAD' }, {
+            command = cmd or 'git',
+            supress_stderr = true,
+            cwd = path,
+         })
+         return hash_tbl[1] or ''
       end
    end
    return head_str
@@ -190,7 +195,7 @@ local get_repo_info = function(path, cmd)
    if not has_abs_gd then
       gitdir = uv.fs_realpath(gitdir)
    end
-   local abbrev_head = process_abbrev_head(gitdir, results[3])
+   local abbrev_head = process_abbrev_head(gitdir, results[3], path, cmd)
    return toplevel, gitdir, abbrev_head
 end
 
