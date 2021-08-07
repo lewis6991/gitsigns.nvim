@@ -43,7 +43,7 @@ function popup.create(lines, opts)
       api.nvim_win_set_option(win_id, 'signcolumn', 'no')
    end
 
-   vim.cmd("autocmd CursorMoved,CursorMovedI <buffer> ++once lua pcall(vim.api.nvim_win_close, " ..
+   vim.cmd("autocmd CursorMoved,CursorMovedI,BufLeave <buffer> ++once lua pcall(vim.api.nvim_win_close, " ..
    win_id .. ", true)")
 
    return win_id, bufnr
