@@ -155,19 +155,21 @@ local function process_abbrev_head(gitdir: string, head_str: string, path: strin
     return head_str
   end
   if head_str == 'HEAD' then
-    if util.path_exists(gitdir..'/rebase-merge')
-      or util.path_exists(gitdir..'/rebase-apply') then
-      return '(rebasing)'
-    elseif gsd.debug_mode then
-      return head_str
-    else
-      local hash_tbl = M.command({'rev-parse', '--short', 'HEAD'}, {
+    local short_sha: string
+    if not gsd.debug_mode then
+      short_sha = M.command({'rev-parse', '--short', 'HEAD'}, {
         command = cmd or 'git',
         supress_stderr = true,
         cwd = path,
-      })
-      return hash_tbl[1] or ''
+      })[1] or ''
+    else
+      short_sha = 'HEAD'
     end
+    if util.path_exists(gitdir..'/rebase-merge')
+      or util.path_exists(gitdir..'/rebase-apply') then
+      return short_sha..'(rebasing)'
+    end
+    return short_sha
   end
   return head_str
 end
