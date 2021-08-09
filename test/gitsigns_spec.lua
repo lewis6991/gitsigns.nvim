@@ -582,14 +582,14 @@ describe('gitsigns', function()
         -- test_file should have a conflict
         edit(test_file)
         check {
-          status = {head='(rebasing)', added=4, changed=1, removed=0},
+          status = {head='HEAD(rebasing)', added=4, changed=1, removed=0},
           signs = {changed=1, added=4}
         }
 
         exec_lua('require("gitsigns.actions").stage_hunk()')
 
         check {
-          status = {head='(rebasing)', added=0, changed=0, removed=0},
+          status = {head='HEAD(rebasing)', added=0, changed=0, removed=0},
           signs = {}
         }
 
@@ -653,6 +653,21 @@ describe('gitsigns', function()
       'attach(5): attaching is disabled',
     }, exec_lua[[return require'gitsigns'.debug_messages(true)]])
 
+  end)
+
+  it('show short SHA when detached head', function()
+    setup_test_repo()
+    git{"checkout", "--detach"}
+
+    -- Disable debug_mode so the sha is calculated
+    config.debug_mode = false
+    setup_gitsigns(config)
+    edit(test_file)
+
+    -- SHA is not deterministic so just check it can be cast as a hex value
+    expectf(function()
+      helpers.neq(nil, tonumber('0x'..get_buf_var('gitsigns_head')))
+    end)
   end)
 
 end)
