@@ -37,7 +37,7 @@ if jit then
 end
 
 M.is_unix = (function()
-   if jit_os == 'linux' or jit_os == 'osx' then
+   if jit_os == 'linux' or jit_os == 'osx' or jit_os == 'bsd' then
       return true
    end
    return false
