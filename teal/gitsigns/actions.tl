@@ -634,7 +634,9 @@ M.refresh = void(function()
   manager.setup_signs_and_highlights(true)
   require('gitsigns.current_line_blame').setup()
   for k, v in pairs(cache as {integer:CacheEntry}) do
-    v.compare_text = nil  -- Invalidate
+    -- Invalidate cache fields
+    v.compare_text = nil
+    v.hunks = nil
     manager.update(k, v)
   end
 end)
