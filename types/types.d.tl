@@ -161,6 +161,7 @@ global record vim
     line: function(string): integer
     join: function({any}, string): string
     getpos: function(string): {integer}
+    executable: function(string): integer
     expand: function(string): string
 
     record QFItem
