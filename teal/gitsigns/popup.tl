@@ -67,10 +67,22 @@ function popup.create(lines: {string}, opts: {string:any}): number, number
     api.nvim_win_set_option(win_id, 'signcolumn', 'no')
   end
 
-  vim.cmd("autocmd CursorMoved,CursorMovedI,BufLeave <buffer> ++once lua pcall(vim.api.nvim_win_close, "
-    ..win_id..", true)")
+  -- Close the popup when navigating to any window which is not the preview
+  -- itself.
+  vim.cmd("augroup GitsignsPopup"..win_id)
+  vim.cmd("autocmd CursorMoved,CursorMovedI * "..
+          ("lua package.loaded['gitsigns.popup'].close(%d)"):format(win_id))
+  vim.cmd("augroup END")
 
   return win_id, bufnr
+end
+
+function popup.close(win_id: integer)
+  if api.nvim_get_current_win() ~= win_id then
+    -- Delete the augroup
+    vim.cmd("silent! augroup! GitsignsPopup"..win_id)
+    pcall(api.nvim_win_close, win_id, true)
+  end
 end
 
 return popup
