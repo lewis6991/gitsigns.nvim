@@ -315,6 +315,15 @@ global record vim
   in_fast_event: function(): boolean
 
   list_extend: function({any}, {any}, integer, integer)
+  record log
+    record levels
+      WARN: integer
+      ERROR: integer
+      INFO: integer
+      DEBUG: integer
+    end
+  end
+  notify: function(string, integer, table)
   split: function(string, string): {string}
   split: function(string, string, boolean): {string}
 

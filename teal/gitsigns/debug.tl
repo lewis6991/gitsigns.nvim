@@ -97,7 +97,7 @@ function M.eprint(msg: string)
   else
     -- On windows print() crashes in callback threads
     vim.schedule(function()
-      print('error: ' .. msg)
+      vim.notify(msg, vim.log.levels.ERROR, {title = 'gitsigns'})
     end)
   end
 end

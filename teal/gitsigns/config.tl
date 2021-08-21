@@ -559,7 +559,10 @@ M.schema = {
 local function validate_config(config: {string:any})
   for k, v in pairs(config) do
     if M.schema[k] == nil then
-      print(("gitsigns: Ignoring invalid configuration field '%s'"):format(k))
+      vim.notify(
+        ("gitsigns: Ignoring invalid configuration field '%s'"):format(k),
+        vim.log.levels.WARN
+      )
     else
       vim.validate {
         [k] = { v, M.schema[k].type } as {any};
@@ -578,14 +581,17 @@ end
 
 local function handle_deprecated(cfg: {string:any})
   if cfg.use_decoration_api then
-    print('Gitsigns: use_decoration_api is now removed; ignoring')
+    vim.notify('use_decoration_api is now removed; ignoring',
+               vim.log.levels.WARN, {title = 'gitsigns'})
     cfg.use_decoration_api = nil
   end
 
   if cfg.current_line_blame_delay then
     local opts = (cfg.current_line_blame_opts or {}) as M.Config.current_line_blame_opts
     opts.delay = cfg.current_line_blame_delay as integer
-    print('Gitsigns: current_line_blame_delay is deprecated, please use current_line_blame_opts.delay')
+    vim.notify(
+      'current_line_blame_delay is deprecated, please use current_line_blame_opts.delay',
+      vim.log.levels.WARN, {title = 'gitsigns'})
     cfg.current_line_blame_opts = opts
     cfg.current_line_blame_delay = nil
   end
@@ -593,7 +599,9 @@ local function handle_deprecated(cfg: {string:any})
   if cfg.current_line_blame_position then
     local opts = (cfg.current_line_blame_opts or {}) as M.Config.current_line_blame_opts
     opts.virt_text_pos = cfg.current_line_blame_position as M.Config.current_line_blame_opts.VirtTextPos
-    print('Gitsigns: current_line_blame_opts is deprecated, please use current_line_blame_opts.virt_text_pos')
+    vim.notify(
+      'current_line_blame_opts is deprecated, please use current_line_blame_opts.virt_text_pos',
+      vim.log.levels.WARN, {title = 'gitsigns'})
     cfg.current_line_blame_opts = opts
     cfg.current_line_blame_post = nil
   end
