@@ -1,5 +1,6 @@
 local void = require('plenary.async.async').void
 local scheduler = require('plenary.async.util').scheduler
+local will_block = require('plenary.async.util').will_block
 
 local Status = require("gitsigns.status")
 local config = require('gitsigns.config').config
@@ -575,7 +576,7 @@ local function buildqflist(target)
    return qflist
 end
 
-M.setqflist = void(function(target)
+M.setqflist = will_block(function(target)
    local qflist = buildqflist(target)
    scheduler()
    vim.fn.setqflist({}, ' ', {
@@ -584,7 +585,7 @@ M.setqflist = void(function(target)
    })
 end)
 
-M.setloclist = void(function(nr, target)
+M.setloclist = will_block(function(nr, target)
    nr = nr or 0
    local qflist = buildqflist(target)
    scheduler()
