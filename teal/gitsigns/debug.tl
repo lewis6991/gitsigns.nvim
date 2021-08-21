@@ -1,16 +1,18 @@
 local M = {
   debug_mode = false,
+  verbose = false,
   messages: {string} = {}
 }
 
-local function getvarvalue(name: string): any
+local function getvarvalue(name: string, lvl: integer): any
+  lvl = lvl + 1
   local value: any
   local found: boolean
 
   -- try local variables
   local i = 1
   while true do
-    local n, v = debug.getlocal(3 as function, i) as (string, any)
+    local n, v = debug.getlocal(lvl as function, i) as (string, any)
     if not n then break end
     if n == name then
       value = v
@@ -21,7 +23,7 @@ local function getvarvalue(name: string): any
   if found then return value end
 
   -- try upvalues
-  local func = debug.getinfo(3).func as function
+  local func = debug.getinfo(lvl).func as function
   i = 1
   while true do
     local n, v = debug.getupvalue(func, i) as (string, any)
@@ -34,29 +36,54 @@ local function getvarvalue(name: string): any
   return getfenv(func)[name]
 end
 
+local function get_context(lvl: integer): table
+  lvl = lvl + 1
+  local ret: table = {}
+  ret.name = getvarvalue('__FUNC__', lvl) as string
+  if not ret.name then
+    local name0 = debug.getinfo(lvl, 'n').name or ''
+    ret.name = name0:gsub('(.*)%d+$', '%1')
+  end
+  ret.bufnr = getvarvalue('bufnr', lvl)
+    or getvarvalue('cbuf', lvl)
+    or getvarvalue('buf', lvl)
+
+  return ret
+end
+
 -- If called in a callback then make sure the callback defines a __FUNC__
 -- variable which can be used to identify the name of the function.
-function M.dprint(obj: any, ...: any)
-  if not M.debug_mode then
-    return
-  end
-  local msg = obj is string and obj:format(...) or vim.inspect(obj)
-  local name = getvarvalue('__FUNC__') as string
-  if not name then
-    local name0 = debug.getinfo(2, 'n').name or ''
-    name = name0:gsub('(.*)%d+$', '%1')
-  end
+local function cprint(obj: any, lvl: integer)
+  lvl = lvl + 1
+  local msg = obj is string and obj or vim.inspect(obj)
+  local ctx = get_context(lvl)
   local msg2: string
-
-  local bufnr = getvarvalue('bufnr')
-    or getvarvalue('cbuf')
-    or getvarvalue('buf')
-  if bufnr then
-    msg2 = string.format('%s(%s): %s', name, bufnr, msg)
+  if ctx.bufnr then
+    msg2 = string.format('%s(%s): %s', ctx.name, ctx.bufnr, msg)
   else
-    msg2 = string.format('%s: %s', name, msg)
+    msg2 = string.format('%s: %s', ctx.name, msg)
   end
   table.insert(M.messages, msg2)
+end
+
+function M.dprint(obj: any)
+  if not M.debug_mode then return end
+  cprint(obj, 2)
+end
+
+function M.dprintf(obj: string, ...:any)
+  if not M.debug_mode then return end
+  cprint(obj:format(...), 2)
+end
+
+function M.vprint(obj: any)
+  if not (M.debug_mode and M.verbose) then return end
+  cprint(obj, 2)
+end
+
+function M.vprintf(obj: string, ...:any)
+  if not (M.debug_mode and M.verbose) then return end
+  cprint(obj:format(...), 2)
 end
 
 function M.eprint(msg: string)

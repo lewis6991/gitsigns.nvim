@@ -14,6 +14,7 @@ local Status            = require("gitsigns.status")
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local gs_debug          = require("gitsigns.debug")
 local dprint            = gs_debug.dprint
+local dprintf           = gs_debug.dprintf
 local eprint            = gs_debug.eprint
 local util              = require('gitsigns.util')
 
@@ -123,7 +124,7 @@ end
 
 M.on_lines = function(buf: integer, last_orig: integer, last_new: integer): boolean
   if not cache[buf] then
-    dprint('Cache for buffer %d was nil. Detaching', buf)
+    dprint('Cache for buffer was nil. Detaching')
     return true
   end
 
@@ -216,7 +217,7 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
 
   update_cnt = update_cnt + 1
 
-  dprint('updates: %s, jobs: %s', update_cnt, util.job_cnt)
+  dprintf('updates: %s, jobs: %s', update_cnt, util.job_cnt)
 end
 
 -- Ensure updates cannot be interleaved.

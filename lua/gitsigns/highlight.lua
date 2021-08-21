@@ -1,7 +1,7 @@
 
 local api = vim.api
 
-local dprint = require("gitsigns.debug").dprint
+local dprintf = require("gitsigns.debug").dprintf
 
 local M = {}
 
@@ -59,19 +59,19 @@ M.setup_highlight = function(hl_name)
 
    if is_hl_set(hl_name) then
 
-      dprint('Highlight %s is already defined', hl_name)
+      dprintf('Highlight %s is already defined', hl_name)
       return
    end
 
    for _, d in ipairs(hls[hl_name]) do
       if is_hl_set(d) then
-         dprint('Deriving %s from %s', hl_name, d)
+         dprintf('Deriving %s from %s', hl_name, d)
          vim.cmd(('highlight default link %s %s'):format(hl_name, d))
          return
       end
    end
 
-   dprint('Unable to setup highlight %s', hl_name)
+   dprintf('Unable to setup highlight %s', hl_name)
 end
 
 return M

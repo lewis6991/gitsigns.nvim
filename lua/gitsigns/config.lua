@@ -62,6 +62,7 @@ local M = {Config = {SignsConfig = {}, watch_index = {}, current_line_blame_form
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -492,6 +493,14 @@ M.schema = {
       default = 'auto',
       description = [[
       Version of git available. Set to 'auto' to automatically detect.
+    ]],
+   },
+
+   _verbose = {
+      type = 'boolean',
+      default = false,
+      description = [[
+      More verbose debug message. Requires debug_mode=true.
     ]],
    },
 

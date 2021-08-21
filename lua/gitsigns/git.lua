@@ -126,6 +126,9 @@ M.command = wrap(function(args, spec, callback)
    spec.args = { '--no-pager', unpack(args) }
    spec.on_stdout = spec.on_stdout or function(_, line)
       table.insert(result, line)
+      if gsd.verbose and #result <= 10 then
+         gsd.vprint(line)
+      end
    end
    spec.on_stderr = spec.on_stderr or function(err, line)
       if not spec.supress_stderr then
@@ -144,6 +147,9 @@ M.command = wrap(function(args, spec, callback)
    spec.on_exit = function()
       if old_on_exit then
          old_on_exit()
+      end
+      if gsd.verbose and #result then
+         gsd.vprintf('%d lines', #result)
       end
       callback(result, reserr)
    end
