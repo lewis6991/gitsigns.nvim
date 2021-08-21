@@ -394,6 +394,17 @@ end
 
 M.setup = void(function(cfg: Config)
   gs_config.build(cfg)
+
+  if vim.fn.executable('git') == 0 then
+    print('gitsigns: git not in path. Aborting setup')
+    return
+  end
+  if config.yadm.enable and vim.fn.executable('yadm') == 0 then
+    print("gitsigns: yadm not in path. Ignoring 'yadm.enable' in config")
+    config.yadm.enable = false
+    return
+  end
+
   namespace = api.nvim_create_namespace('gitsigns')
 
   gs_debug.debug_mode = config.debug_mode
