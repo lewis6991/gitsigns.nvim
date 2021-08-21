@@ -392,15 +392,15 @@ M.schema = {
       Fields: ~
         • virt_text: boolean
           Whether to show a virtual text blame annotation.
-        • virt_text_delat: integer
-          Sets the delay (in milliseconds) before blame virtual text is
-          displayed.
         • virt_text_pos: string
           Blame annotation position. Available values:
             `eol`         Right after eol character.
             `overlay`     Display over the specified column, without
                           shifting the underlying text.
             `right_align` Display right aligned in the window.
+        • delay: integer
+          Sets the delay (in milliseconds) before blame virtual text is
+          displayed.
     ]]
   },
 
