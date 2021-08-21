@@ -15,6 +15,26 @@ local function bufnr_calc_width(buf: integer, lines: {string}): integer
   end)
 end
 
+-- Expand height until all lines are visible to account for wrapped lines.
+local function expand_height(win_id: integer, nlines: integer)
+  local newheight = 0
+  for _ = 0, 50 do
+    local winheight = api.nvim_win_get_height(win_id)
+    if newheight > winheight then
+      -- Window must be max height
+      break
+    end
+    local wd = api.nvim_win_call(win_id, function(): integer
+      return vim.fn.line('w$')
+    end)
+    if wd >= nlines then
+      break
+    end
+    newheight = winheight+nlines-wd
+    api.nvim_win_set_height(win_id, newheight)
+  end
+end
+
 function popup.create(lines: {string}, opts: {string:any}): number, number
   local ts = api.nvim_buf_get_option(0, 'tabstop')
   local bufnr = api.nvim_create_buf(false, true)
@@ -32,10 +52,14 @@ function popup.create(lines: {string}, opts: {string:any}): number, number
   api.nvim_buf_set_option(bufnr, 'tabstop', ts)
 
   local opts1 = vim.deepcopy(opts or {})
-  opts1.height = opts1.height or #lines
+  opts1.height = opts1.height or #lines -- Guess, adjust later
   opts1.width  = opts1.width or bufnr_calc_width(bufnr, lines)
 
   local win_id = api.nvim_open_win(bufnr, false, opts1)
+
+  if not opts.height then
+    expand_height(win_id, #lines)
+  end
 
   if opts1.style == 'minimal' then
     -- If 'signcolumn' = auto:1-2, then a empty signcolumn will appear and cause
