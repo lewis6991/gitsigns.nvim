@@ -15,6 +15,26 @@ local function bufnr_calc_width(buf, lines)
    end)
 end
 
+
+local function expand_height(win_id, nlines)
+   local newheight = 0
+   for _ = 0, 50 do
+      local winheight = api.nvim_win_get_height(win_id)
+      if newheight > winheight then
+
+         break
+      end
+      local wd = api.nvim_win_call(win_id, function()
+         return vim.fn.line('w$')
+      end)
+      if wd >= nlines then
+         break
+      end
+      newheight = winheight + nlines - wd
+      api.nvim_win_set_height(win_id, newheight)
+   end
+end
+
 function popup.create(lines, opts)
    local ts = api.nvim_buf_get_option(0, 'tabstop')
    local bufnr = api.nvim_create_buf(false, true)
@@ -36,6 +56,10 @@ function popup.create(lines, opts)
    opts1.width = opts1.width or bufnr_calc_width(bufnr, lines)
 
    local win_id = api.nvim_open_win(bufnr, false, opts1)
+
+   if not opts.height then
+      expand_height(win_id, #lines)
+   end
 
    if opts1.style == 'minimal' then
 

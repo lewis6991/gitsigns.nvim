@@ -131,18 +131,19 @@ local record api
   nvim_ui_try_resize: function(number, number)
   nvim_ui_try_resize_grid: function(number, number, number)
   nvim_unsubscribe: function(string)
+  nvim_win_call: function<T>(number, (function(): T)): T
   nvim_win_close: function(number, boolean)
   nvim_win_del_var: function(number, string)
   nvim_win_get_buf: function(number): number
   nvim_win_get_config: function(number): {string:any}
   nvim_win_get_cursor: function(number): {integer}
-  nvim_win_get_height: function(number): number
+  nvim_win_get_height: function(integer): integer
   nvim_win_get_number: function(number): number
   nvim_win_get_option: function(number, string): any
   nvim_win_get_position: function(number): {number}
   nvim_win_get_tabpage: function(number): any
   nvim_win_get_var: function(number, string): any
-  nvim_win_get_width: function(number): number
+  nvim_win_get_width: function(integer): integer
   nvim_win_is_valid: function(number): boolean
   nvim_win_set_buf: function(number, number)
   nvim_win_set_config: function(number, {string:any})
