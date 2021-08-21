@@ -56,6 +56,7 @@ local record M
     _refresh_staged_on_update: boolean
 
     _git_version: string
+    _verbose: boolean
   end
 
   schema: {string:SchemaElem}
@@ -492,6 +493,14 @@ M.schema = {
     default = 'auto',
     description = [[
       Version of git available. Set to 'auto' to automatically detect.
+    ]]
+  },
+
+  _verbose = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      More verbose debug message. Requires debug_mode=true.
     ]]
   },
 

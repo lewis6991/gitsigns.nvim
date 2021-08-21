@@ -16,6 +16,7 @@ local Config     = gs_config.Config
 local config     = gs_config.config
 
 local gs_debug   = require("gitsigns.debug")
+local dprintf    = gs_debug.dprintf
 local dprint     = gs_debug.dprint
 
 local api = vim.api
@@ -44,7 +45,7 @@ local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: s
 
   local new_name = git_obj:has_moved()
   if new_name then
-    dprint('File moved to %s', new_name)
+    dprintf('File moved to %s', new_name)
     git_obj.relpath = new_name
     if not git_obj.orig_relpath then
       git_obj.orig_relpath = old_relpath
@@ -53,7 +54,7 @@ local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: s
   elseif git_obj.orig_relpath then
     local orig_file = git_obj.toplevel..util.path_sep..git_obj.orig_relpath
     if git_obj:file_info(orig_file) then
-      dprint('Moved file reset')
+      dprintf('Moved file reset')
       git_obj.relpath = git_obj.orig_relpath
       git_obj.orig_relpath = nil
       do_update = true
@@ -72,13 +73,13 @@ local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: s
 end
 
 local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
-  dprint('Watching index')
+  dprintf('Watching index')
   local index = gitdir..util.path_sep..'index'
   local w = uv.new_fs_poll()
   w:start(index, config.watch_index.interval, void(function(err: string)
     local __FUNC__ = 'watcher_cb'
     if err then
-      dprint('Index update error: %s', err)
+      dprintf('Index update error: %s', err)
       return
     end
     dprint('Index update')
@@ -168,7 +169,7 @@ local function get_buf_path(bufnr: integer): string, string
       sub_module_path = sub_module_path:gsub("^/modules", "")
       file = root_path .. sub_module_path .. real_path
       file = uv.fs_realpath(file)
-      dprint("Fugitive buffer for file '%s' from path '%s'", file, orig_path)
+      dprintf("Fugitive buffer for file '%s' from path '%s'", file, orig_path)
       if file then
         return file, commit
       else
@@ -203,7 +204,7 @@ local attach0 = function(cbuf: integer, aucmd: string)
   end
 
   if aucmd then
-    dprint('Attaching (trigger=%s)', aucmd)
+    dprintf('Attaching (trigger=%s)', aucmd)
   else
     dprint('Attaching')
   end
@@ -396,6 +397,7 @@ M.setup = void(function(cfg: Config)
   namespace = api.nvim_create_namespace('gitsigns')
 
   gs_debug.debug_mode = config.debug_mode
+  gs_debug.verbose = config._verbose
 
   if config.debug_mode then
     for nm, f in pairs(gs_debug.add_debug_functions(cache)) do
