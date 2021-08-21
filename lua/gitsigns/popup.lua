@@ -67,10 +67,22 @@ function popup.create(lines, opts)
       api.nvim_win_set_option(win_id, 'signcolumn', 'no')
    end
 
-   vim.cmd("autocmd CursorMoved,CursorMovedI,BufLeave <buffer> ++once lua pcall(vim.api.nvim_win_close, " ..
-   win_id .. ", true)")
+
+
+   vim.cmd("augroup GitsignsPopup" .. win_id)
+   vim.cmd("autocmd CursorMoved,CursorMovedI * " ..
+   ("lua package.loaded['gitsigns.popup'].close(%d)"):format(win_id))
+   vim.cmd("augroup END")
 
    return win_id, bufnr
+end
+
+function popup.close(win_id)
+   if api.nvim_get_current_win() ~= win_id then
+
+      vim.cmd("silent! augroup! GitsignsPopup" .. win_id)
+      pcall(api.nvim_win_close, win_id, true)
+   end
 end
 
 return popup
