@@ -712,7 +712,7 @@ Use `b:gitsigns_head` to return the name of the current HEAD (usually branch
 name). If the current HEAD is detached then this will be a short commit hash.
 
                                                   *b:gitsigns_blame_line_dict*
-If *gitsigns-config-current_line_blame* is enabled, then contains dictionary
+If |gitsigns-config-current_line_blame| is enabled, then contains dictionary
 of the blame object for current line. For complete list of keys, see the
 {blame_info} argument from |gitsigns-config-current_line_blame_formatter|.
 
