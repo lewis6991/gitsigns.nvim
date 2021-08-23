@@ -167,7 +167,7 @@ preview_hunk()                                       *gitsigns.preview_hunk()*
 blame_line({full})                                     *gitsigns.blame_line()*
                 Run git blame on the current line and show the results in a
                 floating window. If {full} is true then the full commit
-                message is displayed instead of just the one-line summary.
+                message is displayed along with the corresponding hunk.
 
 change_base({base})                                   *gitsigns.change_base()*
                 Change the base revision to diff against. If {base} is not

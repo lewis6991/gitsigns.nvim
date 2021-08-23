@@ -9,6 +9,7 @@ local popup = require('gitsigns.popup')
 local signs = require('gitsigns.signs')
 local util = require('gitsigns.util')
 local manager = require('gitsigns.manager')
+local git = require('gitsigns.git')
 
 local gs_cache = require('gitsigns.cache')
 local cache = gs_cache.cache
@@ -340,6 +341,27 @@ end
 
 local ns = api.nvim_create_namespace('gitsigns')
 
+local function highlight_hunk_lines(bufnr, offset, hunk_lines)
+   for i, l in ipairs(hunk_lines) do
+      local hl = 
+      vim.startswith(l, '+') and 'DiffAdded' or
+      vim.startswith(l, '-') and 'DiffRemove' or
+      'Normal'
+      api.nvim_buf_add_highlight(bufnr, -1, hl, offset + i - 1, 0, -1)
+   end
+
+   if config.use_internal_diff then
+      local regions = require('gitsigns.diff_int').run_word_diff(hunk_lines)
+      for _, region in ipairs(regions) do
+         local line, scol, ecol = region[1], region[3], region[4]
+         api.nvim_buf_set_extmark(bufnr, ns, line + offset - 1, scol, {
+            end_col = ecol,
+            hl_group = 'TermCursor',
+         })
+      end
+   end
+end
+
 M.preview_hunk = function()
    local cbuf = current_buf()
    local bcache = cache[cbuf]
@@ -353,24 +375,14 @@ M.preview_hunk = function()
    }
 
    local _, bufnr = popup.create(lines, config.preview_config)
-   api.nvim_buf_set_option(bufnr, 'filetype', 'diff')
 
    api.nvim_buf_add_highlight(bufnr, -1, 'Title', 0, 0, -1)
 
    api.nvim_buf_set_var(cbuf, '_gitsigns_preview_open', true)
    vim.cmd([[autocmd CursorMoved,CursorMovedI <buffer> ++once silent! unlet b:_gitsigns_preview_open]])
 
-   if config.use_internal_diff then
-      local regions = require('gitsigns.diff_int').run_word_diff(hunk.lines)
-      local offset = #lines - #hunk.lines
-      for _, region in ipairs(regions) do
-         local line, scol, ecol = region[1], region[3], region[4]
-         api.nvim_buf_set_extmark(bufnr, ns, line + offset - 1, scol, {
-            end_col = ecol,
-            hl_group = 'TermCursor',
-         })
-      end
-   end
+   local offset = #lines - #hunk.lines
+   highlight_hunk_lines(bufnr, offset, hunk.lines)
 end
 
 M.select_hunk = function()
@@ -406,6 +418,20 @@ local function defer(duration, callback)
    return timer
 end
 
+local function run_diff(a, b)
+   if config.use_internal_diff then
+      return require('gitsigns.diff_int').run_diff(a, b, config.diff_algorithm)
+   else
+      return require('gitsigns.diff_ext').run_diff(a, b, config.diff_algorithm)
+   end
+end
+
+local function get_blame_hunk(git_obj, sha, lnum)
+   local a = git_obj:get_show_text(sha .. '^:' .. git_obj.relpath)
+   local b = git_obj:get_show_text(sha .. ':' .. git_obj.relpath)
+   return gs_hunks.find_hunk(lnum, run_diff(a, b))
+end
+
 M.blame_line = void(function(full)
    local bufnr = current_buf()
    local bcache = cache[bufnr]
@@ -423,6 +449,14 @@ M.blame_line = void(function(full)
       loading:close()
    end)
 
+   local hunk
+   local pbufnr
+   local lines
+
+   local function add_highlight(hlgroup, line, start, length)
+      api.nvim_buf_add_highlight(pbufnr, -1, hlgroup, line, start, start + length)
+   end
+
    local is_committed = bcache.git_obj.object_name and tonumber('0x' .. result.sha) ~= 0
    if is_committed then
       local commit_message = {}
@@ -437,30 +471,42 @@ M.blame_line = void(function(full)
 
       local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author_time']))
 
-      local lines = {
+      lines = {
          ('%s %s (%s):'):format(result.abbrev_sha, result.author, date),
          unpack(commit_message),
       }
 
+      if full then
+         hunk = get_blame_hunk(bcache.git_obj, result.sha, result.orig_lnum)
+         lines[#lines + 1] = ''
+         vim.list_extend(lines, hunk.lines)
+      end
       scheduler()
-      local _, pbufnr = popup.create(lines, config.preview_config)
+      _, pbufnr = popup.create(lines, config.preview_config)
 
       local p1 = #result.abbrev_sha
       local p2 = #result.author
       local p3 = #date
 
-      local function add_highlight(hlgroup, line, start, length)
-         api.nvim_buf_add_highlight(pbufnr, -1, hlgroup, line, start, start + length)
-      end
-
       add_highlight('Directory', 0, 0, p1)
       add_highlight('MoreMsg', 0, p1 + 1, p2)
       add_highlight('Label', 0, p1 + p2 + 2, p3 + 2)
    else
-      local lines = { result.author }
+      lines = { result.author }
+      if full then
+         scheduler()
+         hunk = get_cursor_hunk(bufnr, bcache.hunks)
+         lines[#lines + 1] = ''
+         vim.list_extend(lines, hunk.lines)
+      end
       scheduler()
-      local _, pbufnr = popup.create(lines, config.preview_config)
-      api.nvim_buf_add_highlight(pbufnr, -1, 'MoreMsg', 0, 0, #result.author)
+      _, pbufnr = popup.create(lines, config.preview_config)
+      add_highlight('ErrorMsg', 0, 0, #result.author)
+   end
+
+   if hunk then
+      local offset = #lines - #hunk.lines
+      highlight_hunk_lines(pbufnr, offset, hunk.lines)
    end
 end)
 
@@ -532,14 +578,6 @@ local function hunks_to_qflist(buf_or_filename, hunks, qflist)
          text = string.format('Lines %d-%d (%d/%d)',
          hunk.start, hunk.vend, i, #hunks),
       }
-   end
-end
-
-local function run_diff(a, b)
-   if config.use_internal_diff then
-      return require('gitsigns.diff_int').run_diff(a, b, config.diff_algorithm)
-   else
-      return require('gitsigns.diff_ext').run_diff(a, b, config.diff_algorithm)
    end
 end
 
