@@ -603,10 +603,10 @@ local function handle_deprecated(cfg)
       local opts = (cfg.current_line_blame_opts or {})
       opts.virt_text_pos = cfg.current_line_blame_position
       vim.notify(
-      'current_line_blame_opts is deprecated, please use current_line_blame_opts.virt_text_pos',
+      'current_line_blame_position is deprecated, please use current_line_blame_opts.virt_text_pos',
       vim.log.levels.WARN, { title = 'gitsigns' })
       cfg.current_line_blame_opts = opts
-      cfg.current_line_blame_post = nil
+      cfg.current_line_blame_position = nil
    end
 end
 
