@@ -59,6 +59,7 @@ M.update = void(function()
          config.current_line_blame_formatter_opts),
 
          virt_text_pos = config.current_line_blame_opts.virt_text_pos,
+         hl_mode = 'combine',
       })
    end
 end)
