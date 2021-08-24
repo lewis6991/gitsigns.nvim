@@ -339,13 +339,11 @@ M.prev_hunk = function(options: NavHunkOpts)
   nav_hunk(options)
 end
 
-local ns = api.nvim_create_namespace('gitsigns')
-
 local function highlight_hunk_lines(bufnr: integer, offset: integer, hunk_lines: {string})
   for i, l in ipairs(hunk_lines) do
     local hl =
       vim.startswith(l, '+') and 'DiffAdded' or
-      vim.startswith(l, '-') and 'DiffRemove' or
+      vim.startswith(l, '-') and 'DiffRemoved' or
                                  'Normal'
     api.nvim_buf_add_highlight(bufnr, -1, hl, offset+i-1, 0, -1)
   end
@@ -354,10 +352,7 @@ local function highlight_hunk_lines(bufnr: integer, offset: integer, hunk_lines:
     local regions = require('gitsigns.diff_int').run_word_diff(hunk_lines)
     for _, region in ipairs(regions) do
       local line, scol, ecol = region[1], region[3], region[4]
-      api.nvim_buf_set_extmark(bufnr, ns, line + offset - 1, scol, {
-        end_col = ecol,
-        hl_group = 'TermCursor'
-      })
+      api.nvim_buf_add_highlight(bufnr, -1, 'TermCursor', line+offset-1, scol, ecol)
     end
   end
 end
@@ -426,10 +421,16 @@ local function run_diff(a: {string}, b: {string}): {Hunk}
   end
 end
 
-local function get_blame_hunk(git_obj: git.Obj, sha: string, lnum: integer): Hunk, integer
-  local a = git_obj:get_show_text(sha..'^:'..git_obj.relpath)
-  local b = git_obj:get_show_text(sha..':'..git_obj.relpath)
-  return gs_hunks.find_hunk(lnum, run_diff(a, b))
+local function get_blame_hunk(git_obj: git.Obj, info: git.BlameInfo): Hunk, integer, integer
+  local a = {}
+  -- If no previous so sha of blame added the file
+  if info.previous then
+    a = git_obj:get_show_text(info.previous_sha..':'..info.previous_filename)
+  end
+  local b = git_obj:get_show_text(info.sha..':'..info.filename)
+  local hunks = run_diff(a, b)
+  local hunk, i = gs_hunks.find_hunk(info.orig_lnum, hunks)
+  return hunk, i, #hunks
 end
 
 M.blame_line = void(function(full: boolean)
@@ -449,12 +450,13 @@ M.blame_line = void(function(full: boolean)
     loading:close()
   end)
 
-  local hunk: Hunk
-  local pbufnr: number
-  local lines: {string}
+  local hunk, ihunk, nhunk: Hunk, integer, integer
+  local lines: {string} = {}
 
-  local function add_highlight(hlgroup: string, line: integer, start: integer, length: integer)
-    api.nvim_buf_add_highlight(pbufnr, -1, hlgroup, line, start, start+length)
+  local highlights: {{string, integer, integer, integer}} = {}
+
+  local function add_highlight(hlgroup: string, start: integer, length: integer)
+    highlights[#highlights+1] = {hlgroup, #lines-1, start or 0, length or -1}
   end
 
   local is_committed = bcache.git_obj.object_name and tonumber('0x'..result.sha) ~= 0
@@ -471,42 +473,48 @@ M.blame_line = void(function(full: boolean)
 
     local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author_time']))
 
-    lines = {
-      ('%s %s (%s):'):format(result.abbrev_sha, result.author, date),
-      unpack(commit_message)
-    }
-
-    if full then
-      hunk = get_blame_hunk(bcache.git_obj, result.sha, result.orig_lnum)
-      lines[#lines+1] = ''
-      vim.list_extend(lines, hunk.lines)
-    end
-    scheduler()
-    _, pbufnr = popup.create(lines, config.preview_config)
-
+    lines[#lines+1] = ('%s %s (%s):'):format(result.abbrev_sha, result.author, date)
     local p1 = #result.abbrev_sha
     local p2 = #result.author
     local p3 = #date
 
-    add_highlight('Directory', 0, 0      , p1)
-    add_highlight('MoreMsg'  , 0, p1+1   , p2)
-    add_highlight('Label'    , 0, p1+p2+2, p3+2)
+    add_highlight('Directory', 0      , p1)
+    add_highlight('MoreMsg'  , p1+1   , p2)
+    add_highlight('Label'    , p1+p2+2, p3+2)
+
+    vim.list_extend(lines, commit_message)
+
+    if full then
+      hunk, ihunk, nhunk = get_blame_hunk(bcache.git_obj, result)
+    end
   else
-    lines = {result.author}
+    lines[#lines+1] = result.author
+    add_highlight('ErrorMsg')
     if full then
       scheduler()
-      hunk = get_cursor_hunk(bufnr, bcache.hunks)
-      lines[#lines+1] = ''
-      vim.list_extend(lines, hunk.lines)
+      hunk, ihunk = get_cursor_hunk(bufnr, bcache.hunks)
+      nhunk = #bcache.hunks
     end
-    scheduler()
-    _, pbufnr = popup.create(lines, config.preview_config)
-    add_highlight('ErrorMsg', 0, 0, #result.author)
+  end
+
+  if hunk then
+    lines[#lines+1] = ''
+    lines[#lines+1] = ('Hunk %d of %d'):format(ihunk, nhunk)
+    add_highlight('Title')
+    vim.list_extend(lines, hunk.lines)
+  end
+
+  scheduler()
+  local _, pbufnr = popup.create(lines, config.preview_config)
+
+  for _, h in ipairs(highlights) do
+    local hlgroup, line, start, length = h[1], h[2], h[3], h[4]
+    api.nvim_buf_add_highlight(pbufnr, -1, hlgroup, line, start, start+length)
   end
 
   if hunk then
     local offset = #lines - #hunk.lines
-    highlight_hunk_lines(pbufnr as integer, offset, hunk.lines)
+    highlight_hunk_lines(pbufnr, offset, hunk.lines)
   end
 end)
 

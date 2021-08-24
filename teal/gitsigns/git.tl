@@ -43,6 +43,8 @@ local record M
     committer_tz: string
     summary: string
     previous: string
+    previous_filename: string
+    previous_sha: string
     filename: string
   end
 
@@ -320,6 +322,10 @@ Obj.run_blame = function(self: Obj, lines: {string}, lnum: number): M.BlameInfo
       local cols = vim.split(l, ' ')
       local key = table.remove(cols, 1):gsub('-', '_')
       ret[key] = table.concat(cols, ' ')
+      if key == 'previous' then
+        ret.previous_sha = cols[1]
+        ret.previous_filename = cols[2]
+      end
     end
   end
   return ret as M.BlameInfo

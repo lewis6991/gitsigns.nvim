@@ -35,7 +35,7 @@ local function expand_height(win_id: integer, nlines: integer)
   end
 end
 
-function popup.create(lines: {string}, opts: {string:any}): number, number
+function popup.create(lines: {string}, opts: {string:any}): integer, integer
   local ts = api.nvim_buf_get_option(0, 'tabstop')
   local bufnr = api.nvim_create_buf(false, true)
   assert(bufnr, "Failed to create buffer")

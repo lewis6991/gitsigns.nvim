@@ -86,6 +86,8 @@ local M = {BlameInfo = {}, Version = {}, Obj = {}, }
 
 
 
+
+
 local Obj = M.Obj
 
 local function parse_version(version)
@@ -320,6 +322,10 @@ Obj.run_blame = function(self, lines, lnum)
          local cols = vim.split(l, ' ')
          local key = table.remove(cols, 1):gsub('-', '_')
          ret[key] = table.concat(cols, ' ')
+         if key == 'previous' then
+            ret.previous_sha = cols[1]
+            ret.previous_filename = cols[2]
+         end
       end
    end
    return ret
