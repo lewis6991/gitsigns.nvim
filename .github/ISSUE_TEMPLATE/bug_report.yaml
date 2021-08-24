@@ -1,0 +1,105 @@
+name: Bug report
+description: Report a problem with Gitsigns
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before reporting make sure that both Gitsigns and its dependencies are
+        updated to the latest version.
+  - type: textarea
+    attributes:
+      label: "Description"
+      description: "A short description of the problem you are reporting."
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: "Neovim version"
+      description: |
+        Output of `nvim --version`
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: "Operating system and version"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: "Steps to reproduce"
+      description: "Steps to reproduce using the minimal config provided below."
+      value: |
+        1. `nvim -nu minimal.lua`
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: "Expected behavior"
+      description: "A description of the behavior you expected:"
+  - type: textarea
+    attributes:
+      label: "Actual behavior"
+      description: "Observed behavior (may optionally include logs, images, or videos)."
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: "Gitsigns debug messages"
+      description: |
+        Include the output of `:Gitsigns debug_messages`. If you think it's
+        relevant maybe also provide the output of `:Gitsigns dump_cache`.
+  - type: textarea
+    attributes:
+       label: "Minimal config"
+       description: |
+         Minimal(!) configuration necessary to reproduce the issue. Save this as
+         `minimal.lua`. If _absolutely_ necessary, add plugins and config options
+         from your `init.lua` at the indicated lines.
+       render: Lua
+       value: |
+         vim.cmd [[set runtimepath=$VIMRUNTIME]]
+         vim.cmd [[set packpath=/tmp/nvim/site]]
+         local package_root = '/tmp/nvim/site/pack'
+         local install_path = package_root .. '/packer/start/packer.nvim'
+
+         if vim.fn.isdirectory(install_path) == 0 then
+           print("Installing Gitsigns and dependencies.")
+           vim.fn.system { 'git', 'clone', '--depth=1', 'https://github.com/wbthomason/packer.nvim', install_path }
+         end
+
+         -- Load plugins
+         require('packer').startup {
+           {
+             'wbthomason/packer.nvim',
+             {
+               'lewis6991/gitsigns.nvim',
+               requires = { 'nvim-lua/plenary.nvim' },
+             },
+             -- ADD PLUGINS THAT ARE _NECESSARY_ FOR REPRODUCING THE ISSUE
+           },
+           config = {
+             package_root = package_root,
+             compile_path = install_path .. '/plugin/packer_compiled.lua',
+             display = { non_interactive = true },
+           },
+         }
+
+         _G.load_config = function()
+           require('gitsigns').setup{
+             debug_mode = true, -- You must add this to enable debug messages
+             -- GITSIGNS CONFIG THAT ARE _NECESSARY_ FOR REPRODUCING THE ISSUE
+           }
+
+           -- ADD INIT.LUA SETTINGS THAT ARE _NECESSARY_ FOR REPRODUCING THE ISSUE
+
+           -- ALSO INCLUDE GITSIGNS DEBUG MESSAGES
+           vim.cmd('Gitsigns debug_messages')
+         end
+
+         require('packer').sync()
+
+         vim.cmd [[autocmd User PackerComplete ++once echo "Ready!" | lua load_config()]]
+    validations:
+      required: true
