@@ -4,7 +4,7 @@ labels: [bug]
 body:
   - type: markdown
     attributes:
-      value: |
+      value: >
         Before reporting make sure that both Gitsigns and its dependencies are
         updated to the latest version.
   - type: textarea
@@ -47,13 +47,13 @@ body:
   - type: textarea
     attributes:
       label: "Gitsigns debug messages"
-      description: |
+      description: >
         Include the output of `:Gitsigns debug_messages`. If you think it's
         relevant maybe also provide the output of `:Gitsigns dump_cache`.
   - type: textarea
     attributes:
        label: "Minimal config"
-       description: |
+       description: >
          Minimal(!) configuration necessary to reproduce the issue. Save this as
          `minimal.lua`. If _absolutely_ necessary, add plugins and config options
          from your `init.lua` at the indicated lines.
