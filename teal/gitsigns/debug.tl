@@ -86,20 +86,23 @@ function M.vprintf(obj: string, ...:any)
   cprint(obj:format(...), 2)
 end
 
-function M.eprint(msg: string)
-  local info = debug.getinfo(2, 'Sl')
+local function eprint(msg: string, level: integer)
+  local info = debug.getinfo(level+2, 'Sl')
   if info then
     msg = string.format('(ERROR) %s(%d): %s', info.short_src, info.currentline, msg)
   end
   M.messages[#M.messages+1] = msg
   if M.debug_mode then
     error(msg)
-  else
-    -- On windows print() crashes in callback threads
-    vim.schedule(function()
-      vim.notify(msg, vim.log.levels.ERROR, {title = 'gitsigns'})
-    end)
   end
+end
+
+function M.eprint(msg: string)
+  eprint(msg, 1)
+end
+
+function M.eprintf(fmt: string, ...:any)
+  eprint(fmt:format(...), 1)
 end
 
 function M.add_debug_functions(cache: any): {string:function}

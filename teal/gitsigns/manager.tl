@@ -16,7 +16,7 @@ local gs_debug          = require("gitsigns.debug")
 local dprint            = gs_debug.dprint
 local dprintf           = gs_debug.dprintf
 local eprint            = gs_debug.eprint
-local util              = require('gitsigns.util')
+local subprocess        = require('gitsigns.subprocess')
 
 local gs_hunks          = require("gitsigns.hunks")
 local Hunk              = gs_hunks.Hunk
@@ -248,7 +248,7 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
 
   update_cnt = update_cnt + 1
 
-  dprintf('updates: %s, jobs: %s', update_cnt, util.job_cnt)
+  dprintf('updates: %s, jobs: %s', update_cnt, subprocess.job_cnt)
 end
 
 -- Ensure updates cannot be interleaved.
