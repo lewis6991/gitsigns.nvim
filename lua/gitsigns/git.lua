@@ -24,7 +24,13 @@ local GJobSpec = {}
 
 
 
-local M = {BlameInfo = {}, Version = {}, Obj = {}, }
+local M = {BlameInfo = {}, Version = {}, PrInfo = {}, Obj = {}, }
+
+
+
+
+
+
 
 
 
@@ -125,7 +131,8 @@ M.command = wrap(function(args, spec, callback)
    local reserr
    spec = spec or {}
    spec.command = spec.command or 'git'
-   spec.args = { '--no-pager', unpack(args) }
+   spec.args = args
+
    spec.on_stdout = spec.on_stdout or function(_, line)
       table.insert(result, line)
       if gsd.verbose and #result <= 10 then
@@ -383,6 +390,88 @@ Obj.files_changed = function(self)
          end
       end,
    })
+   return ret
+end
+
+local raw_cmd = wrap(function(cmd, opts, callback)
+   local stdout = uv.new_pipe()
+   local stderr = uv.new_pipe()
+   opts.stdio = { nil, stdout }
+   local handle = uv.spawn(cmd, opts)
+
+   local stdout_chunks = {}
+   local stderr_chunks = {}
+
+   uv.read_start(stdout, function(_, data)
+      if data then
+         stdout_chunks[#stdout_chunks + 1] = data
+      else
+         if handle then
+            uv.close(handle, function()
+               callback(
+               vim.split(table.concat(stdout_chunks), '\n'),
+               vim.split(table.concat(stderr_chunks), '\n'))
+
+            end)
+         else
+            callback(
+            vim.split(table.concat(stdout_chunks), '\n'),
+            vim.split(table.concat(stderr_chunks), '\n'))
+
+         end
+      end
+   end)
+
+   uv.read_start(stderr, function(_, data)
+      stderr_chunks[#stderr_chunks + 1] = data
+   end)
+
+end, 3)
+
+local associated_pr_query = [[
+  query associatedPRs($sha: String!, $repo: String!, $owner: String!){
+    repository(name: $repo, owner: $owner) {
+      commit: object(expression: $sha) {
+        ... on Commit {
+          associatedPullRequests(first:5){
+            edges { node { title number } }
+          }
+        }
+      }
+    }
+  }
+]]
+
+local associated_pr_template = [[
+  {{- if .data.repository.commit -}}
+  {{- range $edge := .data.repository.commit.associatedPullRequests.edges -}}
+  {{- printf "%.f %s" $edge.node.number $edge.node.title -}}
+  {{- end -}}
+  {{- end -}}
+]]
+
+Obj.associated_prs = function(self, sha)
+   local ret = {}
+
+   local result = raw_cmd('gh', {
+      cwd = self.toplevel,
+      args = {
+         'api', 'graphql',
+         '-f', 'query=' .. associated_pr_query,
+         '--template=' .. associated_pr_template,
+         '-F', "owner={owner}",
+         '-F', "repo={repo}",
+         '-F', 'sha=' .. sha,
+         '--paginate', },
+   })
+
+   for _, line in ipairs(result) do
+      local id, title = line:match('(%d+) (.*)')
+      if id and title then
+         ret[#ret + 1] = { id = tonumber(id), title = title }
+      end
+   end
+
    return ret
 end
 

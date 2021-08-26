@@ -60,6 +60,11 @@ local record M
   set_version: function(string)
   command    : function(args: {string}, spec: GJobSpec): {string}, string
 
+  record PrInfo
+    id: integer
+    title: string
+  end
+
   record Obj
     toplevel      : string
     gitdir        : string
@@ -77,12 +82,13 @@ local record M
     update_file_info     : function(Obj): boolean
     unstage_file         : function(Obj, string, string)
     get_show_text        : function(Obj, string): {string}, string
-    run_blame            : function(Obj, {string}, number): M.BlameInfo
+    run_blame            : function(Obj, {string}, number): BlameInfo
     file_info            : function(Obj, string): string, string, string, boolean
     ensure_file_in_index : function(Obj)
     stage_hunks          : function(Obj, {Hunk}, boolean)
     has_moved            : function(Obj): string
     files_changed        : function(Obj): {string}
+    associated_prs       : function(Obj, string): {PrInfo}
     new                  : function(string): Obj
   end
 
@@ -125,7 +131,8 @@ M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({st
   local reserr: string
   spec = spec or {}
   spec.command = spec.command or 'git'
-  spec.args = {'--no-pager', unpack(args) }
+  spec.args = args
+  -- spec.args = {'--no-pager', unpack(args) }
   spec.on_stdout = spec.on_stdout or function(_, line: string)
     table.insert(result, line)
     if gsd.verbose and #result <= 10 then
@@ -383,6 +390,87 @@ Obj.files_changed = function(self: Obj): {string}
       end
     end
   })
+  return ret
+end
+
+local raw_cmd = wrap(function(cmd: string, opts: {string:any}, callback: function({string}, {string}))
+  local stdout = uv.new_pipe()
+  local stderr = uv.new_pipe()
+  opts.stdio = {nil, stdout}
+  local handle = uv.spawn(cmd, opts)
+
+  local stdout_chunks: {string} = {}
+  local stderr_chunks: {string} = {}
+
+  local function done()
+    callback(
+      vim.split(table.concat(stdout_chunks), '\n'),
+      vim.split(table.concat(stderr_chunks), '\n')
+    )
+  end
+
+  uv.read_start(stdout, function(_, data: string)
+    if data then
+      stdout_chunks[#stdout_chunks+1] = data
+    else
+      if handle then
+        uv.close(handle, done)
+      else
+        done()
+      end
+    end
+  end)
+
+  uv.read_start(stderr, function(_, data: string)
+    stderr_chunks[#stderr_chunks+1] = data
+  end)
+
+end, 3)
+
+local associated_pr_query=[[
+  query associatedPRs($sha: String!, $repo: String!, $owner: String!){
+    repository(name: $repo, owner: $owner) {
+      commit: object(expression: $sha) {
+        ... on Commit {
+          associatedPullRequests(first:5){
+            edges { node { title number } }
+          }
+        }
+      }
+    }
+  }
+]]
+
+local associated_pr_template=[[
+  {{- if .data.repository.commit -}}
+  {{- range $edge := .data.repository.commit.associatedPullRequests.edges -}}
+  {{- printf "%.f %s" $edge.node.number $edge.node.title -}}
+  {{- end -}}
+  {{- end -}}
+]]
+
+Obj.associated_prs = function(self: Obj, sha: string): {M.PrInfo}
+  local ret: {M.PrInfo} = {}
+
+  local result = raw_cmd('gh', {
+    cwd = self.toplevel,
+    args = {
+      'api', 'graphql',
+      '-f', 'query='..associated_pr_query,
+      '--template='..associated_pr_template,
+      '-F', "owner={owner}",
+      '-F', "repo={repo}",
+      '-F', 'sha='..sha,
+      '--paginate'}
+  })
+
+  for _, line in ipairs(result) do
+      local id, title = line:match('(%d+) (.*)')
+      if id and title then
+        ret[#ret+1] = { id = tonumber(id) as integer, title = title }
+      end
+  end
+
   return ret
 end
 

@@ -312,6 +312,12 @@ global record vim
     new_tcp: function()
 
     sleep: function(integer)
+
+    spawn: function(string, table): any, any
+    read_start: function(any, function)
+    new_pipe: function
+    shutdown: function(any, function)
+    close: function(any, function)
   end
 
   in_fast_event: function(): boolean
