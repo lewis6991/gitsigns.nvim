@@ -1,26 +1,129 @@
-local Job = require('plenary.job')
-
 local gsd = require("gitsigns.debug")
+local uv = vim.loop
 
 local record M
   path_sep: string
   is_unix: boolean
   job_cnt: integer
+
+  record JobSpec
+    command: string
+    args: {string}
+    cwd: string
+    env: {string}
+    writer: {string} | string
+
+    record State
+      handle: uv.Process
+      pid: integer
+      stdout_data: {string}
+      stderr_data: {string}
+      stdin: uv.Pipe
+      stdout: uv.Pipe
+      stderr: uv.Pipe
+      code: integer
+      signal: integer
+    end
+    _state: State
+  end
 end
 
 M.job_cnt = 0
 
 function M.path_exists(path: string): boolean
-  return vim.loop.fs_stat(path) and true or false
+  return uv.fs_stat(path) and true or false
 end
 
-function M.run_job(job_spec: Job.JobSpec)
+function M.run_job(obj: M.JobSpec, callback: function(integer, integer, {string}, {string})): M.JobSpec
   if gsd.debug_mode then
-    local cmd: string = job_spec.command..' '..table.concat(job_spec.args, ' ')
+    local cmd: string = obj.command..' '..table.concat(obj.args, ' ')
     gsd.dprint(cmd)
   end
-  Job:new(job_spec):start()
-  M.job_cnt = M.job_cnt + 1
+
+  if obj.env then
+    local transform: {string} = {}
+    for k, v in pairs(obj.env as {integer:string}) do
+      if type(k) == "number" then
+        table.insert(transform, v)
+      elseif type(k) == "string" then
+        table.insert(transform, k .. "=" .. tostring(v))
+      end
+    end
+    obj.env = transform
+  end
+
+  obj._state = {}
+  local s = obj._state
+  s.stdout_data = {}
+  s.stderr_data = {}
+
+  s.stdout = uv.new_pipe(false)
+  s.stderr = uv.new_pipe(false)
+
+  s.handle, s.pid = uv.spawn(obj.command, {
+    args  = obj.args,
+    stdio = { s.stdin, s.stdout, s.stderr },
+    cwd   = obj.cwd,
+    env   = obj.env
+  },
+    function(code: integer, signal: integer)
+      s.code = code
+      s.signal = signal
+
+      if s.stdout then s.stdout:read_stop() end
+      if s.stderr then s.stderr:read_stop() end
+
+      for _, handle in ipairs {s.stdin, s.stderr, s.stdout} do
+        if handle and not handle:is_closing() then
+          handle:close()
+        end
+      end
+
+      local stdout_result = s.stdout_data and vim.split(table.concat(s.stdout_data), '\n')
+      local stderr_result = s.stderr_data and vim.split(table.concat(s.stderr_data), '\n')
+
+      callback(code, signal, stdout_result, stderr_result)
+    end
+  )
+
+  if not s.handle then
+    error(debug.traceback("Failed to spawn process: " .. vim.inspect(obj)))
+  end
+
+  s.stdout:read_start(function(_, data: string)
+    if not s.stdout_data then
+      s.stdout_data = {}
+    end
+    s.stdout_data[#s.stdout_data+1] = data
+  end)
+
+  s.stderr:read_start(function(_, data: string)
+    if not s.stderr_data then
+      s.stderr_data = {}
+    end
+    s.stderr_data[#s.stderr_data+1] = data
+  end)
+
+  if type(obj.writer) == "table" and vim.tbl_islist(obj.writer as table) then
+    local writer_table = obj.writer as {string}
+    local writer_len = #writer_table
+    for i, v in ipairs(writer_table) do
+      s.stdin:write(v)
+      if i ~= writer_len then
+        s.stdin:write "\n"
+      else
+        s.stdin:write("\n", function()
+          s.stdin:close()
+        end)
+      end
+    end
+  elseif type(obj.writer) == "string" then
+    s.stdin:write(obj.writer as string, function()
+      s.stdin:close()
+    end)
+  end
+
+  return obj
 end
 
 function M.get_jit_os(): string

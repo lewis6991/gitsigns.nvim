@@ -313,9 +313,31 @@ global record vim
 
     sleep: function(integer)
 
-    spawn: function(string, table): any, any
-    read_start: function(any, function)
-    new_pipe: function
+    record Pipe
+      close: function(Pipe)
+      is_closing: function(Pipe): boolean | string
+      read_start: function(Pipe, err: any, data: string)
+      read_stop: function(Pipe)
+      write: function(Pipe, string, function())
+
+      open: function(any)
+    end
+
+    record Process
+      userdata
+    end
+
+    record SpawnOpts
+      stdio: {Pipe, Pipe, Pipe}
+      args: {string}
+      cwd: string
+      env: {string}
+    end
+
+    spawn: function(string, SpawnOpts, function(integer, integer)): Process, integer
+
+    read_start: function(Pipe, function)
+    new_pipe: function(boolean): Pipe
     shutdown: function(any, function)
     close: function(any, function)
   end
@@ -363,6 +385,8 @@ global record vim
   tbl_count: function(table): integer
 
   tbl_isempty: function(table): boolean
+
+  tbl_islist: function(table): boolean
 
   tbl_contains: function(table, any): boolean
 

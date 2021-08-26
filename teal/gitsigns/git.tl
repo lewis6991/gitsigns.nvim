@@ -1,6 +1,5 @@
 local wrap = require('plenary.async.async').wrap
 local scheduler = require('plenary.async.util').scheduler
-local JobSpec = require('plenary.job').JobSpec
 
 local gsd = require("gitsigns.debug")
 local util = require('gitsigns.util')
@@ -58,7 +57,7 @@ local record M
   enable_yadm: boolean
 
   set_version: function(string)
-  command    : function(args: {string}, spec: GJobSpec): {string}, string
+  command    : function(args: {string}, spec: GJobSpec): {string}, {string}
 
   record PrInfo
     id: integer
@@ -77,11 +76,11 @@ local record M
     mode_bits     : string
     has_conflicts : boolean
 
-    command              : function(Obj, {string}, GJobSpec): {string}, string
+    command              : function(Obj, {string}, GJobSpec): {string}, {string}
     update_abbrev_head   : function(Obj)
     update_file_info     : function(Obj): boolean
     unstage_file         : function(Obj, string, string)
-    get_show_text        : function(Obj, string): {string}, string
+    get_show_text        : function(Obj, string): {string}, {string}
     run_blame            : function(Obj, {string}, number): BlameInfo
     file_info            : function(Obj, string): string, string, string, boolean
     ensure_file_in_index : function(Obj)
@@ -126,43 +125,30 @@ local function check_version(version: {number,number,number}): boolean
   return true
 end
 
-M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({string}, string))
-  local result: {string} = {}
-  local reserr: string
+M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({string}, {string}))
   spec = spec or {}
   spec.command = spec.command or 'git'
-  spec.args = args
-  -- spec.args = {'--no-pager', unpack(args) }
-  spec.on_stdout = spec.on_stdout or function(_, line: string)
-    table.insert(result, line)
-    if gsd.verbose and #result <= 10 then
-      gsd.vprint(line)
-    end
-  end
-  spec.on_stderr = spec.on_stderr or function(err: string, line: string)
+  spec.args = {'--no-pager', unpack(args) }
+  local obj: util.JobSpec
+  obj = util.run_job(spec as util.JobSpec, function(_: integer, _: integer, stdout: {string}, stderr: {string})
     if not spec.supress_stderr then
-      if err  then gsd.eprint(err)  end
-      if line then gsd.eprint(line) end
+      if #stderr > 0 then
+        print(vim.inspect(obj))
+        print(vim.inspect(stderr))
+        for _, l in ipairs(stderr) do
+          gsd.eprint(l)
+        end
+      end
     end
-    if not reserr then
-      reserr = ''
-    else
-      reserr = reserr..'\n'
+
+    if gsd.verbose and #stdout <= 10 then
+      for _, l in ipairs(stdout) do
+        gsd.vprint(l)
+      end
     end
-    if err  then reserr = reserr..err  end
-    if line then reserr = reserr..line end
-  end
-  local old_on_exit = spec.on_exit
-  spec.on_exit = function()
-    if old_on_exit then
-      old_on_exit()
-    end
-    if gsd.verbose and #result then
-      gsd.vprintf('%d lines', #result)
-    end
-    callback(result, reserr)
-  end
-  util.run_job(spec as JobSpec)
+
+    callback(stdout, stderr)
+  end)
 end, 3)
 
 local function process_abbrev_head(gitdir: string, head_str: string, path: string, cmd: string): string
@@ -233,7 +219,7 @@ end
 --------------------------------------------------------------------------------
 
 --- Run git command the with the objects gitdir and toplevel
-Obj.command = function(self: Obj, args: {string}, spec: GJobSpec): {string}, string
+Obj.command = function(self: Obj, args: {string}, spec: GJobSpec): {string}, {string}
   spec = spec or {}
   spec.cwd = self.toplevel
   return M.command({'--git-dir='..self.gitdir, unpack(args)}, spec)
@@ -288,10 +274,8 @@ Obj.unstage_file = function(self: Obj)
 end
 
 --- Get version of file in the index, return array lines
-Obj.get_show_text = function(self: Obj, object: string): {string}, string
-  return self:command({'show', object}, {
-    supress_stderr = true
-  })
+Obj.get_show_text = function(self: Obj, object: string): {string}, {string}
+  return self:command({'show', object}, { supress_stderr = true })
 end
 
 Obj.run_blame = function(self: Obj, lines: {string}, lnum: number): M.BlameInfo
@@ -382,50 +366,47 @@ Obj.has_moved = function(self: Obj): string
 end
 
 Obj.files_changed = function(self: Obj): {string}
+  local results = self:command{'status', '--porcelain'}
+
   local ret: {string} = {}
-  self:command({'status', '--porcelain'}, {
-    on_stdout = function(_, line: string)
-      if line:sub(1, 2):match('^.M') then
-        ret[#ret+1] = line:sub(4, -1)
-      end
+  for _, line in ipairs(results) do
+    if line:sub(1, 2):match('^.M') then
+      ret[#ret+1] = line:sub(4, -1)
     end
-  })
+  end
   return ret
 end
 
-local raw_cmd = wrap(function(cmd: string, opts: {string:any}, callback: function({string}, {string}))
-  local stdout = uv.new_pipe()
-  local stderr = uv.new_pipe()
-  opts.stdio = {nil, stdout}
-  local handle = uv.spawn(cmd, opts)
+local raw_cmd = wrap(function(opts: {string:any}, callback: function({string}, {string}))
+  local stdout = uv.new_pipe(false)
+  local stderr = uv.new_pipe(false)
+  opts.stdio = {nil, stdout, stderr}
 
   local stdout_chunks: {string} = {}
   local stderr_chunks: {string} = {}
 
-  local function done()
+  local handle = uv.spawn(opts.cmd as string, opts as uv.SpawnOpts, function(_: integer, _: integer)
+    if stdout and not stdout:is_closing() then stdout:close() end
+    if stderr and not stderr:is_closing() then stderr:close() end
     callback(
       vim.split(table.concat(stdout_chunks), '\n'),
       vim.split(table.concat(stderr_chunks), '\n')
     )
-  end
-
-  uv.read_start(stdout, function(_, data: string)
-    if data then
-      stdout_chunks[#stdout_chunks+1] = data
-    else
-      if handle then
-        uv.close(handle, done)
-      else
-        done()
-      end
-    end
   end)
 
-  uv.read_start(stderr, function(_, data: string)
+  if not handle then
+    error(debug.traceback("Failed to spawn process: " .. vim.inspect(opts)))
+  end
+
+  stdout:read_start(function(_, data: string)
+    stdout_chunks[#stdout_chunks+1] = data
+  end)
+
+  stderr:read_start(function(_, data: string)
     stderr_chunks[#stderr_chunks+1] = data
   end)
 
-end, 3)
+end, 2)
 
 local associated_pr_query=[[
   query associatedPRs($sha: String!, $repo: String!, $owner: String!){
@@ -452,19 +433,37 @@ local associated_pr_template=[[
 Obj.associated_prs = function(self: Obj, sha: string): {M.PrInfo}
   local ret: {M.PrInfo} = {}
 
-  local result = raw_cmd('gh', {
+  local result = raw_cmd {
+    cmd = 'gh',
     cwd = self.toplevel,
     args = {
-      'api', 'graphql',
+      'dwqapi', 'graphql',
       '-f', 'query='..associated_pr_query,
       '--template='..associated_pr_template,
       '-F', "owner={owner}",
       '-F', "repo={repo}",
       '-F', 'sha='..sha,
       '--paginate'}
-  })
+  }
 
+  -- aaa = true
+  -- local result = M.command({
+  --     'api', 'graphql',
+  --     '-f', 'query='..associated_pr_query,
+  --     '--template='..associated_pr_template,
+  --     '-F', "owner={owner}",
+  --     '-F', "repo={repo}",
+  --     '-F', 'sha='..sha,
+  --     '--paginate'
+  -- }, {
+  --   command = 'gh',
+  --   cwd = self.toplevel,
+  -- })
+  -- aaa = false
+
+  print('DEBUG487')
   for _, line in ipairs(result) do
+  print('DEBUG489: '..line)
       local id, title = line:match('(%d+) (.*)')
       if id and title then
         ret[#ret+1] = { id = tonumber(id) as integer, title = title }

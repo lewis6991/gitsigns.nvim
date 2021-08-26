@@ -1,6 +1,5 @@
 local wrap = require('plenary.async.async').wrap
 local scheduler = require('plenary.async.util').scheduler
-local JobSpec = require('plenary.job').JobSpec
 
 local gsd = require("gitsigns.debug")
 local util = require('gitsigns.util')
@@ -127,42 +126,29 @@ local function check_version(version)
 end
 
 M.command = wrap(function(args, spec, callback)
-   local result = {}
-   local reserr
    spec = spec or {}
    spec.command = spec.command or 'git'
-   spec.args = args
-
-   spec.on_stdout = spec.on_stdout or function(_, line)
-      table.insert(result, line)
-      if gsd.verbose and #result <= 10 then
-         gsd.vprint(line)
-      end
-   end
-   spec.on_stderr = spec.on_stderr or function(err, line)
+   spec.args = { '--no-pager', unpack(args) }
+   local obj
+   obj = util.run_job(spec, function(_, _, stdout, stderr)
       if not spec.supress_stderr then
-         if err then gsd.eprint(err) end
-         if line then gsd.eprint(line) end
+         if #stderr > 0 then
+            print(vim.inspect(obj))
+            print(vim.inspect(stderr))
+            for _, l in ipairs(stderr) do
+               gsd.eprint(l)
+            end
+         end
       end
-      if not reserr then
-         reserr = ''
-      else
-         reserr = reserr .. '\n'
+
+      if gsd.verbose and #stdout <= 10 then
+         for _, l in ipairs(stdout) do
+            gsd.vprint(l)
+         end
       end
-      if err then reserr = reserr .. err end
-      if line then reserr = reserr .. line end
-   end
-   local old_on_exit = spec.on_exit
-   spec.on_exit = function()
-      if old_on_exit then
-         old_on_exit()
-      end
-      if gsd.verbose and #result then
-         gsd.vprintf('%d lines', #result)
-      end
-      callback(result, reserr)
-   end
-   util.run_job(spec)
+
+      callback(stdout, stderr)
+   end)
 end, 3)
 
 local function process_abbrev_head(gitdir, head_str, path, cmd)
@@ -289,9 +275,7 @@ end
 
 
 Obj.get_show_text = function(self, object)
-   return self:command({ 'show', object }, {
-      supress_stderr = true,
-   })
+   return self:command({ 'show', object }, { supress_stderr = true })
 end
 
 Obj.run_blame = function(self, lines, lnum)
@@ -382,51 +366,47 @@ Obj.has_moved = function(self)
 end
 
 Obj.files_changed = function(self)
+   local results = self:command({ 'status', '--porcelain' })
+
    local ret = {}
-   self:command({ 'status', '--porcelain' }, {
-      on_stdout = function(_, line)
-         if line:sub(1, 2):match('^.M') then
-            ret[#ret + 1] = line:sub(4, -1)
-         end
-      end,
-   })
+   for _, line in ipairs(results) do
+      if line:sub(1, 2):match('^.M') then
+         ret[#ret + 1] = line:sub(4, -1)
+      end
+   end
    return ret
 end
 
-local raw_cmd = wrap(function(cmd, opts, callback)
-   local stdout = uv.new_pipe()
-   local stderr = uv.new_pipe()
-   opts.stdio = { nil, stdout }
-   local handle = uv.spawn(cmd, opts)
+local raw_cmd = wrap(function(opts, callback)
+   local stdout = uv.new_pipe(false)
+   local stderr = uv.new_pipe(false)
+   opts.stdio = { nil, stdout, stderr }
 
    local stdout_chunks = {}
    local stderr_chunks = {}
 
-   uv.read_start(stdout, function(_, data)
-      if data then
-         stdout_chunks[#stdout_chunks + 1] = data
-      else
-         if handle then
-            uv.close(handle, function()
-               callback(
-               vim.split(table.concat(stdout_chunks), '\n'),
-               vim.split(table.concat(stderr_chunks), '\n'))
+   local handle = uv.spawn(opts.cmd, opts, function(_, _)
+      if stdout and not stdout:is_closing() then stdout:close() end
+      if stderr and not stderr:is_closing() then stderr:close() end
+      callback(
+      vim.split(table.concat(stdout_chunks), '\n'),
+      vim.split(table.concat(stderr_chunks), '\n'))
 
-            end)
-         else
-            callback(
-            vim.split(table.concat(stdout_chunks), '\n'),
-            vim.split(table.concat(stderr_chunks), '\n'))
-
-         end
-      end
    end)
 
-   uv.read_start(stderr, function(_, data)
+   if not handle then
+      error(debug.traceback("Failed to spawn process: " .. vim.inspect(opts)))
+   end
+
+   stdout:read_start(function(_, data)
+      stdout_chunks[#stdout_chunks + 1] = data
+   end)
+
+   stderr:read_start(function(_, data)
       stderr_chunks[#stderr_chunks + 1] = data
    end)
 
-end, 3)
+end, 2)
 
 local associated_pr_query = [[
   query associatedPRs($sha: String!, $repo: String!, $owner: String!){
@@ -453,10 +433,11 @@ local associated_pr_template = [[
 Obj.associated_prs = function(self, sha)
    local ret = {}
 
-   local result = raw_cmd('gh', {
+   local result = raw_cmd({
+      cmd = 'gh',
       cwd = self.toplevel,
       args = {
-         'api', 'graphql',
+         'dwqapi', 'graphql',
          '-f', 'query=' .. associated_pr_query,
          '--template=' .. associated_pr_template,
          '-F', "owner={owner}",
@@ -465,7 +446,24 @@ Obj.associated_prs = function(self, sha)
          '--paginate', },
    })
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   print('DEBUG487')
    for _, line in ipairs(result) do
+      print('DEBUG489: ' .. line)
       local id, title = line:match('(%d+) (.*)')
       if id and title then
          ret[#ret + 1] = { id = tonumber(id), title = title }
