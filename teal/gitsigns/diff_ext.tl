@@ -57,25 +57,26 @@ M.run_diff = function(
   -- We can safely ignore the warning, we turn it off by passing the '-c
   -- "core.safecrlf=false"' argument to git-diff.
 
-  git.command({
-      '-c', 'core.safecrlf=false',
-      'diff',
-      '--color=never',
-      '--'..(indent_heuristic and '' or 'no-')..'indent-heuristic',
-      '--diff-algorithm='..diff_algo,
-      '--patch-with-raw',
-      '--unified=0',
-      file_cmp,
-      file_buf,
-    }, {
-    on_stdout = function(_, line: string)
-      if vim.startswith(line, '@@') then
-        table.insert(results, gs_hunks.parse_diff_line(line))
-      elseif #results > 0 then
-        table.insert(results[#results].lines, line)
-      end
+  local out = git.command{
+    '-c', 'core.safecrlf=false',
+    'diff',
+    '--color=never',
+    '--'..(indent_heuristic and '' or 'no-')..'indent-heuristic',
+    '--diff-algorithm='..diff_algo,
+    '--patch-with-raw',
+    '--unified=0',
+    file_cmp,
+    file_buf,
+  }
+
+  for _, line in ipairs(out) do
+    if vim.startswith(line, '@@') then
+      table.insert(results, gs_hunks.parse_diff_line(line))
+    elseif #results > 0 then
+      table.insert(results[#results].lines, line)
     end
-  })
+  end
+
   os.remove(file_buf)
   os.remove(file_cmp)
   return results

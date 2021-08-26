@@ -1,9 +1,9 @@
 local wrap = require('plenary.async.async').wrap
 local scheduler = require('plenary.async.util').scheduler
-local JobSpec = require('plenary.job').JobSpec
 
 local gsd = require("gitsigns.debug")
 local util = require('gitsigns.util')
+local subprocess = require('gitsigns.subprocess')
 
 local gs_hunks = require("gitsigns.hunks")
 local Hunk = gs_hunks.Hunk
@@ -12,9 +12,6 @@ local uv = vim.loop
 local startswith = vim.startswith
 
 local GJobSpec = {}
-
-
-
 
 
 
@@ -121,42 +118,36 @@ local function check_version(version)
    return true
 end
 
+local JobSpec = subprocess.JobSpec
+
 M.command = wrap(function(args, spec, callback)
-   local result = {}
-   local reserr
    spec = spec or {}
    spec.command = spec.command or 'git'
-   spec.args = { '--no-pager', unpack(args) }
-   spec.on_stdout = spec.on_stdout or function(_, line)
-      table.insert(result, line)
-      if gsd.verbose and #result <= 10 then
-         gsd.vprint(line)
-      end
-   end
-   spec.on_stderr = spec.on_stderr or function(err, line)
+   spec.args = spec.command == 'git' and { '--no-pager', unpack(args) } or args
+   subprocess.run_job(spec, function(_, _, stdout, stderr)
       if not spec.supress_stderr then
-         if err then gsd.eprint(err) end
-         if line then gsd.eprint(line) end
+         if stderr then
+            gsd.eprint(stderr)
+         end
       end
-      if not reserr then
-         reserr = ''
-      else
-         reserr = reserr .. '\n'
+
+      local stdout_lines = vim.split(stdout or '', '\n', true)
+
+
+
+      if stdout_lines[#stdout_lines] == '' then
+         stdout_lines[#stdout_lines] = nil
       end
-      if err then reserr = reserr .. err end
-      if line then reserr = reserr .. line end
-   end
-   local old_on_exit = spec.on_exit
-   spec.on_exit = function()
-      if old_on_exit then
-         old_on_exit()
+
+      if gsd.verbose then
+         gsd.vprintf('%d lines:', #stdout_lines)
+         for i = 1, math.min(10, #stdout_lines) do
+            gsd.vprintf('\t%s', stdout_lines[i])
+         end
       end
-      if gsd.verbose and #result then
-         gsd.vprintf('%d lines', #result)
-      end
-      callback(result, reserr)
-   end
-   util.run_job(spec)
+
+      callback(stdout_lines, stderr)
+   end)
 end, 3)
 
 local function process_abbrev_head(gitdir, head_str, path, cmd)
@@ -283,9 +274,7 @@ end
 
 
 Obj.get_show_text = function(self, object)
-   return self:command({ 'show', object }, {
-      supress_stderr = true,
-   })
+   return self:command({ 'show', object }, { supress_stderr = true })
 end
 
 Obj.run_blame = function(self, lines, lnum)
@@ -376,14 +365,14 @@ Obj.has_moved = function(self)
 end
 
 Obj.files_changed = function(self)
+   local results = self:command({ 'status', '--porcelain' })
+
    local ret = {}
-   self:command({ 'status', '--porcelain' }, {
-      on_stdout = function(_, line)
-         if line:sub(1, 2):match('^.M') then
-            ret[#ret + 1] = line:sub(4, -1)
-         end
-      end,
-   })
+   for _, line in ipairs(results) do
+      if line:sub(1, 2):match('^.M') then
+         ret[#ret + 1] = line:sub(4, -1)
+      end
+   end
    return ret
 end
 
