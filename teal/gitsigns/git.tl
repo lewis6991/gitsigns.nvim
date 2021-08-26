@@ -71,6 +71,11 @@ local record M
     new                : function(string): Repo
   end
 
+  record PrInfo
+    id: integer
+    title: string
+  end
+
   record Obj
     repo          : Repo
     file          : string
@@ -88,6 +93,7 @@ local record M
     ensure_file_in_index : function(Obj)
     stage_hunks          : function(Obj, {Hunk}, boolean)
     has_moved            : function(Obj): string
+    associated_prs       : function(Obj, string): {PrInfo}
     new                  : function(string): Obj
   end
 
@@ -128,17 +134,8 @@ end
 
 local type JobSpec = subprocess.JobSpec
 
-M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({string}, string))
-  spec = spec or {}
-  spec.command = spec.command or 'git'
-  spec.args = spec.command == 'git' and {'--no-pager', unpack(args) } or args
-  subprocess.run_job(spec as JobSpec, function(_: integer, _: integer, stdout: string, stderr: string)
-    if not spec.supress_stderr then
-      if stderr then
-        gsd.eprint(stderr)
-      end
-    end
-
+local command = wrap(function(spec: JobSpec, callback: function({string}, string))
+  subprocess.run_job(spec, function(_: integer, _: integer, stdout: string, stderr: string)
     local stdout_lines = vim.split(stdout or '', '\n', true)
 
     -- If stdout ends with a newline, then remove the final empty string after
@@ -147,16 +144,32 @@ M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({st
       stdout_lines[#stdout_lines] = nil
     end
 
-    if gsd.verbose then
-      gsd.vprintf('%d lines:', #stdout_lines)
-      for i = 1, math.min(10, #stdout_lines) do
-        gsd.vprintf('\t%s', stdout_lines[i])
-      end
-    end
-
     callback(stdout_lines, stderr)
   end)
-end, 3)
+end, 2)
+
+M.command = function(args: {string}, spec: GJobSpec): {string}, string
+  spec = spec or {}
+  spec.command = spec.command or 'git'
+  spec.args = spec.command == 'git' and {'--no-pager', unpack(args) } or args
+
+  local stdout_lines, stderr = command(spec as JobSpec)
+
+  if not spec.supress_stderr then
+    if stderr then
+      gsd.eprint(stderr)
+    end
+  end
+
+  if gsd.verbose then
+    gsd.vprintf('%d lines:', #stdout_lines)
+    for i = 1, math.min(10, #stdout_lines) do
+      gsd.vprintf('\t%s', stdout_lines[i])
+    end
+  end
+
+  return stdout_lines, stderr
+end
 
 local function process_abbrev_head(gitdir: string, head_str: string, path: string, cmd: string): string
   if not gitdir then
@@ -408,6 +421,54 @@ Obj.has_moved = function(self: Obj): string
       end
     end
   end
+end
+
+local associated_pr_query=[[
+  query associatedPRs($sha: String!, $repo: String!, $owner: String!){
+    repository(name: $repo, owner: $owner) {
+      commit: object(expression: $sha) {
+        ... on Commit {
+          associatedPullRequests(first:5){
+            edges { node { title number } }
+          }
+        }
+      }
+    }
+  }
+]]
+
+local associated_pr_template=[[
+  {{- if .data.repository.commit -}}
+  {{- range $edge := .data.repository.commit.associatedPullRequests.edges -}}
+  {{- printf "%.f %s" $edge.node.number $edge.node.title -}}
+  {{- end -}}
+  {{- end -}}
+]]
+
+Obj.associated_prs = function(self: Obj, sha: string): {M.PrInfo}
+  local ret: {M.PrInfo} = {}
+
+  local result = command{
+    command = 'gh',
+    cwd = self.repo.toplevel,
+    args = {
+      'api', 'graphql',
+      '-f', 'query='..associated_pr_query,
+      '--template='..associated_pr_template,
+      '-F', "owner={owner}",
+      '-F', "repo={repo}",
+      '-F', 'sha='..sha,
+      '--paginate'}
+  }
+
+  for _, line in ipairs(result) do
+      local id, title = line:match('(%d+) (.*)')
+      if id and title then
+        ret[#ret+1] = { id = tonumber(id) as integer, title = title }
+      end
+  end
+
+  return ret
 end
 
 Obj.new = function(file: string): Obj
