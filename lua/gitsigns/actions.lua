@@ -1,6 +1,6 @@
 local void = require('plenary.async.async').void
 local scheduler = require('plenary.async.util').scheduler
-local will_block = require('plenary.async.util').will_block
+local block_on = require('plenary.async.util').block_on
 
 local Status = require("gitsigns.status")
 local config = require('gitsigns.config').config
@@ -622,24 +622,28 @@ local function buildqflist(target)
    return qflist
 end
 
-M.setqflist = will_block(function(target)
-   local qflist = buildqflist(target)
-   scheduler()
-   vim.fn.setqflist({}, ' ', {
-      items = qflist,
-      title = 'Hunks',
-   })
-end)
+M.setqflist = function(target)
+   block_on(function()
+      local qflist = buildqflist(target)
+      scheduler()
+      vim.fn.setqflist({}, ' ', {
+         items = qflist,
+         title = 'Hunks',
+      })
+   end)
+end
 
-M.setloclist = will_block(function(nr, target)
-   nr = nr or 0
-   local qflist = buildqflist(target)
-   scheduler()
-   vim.fn.setloclist(nr, {}, ' ', {
-      items = qflist,
-      title = 'Hunks',
-   })
-end)
+M.setloclist = function(nr, target)
+   block_on(function()
+      nr = nr or 0
+      local qflist = buildqflist(target)
+      scheduler()
+      vim.fn.setloclist(nr, {}, ' ', {
+         items = qflist,
+         title = 'Hunks',
+      })
+   end)
+end
 
 M.get_actions = function()
    local hunk = get_cursor_hunk()
