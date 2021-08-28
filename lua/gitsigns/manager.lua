@@ -78,6 +78,8 @@ end
 
 
 
+
+
 local function speculate_signs(buf, last_orig, last_new)
    if last_new < last_orig then
 
@@ -99,6 +101,7 @@ local function speculate_signs(buf, last_orig, last_new)
          else
             signs.remove(buf, 1)
          end
+         return true
       else
          local placed = signs.get(buf, last_orig)[last_orig]
 
@@ -108,6 +111,7 @@ local function speculate_signs(buf, last_orig, last_new)
             for i = last_orig + 1, last_new do
                signs.add(config, buf, { [i] = { type = 'add', count = 0 } })
             end
+            return true
          end
       end
    else
@@ -118,18 +122,40 @@ local function speculate_signs(buf, last_orig, last_new)
 
       if not placed then
          signs.add(config, buf, { [last_orig] = { type = 'change', count = 0 } })
+         return true
       end
    end
 end
 
 M.on_lines = function(buf, last_orig, last_new)
-   if not cache[buf] then
+   local bcache = cache[buf]
+   if not bcache then
       dprint('Cache for buffer was nil. Detaching')
       return true
    end
 
-   speculate_signs(buf, last_orig, last_new)
-   M.update_debounced(buf)
+   if speculate_signs(buf, last_orig, last_new) then
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      bcache.hunks = nil
+   end
+   M.update_debounced(buf, cache[buf])
 end
 
 local ns = api.nvim_create_namespace('gitsigns')
@@ -232,7 +258,7 @@ do
       if not running then
          running = true
          while scheduled[bufnr] do
-            scheduled[bufnr] = false
+            scheduled[bufnr] = nil
             update0(bufnr, bcache)
          end
          running = false

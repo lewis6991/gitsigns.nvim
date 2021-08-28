@@ -670,4 +670,17 @@ describe('gitsigns', function()
     end)
   end)
 
+  it('handles a quick undo', function()
+    setup_test_repo()
+    setup_gitsigns(config)
+    edit(test_file)
+    -- This test isn't deterministic so run it a few times
+    for _ = 1, 3 do
+      feed("x")
+      check { signs = {changed=1} }
+      feed("u")
+      check { signs = {} }
+    end
+  end)
+
 end)
