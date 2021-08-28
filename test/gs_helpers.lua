@@ -88,9 +88,9 @@ function M.setup_test_repo(no_add)
   end
 end
 
-function M.expectf(cond)
+function M.expectf(cond, interval)
   local duration = 0
-  local interval = 5
+  interval = interval or 5
   while duration < timeout do
     if pcall(cond) then
       return
@@ -225,7 +225,7 @@ M.it = function(it)
   end
 end
 
-function M.check(attrs)
+function M.check(attrs, interval)
   attrs = attrs or {}
   M.expectf(function()
     local status = attrs.status
@@ -283,7 +283,7 @@ function M.check(attrs)
 
       eq(signs, act, M.inspect(buf_signs))
     end
-  end)
+  end, interval)
 end
 
 return M

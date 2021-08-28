@@ -159,7 +159,7 @@ end
 function M.get_summary(hunks)
    local status = { added = 0, changed = 0, removed = 0 }
 
-   for _, hunk in ipairs(hunks) do
+   for _, hunk in ipairs(hunks or {}) do
       if hunk.type == 'add' then
          status.added = status.added + hunk.added.count
       elseif hunk.type == 'delete' then

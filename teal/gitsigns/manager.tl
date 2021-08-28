@@ -78,7 +78,9 @@ end
 -- Speculate on future signs. It's not a big deal if we speculate incorrectly as
 -- update() will overwrite all the signs anyway. This has noticeable effect on
 -- large files and even makes small files feel very snappy.
-local function speculate_signs(buf: integer, last_orig: integer, last_new: integer)
+--
+-- Returns true if signs are added or removed
+local function speculate_signs(buf: integer, last_orig: integer, last_new: integer): boolean
   if last_new < last_orig then
     -- Lines removed
     --
@@ -99,6 +101,7 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
       else
         signs.remove(buf, 1)
       end
+      return true
     else
       local placed = signs.get(buf, last_orig)[last_orig]
 
@@ -108,6 +111,7 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
         for i = last_orig+1, last_new do
           signs.add(config, buf, {[i] = {type='add', count=0}})
         end
+        return true
       end
     end
   else
@@ -118,18 +122,40 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
     -- add a 'change' sign if there are no other signs
     if not placed then
       signs.add(config, buf, {[last_orig] = {type='change', count=0}})
+      return true
     end
   end
 end
 
 M.on_lines = function(buf: integer, last_orig: integer, last_new: integer): boolean
-  if not cache[buf] then
+  local bcache = cache[buf]
+  if not bcache then
     dprint('Cache for buffer was nil. Detaching')
     return true
   end
 
-  speculate_signs(buf, last_orig, last_new)
-  M.update_debounced(buf)
+  if speculate_signs(buf, last_orig, last_new) then
+    -- Speculative signs are added immediately whereas updates are debounced and
+    -- throttled for each buffer. If we perform two quick updates which result
+    -- in a sign begin added then removed, we need to make sure speculative
+    -- signs don't incorrectly persist. Example:
+    --
+    --   -> buffer change
+    --      - speculative signs (#1)
+    --      - update (#1)
+    --   -> undo (quickly after buffer change)
+    --      - speculative signs (#2)
+    --      - update (#2)
+    --
+    -- Update #1 is dropped due to the debounce which results in update #2 not
+    -- updating signs due to the hunks not changing. Since signs are never
+    -- updated, the speculative signs #1 and #2 will persist.
+    --
+    -- To get around this, we just need to invalidate the hunks to force a sign
+    -- refresh.
+    bcache.hunks = nil
+  end
+  M.update_debounced(buf, cache[buf])
 end
 
 local ns = api.nvim_create_namespace('gitsigns')
@@ -232,7 +258,7 @@ do
     if not running then
       running = true
       while scheduled[bufnr] do
-        scheduled[bufnr] = false
+        scheduled[bufnr] = nil
         update0(bufnr, bcache)
       end
       running = false
