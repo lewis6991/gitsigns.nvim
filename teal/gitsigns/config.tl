@@ -440,7 +440,7 @@ M.schema = {
           date_time = os.date('%Y-%m-%d', tonumber(blame_info['author_time']))
         end
 
-        text = string.format('%s, %s - %s', blame_info.author, date_time, blame_info.summary)
+        text = string.format('%s, %s, %s - %s', blame_info.author, blame_info.abbrev_sha, date_time, blame_info.summary)
       end
 
       return {{' '..text, 'GitSignsCurrentLineBlame'}}
@@ -462,7 +462,7 @@ M.schema = {
           date_time = os.date('%Y-%m-%d', tonumber(blame_info['author_time']))
         end
 
-        text = string.format('%s, %s - %s', blame_info.author, date_time, blame_info.summary)
+        text = string.format('%s, %s, %s - %s', blame_info.author, blame_info.abbrev_sha, date_time, blame_info.summary)
       end
 
       return {{' '..text, 'GitSignsCurrentLineBlame'}}
