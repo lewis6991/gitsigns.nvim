@@ -303,9 +303,10 @@ M.schema = {
    diff_base = {
       type = 'string',
       default = nil,
-      default_help = "commit hash to diff against",
+      default_help = "object/revision hash to diff against",
       description = [[
-      The commit hash to diff against.
+      The object/revision hash to diff against.
+      See |gitsigns-revision|.
     ]],
    },
 
