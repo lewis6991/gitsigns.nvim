@@ -467,6 +467,11 @@ diff_opts                                          *gitsigns-config-diff_opts*
             Use the indent heuristic for the internal
             diff library.
 
+diff_base                                          *gitsigns-config-diff_base*
+      Type: `string`, Default: commit hash to diff against
+
+      The commit hash to diff against.
+
 count_chars                                      *gitsigns-config-count_chars*
       Type: `table`
       Default: >
