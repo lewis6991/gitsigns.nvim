@@ -84,6 +84,7 @@ local M = {Config = {DiffOpts = {}, SignsConfig = {}, watch_index = {}, current_
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -296,6 +297,15 @@ M.schema = {
         • indent_heuristic: string
             Use the indent heuristic for the internal
             diff library.
+    ]],
+   },
+
+   diff_base = {
+      type = 'string',
+      default = "",
+      default_help = "commit hash to diff against",
+      description = [[
+      The commit hash to diff against.
     ]],
    },
 

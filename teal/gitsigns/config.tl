@@ -18,6 +18,7 @@ local record M
     end
 
     diff_opts: DiffOpts
+    diff_base: string
 
     record SignsConfig
       show_count: boolean
@@ -296,6 +297,15 @@ M.schema = {
         • indent_heuristic: string
             Use the indent heuristic for the internal
             diff library.
+    ]]
+  },
+ 
+  diff_base = {
+    type = 'string',
+    default = "",
+    default_help = "commit hash to diff against",
+    description = [[
+      The commit hash to diff against.
     ]]
   },
 
