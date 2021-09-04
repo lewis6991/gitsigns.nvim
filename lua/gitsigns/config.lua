@@ -302,7 +302,7 @@ M.schema = {
 
    diff_base = {
       type = 'string',
-      default = "",
+      default = nil,
       default_help = "commit hash to diff against",
       description = [[
       The commit hash to diff against.
