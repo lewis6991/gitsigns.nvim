@@ -533,6 +533,7 @@ M.change_base = function(base: string)
   local bcache = cache[buf]
   if bcache == nil then return end
   base = calc_base(base)
+  config.diff_base = base
   bcache.base = base
   bcache.compare_text = nil
   void(manager.update)(buf, bcache)
