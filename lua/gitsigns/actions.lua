@@ -528,15 +528,28 @@ local function calc_base(base)
    return base
 end
 
-M.change_base = function(base)
-   local buf = current_buf()
-   local bcache = cache[buf]
-   if bcache == nil then return end
-   base = calc_base(base)
-   config.diff_base = base
+local function update_buf_base(buf, bcache, base)
    bcache.base = base
    bcache.compare_text = nil
    void(manager.update)(buf, bcache)
+end
+
+M.change_base = function(base, global)
+   base = calc_base(base)
+
+   if global then
+      config.diff_base = base
+
+      for buf, bcache in pairs(cache) do
+         update_buf_base(buf, bcache, base)
+      end
+   else
+      local buf = current_buf()
+      local bcache = cache[buf]
+      if not bcache then return end
+
+      update_buf_base(buf, bcache, base)
+   end
 end
 
 M.diffthis = void(function(base)

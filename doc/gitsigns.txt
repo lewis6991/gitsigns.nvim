@@ -168,9 +168,15 @@ blame_line({full})                                     *gitsigns.blame_line()*
                 floating window. If {full} is true then the full commit
                 message is displayed along with the corresponding hunk.
 
-change_base({base})                                   *gitsigns.change_base()*
+change_base({base}, {global})                                   *gitsigns.change_base()*
                 Change the base revision to diff against. If {base} is not
-                given, then the original base is used.
+                given, then the original base is used. If {global} is given
+                and true, then change the base revision of all buffers, not
+                just the current one.
+
+                Parameters:~
+                    {base} string|nil The object/revision to diff against.
+                    {global} boolean|nil Change the base of all buffers.
 
                 Examples: >
                   " Change base to 1 commit behind head
