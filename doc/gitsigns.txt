@@ -171,8 +171,8 @@ blame_line({full})                                     *gitsigns.blame_line()*
 change_base({base}, {global})                                   *gitsigns.change_base()*
                 Change the base revision to diff against. If {base} is not
                 given, then the original base is used. If {global} is given
-                and true, then change the base revision of all buffers, not
-                just the current one.
+                and true, then change the base revision of all buffers,
+                including any new buffers.
 
                 Parameters:~
                     {base} string|nil The object/revision to diff against.
