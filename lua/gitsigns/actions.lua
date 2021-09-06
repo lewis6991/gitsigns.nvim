@@ -531,10 +531,10 @@ end
 local function update_buf_base(buf, bcache, base)
    bcache.base = base
    bcache.compare_text = nil
-   void(manager.update)(buf, bcache)
+   manager.update(buf, bcache)
 end
 
-M.change_base = function(base, global)
+M.change_base = void(function(base, global)
    base = calc_base(base)
 
    if global then
@@ -550,7 +550,7 @@ M.change_base = function(base, global)
 
       update_buf_base(buf, bcache, base)
    end
-end
+end)
 
 M.diffthis = void(function(base)
    local bufnr = current_buf()
