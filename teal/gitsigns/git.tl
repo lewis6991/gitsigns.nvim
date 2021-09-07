@@ -58,6 +58,7 @@ local record M
   enable_yadm: boolean
 
   set_version: function(string)
+  get_repo_info: function(path: string, cmd: string): string,string,string
   command    : function(args: {string}, spec: GJobSpec): {string}, string
 
   record Obj
@@ -182,7 +183,7 @@ local function process_abbrev_head(gitdir: string, head_str: string, path: strin
   return head_str
 end
 
-local get_repo_info = function(path: string, cmd: string): string,string,string
+M.get_repo_info = function(path: string, cmd: string): string,string,string
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --   https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
   local has_abs_gd = check_version{2,13}
@@ -233,7 +234,7 @@ Obj.command = function(self: Obj, args: {string}, spec: GJobSpec): {string}, str
 end
 
 Obj.update_abbrev_head = function(self: Obj)
-  _, _, self.abbrev_head = get_repo_info(self.toplevel)
+  _, _, self.abbrev_head = M.get_repo_info(self.toplevel)
 end
 
 Obj.update_file_info = function(self: Obj): boolean
@@ -392,14 +393,14 @@ Obj.new = function(file: string): Obj
   self.file = file
   self.username = M.command({'config', 'user.name'})[1]
   self.toplevel, self.gitdir, self.abbrev_head =
-    get_repo_info(util.dirname(file))
+    M.get_repo_info(util.dirname(file))
 
   -- Try yadm
   if M.enable_yadm and not self.gitdir then
     if vim.startswith(file, os.getenv('HOME'))
       and #M.command({'ls-files', file}, {command = 'yadm'}) ~= 0 then
       self.toplevel, self.gitdir, self.abbrev_head =
-        get_repo_info(util.dirname(file), 'yadm')
+        M.get_repo_info(util.dirname(file), 'yadm')
     end
   end
 

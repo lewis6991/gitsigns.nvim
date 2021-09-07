@@ -164,6 +164,7 @@ global record vim
     getpos: function(string): {integer}
     executable: function(string): integer
     expand: function(string): string
+    getcwd: function(): string
 
     record QFItem
       bufnr: integer

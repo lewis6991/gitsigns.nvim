@@ -37,6 +37,7 @@ local M = {}
 
 
 
+
 local namespace
 
 local handle_moved = function(bufnr, bcache, old_relpath)
@@ -381,6 +382,26 @@ M._run_func = function(range, func, ...)
    end
 end
 
+M._update_cwd_head = function()
+   local cwd = vim.fn.getcwd()
+   local head
+   for _, bcache in pairs(cache) do
+      if bcache.git_obj.toplevel == cwd then
+         head = bcache.git_obj.abbrev_head
+         break
+      end
+   end
+   if not head then
+      _, _, head = git.get_repo_info(cwd)
+      scheduler()
+   end
+   if head then
+      api.nvim_set_var('gitsigns_head', head)
+   else
+      api.nvim_del_var('gitsigns_head')
+   end
+end
+
 local function setup_command()
    vim.cmd(table.concat({
       'command!',
@@ -479,6 +500,10 @@ M.setup = void(function(cfg)
   ]])
 
    require('gitsigns.current_line_blame').setup()
+
+   scheduler()
+   M._update_cwd_head()
+   vim.cmd([[autocmd gitsigns DirChanged * lua _G.package.loaded.gitsigns._update_cwd_head()]])
 end)
 
 M.attach = void(attach)

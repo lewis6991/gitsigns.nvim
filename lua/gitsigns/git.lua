@@ -88,6 +88,7 @@ local M = {BlameInfo = {}, Version = {}, Obj = {}, }
 
 
 
+
 local Obj = M.Obj
 
 local function parse_version(version)
@@ -182,7 +183,7 @@ local function process_abbrev_head(gitdir, head_str, path, cmd)
    return head_str
 end
 
-local get_repo_info = function(path, cmd)
+M.get_repo_info = function(path, cmd)
 
 
    local has_abs_gd = check_version({ 2, 13 })
@@ -233,7 +234,7 @@ Obj.command = function(self, args, spec)
 end
 
 Obj.update_abbrev_head = function(self)
-   _, _, self.abbrev_head = get_repo_info(self.toplevel)
+   _, _, self.abbrev_head = M.get_repo_info(self.toplevel)
 end
 
 Obj.update_file_info = function(self)
@@ -392,14 +393,14 @@ Obj.new = function(file)
    self.file = file
    self.username = M.command({ 'config', 'user.name' })[1]
    self.toplevel, self.gitdir, self.abbrev_head = 
-   get_repo_info(util.dirname(file))
+   M.get_repo_info(util.dirname(file))
 
 
    if M.enable_yadm and not self.gitdir then
       if vim.startswith(file, os.getenv('HOME')) and
          #M.command({ 'ls-files', file }, { command = 'yadm' }) ~= 0 then
          self.toplevel, self.gitdir, self.abbrev_head = 
-         get_repo_info(util.dirname(file), 'yadm')
+         M.get_repo_info(util.dirname(file), 'yadm')
       end
    end
 

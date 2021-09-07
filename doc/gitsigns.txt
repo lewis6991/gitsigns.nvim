@@ -708,9 +708,12 @@ Example:
 >
     set statusline+=%{get(b:,'gitsigns_status','')}
 <
-                                                             *b:gitsigns_head*
-Use `b:gitsigns_head` to return the name of the current HEAD (usually branch
-name). If the current HEAD is detached then this will be a short commit hash.
+                                            *b:gitsigns_head* *g:gitsigns_head*
+Use `g:gitsigns_head` and `b:gitsigns_head` to return the name of the current
+HEAD (usually branch name). If the current HEAD is detached then this will be
+a short commit hash. `g:gitsigns_head` returns the current HEAD for the
+current working directory, whereas `b:gitsigns_head` returns the current HEAD
+for each buffer.
 
                                                   *b:gitsigns_blame_line_dict*
 If |gitsigns-config-current_line_blame| is enabled, then contains dictionary
