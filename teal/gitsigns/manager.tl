@@ -134,27 +134,31 @@ M.on_lines = function(buf: integer, last_orig: integer, last_new: integer): bool
     return true
   end
 
-  if speculate_signs(buf, last_orig, last_new) then
-    -- Speculative signs are added immediately whereas updates are debounced and
-    -- throttled for each buffer. If we perform two quick updates which result
-    -- in a sign begin added then removed, we need to make sure speculative
-    -- signs don't incorrectly persist. Example:
-    --
-    --   -> buffer change
-    --      - speculative signs (#1)
-    --      - update (#1)
-    --   -> undo (quickly after buffer change)
-    --      - speculative signs (#2)
-    --      - update (#2)
-    --
-    -- Update #1 is dropped due to the debounce which results in update #2 not
-    -- updating signs due to the hunks not changing. Since signs are never
-    -- updated, the speculative signs #1 and #2 will persist.
-    --
-    -- To get around this, we just need to invalidate the hunks to force a sign
-    -- refresh.
-    bcache.hunks = nil
-  end
+  -- Schedule sign speculation ortherwise CTRL-C in insert mode can cause a
+  -- callback error. See #346
+  vim.schedule(function()
+    if speculate_signs(buf, last_orig, last_new) then
+      -- Speculative signs are added immediately whereas updates are debounced and
+      -- throttled for each buffer. If we perform two quick updates which result
+      -- in a sign begin added then removed, we need to make sure speculative
+      -- signs don't incorrectly persist. Example:
+      --
+      --   -> buffer change
+      --      - speculative signs (#1)
+      --      - update (#1)
+      --   -> undo (quickly after buffer change)
+      --      - speculative signs (#2)
+      --      - update (#2)
+      --
+      -- Update #1 is dropped due to the debounce which results in update #2 not
+      -- updating signs due to the hunks not changing. Since signs are never
+      -- updated, the speculative signs #1 and #2 will persist.
+      --
+      -- To get around this, we just need to invalidate the hunks to force a sign
+      -- refresh.
+      bcache.hunks = nil
+    end
+  end)
   M.update_debounced(buf, cache[buf])
 end
 
