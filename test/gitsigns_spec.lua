@@ -87,7 +87,7 @@ describe('gitsigns', function()
         'watch_index(1): Watching index',
         'watcher_cb(1): Index update error: ENOENT',
         p'run_job: git .* show :0:dummy.txt',
-        'update(1): updates: 1, jobs: 5'
+        'update(1): updates: 1, jobs: 6'
       })
     end)
 
@@ -111,6 +111,7 @@ describe('gitsigns', function()
 
     match_debug_messages {
       'run_job: git --no-pager --version',
+      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       'attach(1): Attaching (trigger=BufRead)',
       p'run_job: git .* config user.name',
       'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -158,6 +159,7 @@ describe('gitsigns', function()
 
       match_debug_messages {
         'run_job: git --no-pager --version',
+        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufRead)',
         'attach(1): In git dir'
       }
@@ -173,6 +175,7 @@ describe('gitsigns', function()
 
       match_debug_messages {
         'run_job: git --no-pager --version',
+        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -188,6 +191,7 @@ describe('gitsigns', function()
 
       match_debug_messages {
         'run_job: git --no-pager --version',
+        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufNewFile)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -203,6 +207,7 @@ describe('gitsigns', function()
 
       match_debug_messages {
         'run_job: git --no-pager --version',
+        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufNewFile)',
         'attach(1): Not a path',
       }
@@ -215,6 +220,7 @@ describe('gitsigns', function()
       command("copen")
       match_debug_messages {
         'run_job: git --no-pager --version',
+        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(2): Attaching (trigger=BufRead)',
         'attach(2): Non-normal buffer',
       }
@@ -266,6 +272,7 @@ describe('gitsigns', function()
       edit(test_file)
       match_debug_messages {
         'run_job: git --no-pager --version',
+        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -441,6 +448,7 @@ describe('gitsigns', function()
         edit(newfile)
         match_debug_messages{
           'run_job: git --no-pager --version',
+          'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
           'attach(1): Attaching (trigger=BufNewFile)',
           'run_job: git --no-pager config user.name',
           'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -463,7 +471,7 @@ describe('gitsigns', function()
           table.insert(messages, p'run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*')
         end
 
-        local jobs = internal_diff and 8 or 9
+        local jobs = internal_diff and 9 or 10
         table.insert(messages, "update(1): updates: 1, jobs: "..jobs)
 
         match_debug_messages(messages)
@@ -647,6 +655,7 @@ describe('gitsigns', function()
 
     eq({
       'run_job: git --no-pager --version',
+      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       'attach(2): attaching is disabled',
       'attach(3): attaching is disabled',
       'attach(4): attaching is disabled',
