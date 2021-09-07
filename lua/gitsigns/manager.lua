@@ -134,7 +134,10 @@ M.on_lines = function(buf, last_orig, last_new)
       return true
    end
 
-   if speculate_signs(buf, last_orig, last_new) then
+
+
+   vim.schedule(function()
+      if speculate_signs(buf, last_orig, last_new) then
 
 
 
@@ -153,8 +156,9 @@ M.on_lines = function(buf, last_orig, last_new)
 
 
 
-      bcache.hunks = nil
-   end
+         bcache.hunks = nil
+      end
+   end)
    M.update_debounced(buf, cache[buf])
 end
 
