@@ -303,7 +303,7 @@ M.schema = {
    diff_base = {
       type = 'string',
       default = nil,
-      default_help = "object/revision to diff against",
+      default_help = "the git file index",
       description = [[
       The object/revision to diff against.
       See |gitsigns-revision|.
