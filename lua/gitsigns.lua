@@ -398,7 +398,7 @@ M._update_cwd_head = function()
    if head then
       api.nvim_set_var('gitsigns_head', head)
    else
-      api.nvim_del_var('gitsigns_head')
+      pcall(api.nvim_del_var, 'gitsigns_head')
    end
 end
 
