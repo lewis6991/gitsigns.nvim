@@ -256,20 +256,20 @@ end
 
 
 do
-   local running = {}
+   local running = false
    local scheduled = {}
    M.update = function(bufnr, bcache)
       scheduled[bufnr] = true
-      if not running[bufnr] then
-         running[bufnr] = true
+      if not running then
+         running = true
          while scheduled[bufnr] do
             scheduled[bufnr] = nil
             update0(bufnr, bcache)
          end
-         running[bufnr] = false
+         running = false
       else
 
-         while running[bufnr] do
+         while running do
             async_util.sleep(100)
          end
       end

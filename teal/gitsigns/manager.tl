@@ -256,20 +256,20 @@ end
 -- whilst another one is in progress. If this happens then schedule another
 -- update after the current one has completed.
 do
-  local running: {integer:boolean} = {}
+  local running = false
   local scheduled: {integer:boolean} = {}
   M.update = function(bufnr: integer, bcache: CacheEntry)
     scheduled[bufnr] = true
-    if not running[bufnr] then
-      running[bufnr] = true
+    if not running then
+      running = true
       while scheduled[bufnr] do
         scheduled[bufnr] = nil
         update0(bufnr, bcache)
       end
-      running[bufnr] = false
+      running = false
     else
       -- Wait until all updates have finished
-      while running[bufnr] do
+      while running do
         async_util.sleep(100)
       end
     end
