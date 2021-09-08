@@ -81,7 +81,7 @@ end
 
 function M.process_hunks(hunks)
    local signs = {}
-   for _, hunk in ipairs(hunks) do
+   for _, hunk in ipairs(hunks or {}) do
       local count = hunk.type == 'add' and hunk.added.count or hunk.removed.count
       for i = hunk.start, hunk.dend do
          local topdelete = hunk.type == 'delete' and i == 0
