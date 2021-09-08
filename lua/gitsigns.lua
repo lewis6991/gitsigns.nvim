@@ -382,7 +382,7 @@ M._run_func = function(range, func, ...)
    end
 end
 
-M._update_cwd_head = function()
+local _update_cwd_head = function()
    local cwd = vim.fn.getcwd()
    local head
    for _, bcache in pairs(cache) do
@@ -401,6 +401,8 @@ M._update_cwd_head = function()
       pcall(api.nvim_del_var, 'gitsigns_head')
    end
 end
+
+M._update_cwd_head = void(_update_cwd_head)
 
 local function setup_command()
    vim.cmd(table.concat({
