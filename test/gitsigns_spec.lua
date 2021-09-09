@@ -53,6 +53,7 @@ describe('gitsigns', function()
       [7] = {bold = true},
       [8] = {foreground = Screen.colors.White, background = Screen.colors.Red};
       [9] = {foreground = Screen.colors.SeaGreen, bold = true};
+      [10] = {foreground = Screen.colors.Red};
     })
 
     -- Make gitisigns available
@@ -254,6 +255,18 @@ describe('gitsigns', function()
       insert("line")
       command("write")
       screen:expect{messages = { { content = { { "<" } }, kind = "" } } }
+    end)
+  end)
+
+  describe('configuration', function()
+    it('handled deprecated fields', function()
+      config.current_line_blame_delay = 100
+      setup_gitsigns(config)
+      screen:expect{messages = { {
+        content = { { "current_line_blame_delay is now deprecated, please use current_line_blame_opts.delay", 10 } },
+        kind = ""
+      } } }
+      eq(100, exec_lua([[return package.loaded['gitsigns.config'].config.current_line_blame_opts.delay]]))
     end)
   end)
 
