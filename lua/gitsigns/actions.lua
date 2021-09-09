@@ -630,11 +630,14 @@ local function buildqflist(target)
             if not gitdirs_done[git_obj.gitdir] then
                for _, f in ipairs(git_obj:files_changed()) do
                   local f_abs = git_obj.toplevel .. '/' .. f
-                  local hunks = run_diff(
-                  git_obj:get_show_text(':0:' .. f),
-                  util.file_lines(f_abs))
+                  local stat = vim.loop.fs_stat(f_abs)
+                  if stat and stat.type == 'file' then
+                     local hunks = run_diff(
+                     git_obj:get_show_text(':0:' .. f),
+                     util.file_lines(f_abs))
 
-                  hunks_to_qflist(f_abs, hunks, qflist)
+                     hunks_to_qflist(f_abs, hunks, qflist)
+                  end
                end
             end
             gitdirs_done[git_obj.gitdir] = true
