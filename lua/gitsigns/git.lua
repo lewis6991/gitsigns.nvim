@@ -365,7 +365,7 @@ Obj.has_moved = function(self)
 end
 
 Obj.files_changed = function(self)
-   local results = self:command({ 'status', '--porcelain' })
+   local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
 
    local ret = {}
    for _, line in ipairs(results) do
