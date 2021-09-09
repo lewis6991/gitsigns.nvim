@@ -43,7 +43,8 @@ local record M
   get_hunks          : function(bufnr: integer): {Hunk}
 
   blame_line         : function -- function()
-  change_base        : function(base: string)
+  change_base        : function(base: string, global: boolean)
+  reset_base         : function(global: boolean)
   diffthis           : function -- function(base: string)
 
   setqflist          : function(target:integer|string)
@@ -528,14 +529,32 @@ local function calc_base(base: string): string
   return base
 end
 
-M.change_base = function(base: string)
-  local buf = current_buf()
-  local bcache = cache[buf]
-  if bcache == nil then return end
+local function update_buf_base(buf: integer, bcache: CacheEntry, base: string)
+    bcache.base = base
+    bcache.compare_text = nil
+    manager.update(buf, bcache)
+end
+
+M.change_base = void(function(base: string, global: boolean)
   base = calc_base(base)
-  bcache.base = base
-  bcache.compare_text = nil
-  void(manager.update)(buf, bcache)
+
+  if global then
+    config.base = base
+
+    for buf,bcache in pairs(cache as {integer:CacheEntry}) do
+      update_buf_base(buf, bcache, base)
+    end
+  else
+    local buf = current_buf()
+    local bcache = cache[buf]
+    if not bcache then return end
+
+    update_buf_base(buf, bcache, base)
+  end
+end)
+
+M.reset_base = function(global: boolean)
+  M.change_base(nil, global)
 end
 
 M.diffthis = void(function(base: string)

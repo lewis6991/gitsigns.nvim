@@ -18,6 +18,7 @@ local record M
     end
 
     diff_opts: DiffOpts
+    base: string
 
     record SignsConfig
       show_count: boolean
@@ -296,6 +297,16 @@ M.schema = {
         • indent_heuristic: string
             Use the indent heuristic for the internal
             diff library.
+    ]]
+  },
+ 
+  base = {
+    type = 'string',
+    default = nil,
+    default_help = 'index',
+    description = [[
+      The object/revision to diff against.
+      See |gitsigns-revision|.
     ]]
   },
 

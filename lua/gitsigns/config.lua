@@ -84,6 +84,7 @@ local M = {Config = {DiffOpts = {}, SignsConfig = {}, watch_index = {}, current_
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -296,6 +297,16 @@ M.schema = {
         • indent_heuristic: string
             Use the indent heuristic for the internal
             diff library.
+    ]],
+   },
+
+   base = {
+      type = 'string',
+      default = nil,
+      default_help = 'index',
+      description = [[
+      The object/revision to diff against.
+      See |gitsigns-revision|.
     ]],
    },
 
