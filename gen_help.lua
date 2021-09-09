@@ -131,47 +131,49 @@ local function gen_config_doc()
   intro()
   for _, k in ipairs(get_ordered_schema_keys()) do
     local v = config.schema[k]
-    local t = ('*gitsigns-config-%s*'):format(k)
-    if #k + #t < 80 then
-      out(('%-29s %48s'):format(k, t))
-    else
-      out(('%-29s'):format(k))
-      out(('%78s'):format(t))
-    end
-
-    local d
-    if v.default_help ~= nil then
-      d = v.default_help
-    elseif is_simple_type(v.type) then
-      d = inspect(v.default)
-      d = ('`%s`'):format(d)
-    else
-      d = get_default(k)
-      if d:find('\n') then
-        d = d:gsub('\n([^\n\r])', '\n%1')
+    if not v.deprecated then
+      local t = ('*gitsigns-config-%s*'):format(k)
+      if #k + #t < 80 then
+        out(('%-29s %48s'):format(k, t))
       else
+        out(('%-29s'):format(k))
+        out(('%78s'):format(t))
+      end
+
+      local d
+      if v.default_help ~= nil then
+        d = v.default_help
+      elseif is_simple_type(v.type) then
+        d = inspect(v.default)
         d = ('`%s`'):format(d)
+      else
+        d = get_default(k)
+        if d:find('\n') then
+          d = d:gsub('\n([^\n\r])', '\n%1')
+        else
+          d = ('`%s`'):format(d)
+        end
       end
-    end
 
-    local vtype = (function()
-      if v.type == 'table' and v.deep_extend then
-        return 'table[extended]'
+      local vtype = (function()
+        if v.type == 'table' and v.deep_extend then
+          return 'table[extended]'
+        end
+        return v.type
+      end)()
+
+      if d:find('\n') then
+        out(('      Type: `%s`'):format(vtype))
+        out('      Default: >')
+        out('        '..d:gsub('\n([^\n\r])', '\n    %1'))
+        out('<')
+      else
+        out(('      Type: `%s`, Default: %s'):format(vtype, d))
+        out()
       end
-      return v.type
-    end)()
 
-    if d:find('\n') then
-      out(('      Type: `%s`'):format(vtype))
-      out('      Default: >')
-      out('        '..d:gsub('\n([^\n\r])', '\n    %1'))
-      out('<')
-    else
-      out(('      Type: `%s`, Default: %s'):format(vtype, d))
-      out()
+      out(v.description:gsub(' +$', ''))
     end
-
-    out(v.description:gsub(' +$', ''))
   end
 end
 
