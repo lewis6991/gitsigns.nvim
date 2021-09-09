@@ -348,7 +348,7 @@ local function highlight_hunk_lines(bufnr: integer, offset: integer, hunk_lines:
     api.nvim_buf_add_highlight(bufnr, -1, hl, offset+i-1, 0, -1)
   end
 
-  if config.use_internal_diff then
+  if config.diff_opts.internal then
     local regions = require('gitsigns.diff_int').run_word_diff(hunk_lines)
     for _, region in ipairs(regions) do
       local line, scol, ecol = region[1], region[3], region[4]
@@ -414,11 +414,14 @@ local function defer(duration: integer, callback: function()): vim.loop.Timer
 end
 
 local function run_diff(a: {string}, b: {string}): {Hunk}
-  if config.use_internal_diff then
-    return require('gitsigns.diff_int').run_diff(a, b, config.diff_algorithm)
+  local diff_opts = config.diff_opts
+  local f: function({string}, {string}, string, boolean): {Hunk}
+  if config.diff_opts.internal then
+    f = require('gitsigns.diff_int').run_diff
   else
-    return require('gitsigns.diff_ext').run_diff(a, b, config.diff_algorithm)
+    f = require('gitsigns.diff_ext').run_diff
   end
+  return f(a, b, diff_opts.algorithm, diff_opts.indent_heuristic)
 end
 
 local function get_blame_hunk(git_obj: git.Obj, info: git.BlameInfo): Hunk, integer, integer

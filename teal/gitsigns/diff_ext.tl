@@ -7,7 +7,7 @@ local scheduler = require('plenary.async.util').scheduler
 
 local record M
   -- Async function
-  run_diff: function({string}, {string}, string): {Hunk}
+  run_diff: function({string}, {string}, string, boolean): {Hunk}
 end
 
 local function write_to_file(path: string, text: {string})
@@ -25,7 +25,8 @@ end
 M.run_diff = function(
   text_cmp: {string},
   text_buf: {string},
-  diff_algo: string
+  diff_algo: string,
+  indent_heuristic: boolean
 ): {Hunk}
   local results: {Hunk} = {}
 
@@ -60,6 +61,7 @@ M.run_diff = function(
       '-c', 'core.safecrlf=false',
       'diff',
       '--color=never',
+      '--'..(indent_heuristic and '' or 'no-')..'indent-heuristic',
       '--diff-algorithm='..diff_algo,
       '--patch-with-raw',
       '--unified=0',

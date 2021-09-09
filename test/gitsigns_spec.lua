@@ -326,7 +326,9 @@ describe('gitsigns', function()
   local function testsuite(internal_diff)
     return function()
       before_each(function()
-        config.use_internal_diff = internal_diff
+        config.diff_opts = {
+          internal = internal_diff
+        }
         setup_test_repo()
       end)
 

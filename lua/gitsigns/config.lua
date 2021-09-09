@@ -7,7 +7,13 @@ local SchemaElem = {}
 
 
 
-local M = {Config = {SignsConfig = {}, watch_index = {}, current_line_blame_formatter_opts = {}, current_line_blame_opts = {}, yadm = {}, }, }
+local M = {Config = {DiffOpts = {}, SignsConfig = {}, watch_index = {}, current_line_blame_formatter_opts = {}, current_line_blame_opts = {}, yadm = {}, }, }
+
+
+
+
+
+
 
 
 
@@ -245,21 +251,51 @@ M.schema = {
     ]],
    },
 
-   diff_algorithm = {
-      type = 'string',
+   diff_opts = {
+      type = 'table',
+      deep_extend = true,
       default = function()
+         local r = {
+            algorithm = 'myers',
+            internal = false,
+            indent_heuristic = false,
+         }
+         for _, o in ipairs(vim.opt.diffopt:get()) do
+            if o == 'indent-heuristic' then
+               r.indent_heuristic = true
+            elseif o == 'internal' then
+               if vim.diff then
+                  r.internal = true
+               elseif jit and jit.os ~= "Windows" then
 
-         local algo = 'myers'
-         for o in vim.gsplit(vim.o.diffopt, ',') do
-            if vim.startswith(o, 'algorithm:') then
-               algo = string.sub(o, 11)
+                  r.internal = true
+               end
+            elseif vim.startswith(o, 'algorithm:') then
+               r.algorithm = string.sub(o, 11)
             end
          end
-         return algo
+         return r
       end,
-      default_help = "taken from 'diffopt'",
+      default_help = "derived from 'diffopt'",
       description = [[
-      Diff algorithm to pass to `git diff` .
+      Diff options.
+
+      Fields: ~
+        • algorithm: string
+            Diff algorithm to use. Values:
+            • "myers"      the default algorithm
+            • "minimal"    spend extra time to generate the
+                           smallest possible diff
+            • "patience"   patience diff algorithm
+            • "histogram"  histogram diff algorithm
+        • internal: boolean
+            Use Neovim's built in xdiff library for running diffs.
+
+            Note Neovim v0.5 uses LuaJIT's FFI interface, whereas v0.5+ uses
+            `vim.diff`.
+        • indent_heuristic: string
+            Use the indent heuristic for the internal
+            diff library.
     ]],
    },
 
@@ -348,26 +384,6 @@ M.schema = {
       default = 100,
       description = [[
       Debounce time for updates (in milliseconds).
-    ]],
-   },
-
-   use_internal_diff = {
-      type = 'boolean',
-      default = function()
-         if vim.diff then
-            return true
-         elseif not jit or jit.os == "Windows" then
-            return false
-         else
-            return true
-         end
-      end,
-      default_help = "`true` if `vim.diff` or luajit is present. Windows unsupported on v0.5",
-      description = [[
-      Use Neovim's built in xdiff library for running diffs.
-
-      Note Neovim v0.5 uses LuaJIT's FFI interface, whereas v0.5+ uses
-      `vim.diff`.
     ]],
    },
 
@@ -531,7 +547,7 @@ M.schema = {
       default = false,
       description = [[
       Highlight intra-line word differences in the buffer.
-      Requires `config.use_internal_diff = true` .
+      Requires `config.diff_opts.internal = true` .
 
       Uses the highlights:
         • GitSignsAddLn
@@ -559,9 +575,11 @@ M.schema = {
     ]],
    },
 
-   use_decoration_api = { deprecated = true },
    current_line_blame_delay = { deprecated = 'current_line_blame_opts.delay' },
    current_line_blame_position = { deprecated = 'current_line_blame_opts.virt_text_pos' },
+   diff_algorithm = { deprecated = 'diff_opts.algorithm' },
+   use_decoration_api = { deprecated = true },
+   use_internal_diff = { deprecated = 'diff_opts.internal' },
 }
 
 local function warn(s, ...)

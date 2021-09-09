@@ -5,20 +5,24 @@ local M = {}
 
 local type DiffResult = {integer, integer, integer, integer}
 
-local run_diff_xdl: function({string}, {string}, diff_algo: string): {DiffResult}
+local run_diff_xdl: function({string}, {string}, diff_algo: string, indent_heuristic: boolean): {DiffResult}
 
 if vim.diff then
-  run_diff_xdl = function(fa: {string}, fb: {string}, algorithm: string): {DiffResult}
+  run_diff_xdl = function(fa: {string}, fb: {string}, algorithm: string, indent_heuristic: boolean): {DiffResult}
     local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n')..'\n'
     local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n')..'\n'
-    return vim.diff(a, b, { result_type = 'indices', algorithm = algorithm })
+    return vim.diff(a, b, {
+      result_type      = 'indices',
+      algorithm        = algorithm,
+      indent_heuristic = indent_heuristic
+    })
   end
 else
   run_diff_xdl = require('gitsigns.diff_int.xdl_diff_ffi')
 end
 
-function M.run_diff(fa: {string}, fb: {string}, diff_algo: string): {Hunk}
-  local results = run_diff_xdl(fa, fb, diff_algo)
+function M.run_diff(fa: {string}, fb: {string}, diff_algo: string, indent_heuristic: boolean): {Hunk}
+  local results = run_diff_xdl(fa, fb, diff_algo, indent_heuristic)
 
   local hunks: {Hunk} = {}
 

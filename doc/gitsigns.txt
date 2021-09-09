@@ -70,7 +70,6 @@ of the default settings:
       sign_priority = 6,
       update_debounce = 100,
       status_formatter = nil, -- Use default
-      use_internal_diff = true,  -- If luajit is present
     }
 <
 
@@ -446,10 +445,27 @@ linehl                                                *gitsigns-config-linehl*
       the highlight group does not exist, then it is automatically defined
       and linked to the corresponding highlight group in `signs.*.hl`.
 
-diff_algorithm                                *gitsigns-config-diff_algorithm*
-      Type: `string`, Default: taken from 'diffopt'
+diff_opts                                          *gitsigns-config-diff_opts*
+      Type: `table[extended]`, Default: derived from 'diffopt'
 
-      Diff algorithm to pass to `git diff` .
+      Diff options.
+
+      Fields: ~
+        • algorithm: string
+            Diff algorithm to use. Values:
+            • "myers"      the default algorithm
+            • "minimal"    spend extra time to generate the
+                           smallest possible diff
+            • "patience"   patience diff algorithm
+            • "histogram"  histogram diff algorithm
+        • internal: boolean
+            Use Neovim's built in xdiff library for running diffs.
+
+            Note Neovim v0.5 uses LuaJIT's FFI interface, whereas v0.5+ uses
+            `vim.diff`.
+        • indent_heuristic: string
+            Use the indent heuristic for the internal
+            diff library.
 
 count_chars                                      *gitsigns-config-count_chars*
       Type: `table`
@@ -517,14 +533,6 @@ update_debounce                              *gitsigns-config-update_debounce*
       Type: `number`, Default: `100`
 
       Debounce time for updates (in milliseconds).
-
-use_internal_diff                          *gitsigns-config-use_internal_diff*
-      Type: `boolean`, Default: `true` if `vim.diff` or luajit is present. Windows unsupported on v0.5
-
-      Use Neovim's built in xdiff library for running diffs.
-
-      Note Neovim v0.5 uses LuaJIT's FFI interface, whereas v0.5+ uses
-      `vim.diff`.
 
 current_line_blame                        *gitsigns-config-current_line_blame*
       Type: `boolean`, Default: `false`
@@ -637,7 +645,7 @@ word_diff                                          *gitsigns-config-word_diff*
       Type: `boolean`, Default: `false`
 
       Highlight intra-line word differences in the buffer.
-      Requires `config.use_internal_diff = true` .
+      Requires `config.diff_opts.internal = true` .
 
       Uses the highlights:
         • GitSignsAddLn

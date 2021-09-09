@@ -8,17 +8,21 @@ local DiffResult = {}
 local run_diff_xdl
 
 if vim.diff then
-   run_diff_xdl = function(fa, fb, algorithm)
+   run_diff_xdl = function(fa, fb, algorithm, indent_heuristic)
       local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n') .. '\n'
       local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n') .. '\n'
-      return vim.diff(a, b, { result_type = 'indices', algorithm = algorithm })
+      return vim.diff(a, b, {
+         result_type = 'indices',
+         algorithm = algorithm,
+         indent_heuristic = indent_heuristic,
+      })
    end
 else
    run_diff_xdl = require('gitsigns.diff_int.xdl_diff_ffi')
 end
 
-function M.run_diff(fa, fb, diff_algo)
-   local results = run_diff_xdl(fa, fb, diff_algo)
+function M.run_diff(fa, fb, diff_algo, indent_heuristic)
+   local results = run_diff_xdl(fa, fb, diff_algo, indent_heuristic)
 
    local hunks = {}
 

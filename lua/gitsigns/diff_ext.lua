@@ -25,7 +25,8 @@ end
 M.run_diff = function(
    text_cmp,
    text_buf,
-   diff_algo)
+   diff_algo,
+   indent_heuristic)
 
    local results = {}
 
@@ -60,6 +61,7 @@ M.run_diff = function(
       '-c', 'core.safecrlf=false',
       'diff',
       '--color=never',
+      '--' .. (indent_heuristic and '' or 'no-') .. 'indent-heuristic',
       '--diff-algorithm=' .. diff_algo,
       '--patch-with-raw',
       '--unified=0',
