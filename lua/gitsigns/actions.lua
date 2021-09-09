@@ -539,7 +539,7 @@ M.change_base = void(function(base, global)
    base = calc_base(base)
 
    if global then
-      config.diff_base = base
+      config.base = base
 
       for buf, bcache in pairs(cache) do
          update_buf_base(buf, bcache, base)

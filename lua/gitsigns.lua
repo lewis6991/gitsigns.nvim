@@ -283,7 +283,7 @@ local attach0 = function(cbuf, aucmd)
    end
 
    cache[cbuf] = CacheEntry.new({
-      base = config.diff_base,
+      base = config.base,
       file = file,
       commit = commit,
       index_watcher = watch_index(cbuf, git_obj.gitdir),

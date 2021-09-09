@@ -479,8 +479,8 @@ diff_opts                                          *gitsigns-config-diff_opts*
             Use the indent heuristic for the internal
             diff library.
 
-diff_base                                          *gitsigns-config-diff_base*
-      Type: `string`, Default: the git file index
+base                                                    *gitsigns-config-base*
+      Type: `string`, Default: index
 
       The object/revision to diff against.
       See |gitsigns-revision|.
