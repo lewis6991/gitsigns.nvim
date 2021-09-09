@@ -231,7 +231,7 @@ function M.compare_heads(a, b)
    elseif a and #a ~= #b then
       return true
    end
-   for i, ah in ipairs(a) do
+   for i, ah in ipairs(a or {}) do
       if b[i].head ~= ah.head then
          return true
       end
