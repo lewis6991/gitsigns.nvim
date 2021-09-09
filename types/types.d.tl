@@ -246,6 +246,12 @@ global record vim
     vim_did_enter: integer
   end
 
+  record opt
+    record diffopt
+      get: function(diffopt): {string}
+    end
+  end
+
   record lsp
     record util
       close_preview_autocmd: function ({string}, number)

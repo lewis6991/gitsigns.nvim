@@ -221,7 +221,7 @@ local update0 = function(bufnr, bcache)
 
 
    local run_diff
-   if config.use_internal_diff then
+   if config.diff_opts.internal then
       run_diff = require('gitsigns.diff_int').run_diff
    else
       run_diff = require('gitsigns.diff_ext').run_diff
@@ -231,7 +231,8 @@ local update0 = function(bufnr, bcache)
       bcache.compare_text = git_obj:get_show_text(compare_object)
    end
 
-   bcache.hunks = run_diff(bcache.compare_text, buftext, config.diff_algorithm)
+   bcache.hunks = run_diff(bcache.compare_text, buftext,
+   config.diff_opts.algorithm, config.diff_opts.indent_heuristic)
 
    scheduler()
    if gs_hunks.compare_heads(bcache.hunks, old_hunks) then
