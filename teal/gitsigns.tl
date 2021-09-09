@@ -364,21 +364,48 @@ M._complete = function(arglead: string, line: string): {string}
   return matches
 end
 
-M._run_func = function(range: {integer, integer}, func: string, ...: any)
+-- try to parse each argument as a lua value using loadstring, if fails then
+-- keep argument as a string:
+--
+--   'false'    -> false
+--   'nil'      -> nil
+--   'HEAD~300' -> 'HEAD~300'
+local function parse_args_to_lua(...: string): {any}
+  local args = {}
+  for i, a in ipairs({...}) do
+    local f = loadstring('return '..a)
+    local ok = f ~= nil
+    local v: any
+    if ok then
+      ok, v = pcall(f)
+    end
+    if ok then
+      args[i] = v
+    else
+      args[i] = a
+    end
+  end
+  return args
+end
+
+M._run_func = function(range: {integer, integer}, func: string, ...: string)
   local actions = require('gitsigns.actions')
   local actions0 = actions as {string:function}
+
+  local args = parse_args_to_lua(...)
+
   if type(actions0[func]) == 'function' then
     if range and range[1] ~= range[2] then
       actions.user_range = range
     else
       actions.user_range = nil
     end
-    actions0[func](...)
+    actions0[func](unpack(args))
     actions.user_range = nil
     return
   end
   if type(M0[func]) == 'function' then
-    M0[func](...)
+    M0[func](unpack(args))
     return
   end
 end

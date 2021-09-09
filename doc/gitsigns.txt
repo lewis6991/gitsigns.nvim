@@ -680,9 +680,12 @@ debug_mode                                        *gitsigns-config-debug_mode*
 COMMAND                                                      *gitsigns-command*
 
                                                                     *:Gitsigns*
-:Gitsigns {subcmd} {args}  Run a Gitsigns commands. {subcmd} can be any
+:Gitsigns {subcmd} {args}  Run a Gitsigns command. {subcmd} can be any
                            function documented in |gitsigns-functions|.
-                           {args} are processed as |<f-args>|.
+                           Each argument in {args} will be attempted to be
+                           parsed as a Lua value using `loadstring`, however
+                           if this fails the argument will remain as the
+                           string given by |<f-args>|.
 
                            Note this command is equivalent to:
                              `:lua require('gitsigns').{subcmd}({args})`
@@ -694,6 +697,7 @@ COMMAND                                                      *gitsigns-command*
                              :Gitsigns toggle_current_line_blame
                              :Gitsigns change_base ~
                              :Gitsigns reset_buffer
+                             :Gitsigns change_base nil true
 
 ==============================================================================
 SPECIFYING OBJECTS                          *gitsigns-object* *gitsigns-revision*
