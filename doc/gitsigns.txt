@@ -168,7 +168,7 @@ blame_line({full})                                     *gitsigns.blame_line()*
                 floating window. If {full} is true then the full commit
                 message is displayed along with the corresponding hunk.
 
-change_base({base}, {global})                                   *gitsigns.change_base()*
+change_base({base}, {global})                         *gitsigns.change_base()*
                 Change the base revision to diff against. If {base} is not
                 given, then the original base is used. If {global} is given
                 and true, then change the base revision of all buffers,
@@ -199,6 +199,12 @@ change_base({base}, {global})                                   *gitsigns.change
 
                 For a more complete list of ways to specify bases, see
                 |gitsigns-revision|.
+
+reset_base({global})                                   *gitsigns.reset_base()*
+                Reset the base revision to diff against back to the
+                index.
+
+                Alias for `change_base(nil, {global})` .
 
 diffthis({base})                                         *gitsigns.diffthis()*
                 Perform a |vimdiff| on the given file with {base} if it is

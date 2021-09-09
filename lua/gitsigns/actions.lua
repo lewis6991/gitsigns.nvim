@@ -61,6 +61,7 @@ local M = {}
 
 
 
+
 local function get_cursor_hunk(bufnr, hunks)
    bufnr = bufnr or current_buf()
    hunks = hunks or cache[bufnr].hunks
@@ -551,6 +552,10 @@ M.change_base = void(function(base, global)
       update_buf_base(buf, bcache, base)
    end
 end)
+
+M.reset_base = function(global)
+   M.change_base(nil, global)
+end
 
 M.diffthis = void(function(base)
    local bufnr = current_buf()

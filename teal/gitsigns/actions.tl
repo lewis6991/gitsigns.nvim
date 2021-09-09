@@ -44,6 +44,7 @@ local record M
 
   blame_line         : function -- function()
   change_base        : function(base: string, global: boolean)
+  reset_base         : function(global: boolean)
   diffthis           : function -- function(base: string)
 
   setqflist          : function(target:integer|string)
@@ -551,6 +552,10 @@ M.change_base = void(function(base: string, global: boolean)
     update_buf_base(buf, bcache, base)
   end
 end)
+
+M.reset_base = function(global: boolean)
+  M.change_base(nil, global)
+end
 
 M.diffthis = void(function(base: string)
   local bufnr = current_buf()
