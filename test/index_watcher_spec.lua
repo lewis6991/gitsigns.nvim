@@ -23,6 +23,7 @@ describe('index_watcher', function()
 
     -- Make gitisigns available
     exec_lua('package.path = ...', package.path)
+    command('cd '..helpers.funcs.system{"dirname", os.tmpname()})
   end)
 
   after_each(function()

@@ -155,14 +155,12 @@ local function process_abbrev_head(gitdir: string, head_str: string, path: strin
     return head_str
   end
   if head_str == 'HEAD' then
-    local short_sha: string
-    if not gsd.debug_mode then
-      short_sha = M.command({'rev-parse', '--short', 'HEAD'}, {
+    local short_sha = M.command({'rev-parse', '--short', 'HEAD'}, {
         command = cmd or 'git',
         supress_stderr = true,
         cwd = path,
       })[1] or ''
-    else
+    if gsd.debug_mode and short_sha ~= '' then
       short_sha = 'HEAD'
     end
     if util.path_exists(gitdir..'/rebase-merge')
@@ -278,9 +276,10 @@ Obj.get_show_text = function(self: Obj, object: string): {string}, string
 end
 
 Obj.run_blame = function(self: Obj, lines: {string}, lnum: number): M.BlameInfo
-  if not self.object_name then
+  if not self.object_name or self.abbrev_head == '' then
     -- As we support attaching to untracked files we need to return something if
     -- the file isn't isn't tracked in git.
+    -- If abbrev_head is empty, then assume the repo has no commits
     return {
       author             = 'Not Committed Yet',
       ['author-mail']    = '<not.committed.yet>',

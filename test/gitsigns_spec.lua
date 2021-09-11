@@ -59,6 +59,7 @@ describe('gitsigns', function()
     -- Make gitisigns available
     exec_lua('package.path = ...', package.path)
     config = helpers.deepcopy(test_config)
+    command('cd '..system{"dirname", os.tmpname()})
   end)
 
   after_each(function()
@@ -88,19 +89,19 @@ describe('gitsigns', function()
         'watch_index(1): Watching index',
         'watcher_cb(1): Index update error: ENOENT',
         p'run_job: git .* show :0:dummy.txt',
-        'update(1): updates: 1, jobs: 6'
+        'update(1): updates: 1, jobs: 7'
       })
     end)
 
     check {
-      status = {head='HEAD', added=18, changed=0, removed=0},
+      status = {head='', added=18, changed=0, removed=0},
       signs = {added=8}
     }
 
     git{"add", test_file}
 
     check {
-      status = {head='HEAD', added=0, changed=0, removed=0},
+      status = {head='', added=0, changed=0, removed=0},
       signs = {}
     }
   end)
@@ -289,6 +290,7 @@ describe('gitsigns', function()
         'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+        'run_job: git --no-pager rev-parse --short HEAD',
         p'run_job: git %-%-no%-pager %-%-git%-dir=.* %-%-stage %-%-others %-%-exclude%-standard .*',
         'attach(1): User on_attach() returned false',
       }

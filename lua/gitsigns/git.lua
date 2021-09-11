@@ -155,14 +155,12 @@ local function process_abbrev_head(gitdir, head_str, path, cmd)
       return head_str
    end
    if head_str == 'HEAD' then
-      local short_sha
-      if not gsd.debug_mode then
-         short_sha = M.command({ 'rev-parse', '--short', 'HEAD' }, {
-            command = cmd or 'git',
-            supress_stderr = true,
-            cwd = path,
-         })[1] or ''
-      else
+      local short_sha = M.command({ 'rev-parse', '--short', 'HEAD' }, {
+         command = cmd or 'git',
+         supress_stderr = true,
+         cwd = path,
+      })[1] or ''
+      if gsd.debug_mode and short_sha ~= '' then
          short_sha = 'HEAD'
       end
       if util.path_exists(gitdir .. '/rebase-merge') or
@@ -278,7 +276,8 @@ Obj.get_show_text = function(self, object)
 end
 
 Obj.run_blame = function(self, lines, lnum)
-   if not self.object_name then
+   if not self.object_name or self.abbrev_head == '' then
+
 
 
       return {
