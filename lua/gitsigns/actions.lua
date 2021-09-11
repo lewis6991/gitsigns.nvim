@@ -358,7 +358,17 @@ local function highlight_hunk_lines(bufnr, offset, hunk_lines)
    end
 end
 
-M.preview_hunk = function()
+local function noautocmd(f)
+   return function()
+      local ei = api.nvim_get_option('eventignore')
+      api.nvim_set_option('eventignore', 'all')
+      f()
+      api.nvim_set_option('eventignore', ei)
+   end
+end
+
+
+M.preview_hunk = noautocmd(function()
    local cbuf = current_buf()
    local bcache = cache[cbuf]
    local hunk, index = get_cursor_hunk(cbuf, bcache.hunks)
@@ -379,7 +389,7 @@ M.preview_hunk = function()
 
    local offset = #lines - #hunk.lines
    highlight_hunk_lines(bufnr, offset, hunk.lines)
-end
+end)
 
 M.select_hunk = function()
    local hunk = get_cursor_hunk()
