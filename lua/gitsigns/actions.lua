@@ -463,7 +463,7 @@ M.blame_line = void(function(full)
       highlights[#highlights + 1] = { hlgroup, #lines - 1, start or 0, length or -1 }
    end
 
-   local is_committed = bcache.git_obj.object_name and tonumber('0x' .. result.sha) ~= 0
+   local is_committed = bcache.git_obj.object_name and result.sha ~= nil and tonumber('0x' .. result.sha) ~= 0
    if is_committed then
       local commit_message = {}
       if full then
@@ -492,6 +492,7 @@ M.blame_line = void(function(full)
          hunk, ihunk, nhunk = get_blame_hunk(bcache.git_obj, result)
       end
    else
+      result = { author = 'Me' }
       lines[#lines + 1] = result.author
       add_highlight('ErrorMsg')
       if full then
