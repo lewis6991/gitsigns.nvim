@@ -358,7 +358,17 @@ local function highlight_hunk_lines(bufnr: integer, offset: integer, hunk_lines:
   end
 end
 
-M.preview_hunk = function()
+local function noautocmd(f: function()): function()
+  return function()
+    local ei = api.nvim_get_option('eventignore')
+    api.nvim_set_option('eventignore', 'all')
+    f()
+    api.nvim_set_option('eventignore', ei)
+  end
+end
+
+-- Wrap in noautocmd so vim-repeat continues to work
+M.preview_hunk = noautocmd(function()
   local cbuf = current_buf()
   local bcache = cache[cbuf]
   local hunk, index = get_cursor_hunk(cbuf, bcache.hunks)
@@ -379,7 +389,7 @@ M.preview_hunk = function()
 
   local offset = #lines - #hunk.lines
   highlight_hunk_lines(bufnr as integer, offset, hunk.lines)
-end
+end)
 
 M.select_hunk = function()
   local hunk = get_cursor_hunk()
