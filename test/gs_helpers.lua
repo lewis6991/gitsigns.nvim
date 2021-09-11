@@ -56,7 +56,7 @@ end
 
 
 function M.setup_git()
-  M.git{"init"}
+  M.git{"init", '-b', 'master'}
 
   -- Always force color to test settings don't interfere with gitsigns systems
   -- commands (addresses #23)
@@ -176,7 +176,6 @@ local function match_lines2(lines, spec)
     for j = i, #spec do
       table.insert(unmatched, spec[j].text or spec[j])
     end
-    -- print(table.concat(lines, '\n'))
     error(('Did not match patterns:\n    - %s'):format(table.concat(unmatched, '\n    - ')))
   end
 end

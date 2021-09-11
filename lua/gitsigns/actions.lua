@@ -463,7 +463,7 @@ M.blame_line = void(function(full)
       highlights[#highlights + 1] = { hlgroup, #lines - 1, start or 0, length or -1 }
    end
 
-   local is_committed = bcache.git_obj.object_name and tonumber('0x' .. result.sha) ~= 0
+   local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
    if is_committed then
       local commit_message = {}
       if full then
