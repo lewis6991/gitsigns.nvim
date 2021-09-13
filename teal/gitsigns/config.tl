@@ -99,6 +99,7 @@ local record M
     word_diff: boolean
     _refresh_staged_on_update: boolean
     _blame_cache: boolean
+    _threaded_diff: boolean
 
     _git_version: string
     _verbose: boolean
@@ -626,6 +627,14 @@ M.schema = {
     default = true,
     description = [[
       Cache blame results for current_line_blame
+    ]]
+  },
+
+  _threaded_diff = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      Run diffs on a separate thread
     ]]
   },
 

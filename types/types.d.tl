@@ -275,7 +275,10 @@ global record vim
 
   defer_fn: function(function, integer): loop.Timer
 
-  diff: function(string|{string}, string|{string}, table)
+  type DiffResult = {integer, integer, integer, integer}
+
+  -- Assume result_type == 'indices'
+  diff: function(string|{string}, string|{string}, table): {DiffResult}
 
   record o
     diffopt: string
@@ -349,6 +352,7 @@ global record vim
       get_repeat: function(Timer): number
       get_due_in: function(Timer): number
     end
+    hrtime: function(): number
     new_timer: function(): Timer
     timer_start: function(Timer, integer, integer, function()): integer | string
 
@@ -428,6 +432,12 @@ global record vim
     new_pipe: function(boolean): Pipe
     shutdown: function(any, function)
     close: function(any, function)
+
+    record WorkCtx
+      queue: function(WorkCtx, ...:any)
+    end
+
+    new_work: function(function, function): WorkCtx
   end
 
   in_fast_event: function(): boolean
@@ -519,4 +529,10 @@ global record vim
 
   version: function(): VersionDetails
 
+  record mpack
+    encode: function(any): string
+    decode: function(string): any
+  end
+
+  is_thread: function(): boolean
 end
