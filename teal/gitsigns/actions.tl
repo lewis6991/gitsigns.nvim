@@ -8,6 +8,7 @@ local util          = require('gitsigns.util')
 local manager       = require('gitsigns.manager')
 local git           = require('gitsigns.git')
 local warn          = require('gitsigns.message').warn
+local run_diff      = require('gitsigns.diff')
 
 local gs_cache       = require('gitsigns.cache')
 local cache          = gs_cache.cache
@@ -528,17 +529,6 @@ M.get_hunks = function(bufnr: integer): {Hunk_Public}
     }
   end
   return ret
-end
-
-local function run_diff(a: {string}, b: {string}): {Hunk}
-  local diff_opts = config.diff_opts
-  local f: function({string}, {string}, string, boolean): {Hunk}
-  if config.diff_opts.internal then
-    f = require('gitsigns.diff_int').run_diff
-  else
-    f = require('gitsigns.diff_ext').run_diff
-  end
-  return f(a, b, diff_opts.algorithm, diff_opts.indent_heuristic)
 end
 
 local function get_blame_hunk(repo: git.Repo, info: git.BlameInfo): Hunk, integer, integer

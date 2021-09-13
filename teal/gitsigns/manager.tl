@@ -17,6 +17,7 @@ local dprintf           = gs_debug.dprintf
 local eprint            = gs_debug.eprint
 local subprocess        = require('gitsigns.subprocess')
 local util              = require('gitsigns.util')
+local run_diff          = require('gitsigns.diff')
 
 local gs_hunks          = require("gitsigns.hunks")
 local Hunk              = gs_hunks.Hunk
@@ -290,21 +291,11 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
   local buftext = util.buf_lines(bufnr)
   local git_obj = bcache.git_obj
 
-  -- Make sure these requires are done in the main event.
-  -- See https://github.com/neovim/neovim/issues/15147
-  local run_diff: function({string}, {string}, string, boolean): {Hunk}
-  if config.diff_opts.internal then
-    run_diff = require('gitsigns.diff_int').run_diff
-  else
-    run_diff = require('gitsigns.diff_ext').run_diff
-  end
-
   if not bcache.compare_text or config._refresh_staged_on_update then
     bcache.compare_text = git_obj:get_show_text(bcache:get_compare_rev())
   end
 
-  bcache.hunks = run_diff(bcache.compare_text, buftext,
-    config.diff_opts.algorithm, config.diff_opts.indent_heuristic)
+  bcache.hunks = run_diff(bcache.compare_text, buftext)
 
   scheduler_if_buf_valid(bufnr)
   if gs_hunks.compare_heads(bcache.hunks, old_hunks) then

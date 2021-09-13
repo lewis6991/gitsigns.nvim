@@ -1,28 +1,70 @@
 local create_hunk = require("gitsigns.hunks").create_hunk
 local Hunk = require('gitsigns.hunks').Hunk
+local config = require('gitsigns.config').config
+local async = require('gitsigns.async')
 
 local M = {}
 
+
+
+
+local DiffFun = {}
 local DiffResult = {}
 
-local run_diff_xdl
+local run_diff_xdl = function(
+   fa, fb,
+   algorithm, indent_heuristic)
 
-if vim.diff then
-   run_diff_xdl = function(fa, fb, algorithm, indent_heuristic)
-      local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n') .. '\n'
-      local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n') .. '\n'
-      return vim.diff(a, b, {
+
+   local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n') .. '\n'
+   local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n') .. '\n'
+
+   return vim.diff(a, b, {
+      result_type = 'indices',
+      algorithm = algorithm,
+      indent_heuristic = indent_heuristic,
+   })
+end
+
+local run_diff_xdl_async = async.wrap(function(
+   fa, fb,
+   algorithm, indent_heuristic,
+   callback)
+
+
+   local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n') .. '\n'
+   local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n') .. '\n'
+
+   vim.loop.new_work(function(
+      a0, b0,
+      algorithm0, indent_heuristic0)
+
+      return vim.mpack.encode(vim.diff(a0, b0, {
          result_type = 'indices',
-         algorithm = algorithm,
-         indent_heuristic = indent_heuristic,
-      })
-   end
-else
+         algorithm = algorithm0,
+         indent_heuristic = indent_heuristic0,
+      }))
+   end, function(r)
+      callback(vim.mpack.decode(r))
+   end):queue(a, b, algorithm, indent_heuristic)
+end, 5)
+
+if not vim.diff then
    run_diff_xdl = require('gitsigns.diff_int.xdl_diff_ffi')
 end
 
-function M.run_diff(fa, fb, diff_algo, indent_heuristic)
-   local results = run_diff_xdl(fa, fb, diff_algo, indent_heuristic)
+M.run_diff = async.void(function(
+   fa, fb,
+   diff_algo, indent_heuristic)
+
+   local run_diff0
+   if config._threaded_diff and vim.is_thread then
+      run_diff0 = run_diff_xdl_async
+   else
+      run_diff0 = run_diff_xdl
+   end
+
+   local results = run_diff0(fa, fb, diff_algo, indent_heuristic)
 
    local hunks = {}
 
@@ -43,7 +85,7 @@ function M.run_diff(fa, fb, diff_algo, indent_heuristic)
    end
 
    return hunks
-end
+end)
 
 local Region = {}
 

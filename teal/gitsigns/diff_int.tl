@@ -1,28 +1,70 @@
 local create_hunk = require("gitsigns.hunks").create_hunk
 local Hunk        = require('gitsigns.hunks').Hunk
+local config      = require('gitsigns.config').config
+local async       = require('gitsigns.async')
 
-local M = {}
+local record M
+  run_diff: function({string}, {string}, string, boolean): {Hunk}
+  run_word_diff: function({string}, {string}): {Region}, {Region}
+end
 
+local type DiffFun = function({string}, {string}, string, boolean): {DiffResult}
 local type DiffResult = {integer, integer, integer, integer}
 
-local run_diff_xdl: function({string}, {string}, diff_algo: string, indent_heuristic: boolean): {DiffResult}
+local run_diff_xdl = function(
+    fa: {string}, fb: {string},
+    algorithm: string, indent_heuristic: boolean
+  ): {DiffResult}
 
-if vim.diff then
-  run_diff_xdl = function(fa: {string}, fb: {string}, algorithm: string, indent_heuristic: boolean): {DiffResult}
-    local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n')..'\n'
-    local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n')..'\n'
-    return vim.diff(a, b, {
+  local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n')..'\n'
+  local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n')..'\n'
+
+  return vim.diff(a, b, {
+    result_type      = 'indices',
+    algorithm        = algorithm,
+    indent_heuristic = indent_heuristic
+  })
+end
+
+local run_diff_xdl_async = async.wrap(function(
+    fa: {string}, fb: {string},
+    algorithm: string, indent_heuristic: boolean,
+    callback: function({DiffResult})
+  )
+
+ local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n')..'\n'
+ local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n')..'\n'
+
+  vim.loop.new_work(function(
+    a0: string, b0: string,
+    algorithm0: string, indent_heuristic0: boolean
+  ): string
+    return vim.mpack.encode(vim.diff(a0, b0, {
       result_type      = 'indices',
-      algorithm        = algorithm,
-      indent_heuristic = indent_heuristic
-    })
-  end
-else
+      algorithm        = algorithm0,
+      indent_heuristic = indent_heuristic0
+    }))
+  end, function(r: string)
+    callback(vim.mpack.decode(r) as {DiffResult})
+  end):queue(a, b, algorithm, indent_heuristic)
+end, 5)
+
+if not vim.diff then
   run_diff_xdl = require('gitsigns.diff_int.xdl_diff_ffi')
 end
 
-function M.run_diff(fa: {string}, fb: {string}, diff_algo: string, indent_heuristic: boolean): {Hunk}
-  local results = run_diff_xdl(fa, fb, diff_algo, indent_heuristic)
+M.run_diff = async.void(function(
+  fa: {string}, fb: {string},
+  diff_algo: string, indent_heuristic: boolean
+): {Hunk}
+  local run_diff0: DiffFun
+  if config._threaded_diff and vim.is_thread then
+    run_diff0 = run_diff_xdl_async
+  else
+    run_diff0 = run_diff_xdl
+  end
+
+  local results = run_diff0(fa, fb, diff_algo, indent_heuristic)
 
   local hunks: {Hunk} = {}
 
@@ -43,7 +85,7 @@ function M.run_diff(fa: {string}, fb: {string}, diff_algo: string, indent_heuris
   end
 
   return hunks
-end
+end)
 
 local type Region = {integer, string, integer, integer}
 
