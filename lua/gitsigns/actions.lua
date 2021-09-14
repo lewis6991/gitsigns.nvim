@@ -27,6 +27,7 @@ local NavHunkOpts = {}
 
 
 
+
 local M = {}
 
 
@@ -274,70 +275,78 @@ M.reset_buffer_index = void(function()
    void(manager.update)(bufnr)
 end)
 
-local function nav_hunk(options)
+local function process_nav_opts(opts)
+
+   if opts.navigation_message == nil then
+      opts.navigation_message = not vim.opt.shortmess:get().S
+   end
+
+
+   if opts.wrap == nil then
+      opts.wrap = vim.opt.wrapscan:get()
+   end
+
+   if opts.foldopen == nil then
+      opts.foldopen = vim.tbl_contains(vim.opt.foldopen:get(), 'search')
+   end
+end
+
+local function nav_hunk(opts)
+   process_nav_opts(opts)
    local bcache = cache[current_buf()]
    if not bcache then
       return
    end
 
-
-   local show_navigation_msg = not string.find(vim.o.shortmess, 'S')
-   if options.navigation_message ~= nil then
-      show_navigation_msg = options.navigation_message
-   end
-
    local hunks = bcache.hunks
    if not hunks or vim.tbl_isempty(hunks) then
-      if show_navigation_msg then
+      if opts.navigation_message then
          vim.api.nvim_echo({ { 'No hunks', 'WarningMsg' } }, false, {})
       end
       return
    end
    local line = api.nvim_win_get_cursor(0)[1]
 
-
-   local wrap = vim.o.wrapscan
-   if options.wrap ~= nil then
-      wrap = options.wrap
-   end
-
-   local hunk, index = gs_hunks.find_nearest_hunk(line, hunks, options.forwards, wrap)
+   local hunk, index = gs_hunks.find_nearest_hunk(line, hunks, opts.forwards, opts.wrap)
 
    if hunk == nil then
-      if show_navigation_msg then
+      if opts.navigation_message then
          vim.api.nvim_echo({ { 'No more hunks', 'WarningMsg' } }, false, {})
       end
       return
    end
 
-   local row = options.forwards and hunk.start or hunk.vend
+   local row = opts.forwards and hunk.start or hunk.vend
    if row then
 
       if row == 0 then
          row = 1
       end
       api.nvim_win_set_cursor(0, { row, 0 })
+      if opts.foldopen then
+         vim.cmd('foldopen!')
+      end
       if pcall(api.nvim_buf_get_var, 0, '_gitsigns_preview_open') then
          vim.schedule(M.preview_hunk)
       end
 
-      if index ~= nil and show_navigation_msg then
+      if index ~= nil and opts.navigation_message then
          vim.api.nvim_echo({ { string.format('Hunk %d of %d', index, #hunks), 'None' } }, false, {})
       end
 
    end
 end
 
-M.next_hunk = function(options)
-   options = options or {}
-   options.forwards = true
-   nav_hunk(options)
+M.next_hunk = function(opts)
+   opts = opts or {}
+   opts.forwards = true
+   nav_hunk(opts)
 end
 
-M.prev_hunk = function(options)
-   options = options or {}
-   options.forwards = false
-   nav_hunk(options)
+M.prev_hunk = function(opts)
+   opts = opts or {}
+   opts.forwards = false
+   nav_hunk(opts)
 end
 
 local function highlight_hunk_lines(bufnr, offset, hunk_lines)

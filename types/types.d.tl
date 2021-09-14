@@ -247,9 +247,14 @@ global record vim
   end
 
   record opt
-    record diffopt
-      get: function(diffopt): {string}
+    record Opt<T>
+      get: function<T>(Opt<T>): T
     end
+
+    diffopt: Opt<{string}>
+    foldopen: Opt<{string}>
+    shortmess: Opt<{string:boolean}>
+    wrapscan: Opt<boolean>
   end
 
   record lsp

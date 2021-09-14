@@ -102,8 +102,7 @@ setup({config})                                             *gitsigns.setup()*
                     Gitsigns. See |gitsigns-usage| for more details.
 
 next_hunk({opts})                                           *gitsigns.next_hunk()*
-                Jump to the next hunk in the current buffer. Respects
-                |wrapscan|.
+                Jump to the next hunk in the current buffer.
 
                 Parameters: ~
                     {opts}  table|nil Configuration table. Keys:
@@ -113,17 +112,16 @@ next_hunk({opts})                                           *gitsigns.next_hunk(
                             • {navigation_message}: (boolean)
                               Whether to show navigation messages or not.
                               Looks at 'shortmess' for default behaviour.
-
+                            • {foldopen}: (boolean)
+                              Expand folds when navigating to a hunk which is
+                              inside a fold. Defaults to `true` if 'foldopen'
+                              contains `search`.
 
 prev_hunk({opts})                                       *gitsigns.prev_hunk()*
-                Jump to the previous hunk in the current buffer. Respects
-                |wrapscan|.
+                Jump to the previous hunk in the current buffer.
 
                 Parameters: ~
-                    {opts}  table|nil Configuration table. Keys:
-                            • {wrap}: (boolean)
-                              Whether to loop around file or not. Defaults
-                              to the value 'wrapscan'
+                    See |gitsigns.next_hunk()|.
 
 stage_hunk({range})                                    *gitsigns.stage_hunk()*
                 Stage the hunk at the cursor position, or all hunks in the
