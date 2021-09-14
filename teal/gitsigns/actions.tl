@@ -324,7 +324,7 @@ local function nav_hunk(opts: NavHunkOpts)
     end
     api.nvim_win_set_cursor(0, {row, 0})
     if opts.foldopen then
-      vim.cmd('foldopen!')
+      vim.cmd('silent! foldopen!')
     end
     if pcall(api.nvim_buf_get_var, 0, '_gitsigns_preview_open') then
       vim.schedule(M.preview_hunk)
