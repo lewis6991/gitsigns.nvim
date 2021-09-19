@@ -65,7 +65,12 @@ M.update = void(function()
 end)
 
 M.setup = function()
-   vim.cmd('augroup gitsigns_blame | autocmd! | augroup END')
+   vim.cmd([[
+    augroup gitsigns_blame
+      autocmd!
+    augroup END
+  ]])
+
    for k, _ in pairs(cache) do
       M.reset(k)
    end
