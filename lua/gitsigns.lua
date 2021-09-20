@@ -370,17 +370,16 @@ end
 
 
 
+
 local function parse_args_to_lua(...)
    local args = {}
    for i, a in ipairs({ ... }) do
-      local f = loadstring('return ' .. a)
-      local ok = f ~= nil
-      local v
-      if ok then
-         ok, v = pcall(f)
-      end
-      if ok then
-         args[i] = v
+      if tonumber(a) then
+         args[i] = tonumber(a)
+      elseif a == 'false' or a == 'true' then
+         args[i] = a == 'true'
+      elseif a == 'nil' then
+         args[i] = nil
       else
          args[i] = a
       end

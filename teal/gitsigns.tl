@@ -364,23 +364,22 @@ M._complete = function(arglead: string, line: string): {string}
   return matches
 end
 
--- try to parse each argument as a lua value using loadstring, if fails then
+-- try to parse each argument as a lua boolean, nil or number, if fails then
 -- keep argument as a string:
 --
 --   'false'    -> false
 --   'nil'      -> nil
+--   '100'      -> 100
 --   'HEAD~300' -> 'HEAD~300'
 local function parse_args_to_lua(...: string): {any}
-  local args = {}
+  local args: {any} = {}
   for i, a in ipairs({...}) do
-    local f = loadstring('return '..a)
-    local ok = f ~= nil
-    local v: any
-    if ok then
-      ok, v = pcall(f)
-    end
-    if ok then
-      args[i] = v
+    if tonumber(a) then
+      args[i] = tonumber(a)
+    elseif a == 'false' or a == 'true' then
+      args[i] = a == 'true'
+    elseif a == 'nil' then
+      args[i] = nil
     else
       args[i] = a
     end
