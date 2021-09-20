@@ -146,8 +146,10 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
   -- running a full diff.
   --
   -- We cannot update the status bar as that requires a full diff.
-  for lnum, _ in pairs(hunk_signs) do
-    signs.remove(bufnr, lnum)
+  if not bcache.base then
+    for lnum, _ in pairs(hunk_signs) do
+      signs.remove(bufnr, lnum)
+    end
   end
   void(manager.update)(bufnr)
 end))
@@ -215,7 +217,9 @@ M.undo_stage_hunk = mk_repeatable(void(function()
   bcache.git_obj:stage_hunks({hunk}, true)
   bcache.compare_text = nil -- Invalidate
   scheduler()
-  signs.add(config, bufnr, gs_hunks.process_hunks({hunk}))
+  if not bcache.base then
+    signs.add(config, bufnr, gs_hunks.process_hunks({hunk}))
+  end
   manager.update(bufnr)
 end))
 
@@ -247,7 +251,9 @@ M.stage_buffer = void(function()
   bcache.compare_text = nil -- Invalidate
 
   scheduler()
-  signs.remove(bufnr)
+  if not bcache.base then
+    signs.remove(bufnr)
+  end
   Status:clear_diff(bufnr)
 end)
 
@@ -271,7 +277,9 @@ M.reset_buffer_index = void(function()
   bcache.compare_text = nil -- Invalidate
 
   scheduler()
-  signs.add(config, bufnr, gs_hunks.process_hunks(hunks))
+  if not bcache.base then
+    signs.add(config, bufnr, gs_hunks.process_hunks(hunks))
+  end
   void(manager.update)(bufnr)
 end)
 
