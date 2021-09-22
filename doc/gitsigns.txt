@@ -298,8 +298,9 @@ get_hunks({bufnr})                                      *gitsigns.get_hunks()*
                        • `"start"`: Line number (1-based)
                        • `"count"`: Line count
 
-setqflist({target})                                      *gitsigns.setqflist()*
-                Populate the quickfix list with hunks.
+setqflist({target}, {opts})                              *gitsigns.setqflist()*
+                Populate the quickfix list with hunks. Automatically opens the
+                quickfix window.
 
                 Attributes: ~
                     {async}
@@ -312,10 +313,23 @@ setqflist({target})                                      *gitsigns.setqflist()*
                                number. `0` for current buffer (default).
                              • `"attached"`: All attached buffers.
                              • `"all"`: All modified files for each git
-                               directory of all attached buffers.
+                               directory of all attached buffers in addition
+                               to the current working directory.
+                    {opts}   (table|nil):
+                             Additional options:
+                             • {use_location_list}: (boolean)
+                               Populate the location list instead of the
+                               quickfix list. Default to `false`.
+                             • {nr}: (integer)
+                               Window number or ID when using location list.
+                               Expand folds when navigating to a hunk which is
+                               inside a fold. Defaults to `0`.
 
 setloclist({nr}, {target})                             *gitsigns.setloclist()*
-                Populate the location list with hunks.
+                Populate the location list with hunks. Automatically opens the
+                location list window.
+
+                Alias for: `setqflist({target}, { use_location_list = true, nr = {nr} }`
 
                 Attributes: ~
                     {async}

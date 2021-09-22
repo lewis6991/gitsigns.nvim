@@ -58,12 +58,22 @@ local record M
   get_repo_info: function(path: string, cmd: string): string,string,string
   command    : function(args: {string}, spec: GJobSpec): {string}, string
 
+  record Repo
+    toplevel   : string
+    gitdir     : string
+    abbrev_head: string
+    username   : string
+
+    command            : function(Repo, {string}, GJobSpec): {string}, string
+    files_changed      : function(Repo): {string}
+    get_show_text      : function(Repo, string): {string}, string
+    update_abbrev_head : function(Repo)
+    new                : function(string): Repo
+  end
+
   record Obj
-    toplevel      : string
-    gitdir        : string
+    repo          : Repo
     file          : string
-    abbrev_head   : string
-    username      : string
     relpath       : string
     orig_relpath  : string -- Use for tracking moved files
     object_name   : string
@@ -71,22 +81,20 @@ local record M
     has_conflicts : boolean
 
     command              : function(Obj, {string}, GJobSpec): {string}, string
-    update_abbrev_head   : function(Obj)
     update_file_info     : function(Obj): boolean
     unstage_file         : function(Obj, string, string)
-    get_show_text        : function(Obj, string): {string}, string
     run_blame            : function(Obj, {string}, number): BlameInfo
     file_info            : function(Obj, string): string, string, string, boolean
     ensure_file_in_index : function(Obj)
     stage_hunks          : function(Obj, {Hunk}, boolean)
     has_moved            : function(Obj): string
-    files_changed        : function(Obj): {string}
     new                  : function(string): Obj
   end
 
 end
 
 local Obj = M.Obj
+local Repo = M.Repo
 
 local function parse_version(version: string): M.Version
   assert(version:match('%d+%.%d+%.%w+'), 'Invalid git version: '..version)
@@ -212,18 +220,62 @@ M.set_version = function(version: string)
 end
 
 --------------------------------------------------------------------------------
--- Git object methods
+-- Git repo object methods
 --------------------------------------------------------------------------------
 
 --- Run git command the with the objects gitdir and toplevel
-Obj.command = function(self: Obj, args: {string}, spec: GJobSpec): {string}, string
+Repo.command = function(self: Repo, args: {string}, spec: GJobSpec): {string}, string
   spec = spec or {}
   spec.cwd = self.toplevel
   return M.command({'--git-dir='..self.gitdir, unpack(args)}, spec)
 end
 
-Obj.update_abbrev_head = function(self: Obj)
+Repo.files_changed = function(self: Repo): {string}
+  local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
+
+  local ret: {string} = {}
+  for _, line in ipairs(results) do
+    if line:sub(1, 2):match('^.M') then
+      ret[#ret+1] = line:sub(4, -1)
+    end
+  end
+  return ret
+end
+
+--- Get version of file in the index, return array lines
+Repo.get_show_text = function(self: Repo, object: string): {string}, string
+  return self:command({'show', object}, {supress_stderr = true})
+end
+
+Repo.update_abbrev_head = function(self: Repo)
   _, _, self.abbrev_head = M.get_repo_info(self.toplevel)
+end
+
+Repo.new = function(dir: string): Repo
+  local self = setmetatable({} as Repo, {__index = Repo})
+
+  self.username = M.command({'config', 'user.name'})[1]
+  self.toplevel, self.gitdir, self.abbrev_head = M.get_repo_info(dir)
+
+  -- Try yadm
+  if M.enable_yadm and not self.gitdir then
+    if vim.startswith(dir, os.getenv('HOME'))
+      and #M.command({'ls-files', dir}, {command = 'yadm'}) ~= 0 then
+      self.toplevel, self.gitdir, self.abbrev_head =
+        M.get_repo_info(dir, 'yadm')
+    end
+  end
+
+  return self
+end
+
+--------------------------------------------------------------------------------
+-- Git object methods
+--------------------------------------------------------------------------------
+
+--- Run git command the with the objects gitdir and toplevel
+Obj.command = function(self: Obj, args: {string}, spec: GJobSpec): {string}, string
+  return self.repo:command(args, spec)
 end
 
 Obj.update_file_info = function(self: Obj): boolean
@@ -270,13 +322,8 @@ Obj.unstage_file = function(self: Obj)
   self:command{'reset', self.file }
 end
 
---- Get version of file in the index, return array lines
-Obj.get_show_text = function(self: Obj, object: string): {string}, string
-  return self:command({'show', object}, { supress_stderr = true })
-end
-
 Obj.run_blame = function(self: Obj, lines: {string}, lnum: number): M.BlameInfo
-  if not self.object_name or self.abbrev_head == '' then
+  if not self.object_name or self.repo.abbrev_head == '' then
     -- As we support attaching to untracked files we need to return something if
     -- the file isn't isn't tracked in git.
     -- If abbrev_head is empty, then assume the repo has no commits
@@ -356,43 +403,20 @@ Obj.has_moved = function(self: Obj): string
       if orig_relpath == orig then
         self.orig_relpath = orig_relpath
         self.relpath = new
-        self.file = self.toplevel..'/'..new
+        self.file = self.repo.toplevel..'/'..new
         return new
       end
     end
   end
 end
 
-Obj.files_changed = function(self: Obj): {string}
-  local results = self:command{'status', '--porcelain', '--ignore-submodules'}
-
-  local ret: {string} = {}
-  for _, line in ipairs(results) do
-    if line:sub(1, 2):match('^.M') then
-      ret[#ret+1] = line:sub(4, -1)
-    end
-  end
-  return ret
-end
-
 Obj.new = function(file: string): Obj
   local self = setmetatable({} as Obj, {__index = Obj})
 
   self.file = file
-  self.username = M.command({'config', 'user.name'})[1]
-  self.toplevel, self.gitdir, self.abbrev_head =
-    M.get_repo_info(util.dirname(file))
+  self.repo = Repo.new(util.dirname(file))
 
-  -- Try yadm
-  if M.enable_yadm and not self.gitdir then
-    if vim.startswith(file, os.getenv('HOME'))
-      and #M.command({'ls-files', file}, {command = 'yadm'}) ~= 0 then
-      self.toplevel, self.gitdir, self.abbrev_head =
-        M.get_repo_info(util.dirname(file), 'yadm')
-    end
-  end
-
-  if not self.gitdir then
+  if not self.repo.gitdir then
     return self
   end
 
