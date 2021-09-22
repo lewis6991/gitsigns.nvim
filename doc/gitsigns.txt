@@ -94,8 +94,14 @@ passed to |gitsigns-setup()|. See |gitsigns-config-keymaps|.
 ==============================================================================
 FUNCTIONS                                                 *gitsigns-functions*
 
+Note functions with the {async} attribute are run asynchronously and are
+non-blocking (return immediately).
+
 setup({config})                                             *gitsigns.setup()*
                 Setup and start Gitsigns.
+
+                Attributes: ~
+                    {async}
 
                 Parameters: ~
                     {config} Table object containing configuration for
@@ -128,6 +134,9 @@ stage_hunk({range})                                    *gitsigns.stage_hunk()*
                 given range. If {range} is provided, all hunks that intersect
                 with the given range are staged.
 
+                Attributes: ~
+                    {async}
+
                 Parameters:~
                     {range} table|nil List-like table of two integers making
                     up the line range from which you want to stage the hunks.
@@ -136,13 +145,22 @@ undo_stage_hunk()                                 *gitsigns.undo_stage_hunk()*
                 Undo the last call of stage_hunk(). Note: only the calls to
                 stage_hunk() performed in the current session can be undone.
 
+                Attributes: ~
+                    {async}
+
 stage_buffer()                                       *gitsigns.stage_buffer()*
                 Stage all hunks in current buffer.
+
+                Attributes: ~
+                    {async}
 
 reset_buffer_index()                           *gitsigns.reset_buffer_index()*
                 Unstage all hunks for current buffer in the index. Note:
                 Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
                 stages, this runs an `git reset` on current buffers file.
+
+                Attributes: ~
+                    {async}
 
 reset_hunk({range})                                    *gitsigns.reset_hunk()*
                 Reset the lines of the hunk at the cursor position, or all
@@ -166,11 +184,17 @@ blame_line({full})                                     *gitsigns.blame_line()*
                 floating window. If {full} is true then the full commit
                 message is displayed along with the corresponding hunk.
 
+                Attributes: ~
+                    {async}
+
 change_base({base}, {global})                         *gitsigns.change_base()*
                 Change the base revision to diff against. If {base} is not
                 given, then the original base is used. If {global} is given
                 and true, then change the base revision of all buffers,
                 including any new buffers.
+
+                Attributes: ~
+                    {async}
 
                 Parameters:~
                     {base} string|nil The object/revision to diff against.
@@ -218,6 +242,9 @@ diffthis({base})                                         *gitsigns.diffthis()*
 
                 For a more complete list of ways to specify bases, see
                 |gitsigns-revision|.
+
+                Attributes: ~
+                    {async}
 >
 get_actions()                                         *gitsigns.get_actions()*
                 Get all the available line specific actions for the current
@@ -226,6 +253,9 @@ get_actions()                                         *gitsigns.get_actions()*
 
 attach()                                                   *gitsigns.attach()*
                 Attach Gitsigns to the current buffer.
+
+                Attributes: ~
+                    {async}
 
 detach({bufnr})                                            *gitsigns.detach()*
                 Detach Gitsigns from the buffer {bufnr}. If {bufnr} is not
@@ -239,6 +269,9 @@ detach_all()                                           *gitsigns.detach_all()*
 
 refresh()                                                 *gitsigns.refresh()*
                 Refresh all buffers.
+
+                Attributes: ~
+                    {async}
 
 select_hunk()                                         *gitsigns.select_hunk()*
                 Select the hunk under the cursor.
@@ -268,6 +301,9 @@ get_hunks({bufnr})                                      *gitsigns.get_hunks()*
 setqflist({target})                                      *gitsigns.setqflist()*
                 Populate the quickfix list with hunks.
 
+                Attributes: ~
+                    {async}
+
                 Parameters: ~
                     {target} (integer or string):
                              Specifies which files hunks are collected from.
@@ -280,6 +316,9 @@ setqflist({target})                                      *gitsigns.setqflist()*
 
 setloclist({nr}, {target})                             *gitsigns.setloclist()*
                 Populate the location list with hunks.
+
+                Attributes: ~
+                    {async}
 
                 Parameters: ~
                     {nr}     (integer): Window number or the |window-ID|.
