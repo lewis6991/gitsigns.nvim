@@ -1,6 +1,5 @@
 local void = require('plenary.async.async').void
 local scheduler = require('plenary.async.util').scheduler
-local block_on = require('plenary.async.util').block_on
 
 local Status = require("gitsigns.status")
 local config = require('gitsigns.config').config
@@ -28,7 +27,12 @@ local NavHunkOpts = {}
 
 
 
-local M = {}
+local M = {QFListOpts = {}, }
+
+
+
+
+
 
 
 
@@ -452,13 +456,13 @@ local function run_diff(a, b)
    return f(a, b, diff_opts.algorithm, diff_opts.indent_heuristic)
 end
 
-local function get_blame_hunk(git_obj, info)
+local function get_blame_hunk(repo, info)
    local a = {}
 
    if info.previous then
-      a = git_obj:get_show_text(info.previous_sha .. ':' .. info.previous_filename)
+      a = repo:get_show_text(info.previous_sha .. ':' .. info.previous_filename)
    end
-   local b = git_obj:get_show_text(info.sha .. ':' .. info.filename)
+   local b = repo:get_show_text(info.sha .. ':' .. info.filename)
    local hunks = run_diff(a, b)
    local hunk, i = gs_hunks.find_hunk(info.orig_lnum, hunks)
    return hunk, i, #hunks
@@ -516,7 +520,7 @@ M.blame_line = void(function(full)
       vim.list_extend(lines, commit_message)
 
       if full then
-         hunk, ihunk, nhunk = get_blame_hunk(bcache.git_obj, result)
+         hunk, ihunk, nhunk = get_blame_hunk(bcache.git_obj.repo, result)
       end
    else
       lines[#lines + 1] = result.author
@@ -595,7 +599,7 @@ M.diffthis = void(function(base)
    local err
    local comp_obj = bcache:get_compare_obj(calc_base(base))
    if base then
-      text, err = bcache.git_obj:get_show_text(comp_obj)
+      text, err = bcache.git_obj.repo:get_show_text(comp_obj)
       if err then
          print(err)
          return
@@ -607,7 +611,7 @@ M.diffthis = void(function(base)
 
    local ft = api.nvim_buf_get_option(bufnr, 'filetype')
 
-   local bufname = string.format('gitsigns://%s/%s', bcache.git_obj.gitdir, comp_obj)
+   local bufname = string.format('gitsigns://%s/%s', bcache.git_obj.repo.gitdir, comp_obj)
 
 
    vim.cmd("keepalt aboveleft vertical split " .. bufname)
@@ -647,54 +651,59 @@ local function buildqflist(target)
       local bufnr = target
       if not cache[bufnr] then return end
       hunks_to_qflist(bufnr, cache[bufnr].hunks, qflist)
-   elseif target == 'attached' or target == 'all' then
-      local gitdirs_done = {}
+   elseif target == 'attached' then
       for bufnr, bcache in pairs(cache) do
          hunks_to_qflist(bufnr, bcache.hunks, qflist)
+      end
+   elseif target == 'all' then
+      local repos = {}
+      for _, bcache in pairs(cache) do
+         local repo = bcache.git_obj.repo
+         repos[repo] = true
+      end
 
-         if target == 'all' then
-            local git_obj = bcache.git_obj
-            if not gitdirs_done[git_obj.gitdir] then
-               for _, f in ipairs(git_obj:files_changed()) do
-                  local f_abs = git_obj.toplevel .. '/' .. f
-                  local stat = vim.loop.fs_stat(f_abs)
-                  if stat and stat.type == 'file' then
-                     local hunks = run_diff(
-                     git_obj:get_show_text(':0:' .. f),
-                     util.file_lines(f_abs))
+      local repo = git.Repo.new(vim.fn.getcwd())
+      repos[repo] = true
 
-                     hunks_to_qflist(f_abs, hunks, qflist)
-                  end
-               end
+      for r, _ in pairs(repos) do
+         for _, f in ipairs(r:files_changed()) do
+            local f_abs = r.toplevel .. '/' .. f
+            local stat = vim.loop.fs_stat(f_abs)
+            if stat and stat.type == 'file' then
+               local a = r:get_show_text(':0:' .. f)
+               scheduler()
+               local hunks = run_diff(a, util.file_lines(f_abs))
+               hunks_to_qflist(f_abs, hunks, qflist)
             end
-            gitdirs_done[git_obj.gitdir] = true
          end
       end
+
    end
    return qflist
 end
 
-M.setqflist = function(target)
-   block_on(function()
-      local qflist = buildqflist(target)
-      scheduler()
-      vim.fn.setqflist({}, ' ', {
-         items = qflist,
-         title = 'Hunks',
-      })
-   end)
-end
+M.setqflist = void(function(target, opts)
+   opts = opts or {}
+   local qfopts = {
+      items = buildqflist(target),
+      title = 'Hunks',
+   }
+   scheduler()
+   if opts.use_location_list then
+      local nr = opts.nr or 0
+      vim.fn.setloclist(nr, {}, ' ', qfopts)
+      vim.cmd([[lopen]])
+   else
+      vim.fn.setqflist({}, ' ', qfopts)
+      vim.cmd([[copen]])
+   end
+end)
 
 M.setloclist = function(nr, target)
-   block_on(function()
-      nr = nr or 0
-      local qflist = buildqflist(target)
-      scheduler()
-      vim.fn.setloclist(nr, {}, ' ', {
-         items = qflist,
-         title = 'Hunks',
-      })
-   end)
+   M.setqflist(target, {
+      nr = nr,
+      use_location_list = true,
+   })
 end
 
 M.get_actions = function()

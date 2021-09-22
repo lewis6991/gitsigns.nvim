@@ -53,7 +53,7 @@ local handle_moved = function(bufnr, bcache, old_relpath)
       end
       do_update = true
    elseif git_obj.orig_relpath then
-      local orig_file = git_obj.toplevel .. util.path_sep .. git_obj.orig_relpath
+      local orig_file = git_obj.repo.toplevel .. util.path_sep .. git_obj.orig_relpath
       if git_obj:file_info(orig_file) then
          dprintf('Moved file reset')
          git_obj.relpath = git_obj.orig_relpath
@@ -65,7 +65,7 @@ local handle_moved = function(bufnr, bcache, old_relpath)
    end
 
    if do_update then
-      git_obj.file = git_obj.toplevel .. util.path_sep .. git_obj.relpath
+      git_obj.file = git_obj.repo.toplevel .. util.path_sep .. git_obj.relpath
       bcache.file = git_obj.file
       bcache.git_obj:update_file_info()
       scheduler()
@@ -97,10 +97,10 @@ local watch_index = function(bufnr, gitdir)
 
       local git_obj = bcache.git_obj
 
-      git_obj:update_abbrev_head()
+      git_obj.repo:update_abbrev_head()
 
       scheduler()
-      Status:update(bufnr, { head = git_obj.abbrev_head })
+      Status:update(bufnr, { head = git_obj.repo.abbrev_head })
 
       local was_tracked = git_obj.object_name ~= nil
       local old_relpath = git_obj.relpath
@@ -240,20 +240,21 @@ local attach0 = function(cbuf, aucmd)
    end
 
    local git_obj = git.Obj.new(file)
+   local repo = git_obj.repo
 
-   if not git_obj.gitdir then
+   if not repo.gitdir then
       dprint('Not in git repo')
       return
    end
 
    scheduler()
    Status:update(cbuf, {
-      head = git_obj.abbrev_head,
-      root = git_obj.toplevel,
-      gitdir = git_obj.gitdir,
+      head = repo.abbrev_head,
+      root = repo.toplevel,
+      gitdir = repo.gitdir,
    })
 
-   if vim.startswith(file, git_obj.gitdir .. util.path_sep) then
+   if vim.startswith(file, repo.gitdir .. util.path_sep) then
       dprint('In non-standard git dir')
       return
    end
@@ -286,7 +287,7 @@ local attach0 = function(cbuf, aucmd)
       base = config.base,
       file = file,
       commit = commit,
-      index_watcher = watch_index(cbuf, git_obj.gitdir),
+      index_watcher = watch_index(cbuf, repo.gitdir),
       git_obj = git_obj,
    })
 
@@ -413,8 +414,9 @@ local _update_cwd_head = function()
    local cwd = vim.fn.getcwd()
    local head
    for _, bcache in pairs(cache) do
-      if bcache.git_obj.toplevel == cwd then
-         head = bcache.git_obj.abbrev_head
+      local repo = bcache.git_obj.repo
+      if repo.toplevel == cwd then
+         head = repo.abbrev_head
          break
       end
    end

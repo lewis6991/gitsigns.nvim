@@ -54,7 +54,7 @@ M.update = void(function()
     api.nvim_buf_set_extmark(bufnr, namespace, lnum-1, 0, {
       id = 1,
       virt_text = config.current_line_blame_formatter(
-        bcache.git_obj.username,
+        bcache.git_obj.repo.username,
         result,
         config.current_line_blame_formatter_opts
       ),

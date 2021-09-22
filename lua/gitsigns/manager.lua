@@ -228,7 +228,7 @@ local update0 = function(bufnr, bcache)
    end
 
    if not bcache.compare_text or config._refresh_staged_on_update then
-      bcache.compare_text = git_obj:get_show_text(compare_object)
+      bcache.compare_text = git_obj.repo:get_show_text(compare_object)
    end
 
    bcache.hunks = run_diff(bcache.compare_text, buftext,
@@ -243,7 +243,7 @@ local update0 = function(bufnr, bcache)
       M.apply_win_signs(bufnr, bcache.pending_signs)
    end
    local summary = gs_hunks.get_summary(bcache.hunks)
-   summary.head = git_obj.abbrev_head
+   summary.head = git_obj.repo.abbrev_head
    Status:update(bufnr, summary)
 
    update_cnt = update_cnt + 1

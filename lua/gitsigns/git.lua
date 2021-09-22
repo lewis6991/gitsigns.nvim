@@ -21,7 +21,14 @@ local GJobSpec = {}
 
 
 
-local M = {BlameInfo = {}, Version = {}, Obj = {}, }
+local M = {BlameInfo = {}, Version = {}, Repo = {}, Obj = {}, }
+
+
+
+
+
+
+
 
 
 
@@ -87,6 +94,7 @@ local M = {BlameInfo = {}, Version = {}, Obj = {}, }
 
 
 local Obj = M.Obj
+local Repo = M.Repo
 
 local function parse_version(version)
    assert(version:match('%d+%.%d+%.%w+'), 'Invalid git version: ' .. version)
@@ -216,14 +224,58 @@ end
 
 
 
-Obj.command = function(self, args, spec)
+Repo.command = function(self, args, spec)
    spec = spec or {}
    spec.cwd = self.toplevel
    return M.command({ '--git-dir=' .. self.gitdir, unpack(args) }, spec)
 end
 
-Obj.update_abbrev_head = function(self)
+Repo.files_changed = function(self)
+   local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
+
+   local ret = {}
+   for _, line in ipairs(results) do
+      if line:sub(1, 2):match('^.M') then
+         ret[#ret + 1] = line:sub(4, -1)
+      end
+   end
+   return ret
+end
+
+
+Repo.get_show_text = function(self, object)
+   return self:command({ 'show', object }, { supress_stderr = true })
+end
+
+Repo.update_abbrev_head = function(self)
    _, _, self.abbrev_head = M.get_repo_info(self.toplevel)
+end
+
+Repo.new = function(dir)
+   local self = setmetatable({}, { __index = Repo })
+
+   self.username = M.command({ 'config', 'user.name' })[1]
+   self.toplevel, self.gitdir, self.abbrev_head = M.get_repo_info(dir)
+
+
+   if M.enable_yadm and not self.gitdir then
+      if vim.startswith(dir, os.getenv('HOME')) and
+         #M.command({ 'ls-files', dir }, { command = 'yadm' }) ~= 0 then
+         self.toplevel, self.gitdir, self.abbrev_head = 
+         M.get_repo_info(dir, 'yadm')
+      end
+   end
+
+   return self
+end
+
+
+
+
+
+
+Obj.command = function(self, args, spec)
+   return self.repo:command(args, spec)
 end
 
 Obj.update_file_info = function(self)
@@ -270,13 +322,8 @@ Obj.unstage_file = function(self)
    self:command({ 'reset', self.file })
 end
 
-
-Obj.get_show_text = function(self, object)
-   return self:command({ 'show', object }, { supress_stderr = true })
-end
-
 Obj.run_blame = function(self, lines, lnum)
-   if not self.object_name or self.abbrev_head == '' then
+   if not self.object_name or self.repo.abbrev_head == '' then
 
 
 
@@ -356,43 +403,20 @@ Obj.has_moved = function(self)
          if orig_relpath == orig then
             self.orig_relpath = orig_relpath
             self.relpath = new
-            self.file = self.toplevel .. '/' .. new
+            self.file = self.repo.toplevel .. '/' .. new
             return new
          end
       end
    end
 end
 
-Obj.files_changed = function(self)
-   local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
-
-   local ret = {}
-   for _, line in ipairs(results) do
-      if line:sub(1, 2):match('^.M') then
-         ret[#ret + 1] = line:sub(4, -1)
-      end
-   end
-   return ret
-end
-
 Obj.new = function(file)
    local self = setmetatable({}, { __index = Obj })
 
    self.file = file
-   self.username = M.command({ 'config', 'user.name' })[1]
-   self.toplevel, self.gitdir, self.abbrev_head = 
-   M.get_repo_info(util.dirname(file))
+   self.repo = Repo.new(util.dirname(file))
 
-
-   if M.enable_yadm and not self.gitdir then
-      if vim.startswith(file, os.getenv('HOME')) and
-         #M.command({ 'ls-files', file }, { command = 'yadm' }) ~= 0 then
-         self.toplevel, self.gitdir, self.abbrev_head = 
-         M.get_repo_info(util.dirname(file), 'yadm')
-      end
-   end
-
-   if not self.gitdir then
+   if not self.repo.gitdir then
       return self
    end
 
