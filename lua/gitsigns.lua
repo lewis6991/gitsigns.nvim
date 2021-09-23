@@ -522,6 +522,8 @@ M.setup = void(function(cfg)
       autocmd BufNewFile   * lua _G.package.loaded.gitsigns.attach(nil, 'BufNewFile')
       autocmd BufWritePost * lua _G.package.loaded.gitsigns.attach(nil, 'BufWritePost')
 
+      autocmd OptionSet fileformat lua _G.package.loaded.gitsigns.refresh()
+
       " vimpgrep creates and deletes lots of buffers so attaching to each one will
       " waste lots of resource and even slow down vimgrep.
       autocmd QuickFixCmdPre  *vimgrep* lua _G.package.loaded.gitsigns._attach_disable()

@@ -388,6 +388,22 @@ local function noautocmd(f: function()): function()
   end
 end
 
+--- Strip '\r' from the EOL of each line only if all lines end with '\r'
+local function strip_cr(xs0: {string}): {string}
+  for i = 1, #xs0 do
+    if xs0[i]:sub(-1) ~= '\r' then
+      -- don't strip, return early
+      return xs0
+    end
+  end
+  -- all lines end with '\r', need to strip
+  local xs = vim.deepcopy(xs0)
+  for i = 1, #xs do
+    xs[i] = xs[i]:sub(1, -2)
+  end
+  return xs
+end
+
 -- Wrap in noautocmd so vim-repeat continues to work
 M.preview_hunk = noautocmd(function()
   local cbuf = current_buf()
@@ -396,9 +412,16 @@ M.preview_hunk = noautocmd(function()
 
   if not hunk then return end
 
+  local hlines: {string}
+  if vim.bo[cbuf].fileformat == 'dos' then
+    hlines = strip_cr(hunk.lines)
+  else
+    hlines = hunk.lines
+  end
+
   local lines = {
     ('Hunk %d of %d'):format(index, #bcache.hunks),
-    unpack(hunk.lines)
+    unpack(hlines)
   }
 
   local _, bufnr = popup.create(lines, config.preview_config)
@@ -595,11 +618,16 @@ M.diffthis = void(function(base: string)
 
   if api.nvim_win_get_option(0, 'diff') then return end
 
+  local ff = vim.bo[bufnr].fileformat
+
   local text: {string}
   local err: string
   local comp_obj = bcache:get_compare_obj(calc_base(base))
   if base then
     text, err = bcache.git_obj.repo:get_show_text(comp_obj)
+    if ff == 'dos' then
+      text = strip_cr(text)
+    end
     if err then
       print(err)
       return

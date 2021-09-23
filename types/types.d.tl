@@ -237,10 +237,16 @@ global record vim
     shortmess: string
   end
 
-
   record wo
     diff: boolean
   end
+
+  record BufOption
+    {BufOption}
+    fileformat: string
+  end
+
+  bo: BufOption
 
   record v
     vim_did_enter: integer
