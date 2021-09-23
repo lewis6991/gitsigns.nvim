@@ -201,6 +201,17 @@ M.apply_word_diff = function(bufnr: integer, row: integer)
   end
 end
 
+local function get_lines(bufnr: integer): {string}
+  -- nvim_buf_get_lines strips carriage returns if fileformat==dos
+  local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  if api.nvim_buf_get_option(bufnr, 'fileformat') == 'dos' then
+    for i = 1, #buftext do
+      buftext[i] = buftext[i]..'\r'
+    end
+  end
+  return buftext
+end
+
 local update_cnt = 0
 
 local update0 = function(bufnr: integer, bcache: CacheEntry)
@@ -213,7 +224,7 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
   bcache.hunks = nil
 
   scheduler()
-  local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local buftext = get_lines(bufnr)
   local git_obj = bcache.git_obj
 
   local compare_object = bcache:get_compare_obj()
