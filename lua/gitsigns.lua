@@ -73,17 +73,16 @@ local handle_moved = function(bufnr, bcache, old_relpath)
    end
 end
 
-local watch_index = function(bufnr, gitdir)
-   dprintf('Watching index')
-   local index = gitdir .. util.path_sep .. 'index'
+local watch_gitdir = function(bufnr, gitdir)
+   dprintf('Watching git dir')
    local w = uv.new_fs_poll()
-   w:start(index, config.watch_index.interval, void(function(err)
+   w:start(gitdir, config.watch_gitdir.interval, void(function(err)
       local __FUNC__ = 'watcher_cb'
       if err then
-         dprintf('Index update error: %s', err)
+         dprintf('Git dir update error: %s', err)
          return
       end
-      dprint('Index update')
+      dprint('Git dir update')
 
       local bcache = cache[bufnr]
 
@@ -110,7 +109,7 @@ local watch_index = function(bufnr, gitdir)
          return
       end
 
-      if config.watch_index.follow_files and was_tracked and not git_obj.object_name then
+      if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
 
 
          handle_moved(bufnr, bcache, old_relpath)
@@ -287,7 +286,7 @@ local attach0 = function(cbuf, aucmd)
       base = config.base,
       file = file,
       commit = commit,
-      index_watcher = watch_index(cbuf, repo.gitdir),
+      index_watcher = watch_gitdir(cbuf, repo.gitdir),
       git_obj = git_obj,
    })
 

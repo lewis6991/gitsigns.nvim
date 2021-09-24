@@ -73,23 +73,22 @@ local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: s
   end
 end
 
-local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
-  dprintf('Watching index')
-  local index = gitdir..util.path_sep..'index'
+local watch_gitdir = function(bufnr: integer, gitdir: string): uv.FSPollObj
+  dprintf('Watching git dir')
   local w = uv.new_fs_poll()
-  w:start(index, config.watch_index.interval, void(function(err: string)
+  w:start(gitdir, config.watch_gitdir.interval, void(function(err: string)
     local __FUNC__ = 'watcher_cb'
     if err then
-      dprintf('Index update error: %s', err)
+      dprintf('Git dir update error: %s', err)
       return
     end
-    dprint('Index update')
+    dprint('Git dir update')
 
     local bcache = cache[bufnr]
 
     if not bcache then
       -- Very occasionally an external git operation may cause the buffer to
-      -- detach and update the index simultaneously. When this happens this
+      -- detach and update the git dir simultaneously. When this happens this
       -- handler will trigger but there will be no cache.
       dprint('Has detached, aborting')
       return
@@ -110,7 +109,7 @@ local watch_index = function(bufnr: integer, gitdir: string): uv.FSPollObj
       return
     end
 
-    if config.watch_index.follow_files and was_tracked and not git_obj.object_name then
+    if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
       -- File was tracked but is no longer tracked. Must of been removed or
       -- moved. Check if it was moved and switch to it.
       handle_moved(bufnr, bcache, old_relpath)
@@ -287,7 +286,7 @@ local attach0 = function(cbuf: integer, aucmd: string)
     base          = config.base,
     file          = file,
     commit        = commit,
-    index_watcher = watch_index(cbuf, repo.gitdir),
+    index_watcher = watch_gitdir(cbuf, repo.gitdir),
     git_obj       = git_obj
   }
 

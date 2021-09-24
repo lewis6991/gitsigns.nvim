@@ -458,7 +458,7 @@ on_attach                                          *gitsigns-config-on_attach*
         end
 <
 
-watch_index                                      *gitsigns-config-watch_index*
+watch_gitdir                                    *gitsigns-config-watch_gitdir*
       Type: `table`
       Default: >
         {

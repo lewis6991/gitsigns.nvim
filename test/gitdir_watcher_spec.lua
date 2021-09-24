@@ -17,7 +17,7 @@ local get_buf_name    = helpers.curbufmeths.get_name
 
 local it = helpers.it(it)
 
-describe('index_watcher', function()
+describe('gitdir_watcher', function()
   before_each(function()
     clear()
 
@@ -42,7 +42,7 @@ describe('index_watcher', function()
       p"run_job: git .* config user.name",
       "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
       p('run_job: git .* ls%-files .* '..test_file),
-      'watch_index(1): Watching index',
+      'watch_gitdir(1): Watching git dir',
       p'run_job: git .* show :0:dummy.txt',
       'update(1): updates: 1, jobs: 6',
     }
@@ -52,7 +52,7 @@ describe('index_watcher', function()
     git{'mv', test_file, test_file..'2'}
 
     match_debug_messages {
-      'watcher_cb(1): Index update',
+      'watcher_cb(1): Git dir update',
       'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       p('run_job: git .* ls%-files .* '..test_file),
       p'run_job: git .* diff %-%-name%-status %-C %-%-cached',
@@ -69,7 +69,7 @@ describe('index_watcher', function()
     git{'mv', test_file..'2', test_file..'3'}
 
     match_debug_messages {
-      'watcher_cb(1): Index update',
+      'watcher_cb(1): Git dir update',
       'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       p('run_job: git .* ls%-files .* '..test_file..'2'),
       p'run_job: git .* diff %-%-name%-status %-C %-%-cached',
@@ -86,7 +86,7 @@ describe('index_watcher', function()
     git{'mv', test_file..'3', test_file}
 
     match_debug_messages {
-      'watcher_cb(1): Index update',
+      'watcher_cb(1): Git dir update',
       'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       p('run_job: git .* ls%-files .* '..test_file..'3'),
       p'run_job: git .* diff %-%-name%-status %-C %-%-cached',
