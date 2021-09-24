@@ -72,10 +72,10 @@ describe('gitsigns', function()
     check { status = {}, signs = {} }
   end)
 
-  it('index watcher works on a fresh repo', function()
+  it('gitdir watcher works on a fresh repo', function()
     screen:try_resize(20,6)
     setup_test_repo(true)
-    config.watch_index = {interval = 5}
+    config.watch_gitdir = {interval = 5}
     setup_gitsigns(config)
     edit(test_file)
 
@@ -86,8 +86,7 @@ describe('gitsigns', function()
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard '..test_file),
-        'watch_index(1): Watching index',
-        'watcher_cb(1): Index update error: ENOENT',
+        'watch_gitdir(1): Watching git dir',
         p'run_job: git .* show :0:dummy.txt',
         'update(1): updates: 1, jobs: 7'
       })
@@ -480,7 +479,7 @@ describe('gitsigns', function()
           p"run_job: git .* config user.name",
           'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
           p'run_job: git .* ls%-files .*',
-          'watch_index(1): Watching index',
+          'watch_gitdir(1): Watching git dir',
           p'run_job: git .* show :0:newfile.txt'
         }
 

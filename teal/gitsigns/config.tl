@@ -37,7 +37,7 @@ local record M
     sign_priority: integer
     keymaps: {string:any}
     on_attach: function(bufnr: integer)
-    record watch_index
+    record watch_gitdir
       interval: integer
       follow_files: boolean
     end
@@ -189,7 +189,7 @@ M.schema = {
     ]]
   },
 
-  watch_index = {
+  watch_gitdir = {
     type = 'table',
     default = {
       interval = 1000,
@@ -586,6 +586,7 @@ M.schema = {
     ]]
   },
 
+  watch_index                 = { deprecated = 'watch_gitdir' },
   current_line_blame_delay    = { deprecated = 'current_line_blame_opts.delay' },
   current_line_blame_position = { deprecated = 'current_line_blame_opts.virt_text_pos' },
   diff_algorithm              = { deprecated = 'diff_opts.algorithm' },

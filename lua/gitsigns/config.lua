@@ -7,7 +7,7 @@ local SchemaElem = {}
 
 
 
-local M = {Config = {DiffOpts = {}, SignsConfig = {}, watch_index = {}, current_line_blame_formatter_opts = {}, current_line_blame_opts = {}, yadm = {}, }, }
+local M = {Config = {DiffOpts = {}, SignsConfig = {}, watch_gitdir = {}, current_line_blame_formatter_opts = {}, current_line_blame_opts = {}, yadm = {}, }, }
 
 
 
@@ -189,7 +189,7 @@ M.schema = {
     ]],
    },
 
-   watch_index = {
+   watch_gitdir = {
       type = 'table',
       default = {
          interval = 1000,
@@ -586,6 +586,7 @@ M.schema = {
     ]],
    },
 
+   watch_index = { deprecated = 'watch_gitdir' },
    current_line_blame_delay = { deprecated = 'current_line_blame_opts.delay' },
    current_line_blame_position = { deprecated = 'current_line_blame_opts.virt_text_pos' },
    diff_algorithm = { deprecated = 'diff_opts.algorithm' },
