@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        neovim_branch: ['v0.5.0', 'nightly']
+        neovim_branch: ['v0.5.0', 'master']
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     env:
