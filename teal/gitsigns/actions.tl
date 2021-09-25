@@ -16,6 +16,7 @@ local CacheEntry     = gs_cache.CacheEntry
 
 local gs_hunks = require('gitsigns.hunks')
 local Hunk = gs_hunks.Hunk
+local Hunk_Public = gs_hunks.Hunk_Public
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
@@ -40,7 +41,7 @@ local record M
   prev_hunk          : function(NavHunkOpts)
   preview_hunk       : function()
   select_hunk        : function()
-  get_hunks          : function(bufnr: integer): {Hunk}
+  get_hunks          : function(bufnr: integer): {Hunk_Public}
 
   blame_line         : function -- function()
   change_base        : function(base: string, global: boolean)
@@ -79,26 +80,15 @@ end
 ---@param bufnr
 ---@param hunks
 ---@param range
----@param strict If strict: all hunks must be fully contained in the range.
----   Otherwise all hunks that intersect with the range are returned.
-local function get_range_hunks(bufnr: integer, hunks: {Hunk}, range: {integer, integer}, strict: boolean): {Hunk}
-  bufnr = bufnr or current_buf()
-  hunks = hunks or cache[bufnr].hunks
-
+local function get_range_hunks(hunks: {Hunk}, range: {integer, integer}): {Hunk}
   local ret: {Hunk} = {}
   for _, hunk in ipairs(hunks) do
     if range[1] == 1 and hunk.start == 0 and hunk.vend == 0 then
       return {hunk}
     end
 
-    if strict then
-      if (range[1] <= hunk.start and range[2] >= hunk.vend) then
-        ret[#ret+1] = hunk
-      end
-    else
-      if (range[2] >= hunk.start and range[1] <= hunk.vend) then
-        ret[#ret+1] = hunk
-      end
+    if (range[2] >= hunk.start and range[1] <= hunk.vend) then
+      ret[#ret+1] = hunk
     end
   end
 
@@ -124,7 +114,7 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
   if range and range[1] ~= range[2] then
     valid_range = true
     table.sort(range)
-    hunks = get_range_hunks(bufnr, bcache.hunks, range)
+    hunks = get_range_hunks(bcache.hunks, range)
   else
     hunks[1] = get_cursor_hunk(bufnr, bcache.hunks)
   end
@@ -160,12 +150,12 @@ end))
 
 M.reset_hunk = mk_repeatable(function(range: {integer, integer})
   range = range or M.user_range
-  local bufnr: integer = current_buf()
+  local bufnr = current_buf()
   local hunks = {}
 
   if range and range[1] ~= range[2] then
     table.sort(range)
-    hunks = get_range_hunks(bufnr, nil, range)
+    hunks = get_range_hunks(cache[bufnr].hunks, range)
   else
     hunks[1] = get_cursor_hunk(bufnr)
   end
@@ -182,14 +172,10 @@ M.reset_hunk = mk_repeatable(function(range: {integer, integer})
       lstart = hunk.start
       lend = hunk.start
     else
-      local length = vim.tbl_count(vim.tbl_filter(function(l: string): boolean
-        return vim.startswith(l, '+')
-      end, hunk.lines))
-
       lstart = hunk.start - 1
-      lend = hunk.start - 1 + length
+      lend = hunk.start - 1 + hunk.added.count
     end
-    local lines = gs_hunks.extract_removed(hunk)
+    local lines = hunk.removed.lines
     api.nvim_buf_set_lines(bufnr, lstart + offset, lend + offset, false, lines)
     offset = offset + (#lines - (lend - lstart))
   end
@@ -361,17 +347,16 @@ M.prev_hunk = function(opts: NavHunkOpts)
   nav_hunk(opts)
 end
 
-local function highlight_hunk_lines(bufnr: integer, offset: integer, hunk_lines: {string})
-  for i, l in ipairs(hunk_lines) do
-    local hl =
-      vim.startswith(l, '+') and 'DiffAdded' or
-      vim.startswith(l, '-') and 'DiffRemoved' or
-                                 'Normal'
-    api.nvim_buf_add_highlight(bufnr, -1, hl, offset+i-1, 0, -1)
+local function highlight_hunk_lines(bufnr: integer, offset: integer, hunk: Hunk)
+  for i = 1, #hunk.removed.lines do
+    api.nvim_buf_add_highlight(bufnr, -1, 'DiffRemoved', offset+i-1, 0, -1)
+  end
+  for i = 1, #hunk.added.lines do
+    api.nvim_buf_add_highlight(bufnr, -1, 'DiffAdded', #hunk.removed.lines + offset+i-1, 0, -1)
   end
 
   if config.diff_opts.internal then
-    local regions = require('gitsigns.diff_int').run_word_diff(hunk_lines)
+    local regions = require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
     for _, region in ipairs(regions) do
       local line, scol, ecol = region[1], region[3], region[4]
       api.nvim_buf_add_highlight(bufnr, -1, 'TermCursor', line+offset-1, scol, ecol)
@@ -412,11 +397,9 @@ M.preview_hunk = noautocmd(function()
 
   if not hunk then return end
 
-  local hlines: {string}
+  local hlines = gs_hunks.patch_lines(hunk)
   if vim.bo[cbuf].fileformat == 'dos' then
-    hlines = strip_cr(hunk.lines)
-  else
-    hlines = hunk.lines
+    hlines = strip_cr(hlines)
   end
 
   local lines = {
@@ -431,8 +414,8 @@ M.preview_hunk = noautocmd(function()
   api.nvim_buf_set_var(cbuf, '_gitsigns_preview_open', true)
   vim.cmd[[autocmd CursorMoved,CursorMovedI <buffer> ++once silent! unlet b:_gitsigns_preview_open]]
 
-  local offset = #lines - #hunk.lines
-  highlight_hunk_lines(bufnr as integer, offset, hunk.lines)
+  local offset = #lines - hunk.removed.count - hunk.added.count
+  highlight_hunk_lines(bufnr as integer, offset, hunk)
 end)
 
 M.select_hunk = function()
@@ -442,14 +425,14 @@ M.select_hunk = function()
   vim.cmd('normal! '..hunk.start..'GV'..hunk.vend..'G')
 end
 
-M.get_hunks = function(bufnr: integer): {Hunk}
+M.get_hunks = function(bufnr: integer): {Hunk_Public}
   bufnr = current_buf()
   if not cache[bufnr] then return end
-  local ret: {Hunk} = {}
+  local ret = {}
   for _, h in ipairs(cache[bufnr].hunks) do
     ret[#ret+1] = {
       head    = h.head,
-      lines   = h.lines,
+      lines   = gs_hunks.patch_lines(h),
       type    = h.type,
       added   = h.added,
       removed = h.removed
@@ -559,7 +542,7 @@ M.blame_line = void(function(full: boolean)
     lines[#lines+1] = ''
     lines[#lines+1] = ('Hunk %d of %d'):format(ihunk, nhunk)
     add_highlight('Title')
-    vim.list_extend(lines, hunk.lines)
+    vim.list_extend(lines, gs_hunks.patch_lines(hunk))
   end
 
   scheduler()
@@ -571,8 +554,8 @@ M.blame_line = void(function(full: boolean)
   end
 
   if hunk then
-    local offset = #lines - #hunk.lines
-    highlight_hunk_lines(pbufnr, offset, hunk.lines)
+    local offset = #lines - hunk.removed.count - hunk.added.count
+    highlight_hunk_lines(pbufnr, offset, hunk)
   end
 end)
 

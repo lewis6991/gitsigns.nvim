@@ -71,9 +71,14 @@ M.run_diff = function(
 
    for _, line in ipairs(out) do
       if vim.startswith(line, '@@') then
-         table.insert(results, gs_hunks.parse_diff_line(line))
+         results[#results + 1] = gs_hunks.parse_diff_line(line)
       elseif #results > 0 then
-         table.insert(results[#results].lines, line)
+         local r = results[#results]
+         if line:sub(1, 1) == '-' then
+            r.removed.lines[#r.removed.lines + 1] = line:sub(2)
+         elseif line:sub(1, 1) == '+' then
+            r.added.lines[#r.added.lines + 1] = line:sub(2)
+         end
       end
    end
 
