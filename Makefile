@@ -22,7 +22,7 @@ export VIMRUNTIME=$(PWD)/deps/neovim/runtime
 
 .PHONY: test
 test: deps/neovim deps/plenary.nvim
-	$(INIT_LUAROCKS) deps/neovim/deps/usr/bin/busted \
+	$(INIT_LUAROCKS) deps/neovim/.deps/usr/bin/busted \
 		-v \
 		--lazy \
 		--helper=$(PWD)/test/preload.lua \
