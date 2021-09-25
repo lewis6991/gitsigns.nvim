@@ -2,41 +2,46 @@ local Sign = require('gitsigns.signs').Sign
 local StatusObj = require('gitsigns.status').StatusObj
 
 local record M
-  record Hunk
-    enum Type
-      "add"
-      "change"
-      "delete"
-    end
+  enum Type
+    "add"
+    "change"
+    "delete"
+  end
 
+  record Node
+    start: integer
+    count: integer
+    lines: {string}
+  end
+
+  -- For internal use
+  record Hunk
     type: Type
     head: string
-    lines: {string}
-
-    record Node
-      start: integer
-      count: integer
-    end
-
     added: Node
     removed: Node
-
-    -- API unstable
     start: integer
     dend: integer
     vend: integer
+  end
+
+  record Hunk_Public
+    type: Type
+    head: string
+    lines: {string}
+    added: Node
+    removed: Node
   end
 end
 
 local Hunk = M.Hunk
 
 function M.create_hunk(start_a: integer, count_a: integer, start_b: integer, count_b: integer): Hunk
-  local removed = { start = start_a, count = count_a }
-  local added   = { start = start_b, count = count_b }
+  local removed = { start = start_a, count = count_a, lines = {} }
+  local added   = { start = start_b, count = count_b, lines = {} }
 
   local hunk: Hunk = {
     start   = added.start,
-    lines   = {},
     removed = removed,
     added   = added
   }
@@ -59,6 +64,17 @@ function M.create_hunk(start_a: integer, count_a: integer, start_b: integer, cou
   end
 
   return hunk
+end
+
+function M.patch_lines(hunk: Hunk): {string}
+  local lines: {string} = {}
+  for _, l in ipairs(hunk.removed.lines) do
+    lines[#lines+1] = '-'..l
+  end
+  for _, l in ipairs(hunk.added.lines) do
+    lines[#lines+1] = '+'..l
+  end
+  return lines
 end
 
 function M.parse_diff_line(line: string): Hunk
@@ -129,24 +145,20 @@ function M.create_patch(relpath: string, hunks: {Hunk}, mode_bits: string, inver
       start = start + 1
     end
 
-    local lines = process_hunk.lines
+    local pre_lines = process_hunk.removed.lines
+    local now_lines = process_hunk.added.lines
 
     if invert then
       pre_count, now_count = now_count, pre_count
-
-      lines = vim.tbl_map(function(l: string): string
-        if vim.startswith(l, '+') then
-          l = '-'..string.sub(l, 2, -1)
-        elseif vim.startswith(l, '-') then
-          l = '+'..string.sub(l, 2, -1)
-        end
-        return l
-      end, lines) as {string}
+      pre_lines, now_lines = now_lines, pre_lines
     end
 
     table.insert(results, string.format('@@ -%s,%s +%s,%s @@', start, pre_count, start + offset, now_count))
-    for _, line in ipairs(lines) do
-      table.insert(results, line)
+    for _, l in ipairs(pre_lines) do
+      results[#results+1] = '-'..l
+    end
+    for _, l in ipairs(now_lines) do
+      results[#results+1] = '+'..l
     end
 
     process_hunk.removed.start = start + offset
@@ -215,14 +227,6 @@ function M.find_nearest_hunk(lnum: number, hunks: {Hunk}, forwards: boolean, wra
     ret = hunks[index as integer]
   end
   return ret, index
-end
-
-function M.extract_removed(hunk: Hunk): {string}
-  return vim.tbl_map(function(l: string): string
-    return string.sub(l, 2, -1)
-  end, vim.tbl_filter(function(l: string): boolean
-    return vim.startswith(l, '-')
-  end, hunk.lines)) as {string}
 end
 
 function M.compare_heads(a: {Hunk}, b: {Hunk}): boolean

@@ -172,12 +172,12 @@ M.apply_word_diff = function(bufnr: integer, row: integer)
 
   for _, hunk in ipairs(cache[bufnr].hunks) do
     if lnum >= hunk.start and lnum <= hunk.vend then
-      local size = #hunk.lines / 2
-      local regions = require('gitsigns.diff_int').run_word_diff(hunk.lines)
+      local size = (#hunk.added.lines +#hunk.removed.lines) / 2
+      local regions = require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
       for _, region in ipairs(regions) do
         local line = region[1]
-        if lnum == hunk.start + line - size - 1
-          and vim.startswith(hunk.lines[line], '+') then
+        if lnum == hunk.start + line - size - 1 then
+          -- and vim.startswith(hunk.lines[line], '+') then
           local rtype, scol, ecol = region[2], region[3], region[4]
           if scol <= cols then
             if ecol > cols then

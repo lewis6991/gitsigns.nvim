@@ -237,8 +237,8 @@ describe('gitsigns', function()
             head = '@@ -1,1 +1,2 @@',
             type = 'change',
             lines = { '-This', '+line1This', '+line2' },
-            added   = { count = 2, start = 1 },
-            removed = { count = 1, start = 1 },
+            added   = { count = 2, start = 1, lines = { 'line1This', 'line2' } },
+            removed = { count = 1, start = 1, lines = { 'This'} },
           }},
           exec_lua[[return require'gitsigns'.get_hunks()]]
         )

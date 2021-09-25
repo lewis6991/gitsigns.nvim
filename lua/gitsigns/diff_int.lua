@@ -35,15 +35,15 @@ function M.run_diff(fa, fb, diff_algo, indent_heuristic)
 
       if rc > 0 then
          for i = rs, rs + rc - 1 do
-            table.insert(hunk.lines, '-' .. (fa[i] or ''))
+            hunk.removed.lines[#hunk.removed.lines + 1] = fa[i] or ''
          end
       end
       if ac > 0 then
          for i = as, as + ac - 1 do
-            table.insert(hunk.lines, '+' .. (fb[i] or ''))
+            hunk.added.lines[#hunk.added.lines + 1] = fb[i] or ''
          end
       end
-      table.insert(hunks, hunk)
+      hunks[#hunks + 1] = hunk
    end
 
    return hunks
@@ -53,26 +53,17 @@ local Region = {}
 
 local gaps_between_regions = 5
 
-function M.run_word_diff(hunk_body)
-   local removed, added = 0, 0
-   for _, line in ipairs(hunk_body) do
-      if line:sub(1, 1) == '-' then
-         removed = removed + 1
-      elseif line:sub(1, 1) == '+' then
-         added = added + 1
-      end
-   end
-
-   if removed ~= added then
+function M.run_word_diff(removed, added)
+   if #removed ~= #added then
       return {}
    end
 
    local ret = {}
 
-   for i = 1, removed do
+   for i = 1, #removed do
 
-      local rline = hunk_body[i]:sub(2)
-      local aline = hunk_body[i + removed]:sub(2)
+      local rline = removed[i]
+      local aline = added[i]
 
       local a, b = vim.split(rline, ''), vim.split(aline, '')
 
@@ -107,7 +98,7 @@ function M.run_word_diff(hunk_body)
 
       for _, h in ipairs(hunks) do
          local rem = { i, h.type, h.removed.start, h.removed.start + h.removed.count }
-         local add = { i + removed, h.type, h.added.start, h.added.start + h.added.count }
+         local add = { i + #removed, h.type, h.added.start, h.added.start + h.added.count }
 
          ret[#ret + 1] = rem
          ret[#ret + 1] = add

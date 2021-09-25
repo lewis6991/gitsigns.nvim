@@ -1,7 +1,13 @@
 local Sign = require('gitsigns.signs').Sign
 local StatusObj = require('gitsigns.status').StatusObj
 
-local M = {Hunk = {Node = {}, }, }
+local M = {Node = {}, Hunk = {}, Hunk_Public = {}, }
+
+
+
+
+
+
 
 
 
@@ -31,12 +37,11 @@ local M = {Hunk = {Node = {}, }, }
 local Hunk = M.Hunk
 
 function M.create_hunk(start_a, count_a, start_b, count_b)
-   local removed = { start = start_a, count = count_a }
-   local added = { start = start_b, count = count_b }
+   local removed = { start = start_a, count = count_a, lines = {} }
+   local added = { start = start_b, count = count_b, lines = {} }
 
    local hunk = {
       start = added.start,
-      lines = {},
       removed = removed,
       added = added,
    }
@@ -59,6 +64,17 @@ function M.create_hunk(start_a, count_a, start_b, count_b)
    end
 
    return hunk
+end
+
+function M.patch_lines(hunk)
+   local lines = {}
+   for _, l in ipairs(hunk.removed.lines) do
+      lines[#lines + 1] = '-' .. l
+   end
+   for _, l in ipairs(hunk.added.lines) do
+      lines[#lines + 1] = '+' .. l
+   end
+   return lines
 end
 
 function M.parse_diff_line(line)
@@ -129,24 +145,20 @@ function M.create_patch(relpath, hunks, mode_bits, invert)
          start = start + 1
       end
 
-      local lines = process_hunk.lines
+      local pre_lines = process_hunk.removed.lines
+      local now_lines = process_hunk.added.lines
 
       if invert then
          pre_count, now_count = now_count, pre_count
-
-         lines = vim.tbl_map(function(l)
-            if vim.startswith(l, '+') then
-               l = '-' .. string.sub(l, 2, -1)
-            elseif vim.startswith(l, '-') then
-               l = '+' .. string.sub(l, 2, -1)
-            end
-            return l
-         end, lines)
+         pre_lines, now_lines = now_lines, pre_lines
       end
 
       table.insert(results, string.format('@@ -%s,%s +%s,%s @@', start, pre_count, start + offset, now_count))
-      for _, line in ipairs(lines) do
-         table.insert(results, line)
+      for _, l in ipairs(pre_lines) do
+         results[#results + 1] = '-' .. l
+      end
+      for _, l in ipairs(now_lines) do
+         results[#results + 1] = '+' .. l
       end
 
       process_hunk.removed.start = start + offset
@@ -215,14 +227,6 @@ function M.find_nearest_hunk(lnum, hunks, forwards, wrap)
       ret = hunks[index]
    end
    return ret, index
-end
-
-function M.extract_removed(hunk)
-   return vim.tbl_map(function(l)
-      return string.sub(l, 2, -1)
-   end, vim.tbl_filter(function(l)
-      return vim.startswith(l, '-')
-   end, hunk.lines))
 end
 
 function M.compare_heads(a, b)
