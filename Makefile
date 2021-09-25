@@ -19,6 +19,7 @@ deps/plenary.nvim:
 	git clone --depth 1 https://github.com/nvim-lua/plenary.nvim $@
 
 export VIMRUNTIME=$(PWD)/deps/neovim/runtime
+export TEST_COLORS=1
 
 .PHONY: test
 test: deps/neovim deps/plenary.nvim
