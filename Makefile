@@ -9,29 +9,31 @@ INIT_LUAROCKS := eval $$(luarocks --lua-version=5.1 path) &&
 
 NEOVIM_BRANCH := master
 
-neovim:
-	git clone --depth 1 https://github.com/neovim/neovim --branch $(NEOVIM_BRANCH)
+deps/neovim:
+	@mkdir -p deps
+	git clone --depth 1 https://github.com/neovim/neovim --branch $(NEOVIM_BRANCH) $@
 	make -C $@
 
-plenary.nvim:
-	git clone --depth 1 https://github.com/nvim-lua/plenary.nvim
+deps/plenary.nvim:
+	@mkdir -p deps
+	git clone --depth 1 https://github.com/nvim-lua/plenary.nvim $@
 
-export VIMRUNTIME=$(PWD)/neovim/runtime
+export VIMRUNTIME=$(PWD)/deps/neovim/runtime
 
 .PHONY: test
-test: neovim plenary.nvim
-	$(INIT_LUAROCKS) neovim/.deps/usr/bin/busted \
+test: deps/neovim deps/plenary.nvim
+	$(INIT_LUAROCKS) deps/neovim/deps/usr/bin/busted \
 		-v \
 		--lazy \
 		--helper=$(PWD)/test/preload.lua \
 		--output test.busted.outputHandlers.nvim \
-		--lpath=$(PWD)/neovim/?.lua \
-		--lpath=$(PWD)/neovim/build/?.lua \
-		--lpath=$(PWD)/neovim/runtime/lua/?.lua \
-		--lpath=$(PWD)/?.lua \
+		--lpath=$(PWD)/deps/neovim/?.lua \
+		--lpath=$(PWD)/deps/neovim/build/?.lua \
+		--lpath=$(PWD)/deps/neovim/runtime/lua/?.lua \
+		--lpath=$(PWD)/deps/?.lua \
 		--lpath=$(PWD)/lua/?.lua \
-		--lpath=$(PWD)/plenary.nvim/lua/?.lua \
-		--lpath=$(PWD)/plenary.nvim/lua/?/init.lua \
+		--lpath=$(PWD)/deps/plenary.nvim/lua/?.lua \
+		--lpath=$(PWD)/deps/plenary.nvim/lua/?/init.lua \
 		--filter=$(FILTER) \
 		$(PWD)/test
 
