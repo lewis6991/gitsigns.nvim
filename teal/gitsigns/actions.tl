@@ -145,7 +145,7 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
 
   scheduler()
 
-  -- If watch_index is enabled then that will eventually kick in and update the
+  -- If watch_gitdir is enabled then that will eventually kick in and update the
   -- signs, however for  smoother UX we can update the signs immediately without
   -- running a full diff.
   --
@@ -270,7 +270,7 @@ M.reset_buffer_index = void(function()
 
   -- `bcache.staged_diffs` won't contain staged changes outside of current
   -- neovim session so signs added from this unstage won't be complete They will
-  -- however be fixed by index watcher and properly updated We should implement
+  -- however be fixed by gitdir watcher and properly updated We should implement
   -- some sort of initial population from git diff, after that this function can
   -- be improved to check if any staged hunks exists and it can undo changes
   -- using git apply line by line instead of reseting whole file

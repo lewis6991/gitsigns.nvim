@@ -286,7 +286,7 @@ local attach0 = function(cbuf, aucmd)
       base = config.base,
       file = file,
       commit = commit,
-      index_watcher = watch_gitdir(cbuf, repo.gitdir),
+      gitdir_watcher = watch_gitdir(cbuf, repo.gitdir),
       git_obj = git_obj,
    })
 

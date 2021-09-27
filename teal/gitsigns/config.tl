@@ -197,12 +197,12 @@ M.schema = {
     },
     description = [[
       When opening a file, a libuv watcher is placed on the respective
-      `.git/index` file to detect when changes happen to use as a trigger to
+      `.git` directory to detect when changes happen to use as a trigger to
       update signs.
 
       Fields: ~
         • `interval`:
-            Interval the watcher waits between polls of `.git/index` is milliseconds.
+            Interval the watcher waits between polls of the gitdir in milliseconds.
 
         • `follow_files`:
             If a file is moved with `git mv`, switch the buffer to the new location.
@@ -299,7 +299,7 @@ M.schema = {
             diff library.
     ]]
   },
- 
+
   base = {
     type = 'string',
     default = nil,

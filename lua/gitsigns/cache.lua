@@ -66,7 +66,7 @@ end
 
 CacheEntry.destroy = function(self)
    os.remove(self.compare_file)
-   local w = self.index_watcher
+   local w = self.gitdir_watcher
    if w then
       w:stop()
    end

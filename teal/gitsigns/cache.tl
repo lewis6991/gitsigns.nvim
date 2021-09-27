@@ -13,7 +13,7 @@ local record M
     hunks         : {Hunk}
     staged_diffs  : {Hunk}
     pending_signs : {integer:Sign}
-    index_watcher : vim.loop.FSPollObj -- Timer object watching the files index
+    gitdir_watcher : vim.loop.FSPollObj -- Timer object watching the gitdir
     git_obj       : GitObj
     commit        : string
 
@@ -66,7 +66,7 @@ end
 
 CacheEntry.destroy = function(self: CacheEntry)
   os.remove(self.compare_file)
-  local w = self.index_watcher
+  local w = self.gitdir_watcher
   if w then
     w:stop()
   end

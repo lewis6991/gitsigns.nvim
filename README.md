@@ -111,7 +111,7 @@ require('gitsigns').setup {
     ['o ih'] = ':<C-U>lua require"gitsigns.actions".select_hunk()<CR>',
     ['x ih'] = ':<C-U>lua require"gitsigns.actions".select_hunk()<CR>'
   },
-  watch_index = {
+  watch_gitdir = {
     interval = 1000,
     follow_files = true
   },
@@ -177,7 +177,7 @@ Asynchronous                                             | :white_check_mark:   
 Runs diffs in-process (no IO or pipes)                   | :white_check_mark: * |                                               | * Via [lua](https://github.com/neovim/neovim/pull/14536) or FFI.
 Only adds signs for drawn lines                          | :white_check_mark: * |                                               | * Via Neovims decoration API
 Updates immediately                                      | :white_check_mark:   | *                                             | * Triggered on CursorHold
-Ensures signs are always up to date                      | :white_check_mark: * |                                               | * Watches the git index to do so
+Ensures signs are always up to date                      | :white_check_mark: * |                                               | * Watches the git dir to do so
 Never saves the buffer                                   | :white_check_mark:   | :white_check_mark: :heavy_exclamation_mark: * | * Writes [buffer](https://github.com/airblade/vim-gitgutter/blob/0f98634b92da9a35580b618c11a6d2adc42d9f90/autoload/gitgutter/diff.vim#L106) (and index) to short lived temp files
 Quick jumping between hunks                              | :white_check_mark:   | :white_check_mark:                            |
 Stage/reset/preview individual hunks                     | :white_check_mark:   | :white_check_mark:                            |
