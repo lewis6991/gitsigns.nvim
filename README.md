@@ -159,15 +159,6 @@ set statusline+=%{get(b:,'gitsigns_status','')}
 
 For the current branch use the variable `b:gitsigns_head`.
 
-## TODO
-
-- [ ] Add ability to show staged hunks with different signs (maybe in a different sign column?)
-- [ ] Add ability to show commit in floating window of current line
-- [ ] Allow extra options to be passed to `git diff`
-- [ ] Folding of text around hunks
-- [ ] Show messages when navigating hunks similar to '/' search
-- [ ] Stage partial hunks
-
 ## Comparison with [vim-gitgutter](https://github.com/airblade/vim-gitgutter)
 
 Feature                                                  | gitsigns             | gitgutter                                     | Note
