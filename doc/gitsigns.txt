@@ -727,6 +727,34 @@ debug_mode                                        *gitsigns-config-debug_mode*
       Enables debug logging and makes the following functions
       available: `dump_cache`, `debug_messages`, `clear_debug`.
 
+watch_index                                      *gitsigns-config-watch_index*
+   DEPRECATED
+
+   Please instead use |gitsigns-config-watch_gitdir|.
+
+current_line_blame_delay            *gitsigns-config-current_line_blame_delay*
+   DEPRECATED
+
+   Please instead use the field `delay` in |gitsigns-config-current_line_blame_opts|.
+
+current_line_blame_position      *gitsigns-config-current_line_blame_position*
+   DEPRECATED
+
+   Please instead use the field `virt_text_pos` in |gitsigns-config-current_line_blame_opts|.
+
+diff_algorithm                                *gitsigns-config-diff_algorithm*
+   DEPRECATED
+
+   Please instead use the field `algorithm` in |gitsigns-config-diff_opts|.
+
+use_decoration_api                        *gitsigns-config-use_decoration_api*
+   DEPRECATED
+
+use_internal_diff                          *gitsigns-config-use_internal_diff*
+   DEPRECATED
+
+   Please instead use the field `internal` in |gitsigns-config-diff_opts|.
+
 ==============================================================================
 COMMAND                                                      *gitsigns-command*
 

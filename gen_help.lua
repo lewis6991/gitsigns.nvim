@@ -127,53 +127,79 @@ having to redefine the whole field.
 ]]
 end
 
+local function gen_config_doc_deprecated(dep_info)
+  if type(dep_info) == 'table' and dep_info.hard then
+    out('   HARD-DEPRECATED')
+  else
+    out('   DEPRECATED')
+  end
+  if type(dep_info) == 'table' and dep_info.new_field then
+    out('')
+    local opts_key, field = dep_info.new_field:match('(.*)%.(.*)')
+    if opts_key and field then
+      out(('   Please instead use the field `%s` in |gitsigns-config-%s|.'):format(field, opts_key))
+    else
+      out(('   Please instead use |gitsigns-config-%s|.'):format(dep_info.new_field))
+    end
+  end
+  out('')
+end
+
+local function gen_config_doc_field(field)
+  local v = config.schema[field]
+
+  -- Field heading and tag
+  local t = ('*gitsigns-config-%s*'):format(field)
+  if #field + #t < 80 then
+    out(('%-29s %48s'):format(field, t))
+  else
+    out(('%-29s'):format(field))
+    out(('%78s'):format(t))
+  end
+
+  if v.deprecated then
+    gen_config_doc_deprecated(v.deprecated)
+  else
+    local d
+    if v.default_help ~= nil then
+      d = v.default_help
+    elseif is_simple_type(v.type) then
+      d = inspect(v.default)
+      d = ('`%s`'):format(d)
+    else
+      d = get_default(field)
+      if d:find('\n') then
+        d = d:gsub('\n([^\n\r])', '\n%1')
+      else
+        d = ('`%s`'):format(d)
+      end
+    end
+
+    local vtype = (function()
+      if v.type == 'table' and v.deep_extend then
+        return 'table[extended]'
+      end
+      return v.type
+    end)()
+
+    if d:find('\n') then
+      out(('      Type: `%s`'):format(vtype))
+      out('      Default: >')
+      out('        '..d:gsub('\n([^\n\r])', '\n    %1'))
+      out('<')
+    else
+      out(('      Type: `%s`, Default: %s'):format(vtype, d))
+      out()
+    end
+
+    out(v.description:gsub(' +$', ''))
+  end
+end
+
 local function gen_config_doc()
   intro()
   for _, k in ipairs(get_ordered_schema_keys()) do
-    local v = config.schema[k]
-    if not v.deprecated then
-      local t = ('*gitsigns-config-%s*'):format(k)
-      if #k + #t < 80 then
-        out(('%-29s %48s'):format(k, t))
-      else
-        out(('%-29s'):format(k))
-        out(('%78s'):format(t))
-      end
-
-      local d
-      if v.default_help ~= nil then
-        d = v.default_help
-      elseif is_simple_type(v.type) then
-        d = inspect(v.default)
-        d = ('`%s`'):format(d)
-      else
-        d = get_default(k)
-        if d:find('\n') then
-          d = d:gsub('\n([^\n\r])', '\n%1')
-        else
-          d = ('`%s`'):format(d)
-        end
-      end
-
-      local vtype = (function()
-        if v.type == 'table' and v.deep_extend then
-          return 'table[extended]'
-        end
-        return v.type
-      end)()
-
-      if d:find('\n') then
-        out(('      Type: `%s`'):format(vtype))
-        out('      Default: >')
-        out('        '..d:gsub('\n([^\n\r])', '\n    %1'))
-        out('<')
-      else
-        out(('      Type: `%s`, Default: %s'):format(vtype, d))
-        out()
-      end
-
-      out(v.description:gsub(' +$', ''))
-    end
+    gen_config_doc_field(k)
   end
 end
 

@@ -1,4 +1,11 @@
-local SchemaElem = {}
+local SchemaElem = {Deprecated = {}, }
+
+
+
+
+
+
+
 
 
 
@@ -586,12 +593,12 @@ M.schema = {
     ]],
    },
 
-   watch_index = { deprecated = 'watch_gitdir' },
-   current_line_blame_delay = { deprecated = 'current_line_blame_opts.delay' },
-   current_line_blame_position = { deprecated = 'current_line_blame_opts.virt_text_pos' },
-   diff_algorithm = { deprecated = 'diff_opts.algorithm' },
+   watch_index = { deprecated = { new_field = 'watch_gitdir' } },
+   current_line_blame_delay = { deprecated = { new_field = 'current_line_blame_opts.delay' } },
+   current_line_blame_position = { deprecated = { new_field = 'current_line_blame_opts.virt_text_pos' } },
+   diff_algorithm = { deprecated = { new_field = 'diff_opts.algorithm' } },
    use_decoration_api = { deprecated = true },
-   use_internal_diff = { deprecated = 'diff_opts.internal' },
+   use_internal_diff = { deprecated = { new_field = 'diff_opts.internal' } },
 }
 
 local function warn(s, ...)
@@ -620,26 +627,32 @@ end
 
 local function handle_deprecated(cfg)
    for k, v in pairs(M.schema) do
-      if v.deprecated and cfg[k] ~= nil then
-         local dep = v.deprecated
+      local dep = v.deprecated
+      if dep and cfg[k] ~= nil then
+         if type(dep) == "table" then
+            if dep.new_field then
+               local opts_key, field = dep.new_field:match('(.*)%.(.*)')
+               if opts_key and field then
 
-         if type(dep) == "string" then
-            warn('%s is now deprecated, please use %s', k, dep)
-            local opts_key, field = dep:match('(.*)%.(.*)')
-            if opts_key and field then
+                  local opts = (cfg[opts_key] or {})
+                  opts[field] = cfg[k]
+                  cfg[opts_key] = opts
+               else
 
-               local opts = (cfg[opts_key] or {})
-               opts[field] = cfg[k]
-               cfg[opts_key] = opts
-            else
-
-               cfg[dep] = cfg[k]
+                  cfg[dep.new_field] = cfg[k]
+               end
             end
-            cfg[k] = nil
-         elseif dep then
-            warn('%s is now removed; ignoring', k)
-            cfg[k] = nil
+
+            if dep.hard then
+               if dep.new_field then
+                  warn('%s is now deprecated, please use %s', k, dep.new_field)
+               else
+                  warn('%s is now deprecated; ignoring', k)
+               end
+            end
          end
+
+         cfg[k] = nil
       end
    end
 end
