@@ -202,6 +202,10 @@ As of 2021-07-05
 
 ## Integrations
 
+### [vim-repeat](https://github.com/tpope/vim-repeat)
+
+If installed, `stage_hunk()` and `reset_hunk()` to be repeatable with the `.` (dot) operator.
+
 ### [null-ls](https://github.com/jose-elias-alvarez/null-ls.nvim)
 
 Null-ls can provide code actions from Gitsigns. To setup:

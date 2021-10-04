@@ -191,7 +191,7 @@ M.reset_buffer = function()
    api.nvim_buf_set_lines(bufnr, 0, -1, false, bcache:get_compare_text())
 end
 
-M.undo_stage_hunk = mk_repeatable(void(function()
+M.undo_stage_hunk = void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -211,7 +211,7 @@ M.undo_stage_hunk = mk_repeatable(void(function()
       signs.add(config, bufnr, gs_hunks.process_hunks({ hunk }))
    end
    manager.update(bufnr)
-end))
+end)
 
 M.stage_buffer = void(function()
    local bufnr = current_buf()
