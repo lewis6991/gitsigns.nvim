@@ -206,6 +206,10 @@ As of 2021-07-05
 
 If installed, `stage_hunk()` and `reset_hunk()` to be repeatable with the `.` (dot) operator.
 
+### [vim-fugitive](https://github.com/tpope/vim-fugitive)
+
+When viewing revisions of a file (via `:0Gclog` for example), Gitsigns will attach to the fugitive buffer with the base set to the commit immediately before the commit of that revision. This means the signs placed in the buffer reflect the changes introduced by that revision of the file.
+
 ### [null-ls](https://github.com/jose-elias-alvarez/null-ls.nvim)
 
 Null-ls can provide code actions from Gitsigns. To setup:
