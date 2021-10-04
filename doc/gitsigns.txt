@@ -248,8 +248,11 @@ diffthis({base})                                         *gitsigns.diffthis()*
 >
 get_actions()                                         *gitsigns.get_actions()*
                 Get all the available line specific actions for the current
-                buffer at the cursor position. Returns a map of action name to
-                function.
+                buffer at the cursor position.
+
+                Return: ~
+                    Dictionary of action name to function which when called
+                    performs action.
 
 attach()                                                   *gitsigns.attach()*
                 Attach Gitsigns to the current buffer.
