@@ -200,6 +200,26 @@ Open diffview with any revision/commit                   | :white_check_mark:   
 
 As of 2021-07-05
 
+## Integrations
+
+### [null-ls](https://github.com/jose-elias-alvarez/null-ls.nvim)
+
+Null-ls can provide code actions from Gitsigns. To setup:
+
+```lua
+local null_ls = require("null-ls")
+
+null_ls.setup {
+  sources = {
+    null_ls.builtins.code_actions.gitsigns,
+    ...
+  }
+}
+```
+
+Will enable `:lua vim.lsp.buf.code_action()` to retrieve code actions from Gitsigns.
+Alternatively if you have [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim) installed, you can use `:Telescope lsp_code_actions`.
+
 ## Similar plugins
 
 - [coc-git](https://github.com/neoclide/coc-git)
