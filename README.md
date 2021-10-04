@@ -204,7 +204,7 @@ As of 2021-07-05
 
 ### [vim-repeat](https://github.com/tpope/vim-repeat)
 
-If installed, `stage_hunk()` and `reset_hunk()` to be repeatable with the `.` (dot) operator.
+If installed, `stage_hunk()` and `reset_hunk()` are repeatable with the `.` (dot) operator.
 
 ### [vim-fugitive](https://github.com/tpope/vim-fugitive)
 
