@@ -70,11 +70,11 @@ jobs:
       - name: Cache neovim
         uses: actions/cache@v2
         with:
-          path: neovim
+          path: deps/neovim
           key: build-${{env.NEOVIM_BRANCH}}
 
       - name: Build Neovim
-        run: make neovim NEOVIM_BRANCH=$NEOVIM_BRANCH
+        run: make deps/neovim NEOVIM_BRANCH=$NEOVIM_BRANCH
 
       - name: Run Test
         run: make test
