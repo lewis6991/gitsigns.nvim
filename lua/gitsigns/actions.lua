@@ -703,10 +703,18 @@ M.setqflist = void(function(target, opts)
    if opts.use_location_list then
       local nr = opts.nr or 0
       vim.fn.setloclist(nr, {}, ' ', qfopts)
-      vim.cmd([[lopen]])
+      if config.trouble then
+         require('trouble').open("loclist")
+      else
+         vim.cmd([[lopen]])
+      end
    else
       vim.fn.setqflist({}, ' ', qfopts)
-      vim.cmd([[copen]])
+      if config.trouble then
+         require('trouble').open("quickfix")
+      else
+         vim.cmd([[copen]])
+      end
    end
 end)
 

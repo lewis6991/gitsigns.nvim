@@ -708,6 +708,12 @@ current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
         The result of this function is passed directly to the `opts.virt_text`
         field of |nvim_buf_set_extmark|.
 
+trouble                                              *gitsigns-config-trouble*
+      Type: `boolean`, Default: true if installed
+
+      When using setqflist() or setloclist(), open Trouble instead of the
+      quickfix/location list window.
+
 yadm                                                    *gitsigns-config-yadm*
       Type: `table`, Default: `{ enable = false }`
 
