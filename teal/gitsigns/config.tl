@@ -80,6 +80,8 @@ local record M
       enable: boolean
     end
 
+    trouble: boolean
+
     -- Undocumented
     word_diff: boolean
     _refresh_staged_on_update: boolean
@@ -533,6 +535,19 @@ M.schema = {
       Return: ~
         The result of this function is passed directly to the `opts.virt_text`
         field of |nvim_buf_set_extmark|.
+    ]]
+  },
+
+  trouble = {
+    type = 'boolean',
+    default = function(): boolean
+      local has_trouble = pcall(require, 'trouble')
+      return has_trouble
+    end,
+    default_help = "true if installed",
+    description = [[
+      When using setqflist() or setloclist(), open Trouble instead of the
+      quickfix/location list window.
     ]]
   },
 
