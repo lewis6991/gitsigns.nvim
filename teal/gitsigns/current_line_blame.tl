@@ -51,8 +51,12 @@ M.update = void(function()
   M.reset(bufnr)
 
   local lnum1 = api.nvim_win_get_cursor(0)[1]
-  if lnum ~= lnum1 or not api.nvim_buf_is_loaded(bufnr) then
+  if bufnr == current_buf() and lnum ~= lnum1 then
     -- Cursor has moved during events; abort
+    return
+  end
+
+  if not api.nvim_buf_is_loaded(bufnr) then
     -- Buffer is no longer loaded; abort
     return
   end
