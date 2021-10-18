@@ -21,13 +21,7 @@ local GJobSpec = {}
 
 
 
-local M = {BlameInfo = {}, Version = {}, Repo = {}, PrInfo = {}, Obj = {}, }
-
-
-
-
-
-
+local M = {BlameInfo = {}, Version = {}, Repo = {}, Obj = {}, }
 
 
 
@@ -134,8 +128,17 @@ end
 
 local JobSpec = subprocess.JobSpec
 
-local command = wrap(function(spec, callback)
+M.command = wrap(function(args, spec, callback)
+   spec = spec or {}
+   spec.command = spec.command or 'git'
+   spec.args = spec.command == 'git' and { '--no-pager', unpack(args) } or args
    subprocess.run_job(spec, function(_, _, stdout, stderr)
+      if not spec.supress_stderr then
+         if stderr then
+            gsd.eprint(stderr)
+         end
+      end
+
       local stdout_lines = vim.split(stdout or '', '\n', true)
 
 
@@ -144,32 +147,16 @@ local command = wrap(function(spec, callback)
          stdout_lines[#stdout_lines] = nil
       end
 
+      if gsd.verbose then
+         gsd.vprintf('%d lines:', #stdout_lines)
+         for i = 1, math.min(10, #stdout_lines) do
+            gsd.vprintf('\t%s', stdout_lines[i])
+         end
+      end
+
       callback(stdout_lines, stderr)
    end)
-end, 2)
-
-M.command = function(args, spec)
-   spec = spec or {}
-   spec.command = spec.command or 'git'
-   spec.args = spec.command == 'git' and { '--no-pager', unpack(args) } or args
-
-   local stdout_lines, stderr = command(spec)
-
-   if not spec.supress_stderr then
-      if stderr then
-         gsd.eprint(stderr)
-      end
-   end
-
-   if gsd.verbose then
-      gsd.vprintf('%d lines:', #stdout_lines)
-      for i = 1, math.min(10, #stdout_lines) do
-         gsd.vprintf('\t%s', stdout_lines[i])
-      end
-   end
-
-   return stdout_lines, stderr
-end
+end, 3)
 
 local function process_abbrev_head(gitdir, head_str, path, cmd)
    if not gitdir then
@@ -421,54 +408,6 @@ Obj.has_moved = function(self)
          end
       end
    end
-end
-
-local associated_pr_query = [[
-  query associatedPRs($sha: String!, $repo: String!, $owner: String!){
-    repository(name: $repo, owner: $owner) {
-      commit: object(expression: $sha) {
-        ... on Commit {
-          associatedPullRequests(first:5){
-            edges { node { title number } }
-          }
-        }
-      }
-    }
-  }
-]]
-
-local associated_pr_template = [[
-  {{- if .data.repository.commit -}}
-  {{- range $edge := .data.repository.commit.associatedPullRequests.edges -}}
-  {{- printf "%.f %s" $edge.node.number $edge.node.title -}}
-  {{- end -}}
-  {{- end -}}
-]]
-
-Obj.associated_prs = function(self, sha)
-   local ret = {}
-
-   local result = command({
-      command = 'gh',
-      cwd = self.repo.toplevel,
-      args = {
-         'api', 'graphql',
-         '-f', 'query=' .. associated_pr_query,
-         '--template=' .. associated_pr_template,
-         '-F', "owner={owner}",
-         '-F', "repo={repo}",
-         '-F', 'sha=' .. sha,
-         '--paginate', },
-   })
-
-   for _, line in ipairs(result) do
-      local id, title = line:match('(%d+) (.*)')
-      if id and title then
-         ret[#ret + 1] = { id = tonumber(id), title = title }
-      end
-   end
-
-   return ret
 end
 
 Obj.new = function(file)

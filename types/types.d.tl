@@ -356,7 +356,6 @@ global record vim
 
     read_start: function(Pipe, function)
     new_pipe: function(boolean): Pipe
-
     shutdown: function(any, function)
     close: function(any, function)
   end

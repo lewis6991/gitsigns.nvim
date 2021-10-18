@@ -526,16 +526,6 @@ M.blame_line = void(function(full)
       vim.list_extend(lines, commit_message)
 
       if full then
-         local prs = bcache.git_obj:associated_prs(result.sha)
-         if #prs > 0 then
-            lines[#lines + 1] = ''
-            lines[#lines + 1] = 'Associated pull requests:'
-            add_highlight('Title')
-            for _, pr in ipairs(prs) do
-               lines[#lines + 1] = string.format('#%d: %s', pr.id, pr.title)
-            end
-         end
-
          hunk, ihunk, nhunk = get_blame_hunk(bcache.git_obj.repo, result)
       end
    else
