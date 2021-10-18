@@ -147,6 +147,12 @@ require('gitsigns').setup {
 For information on configuring neovim via lua please see
 [nvim-lua-guide](https://github.com/nanotee/nvim-lua-guide).
 
+## Non-Goals
+
+### Implement every feature in [vim-fugitive](https://github.com/tpope/vim-fugitive)
+
+This plugin is actively developed and by one of the most well regarded vim plugin developers. Gitsigns will only implement features of this plugin if: it is simple, or, the technologies leveraged by Gitsigns (LuaJIT, Libuv, Neovim's API, etc) can provide a better experience.
+
 ## Status Line
 
 Use `b:gitsigns_status` or `b:gitsigns_status_dict`. `b:gitsigns_status` is
