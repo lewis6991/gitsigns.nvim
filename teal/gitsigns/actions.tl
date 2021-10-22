@@ -667,16 +667,20 @@ local function buildqflist(target: integer|string): {vim.fn.QFItem}
       hunks_to_qflist(bufnr, bcache.hunks, qflist)
     end
   elseif target == 'all' then
-    local repos: {git.Repo:boolean} = {}
+    local repos: {string:git.Repo} = {}
     for _, bcache in pairs(cache as {integer:CacheEntry}) do
       local repo = bcache.git_obj.repo
-      repos[repo] = true
+      if not repos[repo.gitdir] then
+        repos[repo.gitdir] = repo
+      end
     end
 
     local repo = git.Repo.new(vim.fn.getcwd())
-    repos[repo] = true
+    if not repos[repo.gitdir] then
+      repos[repo.gitdir] = repo
+    end
 
-    for r, _ in pairs(repos) do
+    for _, r in pairs(repos) do
       for _, f in ipairs(r:files_changed()) do
         local f_abs = r.toplevel..'/'..f
         local stat = vim.loop.fs_stat(f_abs)
