@@ -162,9 +162,9 @@ M.schema = {
       Each key in the table defines the mode and key (whitespace delimited)
       for the mapping and the value defines what the key maps to. The value
       can be a table which can contain keys matching the options defined in
-      |map-arguments| which are: `expr`, `noremap`, `nowait`, `script`,
-      `silent`, `unique` and `buffer`.  These options can also be used in
-      the top level of the table to define default options for all mappings.
+      |map-arguments| which are: `expr`, `noremap`, `nowait`, `script`, `silent`
+      and `unique`.  These options can also be used in the top level of the
+      table to define default options for all mappings.
 
       Since this field is not extended (unlike |gitsigns-config-signs|),
       mappings defined in this field can be disabled by setting the whole field
