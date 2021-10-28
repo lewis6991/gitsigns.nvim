@@ -21,6 +21,7 @@ local Hunk_Public = gs_hunks.Hunk_Public
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
+local add_highlight = api.nvim_buf_add_highlight
 
 local NavHunkOpts = {}
 
@@ -437,17 +438,21 @@ end
 
 local function highlight_hunk_lines(bufnr, offset, hunk)
    for i = 1, #hunk.removed.lines do
-      api.nvim_buf_add_highlight(bufnr, -1, 'DiffRemoved', offset + i - 1, 0, -1)
+      add_highlight(bufnr, -1, 'GitSignsDeleteLn', offset + i - 1, 0, -1)
    end
    for i = 1, #hunk.added.lines do
-      api.nvim_buf_add_highlight(bufnr, -1, 'DiffAdded', #hunk.removed.lines + offset + i - 1, 0, -1)
+      add_highlight(bufnr, -1, 'GitSignsAddLn', #hunk.removed.lines + offset + i - 1, 0, -1)
    end
 
    if config.diff_opts.internal then
-      local regions = require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
-      for _, region in ipairs(regions) do
+      local removed_regions, added_regions = require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
+      for _, region in ipairs(removed_regions) do
          local line, scol, ecol = region[1], region[3], region[4]
-         api.nvim_buf_add_highlight(bufnr, -1, 'TermCursor', line + offset - 1, scol, ecol)
+         add_highlight(bufnr, -1, 'GitSignsDeleteInline', line + offset - 1, scol, ecol)
+      end
+      for _, region in ipairs(added_regions) do
+         local line, scol, ecol = region[1], region[3], region[4]
+         add_highlight(bufnr, -1, 'GitSignsAddInline', line + offset - 1, scol, ecol)
       end
    end
 end
@@ -499,7 +504,7 @@ M.preview_hunk = noautocmd(function()
 
    local _, bufnr = popup.create(lines, config.preview_config)
 
-   api.nvim_buf_add_highlight(bufnr, -1, 'Title', 0, 0, -1)
+   add_highlight(bufnr, -1, 'Title', 0, 0, -1)
 
    api.nvim_buf_set_var(cbuf, '_gitsigns_preview_open', true)
    vim.cmd([[autocmd CursorMoved,CursorMovedI <buffer> ++once silent! unlet b:_gitsigns_preview_open]])
@@ -637,7 +642,7 @@ M.blame_line = void(function(opts)
 
    local highlights = {}
 
-   local function add_highlight(hlgroup, start, length)
+   local function add_hl(hlgroup, start, length)
       highlights[#highlights + 1] = { hlgroup, #lines - 1, start or 0, length or -1 }
    end
 
@@ -660,9 +665,9 @@ M.blame_line = void(function(opts)
       local p2 = #result.author
       local p3 = #date
 
-      add_highlight('Directory', 0, p1)
-      add_highlight('MoreMsg', p1 + 1, p2)
-      add_highlight('Label', p1 + p2 + 2, p3 + 2)
+      add_hl('Directory', 0, p1)
+      add_hl('MoreMsg', p1 + 1, p2)
+      add_hl('Label', p1 + p2 + 2, p3 + 2)
 
       vim.list_extend(lines, commit_message)
 
@@ -671,7 +676,7 @@ M.blame_line = void(function(opts)
       end
    else
       lines[#lines + 1] = result.author
-      add_highlight('ErrorMsg')
+      add_hl('ErrorMsg')
       if full then
          scheduler()
          hunk, ihunk = get_cursor_hunk(bufnr, bcache.hunks)
@@ -682,7 +687,7 @@ M.blame_line = void(function(opts)
    if hunk then
       lines[#lines + 1] = ''
       lines[#lines + 1] = ('Hunk %d of %d'):format(ihunk, nhunk)
-      add_highlight('Title')
+      add_hl('Title')
       vim.list_extend(lines, gs_hunks.patch_lines(hunk))
    end
 
@@ -691,7 +696,7 @@ M.blame_line = void(function(opts)
 
    for _, h in ipairs(highlights) do
       local hlgroup, line, start, length = h[1], h[2], h[3], h[4]
-      api.nvim_buf_add_highlight(pbufnr, -1, hlgroup, line, start, start + length)
+      add_highlight(pbufnr, -1, hlgroup, line, start, start + length)
    end
 
    if hunk then

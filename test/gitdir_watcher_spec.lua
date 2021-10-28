@@ -33,11 +33,10 @@ describe('gitdir_watcher', function()
   it('can follow moved files', function()
     setup_test_repo()
     setup_gitsigns(test_config)
+    command('Gitsigns clear_debug')
     edit(test_file)
 
     match_debug_messages {
-      "run_job: git --no-pager --version",
-      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       'attach(1): Attaching (trigger=BufRead)',
       p"run_job: git .* config user.name",
       "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
