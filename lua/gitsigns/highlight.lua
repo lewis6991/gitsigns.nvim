@@ -7,71 +7,65 @@ local M = {}
 
 
 
-local GitSignHl = {}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 local hls = {
-   GitSignsAdd = { 'GitGutterAdd', 'SignifySignAdd', 'DiffAddedGutter', 'diffAdded', 'DiffAdd' },
-   GitSignsChange = { 'GitGutterChange', 'SignifySignChange', 'DiffModifiedGutter', 'diffChanged', 'DiffChange' },
-   GitSignsDelete = { 'GitGutterDelete', 'SignifySignDelete', 'DiffRemovedGutter', 'diffRemoved', 'DiffDelete' },
+   { GitSignsAdd = { 'GitGutterAdd', 'SignifySignAdd', 'DiffAddedGutter', 'diffAdded', 'DiffAdd' } },
+   { GitSignsChange = { 'GitGutterChange', 'SignifySignChange', 'DiffModifiedGutter', 'diffChanged', 'DiffChange' } },
+   { GitSignsDelete = { 'GitGutterDelete', 'SignifySignDelete', 'DiffRemovedGutter', 'diffRemoved', 'DiffDelete' } },
 
-   GitSignsAddNr = { 'GitGutterAddLineNr', 'GitSignsAdd', 'SignifySignAdd', 'DiffAddedGutter', 'diffAdded', 'DiffAdd' },
-   GitSignsChangeNr = { 'GitGutterChangeLineNr', 'GitSignsChange', 'SignifySignChange', 'DiffModifiedGutter', 'diffChanged', 'DiffChange' },
-   GitSignsDeleteNr = { 'GitGutterDeleteLineNr', 'GitSignsDelete', 'SignifySignDelete', 'DiffRemovedGutter', 'diffRemoved', 'DiffDelete' },
+   { GitSignsAddNr = { 'GitGutterAddLineNr', 'GitSignsAdd' } },
+   { GitSignsChangeNr = { 'GitGutterChangeLineNr', 'GitSignsChange' } },
+   { GitSignsDeleteNr = { 'GitGutterDeleteLineNr', 'GitSignsDelete' } },
 
-   GitSignsAddLn = { 'GitGutterAddLine', 'SignifyLineAdd', 'DiffAdd' },
-   GitSignsChangeLn = { 'GitGutterChangeLine', 'SignifyLineChange', 'DiffChange' },
-   GitSignsDeleteLn = { 'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete' },
+   { GitSignsAddLn = { 'GitGutterAddLine', 'SignifyLineAdd', 'DiffAdd' } },
+   { GitSignsChangeLn = { 'GitGutterChangeLine', 'SignifyLineChange', 'DiffChange' } },
+   { GitSignsDeleteLn = { 'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete' } },
 
-   GitSignsCurrentLineBlame = { 'NonText' },
+   { GitSignsCurrentLineBlame = { 'NonText' } },
+
+   { GitSignsAddInline = { 'TermCursor' } },
+   { GitSignsDeleteInline = { 'TermCursor' } },
+   { GitSignsChangeInline = { 'TermCursor' } },
+
+   { GitSignsAddLnInline = { 'GitSignsAddInline' } },
+   { GitSignsChangeLnInline = { 'GitSignsChangeInline' } },
+   { GitSignsDeleteLnInline = { 'GitSignsDeleteInline' } },
+
+   { GitSignsAddLnVirtLn = { 'GitSignsAddLn' } },
+   { GitSignsChangeVirtLn = { 'GitSignsChangeLn' } },
+   { GitSignsDeleteVirtLn = { 'GitSignsDeleteLn' } },
+
+   { GitSignsAddLnVirtLnInLine = { 'GitSignsAddLnInline' } },
+   { GitSignsChangeVirtLnInLine = { 'GitSignsChangeLnInline' } },
+   { GitSignsDeleteVirtLnInLine = { 'GitSignsDeleteLnInline' } },
 }
 
 local function is_hl_set(hl_name)
 
    local exists, hl = pcall(api.nvim_get_hl_by_name, hl_name, true)
-   local color = hl.foreground or hl.background
+   local color = hl.foreground or hl.background or hl.reverse
    return exists and color ~= nil
 end
 
-local function isGitSignHl(hl)
-   return hls[hl] ~= nil
-end
 
 
+M.setup_highlights = function()
+   for _, hlg in ipairs(hls) do
+      for hl, candidates in pairs(hlg) do
+         if is_hl_set(hl) then
 
-M.setup_highlight = function(hl_name)
-   if not isGitSignHl(hl_name) then
-      return
-   end
-
-   if is_hl_set(hl_name) then
-
-      dprintf('Highlight %s is already defined', hl_name)
-      return
-   end
-
-   for _, d in ipairs(hls[hl_name]) do
-      if is_hl_set(d) then
-         dprintf('Deriving %s from %s', hl_name, d)
-         vim.cmd(('highlight default link %s %s'):format(hl_name, d))
-         return
+            dprintf('Highlight %s is already defined', hl)
+         else
+            for _, d in ipairs(candidates) do
+               if is_hl_set(d) then
+                  dprintf('Deriving %s from %s', hl, d)
+                  vim.cmd(('highlight default link %s %s'):format(hl, d))
+                  break
+               end
+            end
+         end
       end
    end
-
-   dprintf('Unable to setup highlight %s', hl_name)
 end
 
 return M

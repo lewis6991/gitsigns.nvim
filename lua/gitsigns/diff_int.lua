@@ -50,11 +50,12 @@ local Region = {}
 local gaps_between_regions = 5
 
 function M.run_word_diff(removed, added)
-   if #removed ~= #added then
-      return {}
-   end
+   local adds = {}
+   local rems = {}
 
-   local ret = {}
+   if #removed ~= #added then
+      return rems, adds
+   end
 
    for i = 1, #removed do
 
@@ -93,14 +94,11 @@ function M.run_word_diff(removed, added)
       end
 
       for _, h in ipairs(hunks) do
-         local rem = { i, h.type, h.removed.start, h.removed.start + h.removed.count }
-         local add = { i + #removed, h.type, h.added.start, h.added.start + h.added.count }
-
-         ret[#ret + 1] = rem
-         ret[#ret + 1] = add
+         adds[#adds + 1] = { i + #removed, h.type, h.added.start, h.added.start + h.added.count }
+         rems[#rems + 1] = { i, h.type, h.removed.start, h.removed.start + h.removed.count }
       end
    end
-   return ret
+   return rems, adds
 end
 
 return M

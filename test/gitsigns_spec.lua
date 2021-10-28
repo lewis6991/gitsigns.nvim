@@ -107,12 +107,11 @@ describe('gitsigns', function()
 
   it('can open files not in a git repo', function()
     setup_gitsigns(config)
+    command('Gitsigns clear_debug')
     local tmpfile = os.tmpname()
     edit(tmpfile)
 
     match_debug_messages {
-      'run_job: git --no-pager --version',
-      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       'attach(1): Attaching (trigger=BufRead)',
       p'run_job: git .* config user.name',
       'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -158,11 +157,10 @@ describe('gitsigns', function()
     end)
 
     it('does not attach inside .git', function()
+      command("Gitsigns clear_debug")
       edit(scratch..'/.git/index')
 
       match_debug_messages {
-        'run_job: git --no-pager --version',
-        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufRead)',
         'new: In git dir',
         'attach(1): Empty git obj'
@@ -170,6 +168,7 @@ describe('gitsigns', function()
     end)
 
     it('doesn\'t attach to ignored files', function()
+      command("Gitsigns clear_debug")
       write_to_file(scratch..'/.gitignore', {'dummy_ignored.txt'})
 
       local ignored_file = scratch.."/dummy_ignored.txt"
@@ -178,8 +177,6 @@ describe('gitsigns', function()
       edit(ignored_file)
 
       match_debug_messages {
-        'run_job: git --no-pager --version',
-        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -191,11 +188,10 @@ describe('gitsigns', function()
     end)
 
     it('doesn\'t attach to non-existent files', function()
+      command("Gitsigns clear_debug")
       edit(newfile)
 
       match_debug_messages {
-        'run_job: git --no-pager --version',
-        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufNewFile)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -207,11 +203,10 @@ describe('gitsigns', function()
     end)
 
     it('doesn\'t attach to non-existent files with non-existent sub-dirs', function()
+      command("Gitsigns clear_debug")
       edit(scratch..'/does/not/exist')
 
       match_debug_messages {
-        'run_job: git --no-pager --version',
-        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufNewFile)',
         'attach(1): Not a path',
       }
@@ -221,10 +216,9 @@ describe('gitsigns', function()
     end)
 
     it('can run copen', function()
+      command("Gitsigns clear_debug")
       command("copen")
       match_debug_messages {
-        'run_job: git --no-pager --version',
-        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(2): Attaching (trigger=BufRead)',
         'attach(2): Non-normal buffer',
       }
@@ -340,11 +334,10 @@ describe('gitsigns', function()
           return false
         end
       ]])
+      command("Gitsigns clear_debug")
 
       edit(test_file)
       match_debug_messages {
-        'run_job: git --no-pager --version',
-        'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -455,10 +448,9 @@ describe('gitsigns', function()
 
       it('attaches to newly created files', function()
         setup_gitsigns(config)
+        command('Gitsigns clear_debug')
         edit(newfile)
         match_debug_messages{
-          'run_job: git --no-pager --version',
-          'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
           'attach(1): Attaching (trigger=BufNewFile)',
           'run_job: git --no-pager config user.name',
           'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
@@ -656,6 +648,7 @@ describe('gitsigns', function()
     write_to_file(scratch..'/t3.txt', {'hello lewis'})
 
     setup_gitsigns(config)
+    command('Gitsigns clear_debug')
 
     helpers.exc_exec("vimgrep ben "..scratch..'/*')
 
@@ -664,8 +657,6 @@ describe('gitsigns', function()
     }}}
 
     eq({
-      'run_job: git --no-pager --version',
-      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       'attach(2): attaching is disabled',
       'attach(3): attaching is disabled',
       'attach(4): attaching is disabled',
