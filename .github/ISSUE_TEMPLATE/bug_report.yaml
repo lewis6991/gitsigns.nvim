@@ -50,6 +50,8 @@ body:
       description: >
         Include the output of `:Gitsigns debug_messages`. If you think it's
         relevant maybe also provide the output of `:Gitsigns dump_cache`.
+        
+        Note: You must have `debug_mode = true` in `setup()`.
   - type: textarea
     attributes:
        label: "Minimal config"
