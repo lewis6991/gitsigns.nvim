@@ -198,7 +198,7 @@ Optional line highlighting                               | :white_check_mark:   
 Optional line number highlighting                        | :white_check_mark:   | :white_check_mark:                            |
 Optional counts on signs                                 | :white_check_mark:   |                                               |
 Customizable signs and mappings                          | :white_check_mark:   | :white_check_mark:                            |
-Customizable extra git-diff arguments                    |                      | :white_check_mark:                            |
+Customizable extra diff arguments                        | :white_check_mark:   | :white_check_mark:                            |
 Can be toggled globally or per buffer                    | :white_check_mark: * | :white_check_mark:                            | * Through the detach/attach functions
 Statusline integration                                   | :white_check_mark:   | :white_check_mark:                            |
 Works with [yadm](https://yadm.io/)                      | :white_check_mark:   |                                               |
