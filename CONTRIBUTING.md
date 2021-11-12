@@ -4,9 +4,9 @@
 - [Luarocks](https://luarocks.org/)
     - `brew install luarocks`
 - [Teal](https://github.com/teal-language/tl)
-    - `luarocks --lua-verions=5.1 install tl`
+    - `luarocks --lua-version=5.1 install tl`
 - [Inspect](https://github.com/kikito/inspect.lua)
-    - `luarocks --lua-verions=5.1 install inspect`
+    - `luarocks --lua-version=5.1 install inspect`
 
 ## Writing Teal
 
