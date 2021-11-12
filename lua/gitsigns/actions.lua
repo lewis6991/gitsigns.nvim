@@ -752,7 +752,7 @@ M.get_actions = function()
       add_action('blame_line')
    end
 
-   if bcache.staged_diffs then
+   if not vim.tbl_isempty(bcache.staged_diffs) then
       add_action('undo_stage_hunk')
    end
 
