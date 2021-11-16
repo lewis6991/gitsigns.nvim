@@ -1,3 +1,12 @@
+local warn
+do
+
+   local ok, ret = pcall(require, 'gitsigns.message')
+   if ok then
+      warn = ret.warn
+   end
+end
+
 local SchemaElem = {Deprecated = {}, }
 
 
@@ -15,6 +24,7 @@ local SchemaElem = {Deprecated = {}, }
 
 
 local M = {Config = {DiffOpts = {}, SignsConfig = {}, watch_gitdir = {}, current_line_blame_formatter_opts = {}, current_line_blame_opts = {}, yadm = {}, }, }
+
 
 
 
@@ -441,6 +451,8 @@ M.schema = {
         • delay: integer
           Sets the delay (in milliseconds) before blame virtual text is
           displayed.
+        • ignore_whitespace: boolean
+          Ignore whitespace when running blame.
     ]],
    },
 

@@ -48,6 +48,7 @@ build = {
     ['gitsigns.hunks']                 = 'lua/gitsigns/hunks.lua',
     ['gitsigns.manager']               = 'lua/gitsigns/manager.lua',
     ['gitsigns.mappings']              = 'lua/gitsigns/mappings.lua',
+    ['gitsigns.message']               = 'lua/gitsigns/message.lua',
     ['gitsigns.popup']                 = 'lua/gitsigns/popup.lua',
     ['gitsigns.repeat']                = 'lua/gitsigns/repeat.lua',
     ['gitsigns.signs']                 = 'lua/gitsigns/signs.lua',

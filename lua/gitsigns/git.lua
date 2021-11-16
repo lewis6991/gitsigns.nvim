@@ -322,7 +322,7 @@ Obj.unstage_file = function(self)
    self:command({ 'reset', self.file })
 end
 
-Obj.run_blame = function(self, lines, lnum)
+Obj.run_blame = function(self, lines, lnum, ignore_whitespace)
    if not self.object_name or self.repo.abbrev_head == '' then
 
 
@@ -340,6 +340,7 @@ Obj.run_blame = function(self, lines, lnum)
       '-L', lnum .. ',+1',
       '--line-porcelain',
       self.file,
+      ignore_whitespace and '-w' or nil,
    }, {
       writer = lines,
    })

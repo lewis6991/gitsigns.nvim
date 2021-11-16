@@ -179,10 +179,17 @@ preview_hunk()                                       *gitsigns.preview_hunk()*
                 Preview the hunk at the cursor position in a floating
                 window.
 
-blame_line({full})                                     *gitsigns.blame_line()*
+blame_line({opts})                                     *gitsigns.blame_line()*
                 Run git blame on the current line and show the results in a
-                floating window. If {full} is true then the full commit
-                message is displayed along with the corresponding hunk.
+                floating window.
+
+                Parameters: ~
+                    {opts}   (table|nil):
+                             Additional options:
+                             • {full}: (boolean)
+                               Display full commit message
+                             • {ignore_whitespace}: (boolean)
+                               Ignore whitespace when running blame.
 
                 Attributes: ~
                     {async}
@@ -637,6 +644,8 @@ current_line_blame_opts              *gitsigns-config-current_line_blame_opts*
         • delay: integer
           Sets the delay (in milliseconds) before blame virtual text is
           displayed.
+        • ignore_whitespace: boolean
+          Ignore whitespace when running blame.
 
 current_line_blame_formatter_opts
                            *gitsigns-config-current_line_blame_formatter_opts*

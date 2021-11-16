@@ -1,3 +1,12 @@
+local warn: function(string)
+do
+  -- this is included in gen_help.lua so don't error if requires fail
+  local ok, ret = pcall(require, 'gitsigns.message')
+  if ok then
+    warn = ret.warn as function(string)
+  end
+end
+
 local record SchemaElem
   type: string
   deep_extend: boolean
@@ -71,6 +80,7 @@ local record M
       virt_text_pos: VirtTextPos
 
       delay: integer
+      ignore_whitespace: boolean
     end
 
     preview_config: {string:any}
@@ -441,6 +451,8 @@ M.schema = {
         • delay: integer
           Sets the delay (in milliseconds) before blame virtual text is
           displayed.
+        • ignore_whitespace: boolean
+          Ignore whitespace when running blame.
     ]]
   },
 

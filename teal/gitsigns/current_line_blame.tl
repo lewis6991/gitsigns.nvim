@@ -31,9 +31,10 @@ end
 -- Update function, must be called in async context
 M.update = void(function()
   M.reset()
+  local opts = config.current_line_blame_opts
 
   -- Note because the same timer is re-used, this call has a debouncing effect.
-  wait_timer(timer, config.current_line_blame_opts.delay, 0)
+  wait_timer(timer, opts.delay, 0)
   scheduler()
 
   local bufnr = current_buf()
@@ -44,7 +45,7 @@ M.update = void(function()
 
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = bcache.git_obj:run_blame(buftext, lnum)
+  local result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
 
   scheduler()
 
@@ -62,7 +63,7 @@ M.update = void(function()
   end
 
   api.nvim_buf_set_var(bufnr, 'gitsigns_blame_line_dict', result)
-  if config.current_line_blame_opts.virt_text then
+  if opts.virt_text then
     api.nvim_buf_set_extmark(bufnr, namespace, lnum-1, 0, {
       id = 1,
       virt_text = config.current_line_blame_formatter(
@@ -70,7 +71,7 @@ M.update = void(function()
         result,
         config.current_line_blame_formatter_opts
       ),
-      virt_text_pos = config.current_line_blame_opts.virt_text_pos,
+      virt_text_pos = opts.virt_text_pos,
       hl_mode = 'combine',
     })
   end
