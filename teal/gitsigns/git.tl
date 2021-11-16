@@ -83,7 +83,7 @@ local record M
     command              : function(Obj, {string}, GJobSpec): {string}, string
     update_file_info     : function(Obj): boolean
     unstage_file         : function(Obj, string, string)
-    run_blame            : function(Obj, {string}, number): BlameInfo
+    run_blame            : function(Obj, {string}, number, boolean): BlameInfo
     file_info            : function(Obj, string): string, string, string, boolean
     ensure_file_in_index : function(Obj)
     stage_hunks          : function(Obj, {Hunk}, boolean)
@@ -322,7 +322,7 @@ Obj.unstage_file = function(self: Obj)
   self:command{'reset', self.file }
 end
 
-Obj.run_blame = function(self: Obj, lines: {string}, lnum: number): M.BlameInfo
+Obj.run_blame = function(self: Obj, lines: {string}, lnum: number, ignore_whitespace: boolean): M.BlameInfo
   if not self.object_name or self.repo.abbrev_head == '' then
     -- As we support attaching to untracked files we need to return something if
     -- the file isn't isn't tracked in git.
@@ -339,7 +339,8 @@ Obj.run_blame = function(self: Obj, lines: {string}, lnum: number): M.BlameInfo
       '--contents', '-',
       '-L', lnum..',+1',
       '--line-porcelain',
-      self.file
+      self.file,
+      ignore_whitespace and '-w' or nil,
     }, {
     writer = lines,
   })

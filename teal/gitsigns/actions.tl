@@ -9,6 +9,7 @@ local signs         = require('gitsigns.signs')
 local util          = require('gitsigns.util')
 local manager       = require('gitsigns.manager')
 local git           = require('gitsigns.git')
+local warn          = require('gitsigns.message').warn
 
 local gs_cache       = require('gitsigns.cache')
 local cache          = gs_cache.cache
@@ -474,10 +475,25 @@ local function get_blame_hunk(repo: git.Repo, info: git.BlameInfo): Hunk, intege
   return hunk, i, #hunks
 end
 
-M.blame_line = void(function(full: boolean)
+local record BlameOpts
+  full: boolean
+  ignore_whitespace: boolean
+end
+
+M.blame_line = void(function(opts0: boolean | BlameOpts)
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then return end
+
+  local full: boolean
+  local opts: BlameOpts
+  if opts0 is boolean then
+    warn('Passing boolean as first argument to blame_line is now deprecated; please pass an options table')
+    full = opts0
+  else
+    full = opts0.full
+    opts = opts0
+  end
 
   local loading = defer(1000, function()
     popup.create({'Loading...'}, config.preview_config)
@@ -486,7 +502,7 @@ M.blame_line = void(function(full: boolean)
   scheduler()
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = bcache.git_obj:run_blame(buftext, lnum)
+  local result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
   pcall(function()
     loading:close()
   end)
