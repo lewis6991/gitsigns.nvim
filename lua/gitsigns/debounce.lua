@@ -37,4 +37,39 @@ function M.throttle_leading(ms, fn)
    end
 end
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function M.throttle_by_id(fn)
+   local scheduled = {}
+   local running = {}
+   return function(id, ...)
+      if scheduled[id] then
+
+         return
+      end
+      scheduled[id] = true
+      if running[id] then
+         return
+      end
+      while scheduled[id] do
+         scheduled[id] = nil
+         running[id] = true
+         fn(id, ...)
+         running[id] = nil
+      end
+   end
+end
+
 return M

@@ -1,6 +1,5 @@
 local void = require('plenary.async.async').void
-local async_util = require('plenary.async.util')
-local scheduler = async_util.scheduler
+local scheduler = require('plenary.async.util').scheduler
 
 local gs_cache = require('gitsigns.cache')
 local CacheEntry = gs_cache.CacheEntry
@@ -12,6 +11,7 @@ local Sign              = signs.Sign
 local Status            = require("gitsigns.status")
 
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
+local throttle_by_id    = require('gitsigns.debounce').throttle_by_id
 local gs_debug          = require("gitsigns.debug")
 local dprint            = gs_debug.dprint
 local dprintf           = gs_debug.dprintf
@@ -215,6 +215,7 @@ end
 local update_cnt = 0
 
 local update0 = function(bufnr: integer, bcache: CacheEntry)
+  local __FUNC__ = 'update'
   bcache = bcache or cache[bufnr]
   if not bcache then
     eprint('Cache for buffer '..bufnr..' was nil')
@@ -262,30 +263,12 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
   dprintf('updates: %s, jobs: %s', update_cnt, subprocess.job_cnt)
 end
 
+
 -- Ensure updates cannot be interleaved.
 -- Since updates are asynchronous we need to make sure an update isn't performed
 -- whilst another one is in progress. If this happens then schedule another
 -- update after the current one has completed.
-do
-  local running = false
-  local scheduled: {integer:boolean} = {}
-  M.update = function(bufnr: integer, bcache: CacheEntry)
-    scheduled[bufnr] = true
-    if not running then
-      running = true
-      while scheduled[bufnr] do
-        scheduled[bufnr] = nil
-        update0(bufnr, bcache)
-      end
-      running = false
-    else
-      -- Wait until all updates have finished
-      while running do
-        async_util.sleep(100)
-      end
-    end
-  end
-end
+M.update = throttle_by_id(update0) as function(integer, CacheEntry)
 
 M.setup = function()
   M.update_debounced = debounce_trailing(config.update_debounce, void(M.update)) as function(integer)
