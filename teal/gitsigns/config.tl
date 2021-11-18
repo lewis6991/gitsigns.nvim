@@ -159,7 +159,7 @@ M.schema = {
       ['v <leader>hr'] = '<cmd>lua require"gitsigns".reset_hunk({vim.fn.line("."), vim.fn.line("v")})<CR>',
       ['n <leader>hR'] = '<cmd>lua require"gitsigns".reset_buffer()<CR>',
       ['n <leader>hp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
-      ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line(true)<CR>',
+      ['n <leader>hb'] = '<cmd>lua require"gitsigns".blame_line{full=true}<CR>',
       ['n <leader>hS'] = '<cmd>lua require"gitsigns".stage_buffer()<CR>',
       ['n <leader>hU'] = '<cmd>lua require"gitsigns".reset_buffer_index()<CR>',
 
