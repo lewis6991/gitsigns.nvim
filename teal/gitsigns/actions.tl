@@ -480,20 +480,21 @@ local record BlameOpts
   ignore_whitespace: boolean
 end
 
-M.blame_line = void(function(opts0: boolean | BlameOpts)
-  opts0 = opts0 or {}
+M.blame_line = void(function(opts: boolean | BlameOpts)
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then return end
 
   local full: boolean
-  local opts: BlameOpts
-  if opts0 is boolean then
-    warn('Passing boolean as first argument to blame_line is now deprecated; please pass an options table')
-    full = opts0
+  local ignore_whitespace: boolean
+  if opts is boolean then
+    -- Remove after v0.4
+    warn('Passing boolean as the first argument to blame_line is now deprecated; please pass an options table')
+    full = opts
   else
-    full = opts0.full
-    opts = opts0
+    opts = opts or {}
+    full = opts.full
+    ignore_whitespace = opts.ignore_whitespace
   end
 
   local loading = defer(1000, function()
@@ -503,7 +504,7 @@ M.blame_line = void(function(opts0: boolean | BlameOpts)
   scheduler()
   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
+  local result = bcache.git_obj:run_blame(buftext, lnum, ignore_whitespace)
   pcall(function()
     loading:close()
   end)
