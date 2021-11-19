@@ -628,7 +628,7 @@ M.schema = {
    use_internal_diff = { deprecated = { new_field = 'diff_opts.internal' } },
 }
 
-local function warn(s, ...)
+warn = function(s, ...)
    vim.notify(s:format(...), vim.log.levels.WARN, { title = 'gitsigns' })
 end
 

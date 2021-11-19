@@ -1,9 +1,9 @@
-local warn: function(string)
+local warn: function(string, ...: any)
 do
   -- this is included in gen_help.lua so don't error if requires fail
   local ok, ret = pcall(require, 'gitsigns.message')
   if ok then
-    warn = ret.warn as function(string)
+    warn = ret.warn
   end
 end
 
@@ -628,7 +628,7 @@ M.schema = {
   use_internal_diff           = { deprecated = {new_field = 'diff_opts.internal'} },
 }
 
-local function warn(s: string, ...:any)
+warn = function(s: string, ...: any)
   vim.notify(s:format(...), vim.log.levels.WARN, {title = 'gitsigns'})
 end
 

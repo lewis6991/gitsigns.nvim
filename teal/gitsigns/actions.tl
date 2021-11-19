@@ -481,6 +481,7 @@ local record BlameOpts
 end
 
 M.blame_line = void(function(opts0: boolean | BlameOpts)
+  opts0 = opts0 or {}
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then return end
