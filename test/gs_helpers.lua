@@ -76,13 +76,14 @@ function M.setup_git()
   M.git{'config', 'init.defaultBranch', 'master'}
 end
 
-function M.setup_test_repo(no_add)
+function M.setup_test_repo(opts)
+  local text = opts and opts.test_file_text or test_file_text
   M.cleanup()
   system{"mkdir", M.scratch}
   M.setup_git()
   system{"touch", M.test_file}
-  M.write_to_file(M.test_file, test_file_text)
-  if not no_add then
+  M.write_to_file(M.test_file, text)
+  if not (opts and opts.no_add) then
     M.git{"add", M.test_file}
     M.git{"commit", "-m", "init commit"}
   end

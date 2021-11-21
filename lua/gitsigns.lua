@@ -394,8 +394,8 @@ M._run_func = function(range, func, ...)
    local args = parse_args_to_lua(...)
 
    if type(actions0[func]) == 'function' then
-      if range and range[1] ~= range[2] then
-         actions.user_range = range
+      if range and range[1] > 0 then
+         actions.user_range = { range[2], range[3] }
       else
          actions.user_range = nil
       end
@@ -439,7 +439,7 @@ local function setup_command()
       '-nargs=+',
       '-complete=customlist,v:lua.package.loaded.gitsigns._complete',
       'Gitsigns',
-      'lua require("gitsigns")._run_func({<line1>, <line2>}, <f-args>)',
+      'lua require("gitsigns")._run_func({<range>, <line1>, <line2>}, <f-args>)',
    }, ' '))
 end
 

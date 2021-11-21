@@ -189,7 +189,7 @@ Stage/reset all hunks in buffer                          | :white_check_mark:   
 Undo staged hunks                                        | :white_check_mark:   |                                               |
 Word diff in buffer                                      | :white_check_mark:   |                                               |
 Word diff in hunk preview                                | :white_check_mark:   | :white_check_mark:                            |
-Stage partial hunks                                      |                      | :white_check_mark:                            |
+Stage partial hunks                                      | :white_check_mark:   |                                               |
 Hunk text object                                         | :white_check_mark:   | :white_check_mark:                            |
 Diff against index or any commit                         | :white_check_mark:   | :white_check_mark:                            |
 Folding of unchanged text                                |                      | :white_check_mark:                            |

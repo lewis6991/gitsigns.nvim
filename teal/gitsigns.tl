@@ -32,7 +32,7 @@ local record M
   -- Internal, API unstable
   _update_highlights : function()
   _update_cwd_head   : function()
-  _run_func          : function(range: {integer, integer}, func: string, ...: any)
+  _run_func          : function(range: {integer, integer, integer}, func: string, ...: any)
   _complete          : function(arglead: string, line: string): {string}
   _attach_enable     : function()
   _attach_disable    : function()
@@ -387,15 +387,15 @@ local function parse_args_to_lua(...: string): {any}
   return args
 end
 
-M._run_func = function(range: {integer, integer}, func: string, ...: string)
+M._run_func = function(range: {integer, integer, integer}, func: string, ...: string)
   local actions = require('gitsigns.actions')
   local actions0 = actions as {string:function}
 
   local args = parse_args_to_lua(...)
 
   if type(actions0[func]) == 'function' then
-    if range and range[1] ~= range[2] then
-      actions.user_range = range
+    if range and range[1] > 0 then
+      actions.user_range = {range[2], range[3]}
     else
       actions.user_range = nil
     end
@@ -439,7 +439,7 @@ local function setup_command()
     '-nargs=+',
     '-complete=customlist,v:lua.package.loaded.gitsigns._complete',
     'Gitsigns',
-    'lua require("gitsigns")._run_func({<line1>, <line2>}, <f-args>)'
+    'lua require("gitsigns")._run_func({<range>, <line1>, <line2>}, <f-args>)'
   }, ' '))
 end
 
