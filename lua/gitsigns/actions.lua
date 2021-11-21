@@ -77,28 +77,8 @@ local function get_cursor_hunk(bufnr, hunks)
    return gs_hunks.find_hunk(lnum, hunks)
 end
 
-
-
-
-
-local function get_range_hunks(hunks, range)
-   local ret = {}
-   for _, hunk in ipairs(hunks) do
-      if range[1] == 1 and hunk.start == 0 and hunk.vend == 0 then
-         return { hunk }
-      end
-
-      if (range[2] >= hunk.start and range[1] <= hunk.vend) then
-         ret[#ret + 1] = hunk
-      end
-   end
-
-   return ret
-end
-
 M.stage_hunk = mk_repeatable(void(function(range)
    range = range or M.user_range
-   local valid_range = false
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -110,29 +90,33 @@ M.stage_hunk = mk_repeatable(void(function(range)
       return
    end
 
-   local hunks = {}
+   local hunk
 
-   if range and range[1] ~= range[2] then
-      valid_range = true
+   if range then
       table.sort(range)
-      hunks = get_range_hunks(bcache.hunks, range)
+      local top, bot = range[1], range[2]
+      hunk = gs_hunks.create_partial_hunk(bcache.hunks, top, bot)
+      hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
+      hunk.removed.lines = vim.list_slice(
+      bcache.compare_text,
+      hunk.removed.start,
+      hunk.removed.start + hunk.removed.count - 1)
+
    else
-      hunks[1] = get_cursor_hunk(bufnr, bcache.hunks)
+      hunk = get_cursor_hunk(bufnr, bcache.hunks)
    end
 
-   if #hunks == 0 then
+   if not hunk then
       return
    end
 
-   bcache.git_obj:stage_hunks(hunks)
+   bcache.git_obj:stage_hunks({ hunk })
 
-   for _, hunk in ipairs(hunks) do
-      table.insert(bcache.staged_diffs, hunk)
-   end
+   table.insert(bcache.staged_diffs, hunk)
 
    bcache.compare_text = nil
 
-   local hunk_signs = gs_hunks.process_hunks(hunks)
+   local hunk_signs = gs_hunks.process_hunks({ hunk })
 
    scheduler()
 
@@ -152,34 +136,41 @@ end))
 M.reset_hunk = mk_repeatable(function(range)
    range = range or M.user_range
    local bufnr = current_buf()
-   local hunks = {}
-
-   if range and range[1] ~= range[2] then
-      table.sort(range)
-      hunks = get_range_hunks(cache[bufnr].hunks, range)
-   else
-      hunks[1] = get_cursor_hunk(bufnr)
-   end
-
-   if #hunks == 0 then
+   local bcache = cache[bufnr]
+   if not bcache then
       return
    end
 
-   local offset = 0
+   local hunk
 
-   for _, hunk in ipairs(hunks) do
-      local lstart, lend
-      if hunk.type == 'delete' then
-         lstart = hunk.start
-         lend = hunk.start
-      else
-         lstart = hunk.start - 1
-         lend = hunk.start - 1 + hunk.added.count
-      end
-      local lines = hunk.removed.lines
-      api.nvim_buf_set_lines(bufnr, lstart + offset, lend + offset, false, lines)
-      offset = offset + (#lines - (lend - lstart))
+   if range then
+      table.sort(range)
+      local top, bot = range[1], range[2]
+      hunk = gs_hunks.create_partial_hunk(bcache.hunks, top, bot)
+      hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
+      hunk.removed.lines = vim.list_slice(
+      bcache.compare_text,
+      hunk.removed.start,
+      hunk.removed.start + hunk.removed.count - 1)
+
+   else
+      hunk = get_cursor_hunk(bufnr)
    end
+
+   if not hunk then
+      return
+   end
+
+   local lstart, lend
+   if hunk.type == 'delete' then
+      lstart = hunk.start
+      lend = hunk.start
+   else
+      lstart = hunk.start - 1
+      lend = hunk.start - 1 + hunk.added.count
+   end
+   local lines = hunk.removed.lines
+   api.nvim_buf_set_lines(bufnr, lstart, lend, false, lines)
 end)
 
 M.reset_buffer = function()

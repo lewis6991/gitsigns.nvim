@@ -363,6 +363,7 @@ global record vim
   in_fast_event: function(): boolean
 
   list_extend: function({any}, {any}, integer, integer)
+  list_slice: function<T>({T}, integer, integer): {T}
   record log
     record levels
       WARN: integer

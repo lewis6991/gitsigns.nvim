@@ -29,10 +29,6 @@ function M.run_diff(fa: {string}, fb: {string}, diff_algo: string, indent_heuris
   for _, r in ipairs(results) do
     local rs, rc, as, ac = unpack(r)
     local hunk = create_hunk(rs, rc, as, ac)
-    hunk.head = ('@@ -%d%s +%d%s @@'):format(
-      rs, rc > 0 and ','..rc or '',
-      as, ac > 0 and ','..ac or ''
-    )
     if rc > 0 then
       for i = rs, rs+rc-1 do
         hunk.removed.lines[#hunk.removed.lines+1] = fa[i] or ''
