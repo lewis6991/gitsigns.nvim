@@ -321,6 +321,7 @@ local function nav_hunk(opts: NavHunkOpts)
     if row == 0 then
       row = 1
     end
+    vim.cmd [[ normal! m' ]] -- add current cursor position to the jump list
     api.nvim_win_set_cursor(0, {row, 0})
     if opts.foldopen then
       vim.cmd('silent! foldopen!')
