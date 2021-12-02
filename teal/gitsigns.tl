@@ -54,7 +54,7 @@ local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: s
     do_update = true
   elseif git_obj.orig_relpath then
     local orig_file = git_obj.repo.toplevel..util.path_sep..git_obj.orig_relpath
-    if git_obj:file_info(orig_file) then
+    if git_obj:file_info(orig_file).relpath then
       dprintf('Moved file reset')
       git_obj.relpath = git_obj.orig_relpath
       git_obj.orig_relpath = nil
@@ -67,7 +67,7 @@ local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: s
   if do_update then
     git_obj.file = git_obj.repo.toplevel..util.path_sep..git_obj.relpath
     bcache.file = git_obj.file
-    bcache.git_obj:update_file_info()
+    git_obj:update_file_info()
     scheduler()
     api.nvim_buf_set_name(bufnr, bcache.file)
   end
