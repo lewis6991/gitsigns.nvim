@@ -5,6 +5,7 @@ local scheduler = require('plenary.async.util').scheduler
 
 local cache  = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
+local BlameInfo = require('gitsigns.git').BlameInfo
 
 local api = vim.api
 
@@ -28,6 +29,39 @@ M.reset = function(bufnr: integer)
   pcall(api.nvim_buf_del_var, bufnr, 'gitsigns_blame_line_dict')
 end
 
+-- TODO: expose as config
+local max_cache_size = 1000
+
+local record BlameCache
+  record Elem
+    tick: integer
+    cache: {integer:BlameInfo}
+    size: integer
+  end
+  contents: {integer:Elem}
+end
+
+BlameCache.contents = {}
+
+function BlameCache:init_or_invalidate(bufnr: integer)
+  local tick = api.nvim_buf_get_var(bufnr, 'changedtick') as integer
+  if not self.contents[bufnr] or self.contents[bufnr].tick ~= tick then
+    self.contents[bufnr] = {tick = tick, cache = {}, size = 0}
+  end
+end
+
+function BlameCache:add(bufnr: integer, lnum: integer, x: BlameInfo)
+  local scache = self.contents[bufnr]
+  if scache.size <= max_cache_size then
+    scache.cache[lnum] = x
+    scache.size = scache.size + 1
+  end
+end
+
+function BlameCache:get(bufnr: integer, lnum: integer): BlameInfo
+  return self.contents[bufnr].cache[lnum]
+end
+
 -- Update function, must be called in async context
 M.update = void(function()
   M.reset()
@@ -43,9 +77,15 @@ M.update = void(function()
     return
   end
 
-  local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
+
+  BlameCache:init_or_invalidate(bufnr)
+  local result = BlameCache:get(bufnr, lnum)
+  if not result then
+    local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+    result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
+    BlameCache:add(bufnr, lnum, result)
+  end
 
   scheduler()
 

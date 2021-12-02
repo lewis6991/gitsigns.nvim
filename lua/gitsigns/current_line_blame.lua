@@ -5,6 +5,7 @@ local scheduler = require('plenary.async.util').scheduler
 
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
+local BlameInfo = require('gitsigns.git').BlameInfo
 
 local api = vim.api
 
@@ -29,6 +30,39 @@ M.reset = function(bufnr)
 end
 
 
+local max_cache_size = 1000
+
+local BlameCache = {Elem = {}, }
+
+
+
+
+
+
+
+
+BlameCache.contents = {}
+
+function BlameCache:init_or_invalidate(bufnr)
+   local tick = api.nvim_buf_get_var(bufnr, 'changedtick')
+   if not self.contents[bufnr] or self.contents[bufnr].tick ~= tick then
+      self.contents[bufnr] = { tick = tick, cache = {}, size = 0 }
+   end
+end
+
+function BlameCache:add(bufnr, lnum, x)
+   local scache = self.contents[bufnr]
+   if scache.size <= max_cache_size then
+      scache.cache[lnum] = x
+      scache.size = scache.size + 1
+   end
+end
+
+function BlameCache:get(bufnr, lnum)
+   return self.contents[bufnr].cache[lnum]
+end
+
+
 M.update = void(function()
    M.reset()
    local opts = config.current_line_blame_opts
@@ -43,9 +77,15 @@ M.update = void(function()
       return
    end
 
-   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
    local lnum = api.nvim_win_get_cursor(0)[1]
-   local result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
+
+   BlameCache:init_or_invalidate(bufnr)
+   local result = BlameCache:get(bufnr, lnum)
+   if not result then
+      local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+      result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
+      BlameCache:add(bufnr, lnum, result)
+   end
 
    scheduler()
 
