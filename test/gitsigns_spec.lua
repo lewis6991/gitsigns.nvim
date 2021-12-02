@@ -85,7 +85,7 @@ describe('gitsigns', function()
         'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
-        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard '..test_file),
+        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..test_file),
         'watch_gitdir(1): Watching git dir',
         p'run_job: git .* show :0:dummy.txt',
         'update(1): updates: 1, jobs: 7'
@@ -196,7 +196,7 @@ describe('gitsigns', function()
         'attach(1): Attaching (trigger=BufNewFile)',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
-        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard '..newfile),
+        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..newfile),
         'attach(1): Not a file',
       }
 
@@ -286,7 +286,7 @@ describe('gitsigns', function()
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'run_job: git --no-pager rev-parse --short HEAD',
-        p'run_job: git %-%-no%-pager %-%-git%-dir=.* %-%-stage %-%-others %-%-exclude%-standard .*',
+        p'run_job: git %-%-no%-pager %-%-git%-dir=.* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*',
         'attach(1): User on_attach() returned false',
       }
     end)

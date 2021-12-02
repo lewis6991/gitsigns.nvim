@@ -792,9 +792,10 @@ M.diffthis = void(function(base: string)
 
   local text: {string}
   local err: string
-  local comp_obj = bcache:get_compare_obj(calc_base(base))
+  local comp_rev = bcache:get_compare_rev(calc_base(base))
+
   if base then
-    text, err = bcache.git_obj.repo:get_show_text(comp_obj)
+    text, err = bcache.git_obj:get_show_text(comp_rev)
     if ff == 'dos' then
       text = strip_cr(text)
     end
@@ -809,7 +810,11 @@ M.diffthis = void(function(base: string)
 
   local ft = api.nvim_buf_get_option(bufnr, 'filetype')
 
-  local bufname = string.format('gitsigns://%s/%s', bcache.git_obj.repo.gitdir, comp_obj)
+  local bufname = string.format(
+    'gitsigns://%s/%s',
+    bcache.git_obj.repo.gitdir,
+    comp_rev..':'..bcache.git_obj.relpath
+  )
 
   -- TDOD lewis6991 (27/05/21): Respect 'vertical' in diffopt
   vim.cmd("keepalt aboveleft vertical split "..bufname)

@@ -71,6 +71,16 @@ local record M
     new                : function(string): Repo
   end
 
+  record FileProps
+    relpath       : string
+    orig_relpath  : string -- Use for tracking moved files
+    object_name   : string
+    mode_bits     : string
+    has_conflicts : boolean
+    i_crlf        : boolean  -- Object has crlf
+    w_crlf        : boolean  -- Working copy has crlf
+  end
+
   record Obj
     repo          : Repo
     file          : string
@@ -79,12 +89,15 @@ local record M
     object_name   : string
     mode_bits     : string
     has_conflicts : boolean
+    i_crlf        : boolean  -- Object has crlf
+    w_crlf        : boolean  -- Working copy has crlf
 
     command              : function(Obj, {string}, GJobSpec): {string}, string
-    update_file_info     : function(Obj): boolean
+    update_file_info     : function(Obj, boolean): boolean
     unstage_file         : function(Obj, string, string)
     run_blame            : function(Obj, {string}, number, boolean): BlameInfo
-    file_info            : function(Obj, string): string, string, string, boolean
+    file_info            : function(Obj, string): FileProps
+    get_show_text        : function(Obj, string): {string}, string
     ensure_file_in_index : function(Obj)
     stage_hunks          : function(Obj, {Hunk}, boolean)
     has_moved            : function(Obj): string
@@ -278,44 +291,70 @@ Obj.command = function(self: Obj, args: {string}, spec: GJobSpec): {string}, str
   return self.repo:command(args, spec)
 end
 
-Obj.update_file_info = function(self: Obj): boolean
+Obj.update_file_info = function(self: Obj, update_relpath: boolean): boolean
   local old_object_name = self.object_name
-  _, self.object_name, self.mode_bits, self.has_conflicts = self:file_info()
+  local props = self:file_info()
+
+  if update_relpath then
+    self.relpath = props.relpath
+  end
+  self.object_name   = props.object_name
+  self.mode_bits     = props.mode_bits
+  self.has_conflicts = props.has_conflicts
+  self.i_crlf        = props.i_crlf
+  self.w_crlf        = props.w_crlf
 
   return old_object_name ~= self.object_name
 end
 
-Obj.file_info = function(self: Obj, file: string): string, string, string, boolean
+Obj.file_info = function(self: Obj, file: string): M.FileProps
   local results = self:command({
     'ls-files',
     '--stage',
     '--others',
     '--exclude-standard',
+    '--eol',
     file or self.file
   })
 
-  local relpath: string
-  local object_name: string
-  local mode_bits: string
-  local stage: number
-  local has_conflict: boolean = false
+  local result: M.FileProps = {}
   for _, line in ipairs(results) do
     local parts = vim.split(line, '\t')
-    if #parts > 1 then -- tracked file
-      relpath = parts[2]
+    if #parts > 2 then -- tracked file
+      local eol = vim.split(parts[2], '%s+')
+      result.i_crlf = eol[1] == 'i/crlf'
+      result.w_crlf = eol[2] == 'w/crlf'
+      result.relpath = parts[3]
       local attrs = vim.split(parts[1], '%s+')
-      stage = tonumber(attrs[3])
+      local stage = tonumber(attrs[3])
       if stage <= 1 then
-          mode_bits   = attrs[1]
-          object_name = attrs[2]
+          result.mode_bits   = attrs[1]
+          result.object_name = attrs[2]
       else
-          has_conflict = true
+          result.has_conflicts = true
       end
     else -- untracked file
-      relpath = parts[1]
+      result.relpath = parts[2]
     end
   end
-  return relpath, object_name, mode_bits, has_conflict
+  return result
+end
+
+Obj.get_show_text = function(self: Obj, revision: string): {string}, string
+  if not self.relpath then
+    return {}
+  end
+
+  local stdout, stderr =  self.repo:get_show_text(revision..':'..self.relpath)
+
+  if not self.i_crlf and self.w_crlf then
+    -- Add cr
+    for i = 1, #stdout do
+      stdout[i] = stdout[i]..'\r'
+    end
+  end
+
+  return stdout, stderr
 end
 
 Obj.unstage_file = function(self: Obj)
@@ -380,8 +419,7 @@ Obj.ensure_file_in_index = function(self: Obj)
       self:command{'update-index', '--add', '--cacheinfo', info}
     end
 
-    -- Update file info
-    _, self.object_name, self.mode_bits, self.has_conflicts = self:file_info()
+    self:update_file_info()
   end
 end
 
@@ -421,8 +459,7 @@ Obj.new = function(file: string): Obj
     return self
   end
 
-  self.relpath, self.object_name, self.mode_bits, self.has_conflicts =
-    self:file_info()
+  self:update_file_info(true)
 
   return self
 end

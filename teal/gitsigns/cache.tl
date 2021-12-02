@@ -17,7 +17,7 @@ local record M
     git_obj       : GitObj
     commit        : string
 
-    get_compare_obj: function(CacheEntry, base: string): string
+    get_compare_rev: function(CacheEntry, base: string): string
     get_compare_text: function(self: CacheEntry): {string}
     new: function(CacheEntry): CacheEntry
     destroy: function(CacheEntry)
@@ -34,20 +34,19 @@ end
 
 local CacheEntry = M.CacheEntry
 
-CacheEntry.get_compare_obj = function(self: CacheEntry, base: string): string
+CacheEntry.get_compare_rev = function(self: CacheEntry, base: string): string
   base = base or self.base
-  local prefix: string
   if base then
-    prefix = base
-  elseif self.commit then
-    -- Buffer is a fugutive commit so compare against the parent of the commit
-    prefix = string.format('%s^', self.commit)
-  else
-    local stage = self.git_obj.has_conflicts and 1 or 0
-    prefix = string.format(':%d', stage)
+    return base
   end
 
-  return string.format('%s:%s', prefix, self.git_obj.relpath)
+  if self.commit then
+    -- Buffer is a fugutive commit so compare against the parent of the commit
+    return string.format('%s^', self.commit)
+  end
+
+  local stage = self.git_obj.has_conflicts and 1 or 0
+  return string.format(':%d', stage)
 end
 
 CacheEntry.get_compare_text = function(self: CacheEntry): {string}

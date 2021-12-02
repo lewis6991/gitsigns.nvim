@@ -21,7 +21,20 @@ local GJobSpec = {}
 
 
 
-local M = {BlameInfo = {}, Version = {}, Repo = {}, Obj = {}, }
+local M = {BlameInfo = {}, Version = {}, Repo = {}, FileProps = {}, Obj = {}, }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -278,9 +291,18 @@ Obj.command = function(self, args, spec)
    return self.repo:command(args, spec)
 end
 
-Obj.update_file_info = function(self)
+Obj.update_file_info = function(self, update_relpath)
    local old_object_name = self.object_name
-   _, self.object_name, self.mode_bits, self.has_conflicts = self:file_info()
+   local props = self:file_info()
+
+   if update_relpath then
+      self.relpath = props.relpath
+   end
+   self.object_name = props.object_name
+   self.mode_bits = props.mode_bits
+   self.has_conflicts = props.has_conflicts
+   self.i_crlf = props.i_crlf
+   self.w_crlf = props.w_crlf
 
    return old_object_name ~= self.object_name
 end
@@ -291,31 +313,48 @@ Obj.file_info = function(self, file)
       '--stage',
       '--others',
       '--exclude-standard',
+      '--eol',
       file or self.file,
    })
 
-   local relpath
-   local object_name
-   local mode_bits
-   local stage
-   local has_conflict = false
+   local result = {}
    for _, line in ipairs(results) do
       local parts = vim.split(line, '\t')
-      if #parts > 1 then
-         relpath = parts[2]
+      if #parts > 2 then
+         local eol = vim.split(parts[2], '%s+')
+         result.i_crlf = eol[1] == 'i/crlf'
+         result.w_crlf = eol[2] == 'w/crlf'
+         result.relpath = parts[3]
          local attrs = vim.split(parts[1], '%s+')
-         stage = tonumber(attrs[3])
+         local stage = tonumber(attrs[3])
          if stage <= 1 then
-            mode_bits = attrs[1]
-            object_name = attrs[2]
+            result.mode_bits = attrs[1]
+            result.object_name = attrs[2]
          else
-            has_conflict = true
+            result.has_conflicts = true
          end
       else
-         relpath = parts[1]
+         result.relpath = parts[2]
       end
    end
-   return relpath, object_name, mode_bits, has_conflict
+   return result
+end
+
+Obj.get_show_text = function(self, revision)
+   if not self.relpath then
+      return {}
+   end
+
+   local stdout, stderr = self.repo:get_show_text(revision .. ':' .. self.relpath)
+
+   if not self.i_crlf and self.w_crlf then
+
+      for i = 1, #stdout do
+         stdout[i] = stdout[i] .. '\r'
+      end
+   end
+
+   return stdout, stderr
 end
 
 Obj.unstage_file = function(self)
@@ -380,8 +419,7 @@ Obj.ensure_file_in_index = function(self)
          self:command({ 'update-index', '--add', '--cacheinfo', info })
       end
 
-
-      _, self.object_name, self.mode_bits, self.has_conflicts = self:file_info()
+      self:update_file_info()
    end
 end
 
@@ -421,8 +459,7 @@ Obj.new = function(file)
       return self
    end
 
-   self.relpath, self.object_name, self.mode_bits, self.has_conflicts = 
-   self:file_info()
+   self:update_file_info(true)
 
    return self
 end

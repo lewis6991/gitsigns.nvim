@@ -228,8 +228,6 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
   local buftext = get_lines(bufnr)
   local git_obj = bcache.git_obj
 
-  local compare_object = bcache:get_compare_obj()
-
   -- Make sure these requires are done in the main event.
   -- See https://github.com/neovim/neovim/issues/15147
   local run_diff: function({string}, {string}, string, boolean): {Hunk}
@@ -240,7 +238,7 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
   end
 
   if not bcache.compare_text or config._refresh_staged_on_update then
-    bcache.compare_text = git_obj.repo:get_show_text(compare_object)
+    bcache.compare_text = git_obj:get_show_text(bcache:get_compare_rev())
   end
 
   bcache.hunks = run_diff(bcache.compare_text, buftext,
