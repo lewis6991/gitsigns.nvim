@@ -341,6 +341,9 @@ setqflist({target}, {opts})                              *gitsigns.setqflist()*
                                Window number or ID when using location list.
                                Expand folds when navigating to a hunk which is
                                inside a fold. Defaults to `0`.
+                             • {open}: (boolean)
+                               Open the quickfix/location list viewer.
+                               Defaults to `true`.
 
 setloclist({nr}, {target})                             *gitsigns.setloclist()*
                 Populate the location list with hunks. Automatically opens the

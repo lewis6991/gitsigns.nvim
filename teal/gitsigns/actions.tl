@@ -52,6 +52,7 @@ local record M
   record QFListOpts
     use_location_list: boolean
     nr: integer
+    open: boolean
   end
 
   setqflist          : function(target:integer|string, opts: QFListOpts, callback: function)
@@ -709,6 +710,9 @@ end
 
 M.setqflist = void(function(target: integer|string, opts: M.QFListOpts)
   opts = opts or {}
+  if opts.open == nil then
+    opts.open = true
+  end
   local qfopts = {
     items = buildqflist(target),
     title = 'Hunks'
@@ -717,17 +721,21 @@ M.setqflist = void(function(target: integer|string, opts: M.QFListOpts)
   if opts.use_location_list then
     local nr = opts.nr or 0
     vim.fn.setloclist(nr, {}, ' ', qfopts)
-    if config.trouble then
-      require'trouble'.open("loclist")
-    else
-      vim.cmd[[lopen]]
+    if opts.open then
+      if config.trouble then
+        require'trouble'.open("loclist")
+      else
+        vim.cmd[[lopen]]
+      end
     end
   else
     vim.fn.setqflist({}, ' ', qfopts)
-    if config.trouble then
-      require'trouble'.open("quickfix")
-    else
-      vim.cmd[[copen]]
+    if opts.open then
+      if config.trouble then
+        require'trouble'.open("quickfix")
+      else
+        vim.cmd[[copen]]
+      end
     end
   end
 end)
