@@ -69,6 +69,7 @@ local M = {QFListOpts = {}, }
 
 
 
+
 local function get_cursor_hunk(bufnr, hunks)
    bufnr = bufnr or current_buf()
    hunks = hunks or cache[bufnr].hunks
@@ -709,6 +710,9 @@ end
 
 M.setqflist = void(function(target, opts)
    opts = opts or {}
+   if opts.open == nil then
+      opts.open = true
+   end
    local qfopts = {
       items = buildqflist(target),
       title = 'Hunks',
@@ -717,17 +721,21 @@ M.setqflist = void(function(target, opts)
    if opts.use_location_list then
       local nr = opts.nr or 0
       vim.fn.setloclist(nr, {}, ' ', qfopts)
-      if config.trouble then
-         require('trouble').open("loclist")
-      else
-         vim.cmd([[lopen]])
+      if opts.open then
+         if config.trouble then
+            require('trouble').open("loclist")
+         else
+            vim.cmd([[lopen]])
+         end
       end
    else
       vim.fn.setqflist({}, ' ', qfopts)
-      if config.trouble then
-         require('trouble').open("quickfix")
-      else
-         vim.cmd([[copen]])
+      if opts.open then
+         if config.trouble then
+            require('trouble').open("quickfix")
+         else
+            vim.cmd([[copen]])
+         end
       end
    end
 end)
