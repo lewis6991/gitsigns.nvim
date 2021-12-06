@@ -1,0 +1,158 @@
+*gitsigns.txt* Gitsigns
+*gitsigns.nvim*
+
+Author:   Lewis Russell <lewis6991@gmail.com>
+Version:  {{VERSION}}
+Homepage: <https://github.com/lewis6991/gitsigns.nvim>
+License:  MIT license
+
+==============================================================================
+INTRODUCTION                                                        *gitsigns*
+
+Gitsigns is a plugin for Neovim that provides integration with Git via a
+feature set which includes (but not limited to):
+  • Provides signs in the |signcolumn| to show changed/added/removed lines.
+  • Mappings to operate on hunks to stage, undo or reset against Git's index.
+
+Gitsigns is implemented entirely in Lua which is built into Neovim and
+requires no external dependencies other than git. This is unlike other plugins
+that require python, node, etc, which need to communicate with Neovim using
+|RPC|.  By default, Gitsigns also uses Neovim's built-in diff library
+(`vim.diff`) unlike other similar plugins that need to run `git-diff` as an
+external process which is less efficient, has tighter bottlenecks and requires
+file IO.
+
+==============================================================================
+USAGE                                                         *gitsigns-usage*
+
+For basic setup with all batteries included:
+>
+    require('gitsigns').setup()
+<
+
+Configuration can be passed to the setup function. Here is an example with most
+of the default settings:
+>
+{{SETUP}}
+<
+
+==============================================================================
+MAPPINGS                                                   *gitsigns-mappings*
+
+All mappings are configurable via |gitsigns-setup()|.
+
+Most actions can be repeated with `.` if you have |vim-repeat| installed.
+
+Buffer ~
+    ]c         Jump to the next hunk.
+    [c         Jump to the previous hunk.
+    <leader>hs Stage the hunk at the cursor position.
+    <leader>hu Undo the last stage hunk.
+    <leader>hr Reset the lines of the hunk to what is in Git's index.
+    <leader>hp Preview the hunk in a floating window.
+
+Custom mappings are defined using the `keymaps` table in the config table
+passed to |gitsigns-setup()|. See |gitsigns-config-keymaps|.
+
+==============================================================================
+FUNCTIONS                                                 *gitsigns-functions*
+
+Note functions with the {async} attribute are run asynchronously and are
+non-blocking (return immediately).
+
+{{FUNCTIONS}}
+
+==============================================================================
+CONFIGURATION                                                *gitsigns-config*
+
+This section describes the configuration fields which can be passed to
+|gitsigns.setup()|. Note fields of type `table` may be marked with extended
+meaning the field is merged with the default, with the user value given higher
+precedence. This allows only specific sub-fields to be configured without
+having to redefine the whole field.
+
+{{CONFIG}}
+
+==============================================================================
+COMMAND                                                      *gitsigns-command*
+
+                                                                    *:Gitsigns*
+:Gitsigns {subcmd} {args}  Run a Gitsigns command. {subcmd} can be any
+                           function documented in |gitsigns-functions|.
+                           Each argument in {args} will be attempted to be
+                           parsed as a Lua value using `loadstring`, however
+                           if this fails the argument will remain as the
+                           string given by |<f-args>|.
+
+                           Note this command is equivalent to:
+                             `:lua require('gitsigns').{subcmd}({args})`
+
+                           Examples: >
+                             :Gitsigns diffthis HEAD~1
+                             :Gitsigns blame_line
+                             :Gitsigns toggle_signs
+                             :Gitsigns toggle_current_line_blame
+                             :Gitsigns change_base ~
+                             :Gitsigns reset_buffer
+                             :Gitsigns change_base nil true
+
+==============================================================================
+SPECIFYING OBJECTS                          *gitsigns-object* *gitsigns-revision*
+
+Gitsigns objects are Git revisions as defined in the "SPECIFYING REVISIONS"
+section in the gitrevisions(7) man page. For commands that accept an optional
+base, the default is the file in the index. Examples:
+
+Object        Meaning ~
+@             Version of file in the commit referenced by @ aka HEAD
+main          Version of file in the commit referenced by main
+main^         Version of file in the parent of the commit referenced by main
+main~         "
+main~1        "
+main...other  Version of file in the merge base of main and other
+@^            Version of file in the parent of HEAD
+@~2           Version of file in the grandparent of HEAD
+92eb3dd       Version of file in the commit 92eb3dd
+:1            The file's common ancestor during a conflict
+:2            The alternate file in the target branch during a conflict
+
+==============================================================================
+STATUSLINE                                               *gitsigns-statusline*
+
+                                    *b:gitsigns_status* *b:gitsigns_status_dict*
+The buffer variables `b:gitsigns_status` and `b:gitsigns_status_dict` are
+provided. `b:gitsigns_status` is formatted using `config.status_formatter`
+. `b:gitsigns_status_dict` is a dictionary with the keys:
+
+        • `added` - Number of added lines.
+        • `changed` - Number of changed lines.
+        • `removed` - Number of removed lines.
+        • `head` - Name of current HEAD (branch or short commit hash).
+        • `root` - Top level directory of the working tree.
+        • `gitdir` - .git directory.
+
+Example:
+>
+    set statusline+=%{get(b:,'gitsigns_status','')}
+<
+                                            *b:gitsigns_head* *g:gitsigns_head*
+Use `g:gitsigns_head` and `b:gitsigns_head` to return the name of the current
+HEAD (usually branch name). If the current HEAD is detached then this will be
+a short commit hash. `g:gitsigns_head` returns the current HEAD for the
+current working directory, whereas `b:gitsigns_head` returns the current HEAD
+for each buffer.
+
+                                                  *b:gitsigns_blame_line_dict*
+If |gitsigns-config-current_line_blame| is enabled, then contains dictionary
+of the blame object for current line. For complete list of keys, see the
+{blame_info} argument from |gitsigns-config-current_line_blame_formatter|.
+
+==============================================================================
+TEXT OBJECTS                                             *gitsigns-textobject*
+
+Since text objects are defined via keymaps, these are exposed and configurable
+via the config, see |gitsigns-config-keymaps|. The lua implementation is
+exposed through |gitsigns.select_hunk()|.
+
+------------------------------------------------------------------------------
+vim:tw=78:ts=8:ft=help:norl:

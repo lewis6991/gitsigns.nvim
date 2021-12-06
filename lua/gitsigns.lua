@@ -123,12 +123,24 @@ local watch_gitdir = function(bufnr, gitdir)
 end
 
 
+M.detach_all = function()
+   for k, _ in pairs(cache) do
+      M.detach(k)
+   end
+end
 
 
 
 
 
-M.detach = function(bufnr, keep_signs)
+
+M.detach = function(bufnr, _keep_signs)
+
+
+
+
+
+
    bufnr = bufnr or current_buf()
    dprint('Detached')
    local bcache = cache[bufnr]
@@ -137,7 +149,7 @@ M.detach = function(bufnr, keep_signs)
       return
    end
 
-   if not keep_signs then
+   if not _keep_signs then
       signs.remove(bufnr)
    end
 
@@ -145,12 +157,6 @@ M.detach = function(bufnr, keep_signs)
    Status:clear(bufnr)
 
    cache:destroy(bufnr)
-end
-
-M.detach_all = function()
-   for k, _ in pairs(cache) do
-      M.detach(k)
-   end
 end
 
 local function get_buf_path(bufnr)
@@ -343,6 +349,15 @@ local attach = function(cbuf, trigger)
    attach_running[cbuf] = nil
 end
 
+
+
+
+
+
+
+
+M.attach = void(attach)
+
 local M0 = M
 
 M._complete = function(arglead, line)
@@ -443,6 +458,14 @@ local function setup_command()
    }, ' '))
 end
 
+
+
+
+
+
+
+
+
 M.setup = void(function(cfg)
    gs_config.build(cfg)
 
@@ -537,8 +560,6 @@ M.setup = void(function(cfg)
    M._update_cwd_head()
    vim.cmd([[autocmd gitsigns DirChanged * lua _G.package.loaded.gitsigns._update_cwd_head()]])
 end)
-
-M.attach = void(attach)
 
 
 M._update_highlights = function()
