@@ -70,6 +70,36 @@ local M = {QFListOpts = {}, }
 
 
 
+
+M.toggle_signs = function()
+   config.signcolumn = not config.signcolumn
+   M.refresh()
+end
+
+
+M.toggle_numhl = function()
+   config.numhl = not config.numhl
+   M.refresh()
+end
+
+
+M.toggle_linehl = function()
+   config.linehl = not config.linehl
+   M.refresh()
+end
+
+
+M.toggle_word_diff = function()
+   config.word_diff = not config.word_diff
+   M.refresh()
+end
+
+
+M.toggle_current_line_blame = function()
+   config.current_line_blame = not config.current_line_blame
+   M.refresh()
+end
+
 local function get_cursor_hunk(bufnr, hunks)
    bufnr = bufnr or current_buf()
    hunks = hunks or cache[bufnr].hunks
@@ -77,6 +107,18 @@ local function get_cursor_hunk(bufnr, hunks)
    local lnum = api.nvim_win_get_cursor(0)[1]
    return gs_hunks.find_hunk(lnum, hunks)
 end
+
+
+
+
+
+
+
+
+
+
+
+
 
 M.stage_hunk = mk_repeatable(void(function(range)
    range = range or M.user_range
@@ -134,6 +176,15 @@ M.stage_hunk = mk_repeatable(void(function(range)
    void(manager.update)(bufnr)
 end))
 
+
+
+
+
+
+
+
+
+
 M.reset_hunk = mk_repeatable(function(range)
    range = range or M.user_range
    local bufnr = current_buf()
@@ -174,6 +225,7 @@ M.reset_hunk = mk_repeatable(function(range)
    api.nvim_buf_set_lines(bufnr, lstart, lend, false, lines)
 end)
 
+
 M.reset_buffer = function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
@@ -183,6 +235,13 @@ M.reset_buffer = function()
 
    api.nvim_buf_set_lines(bufnr, 0, -1, false, bcache:get_compare_text())
 end
+
+
+
+
+
+
+
 
 M.undo_stage_hunk = void(function()
    local bufnr = current_buf()
@@ -205,6 +264,10 @@ M.undo_stage_hunk = void(function()
    end
    manager.update(bufnr)
 end)
+
+
+
+
 
 M.stage_buffer = void(function()
    local bufnr = current_buf()
@@ -239,6 +302,12 @@ M.stage_buffer = void(function()
    end
    Status:clear_diff(bufnr)
 end)
+
+
+
+
+
+
 
 M.reset_buffer_index = void(function()
    local bufnr = current_buf()
@@ -329,11 +398,29 @@ local function nav_hunk(opts)
    end
 end
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 M.next_hunk = function(opts)
    opts = opts or {}
    opts.forwards = true
    nav_hunk(opts)
 end
+
+
+
+
 
 M.prev_hunk = function(opts)
    opts = opts or {}
@@ -384,7 +471,9 @@ local function strip_cr(xs0)
 end
 
 
+
 M.preview_hunk = noautocmd(function()
+
    local cbuf = current_buf()
    local bcache = cache[cbuf]
    local hunk, index = get_cursor_hunk(cbuf, bcache.hunks)
@@ -412,12 +501,33 @@ M.preview_hunk = noautocmd(function()
    highlight_hunk_lines(bufnr, offset, hunk)
 end)
 
+
 M.select_hunk = function()
    local hunk = get_cursor_hunk()
    if not hunk then return end
 
    vim.cmd('normal! ' .. hunk.start .. 'GV' .. hunk.vend .. 'G')
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 M.get_hunks = function(bufnr)
    bufnr = current_buf()
@@ -469,6 +579,19 @@ local function get_blame_hunk(repo, info)
 end
 
 local BlameOpts = {}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -583,6 +706,39 @@ local function update_buf_base(buf, bcache, base)
    manager.update(buf, bcache)
 end
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 M.change_base = void(function(base, global)
    base = calc_base(base)
 
@@ -601,9 +757,29 @@ M.change_base = void(function(base, global)
    end
 end)
 
+
+
+
+
 M.reset_base = function(global)
    M.change_base(nil, global)
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 M.diffthis = void(function(base)
    local bufnr = current_buf()
@@ -708,6 +884,34 @@ local function buildqflist(target)
    return qflist
 end
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 M.setqflist = void(function(target, opts)
    opts = opts or {}
    if opts.open == nil then
@@ -740,12 +944,30 @@ M.setqflist = void(function(target, opts)
    end
 end)
 
+
+
+
+
+
+
+
+
+
+
+
+
 M.setloclist = function(nr, target)
    M.setqflist(target, {
       nr = nr,
       use_location_list = true,
    })
 end
+
+
+
+
+
+
 
 M.get_actions = function()
    local bufnr = current_buf()
@@ -782,6 +1004,10 @@ M.get_actions = function()
    return actions
 end
 
+
+
+
+
 M.refresh = void(function()
    manager.setup_signs_and_highlights(true)
    require('gitsigns.current_line_blame').setup()
@@ -792,30 +1018,5 @@ M.refresh = void(function()
       manager.update(k, v)
    end
 end)
-
-M.toggle_signs = function()
-   config.signcolumn = not config.signcolumn
-   M.refresh()
-end
-
-M.toggle_numhl = function()
-   config.numhl = not config.numhl
-   M.refresh()
-end
-
-M.toggle_linehl = function()
-   config.linehl = not config.linehl
-   M.refresh()
-end
-
-M.toggle_word_diff = function()
-   config.word_diff = not config.word_diff
-   M.refresh()
-end
-
-M.toggle_current_line_blame = function()
-   config.current_line_blame = not config.current_line_blame
-   M.refresh()
-end
 
 return M

@@ -2,7 +2,7 @@
 *gitsigns.nvim*
 
 Author:   Lewis Russell <lewis6991@gmail.com>
-Version:  0.1-dev
+Version:  0.3-dev
 Homepage: <https://github.com/lewis6991/gitsigns.nvim>
 License:  MIT license
 
@@ -41,8 +41,10 @@ of the default settings:
         topdelete    = {hl = 'GitSignsDelete', text = '‾', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn'},
         changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn'},
       },
-      numhl = false,
-      linehl = false,
+      signcolumn = true,  -- Toggle with `:Gitsigns toggle_signs`
+      numhl      = false, -- Toggle with `:Gitsigns toggle_numhl`
+      linehl     = false, -- Toggle with `:Gitsigns toggle_linehl`
+      word_diff  = false, -- Toggle with `:Gitsigns toggle_word_diff`
       keymaps = {
         -- Default keymap options
         noremap = true,
@@ -66,12 +68,35 @@ of the default settings:
         ['x ih'] = ':<C-U>Gitsigns select_hunk<CR>'
       },
       watch_gitdir = {
-        interval = 1000
+        interval = 1000,
+        follow_files = true
       },
-      current_line_blame = false,
+      attach_to_untracked = true,
+      current_line_blame = false, -- Toggle with `:Gitsigns toggle_current_line_blame`
+      current_line_blame_opts = {
+        virt_text = true,
+        virt_text_pos = 'eol', -- 'eol' | 'overlay' | 'right_align'
+        delay = 1000,
+        ignore_whitespace = false,
+      },
+      current_line_blame_formatter_opts = {
+        relative_time = false
+      },
       sign_priority = 6,
       update_debounce = 100,
       status_formatter = nil, -- Use default
+      max_file_length = 40000,
+      preview_config = {
+        -- Options passed to nvim_open_win
+        border = 'single',
+        style = 'minimal',
+        relative = 'cursor',
+        row = 0,
+        col = 1
+      },
+      yadm = {
+        enable = false
+      },
     }
 <
 
@@ -99,107 +124,117 @@ FUNCTIONS                                                 *gitsigns-functions*
 Note functions with the {async} attribute are run asynchronously and are
 non-blocking (return immediately).
 
-setup({config})                                             *gitsigns.setup()*
+
+setup({cfg})                                                *gitsigns.setup()*
                 Setup and start Gitsigns.
 
                 Attributes: ~
                     {async}
 
                 Parameters: ~
-                    {config} Table object containing configuration for
+                    {cfg} Table object containing configuration for
                     Gitsigns. See |gitsigns-usage| for more details.
 
-next_hunk({opts})                                           *gitsigns.next_hunk()*
-                Jump to the next hunk in the current buffer.
+attach({bufnr})                                            *gitsigns.attach()*
+                Attach Gitsigns to the buffer.
+
+                Attributes: ~
+                    {async}
 
                 Parameters: ~
-                    {opts}  table|nil Configuration table. Keys:
-                            • {wrap}: (boolean)
-                              Whether to loop around file or not. Defaults
-                              to the value 'wrapscan'
-                            • {navigation_message}: (boolean)
-                              Whether to show navigation messages or not.
-                              Looks at 'shortmess' for default behaviour.
-                            • {foldopen}: (boolean)
-                              Expand folds when navigating to a hunk which is
-                              inside a fold. Defaults to `true` if 'foldopen'
-                              contains `search`.
+                    {bufnr}  (number): Buffer number
 
-prev_hunk({opts})                                       *gitsigns.prev_hunk()*
-                Jump to the previous hunk in the current buffer.
+detach({bufnr})                                            *gitsigns.detach()*
+                Detach Gitsigns from the buffer {bufnr}. If {bufnr} is not
+                provided then the current buffer is used.
 
                 Parameters: ~
-                    See |gitsigns.next_hunk()|.
+                    {bufnr}  (number): Buffer number
 
-stage_hunk({range})                                    *gitsigns.stage_hunk()*
-                Stage the hunk at the cursor position, or all lines in the
-                given range. If {range} is provided, all lines in the given
-                range are staged. This supports partial-hunks, meaning if a
-                range only includes a portion of a particular hunk, only the
-                lines within the range will be staged.
+detach_all()                                           *gitsigns.detach_all()*
+                Detach Gitsigns from all buffers it is attached to.
 
-                Attributes: ~
-                    {async}
-
-                Parameters:~
-                    {range} table|nil List-like table of two integers making
-                    up the line range from which you want to stage the hunks.
-
-undo_stage_hunk()                                 *gitsigns.undo_stage_hunk()*
-                Undo the last call of stage_hunk().
-
-                Note: only the calls to stage_hunk() performed in the current
-                session can be undone.
+refresh()                                                 *gitsigns.refresh()*
+                Refresh all buffers.
 
                 Attributes: ~
                     {async}
 
-stage_buffer()                                       *gitsigns.stage_buffer()*
-                Stage all hunks in current buffer.
+get_actions()                                         *gitsigns.get_actions()*
+                Get all the available line specific actions for the current
+                buffer at the cursor position.
+
+                Return: ~
+                    Dictionary of action name to function which when called
+                    performs action.
+
+setloclist({nr}, {target})                             *gitsigns.setloclist()*
+                Populate the location list with hunks. Automatically opens the
+                location list window.
+
+                Alias for: `setqflist({target}, { use_location_list = true, nr = {nr} }`
 
                 Attributes: ~
                     {async}
-
-reset_buffer_index()                           *gitsigns.reset_buffer_index()*
-                Unstage all hunks for current buffer in the index. Note:
-                Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
-                stages, this runs an `git reset` on current buffers file.
-
-                Attributes: ~
-                    {async}
-
-reset_hunk({range})                                    *gitsigns.reset_hunk()*
-                Reset the lines of the hunk at the cursor position, or all
-                lines in the given range. If {range} is provided, all lines in
-                the given range are reset. This supports partial-hunks,
-                meaning if a range only includes a portion of a particular
-                hunk, only the lines within the range will be reset.
-
-                Parameters:~
-                    {range} table|nil List-like table of two integers making
-                    up the line range from which you want to reset the hunks.
-
-reset_buffer()                                       *gitsigns.reset_buffer()*
-                Reset the lines of all hunks in the buffer.
-
-preview_hunk()                                       *gitsigns.preview_hunk()*
-                Preview the hunk at the cursor position in a floating
-                window.
-
-blame_line({opts})                                     *gitsigns.blame_line()*
-                Run git blame on the current line and show the results in a
-                floating window.
 
                 Parameters: ~
+                    {nr}     (integer): Window number or the |window-ID|.
+                             `0` for the current window (default).
+                    {target} (integer or string): See |gitsigns.setqflist()|.
+
+setqflist({target}, {opts})                             *gitsigns.setqflist()*
+                Populate the quickfix list with hunks. Automatically opens the
+                quickfix window.
+
+                Attributes: ~
+                    {async}
+
+                Parameters: ~
+                    {target} (integer or string):
+                             Specifies which files hunks are collected from.
+                             Possible values.
+                             • [integer]: The buffer with the matching buffer
+                               number. `0` for current buffer (default).
+                             • `"attached"`: All attached buffers.
+                             • `"all"`: All modified files for each git
+                               directory of all attached buffers in addition
+                               to the current working directory.
                     {opts}   (table|nil):
                              Additional options:
-                             • {full}: (boolean)
-                               Display full commit message
-                             • {ignore_whitespace}: (boolean)
-                               Ignore whitespace when running blame.
+                             • {use_location_list}: (boolean)
+                               Populate the location list instead of the
+                               quickfix list. Default to `false`.
+                             • {nr}: (integer)
+                               Window number or ID when using location list.
+                               Expand folds when navigating to a hunk which is
+                               inside a fold. Defaults to `0`.
+                             • {open}: (boolean)
+                               Open the quickfix/location list viewer.
+                               Defaults to `true`.
+
+diffthis({base})                                         *gitsigns.diffthis()*
+                Perform a |vimdiff| on the given file with {base} if it is
+                given, or with the currently set base (index by default).
+
+                Examples: >
+                  " Diff against the index
+                  :Gitsigns diffthis
+
+                  " Diff against the last commit
+                  :Gitsigns diffthis ~1
+<
+
+                For a more complete list of ways to specify bases, see
+                |gitsigns-revision|.
 
                 Attributes: ~
                     {async}
+
+reset_base({global})                                   *gitsigns.reset_base()*
+                Reset the base revision to diff against back to the
+                index.
+
+                Alias for `change_base(nil, {global})` .
 
 change_base({base}, {global})                         *gitsigns.change_base()*
                 Change the base revision to diff against. If {base} is not
@@ -236,62 +271,20 @@ change_base({base}, {global})                         *gitsigns.change_base()*
                 For a more complete list of ways to specify bases, see
                 |gitsigns-revision|.
 
-reset_base({global})                                   *gitsigns.reset_base()*
-                Reset the base revision to diff against back to the
-                index.
-
-                Alias for `change_base(nil, {global})` .
-
-diffthis({base})                                         *gitsigns.diffthis()*
-                Perform a |vimdiff| on the given file with {base} if it is
-                given, or with the currently set base (index by default).
-
-                Examples: >
-                  " Diff against the index
-                  :Gitsigns diffthis
-
-                  " Diff against the last commit
-                  :Gitsigns diffthis ~1
-<
-
-                For a more complete list of ways to specify bases, see
-                |gitsigns-revision|.
-
-                Attributes: ~
-                    {async}
->
-get_actions()                                         *gitsigns.get_actions()*
-                Get all the available line specific actions for the current
-                buffer at the cursor position.
-
-                Return: ~
-                    Dictionary of action name to function which when called
-                    performs action.
-
-attach()                                                   *gitsigns.attach()*
-                Attach Gitsigns to the current buffer.
-
-                Attributes: ~
-                    {async}
-
-detach({bufnr})                                            *gitsigns.detach()*
-                Detach Gitsigns from the buffer {bufnr}. If {bufnr} is not
-                provided then the current buffer is used.
+blame_line({opts})                                     *gitsigns.blame_line()*
+                Run git blame on the current line and show the results in a
+                floating window.
 
                 Parameters: ~
-                    {bufnr}  (number): Buffer number
-
-detach_all()                                           *gitsigns.detach_all()*
-                Detach Gitsigns from all buffers it is attached to.
-
-refresh()                                                 *gitsigns.refresh()*
-                Refresh all buffers.
+                    {opts}   (table|nil):
+                             Additional options:
+                             • {full}: (boolean)
+                               Display full commit message
+                             • {ignore_whitespace}: (boolean)
+                               Ignore whitespace when running blame.
 
                 Attributes: ~
                     {async}
-
-select_hunk()                                         *gitsigns.select_hunk()*
-                Select the hunk under the cursor.
 
 get_hunks({bufnr})                                      *gitsigns.get_hunks()*
                 Get hunk array for specified buffer.
@@ -315,64 +308,101 @@ get_hunks({bufnr})                                      *gitsigns.get_hunks()*
                        • `"start"`: Line number (1-based)
                        • `"count"`: Line count
 
-setqflist({target}, {opts})                              *gitsigns.setqflist()*
-                Populate the quickfix list with hunks. Automatically opens the
-                quickfix window.
+select_hunk()                                         *gitsigns.select_hunk()*
+                Select the hunk under the cursor.
+
+preview_hunk()                                       *gitsigns.preview_hunk()*
+                Preview the hunk at the cursor position in a floating
+                window.
+
+prev_hunk({opts})                                       *gitsigns.prev_hunk()*
+                Jump to the previous hunk in the current buffer.
+
+                Parameters: ~
+                    See |gitsigns.next_hunk()|.
+
+next_hunk({opts})                                       *gitsigns.next_hunk()*
+                Jump to the next hunk in the current buffer.
+
+                Parameters: ~
+                    {opts}  table|nil Configuration table. Keys:
+                            • {wrap}: (boolean)
+                              Whether to loop around file or not. Defaults
+                              to the value 'wrapscan'
+                            • {navigation_message}: (boolean)
+                              Whether to show navigation messages or not.
+                              Looks at 'shortmess' for default behaviour.
+                            • {foldopen}: (boolean)
+                              Expand folds when navigating to a hunk which is
+                              inside a fold. Defaults to `true` if 'foldopen'
+                              contains `search`.
+
+reset_buffer_index()                           *gitsigns.reset_buffer_index()*
+                Unstage all hunks for current buffer in the index. Note:
+                Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
+                stages, this runs an `git reset` on current buffers file.
 
                 Attributes: ~
                     {async}
 
-                Parameters: ~
-                    {target} (integer or string):
-                             Specifies which files hunks are collected from.
-                             Possible values.
-                             • [integer]: The buffer with the matching buffer
-                               number. `0` for current buffer (default).
-                             • `"attached"`: All attached buffers.
-                             • `"all"`: All modified files for each git
-                               directory of all attached buffers in addition
-                               to the current working directory.
-                    {opts}   (table|nil):
-                             Additional options:
-                             • {use_location_list}: (boolean)
-                               Populate the location list instead of the
-                               quickfix list. Default to `false`.
-                             • {nr}: (integer)
-                               Window number or ID when using location list.
-                               Expand folds when navigating to a hunk which is
-                               inside a fold. Defaults to `0`.
-                             • {open}: (boolean)
-                               Open the quickfix/location list viewer.
-                               Defaults to `true`.
-
-setloclist({nr}, {target})                             *gitsigns.setloclist()*
-                Populate the location list with hunks. Automatically opens the
-                location list window.
-
-                Alias for: `setqflist({target}, { use_location_list = true, nr = {nr} }`
+stage_buffer()                                       *gitsigns.stage_buffer()*
+                Stage all hunks in current buffer.
 
                 Attributes: ~
                     {async}
 
-                Parameters: ~
-                    {nr}     (integer): Window number or the |window-ID|.
-                             `0` for the current window (default).
-                    {target} (integer or string): See |gitsigns.setqflist()|.
+undo_stage_hunk()                                 *gitsigns.undo_stage_hunk()*
+                Undo the last call of stage_hunk().
 
-toggle_signs()                                       *gitsigns.toggle_signs()*
-                Toggle |gitsigns-config-signcolumn|
+                Note: only the calls to stage_hunk() performed in the current
+                session can be undone.
 
-toggle_numhl()                                       *gitsigns.toggle_numhl()*
-                Toggle |gitsigns-config-numhl|
+                Attributes: ~
+                    {async}
 
-toggle_linehl()                                     *gitsigns.toggle_linehl()*
-                Toggle |gitsigns-config-linehl|
+reset_buffer()                                       *gitsigns.reset_buffer()*
+                Reset the lines of all hunks in the buffer.
+
+reset_hunk({range})                                    *gitsigns.reset_hunk()*
+                Reset the lines of the hunk at the cursor position, or all
+                lines in the given range. If {range} is provided, all lines in
+                the given range are reset. This supports partial-hunks,
+                meaning if a range only includes a portion of a particular
+                hunk, only the lines within the range will be reset.
+
+                Parameters:~
+                    {range} table|nil List-like table of two integers making
+                    up the line range from which you want to reset the hunks.
+
+stage_hunk({range})                                    *gitsigns.stage_hunk()*
+                Stage the hunk at the cursor position, or all lines in the
+                given range. If {range} is provided, all lines in the given
+                range are staged. This supports partial-hunks, meaning if a
+                range only includes a portion of a particular hunk, only the
+                lines within the range will be staged.
+
+                Attributes: ~
+                    {async}
+
+                Parameters:~
+                    {range} table|nil List-like table of two integers making
+                    up the line range from which you want to stage the hunks.
+
+toggle_current_line_blame()             *gitsigns.toggle_current_line_blame()*
+                Toggle |gitsigns-config-current_line_blame|
 
 toggle_word_diff()                               *gitsigns.toggle_word_diff()*
                 Toggle |gitsigns-config-word_diff|
 
-toggle_current_line_blame()             *gitsigns.toggle_current_line_blame()*
-                Toggle |gitsigns-config-current_line_blame|
+toggle_linehl()                                     *gitsigns.toggle_linehl()*
+                Toggle |gitsigns-config-linehl|
+
+toggle_numhl()                                       *gitsigns.toggle_numhl()*
+                Toggle |gitsigns-config-numhl|
+
+toggle_signs()                                       *gitsigns.toggle_signs()*
+                Toggle |gitsigns-config-signcolumn|
+
 
 ==============================================================================
 CONFIGURATION                                                *gitsigns-config*
@@ -783,6 +813,7 @@ use_internal_diff                          *gitsigns-config-use_internal_diff*
 
    Please instead use the field `internal` in |gitsigns-config-diff_opts|.
 
+
 ==============================================================================
 COMMAND                                                      *gitsigns-command*
 
@@ -866,5 +897,3 @@ exposed through |gitsigns.select_hunk()|.
 
 ------------------------------------------------------------------------------
 vim:tw=78:ts=8:ft=help:norl:
-
-
