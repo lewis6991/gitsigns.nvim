@@ -1,17 +1,9 @@
 local record M
   path_sep: string
-  is_unix: boolean
 end
 
 function M.path_exists(path: string): boolean
   return vim.loop.fs_stat(path) and true or false
-end
-
-function M.get_jit_os(): string
-  if jit then
-    return jit.os:lower()
-  end
-  return
 end
 
 local jit_os: string
@@ -20,12 +12,13 @@ if jit then
   jit_os = jit.os:lower()
 end
 
-M.is_unix = (function(): boolean
-  if jit_os == 'linux' or jit_os == 'osx' or jit_os == 'bsd' then
-    return true
-  end
-  return false
-end)()
+local is_unix: boolean = false
+if jit_os then
+  is_unix = jit_os == 'linux' or jit_os == 'osx' or jit_os == 'bsd'
+else
+  local binfmt = package.cpath:match("%p[\\|/]?%p(%a+)")
+  is_unix = binfmt ~= "dll"
+end
 
 function M.dirname(file: string): string
   return file:match(string.format('^(.+)%s[^%s]+', M.path_sep, M.path_sep))
@@ -39,18 +32,10 @@ function M.file_lines(file: string): {string}
   return text
 end
 
-M.path_sep = (function(): string
-  if jit_os then
-    if M.is_unix then
-      return '/'
-    end
-    return '\\'
-  end
-  return package.config:sub(1, 1)
-end)()
+M.path_sep = package.config:sub(1, 1)
 
 function M.tmpname(): string
-  if M.is_unix then
+  if is_unix then
     return os.tmpname()
   end
   return vim.fn.tempname()
