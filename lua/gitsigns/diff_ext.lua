@@ -30,8 +30,8 @@ M.run_diff = function(
 
    local results = {}
 
-   if not util.is_unix then
 
+   if vim.in_fast_event() then
       scheduler()
    end
 

@@ -30,8 +30,8 @@ M.run_diff = function(
 ): {Hunk}
   local results: {Hunk} = {}
 
-  if not util.is_unix then
-    -- tmpname must not be called in a callback on windows
+  -- tmpname must not be called in a callback
+  if vim.in_fast_event() then
     scheduler()
   end
 
