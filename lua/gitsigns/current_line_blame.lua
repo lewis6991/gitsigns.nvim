@@ -44,6 +44,7 @@ local BlameCache = {Elem = {}, }
 BlameCache.contents = {}
 
 function BlameCache:init_or_invalidate(bufnr)
+   if not config._blame_cache then return end
    local tick = api.nvim_buf_get_var(bufnr, 'changedtick')
    if not self.contents[bufnr] or self.contents[bufnr].tick ~= tick then
       self.contents[bufnr] = { tick = tick, cache = {}, size = 0 }
@@ -51,6 +52,7 @@ function BlameCache:init_or_invalidate(bufnr)
 end
 
 function BlameCache:add(bufnr, lnum, x)
+   if not config._blame_cache then return end
    local scache = self.contents[bufnr]
    if scache.size <= max_cache_size then
       scache.cache[lnum] = x
@@ -59,6 +61,7 @@ function BlameCache:add(bufnr, lnum, x)
 end
 
 function BlameCache:get(bufnr, lnum)
+   if not config._blame_cache then return end
    return self.contents[bufnr].cache[lnum]
 end
 
