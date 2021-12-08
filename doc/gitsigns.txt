@@ -648,11 +648,6 @@ attach_to_untracked                      *gitsigns-config-attach_to_untracked*
 
       Attach to untracked files.
 
-update_debounce                              *gitsigns-config-update_debounce*
-      Type: `number`, Default: `100`
-
-      Debounce time for updates (in milliseconds).
-
 current_line_blame                        *gitsigns-config-current_line_blame*
       Type: `boolean`, Default: `false`
 
@@ -804,6 +799,9 @@ diff_algorithm                                *gitsigns-config-diff_algorithm*
    DEPRECATED
 
    Please instead use the field `algorithm` in |gitsigns-config-diff_opts|.
+
+update_debounce                              *gitsigns-config-update_debounce*
+   DEPRECATED
 
 use_decoration_api                        *gitsigns-config-use_decoration_api*
    DEPRECATED

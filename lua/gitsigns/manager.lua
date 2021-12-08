@@ -10,7 +10,6 @@ local Sign = signs.Sign
 
 local Status = require("gitsigns.status")
 
-local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 local gs_debug = require("gitsigns.debug")
 local dprint = gs_debug.dprint
@@ -28,10 +27,6 @@ local config = require('gitsigns.config').config
 local api = vim.api
 
 local M = {}
-
-
-
-
 
 
 
@@ -159,7 +154,7 @@ M.on_lines = function(buf, last_orig, last_new)
          bcache.hunks = nil
       end
    end)
-   M.update_debounced(buf, cache[buf])
+   void(M.update)(buf, cache[buf])
 end
 
 local ns = api.nvim_create_namespace('gitsigns')
@@ -214,7 +209,9 @@ end
 
 local update_cnt = 0
 
-local update0 = function(bufnr, bcache)
+local run_diff
+
+local update = function(bufnr, bcache)
    local __FUNC__ = 'update'
    bcache = bcache or cache[bufnr]
    if not bcache then
@@ -232,11 +229,12 @@ local update0 = function(bufnr, bcache)
 
 
 
-   local run_diff
-   if config.diff_opts.internal then
-      run_diff = require('gitsigns.diff_int').run_diff
-   else
-      run_diff = require('gitsigns.diff_ext').run_diff
+   if not run_diff then
+      if config.diff_opts.internal then
+         run_diff = require('gitsigns.diff_int').run_diff
+      else
+         run_diff = require('gitsigns.diff_ext').run_diff
+      end
    end
 
    if not bcache.compare_text or config._refresh_staged_on_update then
@@ -268,11 +266,7 @@ end
 
 
 
-M.update = throttle_by_id(update0)
-
-M.setup = function()
-   M.update_debounced = debounce_trailing(config.update_debounce, void(M.update))
-end
+M.update = throttle_by_id(update)
 
 M.setup_signs_and_highlights = function(redefine)
 

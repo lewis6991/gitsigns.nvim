@@ -410,14 +410,6 @@ M.schema = {
     ]],
    },
 
-   update_debounce = {
-      type = 'number',
-      default = 100,
-      description = [[
-      Debounce time for updates (in milliseconds).
-    ]],
-   },
-
    current_line_blame = {
       type = 'boolean',
       default = false,
@@ -633,6 +625,7 @@ M.schema = {
    current_line_blame_delay = { deprecated = { new_field = 'current_line_blame_opts.delay' } },
    current_line_blame_position = { deprecated = { new_field = 'current_line_blame_opts.virt_text_pos' } },
    diff_algorithm = { deprecated = { new_field = 'diff_opts.algorithm' } },
+   update_debounce = { deprecated = true },
    use_decoration_api = { deprecated = true },
    use_internal_diff = { deprecated = { new_field = 'diff_opts.internal' } },
 }

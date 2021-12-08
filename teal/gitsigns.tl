@@ -313,7 +313,7 @@ local attach0 = function(cbuf: integer, aucmd: string)
     on_reload = function(_, bufnr: integer)
       local __FUNC__ = 'on_reload'
       dprint('Reload')
-      manager.update_debounced(bufnr)
+      void(manager.update)(bufnr)
     end,
     on_detach = function(_, buf: integer)
       M.detach(buf, true)
@@ -489,8 +489,6 @@ M.setup = void(function(cfg: Config)
       M0[nm] = f
     end
   end
-
-  manager.setup()
 
   Status.formatter = config.status_formatter as function(Status.StatusObj): string
 

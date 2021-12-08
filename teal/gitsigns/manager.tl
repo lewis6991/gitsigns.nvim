@@ -10,7 +10,6 @@ local Sign              = signs.Sign
 
 local Status            = require("gitsigns.status")
 
-local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local throttle_by_id    = require('gitsigns.debounce').throttle_by_id
 local gs_debug          = require("gitsigns.debug")
 local dprint            = gs_debug.dprint
@@ -28,14 +27,10 @@ local config         = require('gitsigns.config').config
 local api = vim.api
 
 local record M
-  update           : function(integer, CacheEntry)
-  update_debounced : function(integer, CacheEntry)
-  apply_win_signs  : function(bufnr: integer, pending: {integer:Sign}, top: integer, bot: integer)
-  on_lines         : function(buf: integer, last_orig: integer, last_new: integer): boolean
-
-  apply_word_diff: function(buf: integer, row: integer)
-
-  setup: function()
+  update          : function(integer, CacheEntry)
+  apply_win_signs : function(bufnr: integer, pending: {integer:Sign}, top: integer, bot: integer)
+  on_lines        : function(buf: integer, last_orig: integer, last_new: integer): boolean
+  apply_word_diff : function(buf: integer, row: integer)
   setup_signs_and_highlights: function(redefine: boolean)
 end
 
@@ -159,7 +154,7 @@ M.on_lines = function(buf: integer, last_orig: integer, last_new: integer): bool
       bcache.hunks = nil
     end
   end)
-  M.update_debounced(buf, cache[buf])
+  void(M.update)(buf, cache[buf])
 end
 
 local ns = api.nvim_create_namespace('gitsigns')
@@ -214,7 +209,9 @@ end
 
 local update_cnt = 0
 
-local update0 = function(bufnr: integer, bcache: CacheEntry)
+local run_diff: function({string}, {string}, string, boolean): {Hunk}
+
+local update = function(bufnr: integer, bcache: CacheEntry)
   local __FUNC__ = 'update'
   bcache = bcache or cache[bufnr]
   if not bcache then
@@ -232,11 +229,12 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
 
   -- Make sure these requires are done in the main event.
   -- See https://github.com/neovim/neovim/issues/15147
-  local run_diff: function({string}, {string}, string, boolean): {Hunk}
-  if config.diff_opts.internal then
-    run_diff = require('gitsigns.diff_int').run_diff
-  else
-    run_diff = require('gitsigns.diff_ext').run_diff
+  if not run_diff then
+    if config.diff_opts.internal then
+      run_diff = require('gitsigns.diff_int').run_diff
+    else
+      run_diff = require('gitsigns.diff_ext').run_diff
+    end
   end
 
   if not bcache.compare_text or config._refresh_staged_on_update then
@@ -268,11 +266,7 @@ end
 -- Since updates are asynchronous we need to make sure an update isn't performed
 -- whilst another one is in progress. If this happens then schedule another
 -- update after the current one has completed.
-M.update = throttle_by_id(update0) as function(integer, CacheEntry)
-
-M.setup = function()
-  M.update_debounced = debounce_trailing(config.update_debounce, void(M.update)) as function(integer)
-end
+M.update = throttle_by_id(update) as function(integer, CacheEntry)
 
 M.setup_signs_and_highlights = function(redefine: boolean)
   -- Define signs

@@ -157,8 +157,6 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
 
   table.insert(bcache.staged_diffs, hunk)
 
-  bcache.compare_text = nil -- Invalidate
-
   local hunk_signs = gs_hunks.process_hunks({hunk})
 
   scheduler()
@@ -173,7 +171,9 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
       signs.remove(bufnr, lnum)
     end
   end
-  void(manager.update)(bufnr)
+
+  bcache.compare_text = nil -- Invalidate
+  manager.update(bufnr)
 end))
 
 --- Reset the lines of the hunk at the cursor position, or all
@@ -326,13 +326,14 @@ M.reset_buffer_index = void(function()
   bcache.staged_diffs = {}
 
   bcache.git_obj:unstage_file()
-  bcache.compare_text = nil -- Invalidate
 
   scheduler()
   if not bcache.base then
     signs.add(config, bufnr, gs_hunks.process_hunks(hunks))
   end
-  void(manager.update)(bufnr)
+
+  bcache.compare_text = nil -- Invalidate
+  manager.update(bufnr)
 end)
 
 local function process_nav_opts(opts: NavHunkOpts)
