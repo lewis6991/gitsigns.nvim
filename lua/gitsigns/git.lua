@@ -308,14 +308,22 @@ Obj.update_file_info = function(self, update_relpath)
 end
 
 Obj.file_info = function(self, file)
-   local results = self:command({
+   local results, stderr = self:command({
       'ls-files',
       '--stage',
       '--others',
       '--exclude-standard',
       '--eol',
       file or self.file,
-   })
+   }, { supress_stderr = true })
+
+   if stderr then
+
+
+      if not stderr:match('^warning: could not open directory .*: No such file or directory') then
+         gsd.eprint(stderr)
+      end
+   end
 
    local result = {}
    for _, line in ipairs(results) do

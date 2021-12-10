@@ -308,14 +308,22 @@ Obj.update_file_info = function(self: Obj, update_relpath: boolean): boolean
 end
 
 Obj.file_info = function(self: Obj, file: string): M.FileProps
-  local results = self:command({
+  local results, stderr = self:command({
     'ls-files',
     '--stage',
     '--others',
     '--exclude-standard',
     '--eol',
     file or self.file
-  })
+  }, {supress_stderr = true})
+
+  if stderr then
+    -- Supress_stderr for the cases when we run:
+    --   git ls-files --others exists/nonexist
+    if not stderr:match('^warning: could not open directory .*: No such file or directory') then
+      gsd.eprint(stderr)
+    end
+  end
 
   local result: M.FileProps = {}
   for _, line in ipairs(results) do
