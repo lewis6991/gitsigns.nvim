@@ -1,5 +1,5 @@
 local void = require('plenary.async.async').void
-local scheduler = require('plenary.async.util').scheduler
+local awrap = require('plenary.async.async').wrap
 
 local gs_cache = require('gitsigns.cache')
 local CacheEntry = gs_cache.CacheEntry
@@ -38,6 +38,16 @@ local record M
   setup: function()
   setup_signs_and_highlights: function(redefine: boolean)
 end
+
+local schedule_if_buf_valid = function(buf: integer, cb: function)
+  vim.schedule(function()
+    if vim.api.nvim_buf_is_valid(buf) then
+      cb()
+    end
+  end)
+end
+
+local scheduler_if_buf_valid = awrap(schedule_if_buf_valid, 2)
 
 function M.apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: integer, bot: integer)
   -- If called without top or bot, then assume this is the first call after
@@ -136,7 +146,7 @@ M.on_lines = function(buf: integer, last_orig: integer, last_new: integer): bool
 
   -- Schedule sign speculation ortherwise CTRL-C in insert mode can cause a
   -- callback error. See #346
-  vim.schedule(function()
+  schedule_if_buf_valid(buf, function()
     if speculate_signs(buf, last_orig, last_new) then
       -- Speculative signs are added immediately whereas updates are debounced and
       -- throttled for each buffer. If we perform two quick updates which result
@@ -224,7 +234,7 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
   local old_hunks = bcache.hunks
   bcache.hunks = nil
 
-  scheduler()
+  scheduler_if_buf_valid(bufnr)
   local buftext = get_lines(bufnr)
   local git_obj = bcache.git_obj
 
@@ -244,7 +254,7 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
   bcache.hunks = run_diff(bcache.compare_text, buftext,
     config.diff_opts.algorithm, config.diff_opts.indent_heuristic)
 
-  scheduler()
+  scheduler_if_buf_valid(bufnr)
   if gs_hunks.compare_heads(bcache.hunks, old_hunks) then
     bcache.pending_signs = gs_hunks.process_hunks(bcache.hunks)
 
