@@ -247,14 +247,74 @@ describe('gitsigns', function()
   end)
 
   describe('current line blame', function()
+    before_each(function()
+      config.current_line_blame = true
+      config.current_line_blame_formatter_opts = {
+        relative_time = true,
+      }
+      setup_gitsigns(config)
+    end)
+
+    local function blame_line_ui_test(autocrlf, file_ending)
+      setup_test_repo()
+
+      git{'config', 'core.autocrlf', autocrlf}
+      if file_ending == 'dos' then
+        system("printf 'This\r\nis\r\na\r\nwindows\r\nfile\r\n' > "..newfile)
+      else
+        system("printf 'This\nis\na\nwindows\nfile\n' > "..newfile)
+      end
+      git{'add', newfile}
+      git{"commit", "-m", "commit on main"}
+
+      edit(newfile)
+      feed('gg')
+      command("Gitsigns clear_debug")
+      check { signs  = {} }
+
+      -- Wait until the virtual blame line appears
+      screen:sleep(1000)
+      screen:expect{grid=[[
+        ^{MATCH:This {6: tester, %d seco}}|
+        is                  |
+        a                   |
+        windows             |
+        file                |
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+      ]]}
+    end
+
     it('doesn\'t error on untracked files', function()
       setup_test_repo{no_add=true}
-      config.current_line_blame = true
-      setup_gitsigns(config)
       edit(newfile)
       insert("line")
       command("write")
       screen:expect{messages = { { content = { { "<" } }, kind = "" } } }
+    end)
+    --
+    it('does handle dos fileformats', function()
+      -- Add a file with windows line ending into the repo
+      -- Disable autocrlf, so that the file keeps the \r\n file endings.
+        blame_line_ui_test('false', 'dos')
+    end)
+
+    it('does handle autocrlf', function()
+        blame_line_ui_test('true', 'dos')
+    end)
+
+    it('does handle unix', function()
+        blame_line_ui_test('false', 'unix')
     end)
   end)
 
