@@ -40,33 +40,12 @@ jobs:
 
       - name: Setup build dependencies
         uses: airvzxf/cache-anything-new-action@v1.0.1
-        is_cached: ${{ steps.package-cache.outputs.cache-hit }}
-        cache: ${{ runner.temp }}/cache-packages
-        snapshot: '/'
-        exclude: '/boot /data /dev /mnt /proc /run /sys'
-        run: |
-          sudo apt update &&
-          sudo apt install -y \
-            autoconf \
-            automake \
-            cmake \
-            g++ \
-            gettext \
-            gperf \
-            libjemalloc-dev \
-            libluajit-5.1-dev \
-            libmsgpack-dev \
-            libtermkey-dev \
-            libtool \
-            libtool-bin \
-            libunibilium-dev \
-            libvterm-dev \
-            lua-bitop \
-            lua-lpeg \
-            lua-mpack \
-            ninja-build \
-            pkg-config \
-            unzip
+        with:
+          is_cached: ${{ steps.package-cache.outputs.cache-hit }}
+          cache: ${{ runner.temp }}/cache-packages
+          snapshot: '/'
+          exclude: '/boot /data /dev /mnt /proc /run /sys'
+          script: install.sh
 
       - uses: leafo/gh-actions-lua@v8
         with:
