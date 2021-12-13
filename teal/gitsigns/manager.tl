@@ -17,6 +17,7 @@ local dprint            = gs_debug.dprint
 local dprintf           = gs_debug.dprintf
 local eprint            = gs_debug.eprint
 local subprocess        = require('gitsigns.subprocess')
+local util              = require('gitsigns.util')
 
 local gs_hunks          = require("gitsigns.hunks")
 local Hunk              = gs_hunks.Hunk
@@ -211,17 +212,6 @@ M.apply_word_diff = function(bufnr: integer, row: integer)
   end
 end
 
-local function get_lines(bufnr: integer): {string}
-  -- nvim_buf_get_lines strips carriage returns if fileformat==dos
-  local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  if api.nvim_buf_get_option(bufnr, 'fileformat') == 'dos' then
-    for i = 1, #buftext do
-      buftext[i] = buftext[i]..'\r'
-    end
-  end
-  return buftext
-end
-
 local update_cnt = 0
 
 local update0 = function(bufnr: integer, bcache: CacheEntry)
@@ -235,7 +225,7 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
   bcache.hunks = nil
 
   scheduler_if_buf_valid(bufnr)
-  local buftext = get_lines(bufnr)
+  local buftext = util.buf_lines(bufnr)
   local git_obj = bcache.git_obj
 
   -- Make sure these requires are done in the main event.

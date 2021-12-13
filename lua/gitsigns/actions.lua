@@ -618,7 +618,7 @@ M.blame_line = void(function(opts)
    end)
 
    scheduler()
-   local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+   local buftext = util.buf_lines(bufnr)
    local lnum = api.nvim_win_get_cursor(0)[1]
    local result = bcache.git_obj:run_blame(buftext, lnum, ignore_whitespace)
    pcall(function()

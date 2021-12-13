@@ -34,6 +34,17 @@ end
 
 M.path_sep = package.config:sub(1, 1)
 
+function M.buf_lines(bufnr: integer): {string}
+  -- nvim_buf_get_lines strips carriage returns if fileformat==dos
+  local buftext: {string} = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  if vim.bo[bufnr].fileformat == 'dos' then
+    for i = 1, #buftext do
+      buftext[i] = buftext[i]..'\r'
+    end
+  end
+  return buftext
+end
+
 function M.tmpname(): string
   if is_unix then
     return os.tmpname()

@@ -6,6 +6,7 @@ local scheduler = require('plenary.async.util').scheduler
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local BlameInfo = require('gitsigns.git').BlameInfo
+local util = require('gitsigns.util')
 
 local api = vim.api
 
@@ -85,7 +86,7 @@ M.update = void(function()
    BlameCache:init_or_invalidate(bufnr)
    local result = BlameCache:get(bufnr, lnum)
    if not result then
-      local buftext = api.nvim_buf_get_lines(bufnr, 0, -1, false)
+      local buftext = util.buf_lines(bufnr)
       result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
       BlameCache:add(bufnr, lnum, result)
    end
