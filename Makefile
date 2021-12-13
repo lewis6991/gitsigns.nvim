@@ -1,7 +1,7 @@
 
 export PJ_ROOT=$(PWD)
 
-FILTER=.*
+FILTER ?= .*
 
 INIT_LUAROCKS := eval $$(luarocks --lua-version=5.1 path) &&
 
@@ -35,7 +35,7 @@ test: deps/neovim deps/plenary.nvim
 		--lpath=$(PWD)/lua/?.lua \
 		--lpath=$(PWD)/deps/plenary.nvim/lua/?.lua \
 		--lpath=$(PWD)/deps/plenary.nvim/lua/?/init.lua \
-		--filter=$(FILTER) \
+		--filter="$(FILTER)" \
 		$(PWD)/test
 
 	-@stty sane
