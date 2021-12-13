@@ -24,17 +24,13 @@ export TEST_COLORS=1
 .PHONY: test
 test: deps/neovim deps/plenary.nvim
 	$(INIT_LUAROCKS) deps/neovim/.deps/usr/bin/busted \
-		-v \
-		--lazy \
+		--verbose \
 		--helper=$(PWD)/test/preload.lua \
 		--output test.busted.outputHandlers.nvim \
 		--lpath=$(PWD)/deps/neovim/?.lua \
 		--lpath=$(PWD)/deps/neovim/build/?.lua \
 		--lpath=$(PWD)/deps/neovim/runtime/lua/?.lua \
-		--lpath=$(PWD)/deps/?.lua \
 		--lpath=$(PWD)/lua/?.lua \
-		--lpath=$(PWD)/deps/plenary.nvim/lua/?.lua \
-		--lpath=$(PWD)/deps/plenary.nvim/lua/?/init.lua \
 		--filter="$(FILTER)" \
 		$(PWD)/test
 
