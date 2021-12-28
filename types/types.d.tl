@@ -18,6 +18,17 @@ global record jit
 end
 
 local record api
+  record CmdParams
+    args: string
+    bang: boolean
+    line1: integer
+    line2: integer
+    range: integer
+    count: number
+    reg: string
+    mods: string
+  end
+  nvim_add_user_command: function(string, function(CmdParams), table)
   nvim_buf_add_highlight: function(number, number, string, number, number, number): number
   nvim_buf_attach: function(number, boolean, {string:any}): boolean
   nvim_buf_call: function(number, function)

@@ -448,14 +448,26 @@ end
 M._update_cwd_head = void(_update_cwd_head)
 
 local function setup_command()
-   vim.cmd(table.concat({
-      'command!',
-      '-range',
-      '-nargs=+',
-      '-complete=customlist,v:lua.package.loaded.gitsigns._complete',
-      'Gitsigns',
-      'lua require("gitsigns")._run_func({<range>, <line1>, <line2>}, <f-args>)',
-   }, ' '))
+   if api.nvim_add_user_command then
+      api.nvim_add_user_command('Gitsigns', function(params)
+         local fargs = vim.split(params.args, '%s+')
+         M._run_func({ params.range, params.line1, params.line2 }, unpack(fargs))
+      end, {
+         bang = true,
+         nargs = '+',
+         range = true,
+         complete = M._complete,
+      })
+   else
+      vim.cmd(table.concat({
+         'command!',
+         '-range',
+         '-nargs=+',
+         '-complete=customlist,v:lua.package.loaded.gitsigns._complete',
+         'Gitsigns',
+         'lua require("gitsigns")._run_func({<range>, <line1>, <line2>}, <f-args>)',
+      }, ' '))
+   end
 end
 
 
