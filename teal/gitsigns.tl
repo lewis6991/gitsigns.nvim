@@ -453,7 +453,7 @@ local function setup_command()
       local fargs = vim.split(params.args, '%s+')
       M._run_func({params.range, params.line1, params.line2}, unpack(fargs))
     end, {
-      bang = true,
+      force = true,
       nargs = '+',
       range = true,
       complete = M._complete
