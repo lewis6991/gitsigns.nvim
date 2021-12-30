@@ -18,7 +18,7 @@ global record jit
 end
 
 local record api
-  record CmdParams
+  record UserCmdParams
     args: string
     bang: boolean
     line1: integer
@@ -28,7 +28,18 @@ local record api
     reg: string
     mods: string
   end
-  nvim_add_user_command: function(string, function(CmdParams), table)
+  record UserCmdOpts
+    nargs: string|integer
+    range: boolean|string|integer
+    count: boolean|integer
+    addr: string
+    bang: boolean
+    bar: boolean
+    register: boolean
+    force: boolean
+    complete: string|function(arglead: string, line: string): {string}
+  end
+  nvim_add_user_command: function(string, function(UserCmdParams), UserCmdOpts)
   nvim_buf_add_highlight: function(number, number, string, number, number, number): number
   nvim_buf_attach: function(number, boolean, {string:any}): boolean
   nvim_buf_call: function(number, function)
