@@ -106,6 +106,18 @@ local M = {BlameInfo = {}, Version = {}, Repo = {}, FileProps = {}, Obj = {}, }
 
 
 
+
+
+M.in_git_dir = function(file)
+   for _, p in ipairs(vim.split(file, util.path_sep)) do
+      if p == '.git' then
+         return true
+      end
+   end
+   return false
+end
+
+
 local Obj = M.Obj
 local Repo = M.Repo
 

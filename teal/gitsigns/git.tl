@@ -22,6 +22,8 @@ local record GJobSpec
 end
 
 local record M
+  in_git_dir: function(string): boolean
+
   record BlameInfo
     -- Info in header
     sha: string
@@ -105,6 +107,16 @@ local record M
   end
 
 end
+
+M.in_git_dir = function(file: string): boolean
+  for _, p in ipairs(vim.split(file, util.path_sep)) do
+    if p == '.git' then
+      return true
+    end
+  end
+  return false
+end
+
 
 local Obj = M.Obj
 local Repo = M.Repo

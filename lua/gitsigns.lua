@@ -187,15 +187,6 @@ local function get_buf_path(bufnr)
    return file
 end
 
-local function in_git_dir(file)
-   for _, p in ipairs(vim.split(file, util.path_sep)) do
-      if p == '.git' then
-         return true
-      end
-   end
-   return false
-end
-
 local attach_disabled = false
 
 local attach0 = function(cbuf, aucmd)
@@ -232,7 +223,7 @@ local attach0 = function(cbuf, aucmd)
 
    local file, commit = get_buf_path(cbuf)
 
-   if in_git_dir(file) then
+   if git.in_git_dir(file) then
       dprint('In git dir')
       return
    end
