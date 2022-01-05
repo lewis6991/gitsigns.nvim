@@ -8,7 +8,8 @@ local popup         = require('gitsigns.popup')
 local signs         = require('gitsigns.signs')
 local util          = require('gitsigns.util')
 local manager       = require('gitsigns.manager')
-local git           = require('gitsigns.git')
+local vcs           = require('gitsigns.vcs')
+local vcs_interface = require('gitsigns.vcs_interface').new_vcs()
 local warn          = require('gitsigns.message').warn
 
 local gs_cache       = require('gitsigns.cache')
@@ -566,7 +567,7 @@ local function run_diff(a: {string}, b: {string}): {Hunk}
   return f(a, b, diff_opts.algorithm, diff_opts.indent_heuristic)
 end
 
-local function get_blame_hunk(repo: git.Repo, info: git.BlameInfo): Hunk, integer, integer
+local function get_blame_hunk(repo: vcs_interface.Repo, info: vcs_interface.BlameInfo): Hunk, integer, integer
   local a = {}
   -- If no previous so sha of blame added the file
   if info.previous then
@@ -859,7 +860,7 @@ local function buildqflist(target: integer|string): {vim.fn.QFItem}
       hunks_to_qflist(bufnr, bcache.hunks, qflist)
     end
   elseif target == 'all' then
-    local repos: {string:git.Repo} = {}
+    local repos: {string:vcs_interface.Repo} = {}
     for _, bcache in pairs(cache as {integer:CacheEntry}) do
       local repo = bcache.git_obj.repo
       if not repos[repo.gitdir] then
@@ -867,7 +868,8 @@ local function buildqflist(target: integer|string): {vim.fn.QFItem}
       end
     end
 
-    local repo = git.Repo.new(vim.fn.getcwd())
+    local current_vcs = vcs.vcs_for_path(vim.fn.getcwd())
+    local repo = current_vcs.Repo.new(vim.fn.getcwd())
     if not repos[repo.gitdir] then
       repos[repo.gitdir] = repo
     end

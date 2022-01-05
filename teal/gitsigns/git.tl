@@ -1,3 +1,4 @@
+local dprint = require("gitsigns.debug").dprint
 local wrap = require('plenary.async.async').wrap
 local scheduler = require('plenary.async.util').scheduler
 
@@ -11,104 +12,12 @@ local Hunk = gs_hunks.Hunk
 local uv = vim.loop
 local startswith = vim.startswith
 
-local record GJobSpec
-  command: string
-  args: {string}
-  cwd: string
-  writer: {string}
+local vcs = require('gitsigns.vcs_interface')
+local GJobSpec = vcs.g_job_spec
 
-  -- local extensions
-  supress_stderr: boolean
-end
+local M = vcs.new_vcs()
 
-local record M
-  in_git_dir: function(string): boolean
-
-  record BlameInfo
-    -- Info in header
-    sha: string
-    abbrev_sha: string
-    orig_lnum: integer
-    final_lnum: integer
-
-    -- Porcelain fields
-    author: string
-    author_mail: string
-    author_time: integer
-    author_tz: string
-    committer: string
-    committer_mail: string
-    committer_time: integer
-    committer_tz: string
-    summary: string
-    previous: string
-    previous_filename: string
-    previous_sha: string
-    filename: string
-  end
-
-  record Version
-    major: integer
-    minor: integer
-    patch: integer
-  end
-  version: Version
-
-  enable_yadm: boolean
-
-  set_version: function(string)
-  get_repo_info: function(path: string, cmd: string): string,string,string
-  command    : function(args: {string}, spec: GJobSpec): {string}, string
-
-  record Repo
-    toplevel   : string
-    gitdir     : string
-    abbrev_head: string
-    username   : string
-
-    command            : function(Repo, {string}, GJobSpec): {string}, string
-    files_changed      : function(Repo): {string}
-    get_show_text      : function(Repo, string): {string}, string
-    update_abbrev_head : function(Repo)
-    new                : function(string): Repo
-  end
-
-  record FileProps
-    relpath       : string
-    orig_relpath  : string -- Use for tracking moved files
-    object_name   : string
-    mode_bits     : string
-    has_conflicts : boolean
-    i_crlf        : boolean  -- Object has crlf
-    w_crlf        : boolean  -- Working copy has crlf
-  end
-
-  record Obj
-    repo          : Repo
-    file          : string
-    relpath       : string
-    orig_relpath  : string -- Use for tracking moved files
-    object_name   : string
-    mode_bits     : string
-    has_conflicts : boolean
-    i_crlf        : boolean  -- Object has crlf
-    w_crlf        : boolean  -- Working copy has crlf
-
-    command              : function(Obj, {string}, GJobSpec): {string}, string
-    update_file_info     : function(Obj, boolean): boolean
-    unstage_file         : function(Obj, string, string)
-    run_blame            : function(Obj, {string}, number, boolean): BlameInfo
-    file_info            : function(Obj, string): FileProps
-    get_show_text        : function(Obj, string): {string}, string
-    ensure_file_in_index : function(Obj)
-    stage_hunks          : function(Obj, {Hunk}, boolean)
-    has_moved            : function(Obj): string
-    new                  : function(string): Obj
-  end
-
-end
-
-M.in_git_dir = function(file: string): boolean
+local in_git_dir = function(file: string): boolean
   for _, p in ipairs(vim.split(file, util.path_sep)) do
     if p == '.git' then
       return true
@@ -116,7 +25,6 @@ M.in_git_dir = function(file: string): boolean
   end
   return false
 end
-
 
 local Obj = M.Obj
 local Repo = M.Repo
@@ -182,6 +90,15 @@ M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({st
     callback(stdout_lines, stderr)
   end)
 end, 3)
+
+M.is_inside_worktree = function(path: string, cmd: string): boolean
+  local results = M.command({'rev-parse'}, {
+    command = cmd or 'git',
+    supress_stderr = true,
+    cwd = util.dirname(path),
+  })
+  return #results == 0
+end
 
 local function process_abbrev_head(gitdir: string, head_str: string, path: string, cmd: string): string
   if not gitdir then
@@ -470,13 +387,18 @@ Obj.has_moved = function(self: Obj): string
 end
 
 Obj.new = function(file: string): Obj
+  if in_git_dir(file) then
+    dprint('In git dir')
+    return nil
+  end
   local self = setmetatable({} as Obj, {__index = Obj})
 
   self.file = file
   self.repo = Repo.new(util.dirname(file))
 
   if not self.repo.gitdir then
-    return self
+    dprint('Not in git repo')
+    return nil
   end
 
   self:update_file_info(true)

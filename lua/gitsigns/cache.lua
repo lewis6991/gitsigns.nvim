@@ -1,6 +1,6 @@
 local Hunk = require("gitsigns.hunks").Hunk
 local Sign = require('gitsigns.signs').Sign
-local GitObj = require('gitsigns.git').Obj
+local VcsObj = require('gitsigns.vcs_interface').new_vcs().Obj
 
 local util = require('gitsigns.util')
 

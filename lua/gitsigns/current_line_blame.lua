@@ -5,7 +5,7 @@ local scheduler = require('plenary.async.util').scheduler
 
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
-local BlameInfo = require('gitsigns.git').BlameInfo
+local BlameInfo = require('gitsigns.vcs_interface').new_vcs().BlameInfo
 local util = require('gitsigns.util')
 
 local api = vim.api

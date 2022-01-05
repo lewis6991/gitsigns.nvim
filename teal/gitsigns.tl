@@ -2,6 +2,7 @@ local void = require('plenary.async.async').void
 local scheduler = require('plenary.async.util').scheduler
 
 local Status     = require("gitsigns.status")
+local vcs        = require('gitsigns.vcs')
 local git        = require('gitsigns.git')
 local manager    = require('gitsigns.manager')
 local signs      = require('gitsigns.signs')
@@ -41,23 +42,23 @@ end
 local namespace: integer
 
 local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: string)
-  local git_obj = bcache.git_obj
+  local vcs_obj = bcache.git_obj
   local do_update = false
 
-  local new_name = git_obj:has_moved()
+  local new_name = vcs_obj:has_moved()
   if new_name then
     dprintf('File moved to %s', new_name)
-    git_obj.relpath = new_name
-    if not git_obj.orig_relpath then
-      git_obj.orig_relpath = old_relpath
+    vcs_obj.relpath = new_name
+    if not vcs_obj.orig_relpath then
+      vcs_obj.orig_relpath = old_relpath
     end
     do_update = true
-  elseif git_obj.orig_relpath then
-    local orig_file = git_obj.repo.toplevel..util.path_sep..git_obj.orig_relpath
-    if git_obj:file_info(orig_file).relpath then
+  elseif vcs_obj.orig_relpath then
+    local orig_file = vcs_obj.repo.toplevel..util.path_sep..vcs_obj.orig_relpath
+    if vcs_obj:file_info(orig_file).relpath then
       dprintf('Moved file reset')
-      git_obj.relpath = git_obj.orig_relpath
-      git_obj.orig_relpath = nil
+      vcs_obj.relpath = vcs_obj.orig_relpath
+      vcs_obj.orig_relpath = nil
       do_update = true
     end
   else
@@ -65,9 +66,9 @@ local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: s
   end
 
   if do_update then
-    git_obj.file = git_obj.repo.toplevel..util.path_sep..git_obj.relpath
-    bcache.file = git_obj.file
-    git_obj:update_file_info()
+    vcs_obj.file = vcs_obj.repo.toplevel..util.path_sep..vcs_obj.relpath
+    bcache.file = vcs_obj.file
+    vcs_obj:update_file_info()
     scheduler()
     api.nvim_buf_set_name(bufnr, bcache.file)
   end
@@ -94,22 +95,22 @@ local watch_gitdir = function(bufnr: integer, gitdir: string): uv.FSPollObj
       return
     end
 
-    local git_obj = bcache.git_obj
+    local vcs_obj = bcache.git_obj
 
-    git_obj.repo:update_abbrev_head()
+    vcs_obj.repo:update_abbrev_head()
 
     scheduler()
-    Status:update(bufnr, { head = git_obj.repo.abbrev_head})
+    Status:update(bufnr, { head = vcs_obj.repo.abbrev_head})
 
-    local was_tracked = git_obj.object_name ~= nil
-    local old_relpath = git_obj.relpath
+    local was_tracked = vcs_obj.object_name ~= nil
+    local old_relpath = vcs_obj.relpath
 
-    if not git_obj:update_file_info() then
+    if not vcs_obj:update_file_info() then
       dprint('File not changed')
       return
     end
 
-    if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
+    if config.watch_gitdir.follow_files and was_tracked and not vcs_obj.object_name then
       -- File was tracked but is no longer tracked. Must of been removed or
       -- moved. Check if it was moved and switch to it.
       handle_moved(bufnr, bcache, old_relpath)
@@ -223,11 +224,6 @@ local attach0 = function(cbuf: integer, aucmd: string)
 
   local file, commit = get_buf_path(cbuf)
 
-  if git.in_git_dir(file) then
-    dprint('In git dir')
-    return
-  end
-
   local file_dir = util.dirname(file)
 
   if not file_dir or not util.path_exists(file_dir) then
@@ -235,13 +231,17 @@ local attach0 = function(cbuf: integer, aucmd: string)
     return
   end
 
-  local git_obj = git.Obj.new(file)
-  local repo = git_obj.repo
-
-  if not repo.gitdir then
-    dprint('Not in git repo')
+  local current_vcs = vcs.vcs_for_path(file)
+  if not current_vcs then
+    dprint('Not in vcs repo')
     return
   end
+  local vcs_obj = current_vcs.Obj.new(file)
+  if not vcs_obj then
+    dprint('Empty vcs Obj')
+    return
+  end
+  local repo = vcs_obj.repo
 
   scheduler()
   Status:update(cbuf, {
@@ -251,7 +251,7 @@ local attach0 = function(cbuf: integer, aucmd: string)
   })
 
   if vim.startswith(file, repo.gitdir..util.path_sep) then
-    dprint('In non-standard git dir')
+    dprint('In non-standard vcs dir')
     return
   end
 
@@ -260,12 +260,12 @@ local attach0 = function(cbuf: integer, aucmd: string)
     return
   end
 
-  if not git_obj.relpath then
+  if not vcs_obj.relpath then
     dprint('Cannot resolve file in repo')
     return
   end
 
-  if not config.attach_to_untracked and git_obj.object_name == nil then
+  if not config.attach_to_untracked and vcs_obj.object_name == nil then
     dprint('File is untracked')
     return
   end
@@ -284,7 +284,7 @@ local attach0 = function(cbuf: integer, aucmd: string)
     file           = file,
     commit         = commit,
     gitdir_watcher = watch_gitdir(cbuf, repo.gitdir),
-    git_obj        = git_obj
+    git_obj        = vcs_obj
   }
 
   -- Initial update

@@ -1,3 +1,4 @@
+local dprint = require("gitsigns.debug").dprint
 local wrap = require('plenary.async.async').wrap
 local scheduler = require('plenary.async.util').scheduler
 
@@ -11,104 +12,12 @@ local Hunk = gs_hunks.Hunk
 local uv = vim.loop
 local startswith = vim.startswith
 
-local GJobSpec = {}
+local vcs = require('gitsigns.vcs_interface')
+local GJobSpec = vcs.g_job_spec
 
+local M = vcs.new_vcs()
 
-
-
-
-
-
-
-
-local M = {BlameInfo = {}, Version = {}, Repo = {}, FileProps = {}, Obj = {}, }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-M.in_git_dir = function(file)
+local in_git_dir = function(file)
    for _, p in ipairs(vim.split(file, util.path_sep)) do
       if p == '.git' then
          return true
@@ -116,7 +25,6 @@ M.in_git_dir = function(file)
    end
    return false
 end
-
 
 local Obj = M.Obj
 local Repo = M.Repo
@@ -182,6 +90,15 @@ M.command = wrap(function(args, spec, callback)
       callback(stdout_lines, stderr)
    end)
 end, 3)
+
+M.is_inside_worktree = function(path, cmd)
+   local results = M.command({ 'rev-parse' }, {
+      command = cmd or 'git',
+      supress_stderr = true,
+      cwd = util.dirname(path),
+   })
+   return #results == 0
+end
 
 local function process_abbrev_head(gitdir, head_str, path, cmd)
    if not gitdir then
@@ -470,13 +387,18 @@ Obj.has_moved = function(self)
 end
 
 Obj.new = function(file)
+   if in_git_dir(file) then
+      dprint('In git dir')
+      return nil
+   end
    local self = setmetatable({}, { __index = Obj })
 
    self.file = file
    self.repo = Repo.new(util.dirname(file))
 
    if not self.repo.gitdir then
-      return self
+      dprint('Not in git repo')
+      return nil
    end
 
    self:update_file_info(true)

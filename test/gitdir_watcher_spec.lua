@@ -39,12 +39,13 @@ describe('gitdir_watcher', function()
       "run_job: git --no-pager --version",
       'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       'attach(1): Attaching (trigger=BufRead)',
+      'run_job: git --no-pager rev-parse',
       p"run_job: git .* config user.name",
       "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
       p('run_job: git .* ls%-files .* '..test_file),
       'watch_gitdir(1): Watching git dir',
       p'run_job: git .* show :0:dummy.txt',
-      'update(1): updates: 1, jobs: 6',
+      'update(1): updates: 1, jobs: 7',
     }
 
     command('Gitsigns clear_debug')
@@ -59,7 +60,7 @@ describe('gitdir_watcher', function()
       'handle_moved(1): File moved to dummy.txt2',
       p('run_job: git .* ls%-files .* '..test_file..'2'),
       p'run_job: git .* show :0:dummy.txt2',
-      'update(1): updates: 2, jobs: 11'
+      'update(1): updates: 2, jobs: 12'
     }
 
     eq(test_file..'2', get_buf_name())
@@ -76,7 +77,7 @@ describe('gitdir_watcher', function()
       'handle_moved(1): File moved to dummy.txt3',
       p('run_job: git .* ls%-files .* '..test_file..'3'),
       p'run_job: git .* show :0:dummy.txt3',
-      'update(1): updates: 3, jobs: 16'
+      'update(1): updates: 3, jobs: 17'
     }
 
     eq(test_file..'3', get_buf_name())
@@ -94,7 +95,7 @@ describe('gitdir_watcher', function()
       'handle_moved(1): Moved file reset',
       p('run_job: git .* ls%-files .* '..test_file),
       p'run_job: git .* show :0:dummy.txt',
-      'update(1): updates: 4, jobs: 22'
+      'update(1): updates: 4, jobs: 23'
     }
 
     eq(test_file, get_buf_name())

@@ -1,4 +1,4 @@
-local git = require('gitsigns.git')
+local vcs = require('gitsigns.vcs')
 
 local gs_hunks = require("gitsigns.hunks")
 local Hunk = gs_hunks.Hunk
@@ -57,7 +57,11 @@ M.run_diff = function(
 
 
 
-   local out = git.command({
+   local active_vcs = vcs.vcs_for_path(file_cmp)
+   if not active_vcs then
+      return results
+   end
+   local out = active_vcs.command({
       '-c', 'core.safecrlf=false',
       'diff',
       '--color=never',

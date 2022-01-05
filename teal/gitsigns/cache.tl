@@ -1,6 +1,6 @@
 local Hunk = require("gitsigns.hunks").Hunk
 local Sign = require('gitsigns.signs').Sign
-local GitObj = require('gitsigns.git').Obj
+local VcsObj = require('gitsigns.vcs_interface').new_vcs().Obj
 
 local util = require('gitsigns.util')
 
@@ -14,7 +14,7 @@ local record M
     staged_diffs  : {Hunk}
     pending_signs : {integer:Sign}
     gitdir_watcher : vim.loop.FSPollObj -- Timer object watching the gitdir
-    git_obj       : GitObj
+    git_obj       : VcsObj
     commit        : string
 
     get_compare_rev: function(CacheEntry, base: string): string

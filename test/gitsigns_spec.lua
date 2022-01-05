@@ -87,8 +87,7 @@ describe('gitsigns', function()
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..test_file),
         'watch_gitdir(1): Watching git dir',
-        p'run_job: git .* show :0:dummy.txt',
-        'update(1): updates: 1, jobs: 7'
+        p'run_job: git .* show :0:dummy.txt'
       })
     end)
 
@@ -114,9 +113,11 @@ describe('gitsigns', function()
       'run_job: git --no-pager --version',
       'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
       'attach(1): Attaching (trigger=BufRead)',
-      p'run_job: git .* config user.name',
+      'run_job: git --no-pager rev-parse',
+      'run_job: git --no-pager config user.name',
       'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
-      'attach(1): Not in git repo',
+      'new: Not in git repo',
+      'attach(1): Empty vcs Obj'
     }
     command('Gitsigns clear_debug')
 
@@ -127,7 +128,8 @@ describe('gitsigns', function()
       'attach(1): Attaching (trigger=BufWritePost)',
       'run_job: git --no-pager config user.name',
       'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
-      'attach(1): Not in git repo'
+      'new: Not in git repo',
+      'attach(1): Empty vcs Obj'
     }
   end)
 
@@ -162,7 +164,7 @@ describe('gitsigns', function()
         'run_job: git --no-pager --version',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufRead)',
-        'attach(1): In git dir'
+        'run_job: git --no-pager rev-parse'
       }
     end)
 
@@ -178,6 +180,7 @@ describe('gitsigns', function()
         'run_job: git --no-pager --version',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufRead)',
+        'run_job: git --no-pager rev-parse',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         p'run_job: git .* ls%-files .*/dummy_ignored.txt',
@@ -194,6 +197,7 @@ describe('gitsigns', function()
         'run_job: git --no-pager --version',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufNewFile)',
+        'run_job: git --no-pager rev-parse',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..newfile),
@@ -343,6 +347,7 @@ describe('gitsigns', function()
         'run_job: git --no-pager --version',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufRead)',
+        'run_job: git --no-pager rev-parse',
         p'run_job: git .* config user.name',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'run_job: git --no-pager rev-parse --short HEAD',
@@ -457,6 +462,7 @@ describe('gitsigns', function()
           'run_job: git --no-pager --version',
           'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
           'attach(1): Attaching (trigger=BufNewFile)',
+          'run_job: git --no-pager rev-parse',
           'run_job: git --no-pager config user.name',
           'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
           p'run_job: git .* ls%-files .*',
@@ -475,10 +481,11 @@ describe('gitsigns', function()
         }
 
         if not internal_diff then
+          table.insert(messages, 'run_job: git --no-pager rev-parse')
           table.insert(messages, p'run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*')
         end
 
-        local jobs = internal_diff and 9 or 10
+        local jobs = internal_diff and 10 or 12
         table.insert(messages, "update(1): updates: 1, jobs: "..jobs)
 
         match_debug_messages(messages)

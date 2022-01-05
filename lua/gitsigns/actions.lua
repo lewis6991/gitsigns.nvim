@@ -8,7 +8,8 @@ local popup = require('gitsigns.popup')
 local signs = require('gitsigns.signs')
 local util = require('gitsigns.util')
 local manager = require('gitsigns.manager')
-local git = require('gitsigns.git')
+local vcs = require('gitsigns.vcs')
+local vcs_interface = require('gitsigns.vcs_interface').new_vcs()
 local warn = require('gitsigns.message').warn
 
 local gs_cache = require('gitsigns.cache')
@@ -867,7 +868,8 @@ local function buildqflist(target)
          end
       end
 
-      local repo = git.Repo.new(vim.fn.getcwd())
+      local current_vcs = vcs.vcs_for_path(vim.fn.getcwd())
+      local repo = current_vcs.Repo.new(vim.fn.getcwd())
       if not repos[repo.gitdir] then
          repos[repo.gitdir] = repo
       end
