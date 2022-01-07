@@ -11,6 +11,8 @@ local Hunk = gs_hunks.Hunk
 local uv = vim.loop
 local startswith = vim.startswith
 
+local dprint = require("gitsigns.debug").dprint
+
 local record GJobSpec
   command: string
   args: {string}
@@ -57,6 +59,7 @@ local record M
   set_version: function(string)
   get_repo_info: function(path: string, cmd: string): string,string,string
   command    : function(args: {string}, spec: GJobSpec): {string}, string
+  diff       : function(file_cmp: string, file_buf: string, indent_heuristic: boolean, diff_algo: string): {string}, string
 
   record Repo
     toplevel   : string
@@ -104,6 +107,15 @@ local record M
     new                  : function(string): Obj
   end
 
+end
+
+local in_git_dir = function(file: string): boolean
+  for _, p in ipairs(vim.split(file, util.path_sep)) do
+    if p == '.git' then
+      return true
+    end
+  end
+  return false
 end
 
 local Obj = M.Obj
@@ -170,6 +182,21 @@ M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({st
     callback(stdout_lines, stderr)
   end)
 end, 3)
+
+M.diff = function(file_cmp: string, file_buf: string, indent_heuristic: boolean, diff_algo: string): {string}, string
+  return M.command{
+    '-c', 'core.safecrlf=false',
+    'diff',
+    '--color=never',
+    '--'..(indent_heuristic and '' or 'no-')..'indent-heuristic',
+    '--diff-algorithm='..diff_algo,
+    '--patch-with-raw',
+    '--unified=0',
+    file_cmp,
+    file_buf,
+  }
+
+end
 
 local function process_abbrev_head(gitdir: string, head_str: string, path: string, cmd: string): string
   if not gitdir then
@@ -458,13 +485,18 @@ Obj.has_moved = function(self: Obj): string
 end
 
 Obj.new = function(file: string): Obj
+  if in_git_dir(file) then
+      dprint('In git dir')
+      return nil
+  end
   local self = setmetatable({} as Obj, {__index = Obj})
 
   self.file = file
   self.repo = Repo.new(util.dirname(file))
 
   if not self.repo.gitdir then
-    return self
+    dprint('Not in git repo')
+    return nil
   end
 
   self:update_file_info(true)

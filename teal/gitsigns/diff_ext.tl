@@ -1,4 +1,4 @@
-local git = require('gitsigns.git')
+local git_diff = require('gitsigns.git').diff
 
 local gs_hunks = require("gitsigns.hunks")
 local Hunk = gs_hunks.Hunk
@@ -57,17 +57,7 @@ M.run_diff = function(
   -- We can safely ignore the warning, we turn it off by passing the '-c
   -- "core.safecrlf=false"' argument to git-diff.
 
-  local out = git.command{
-    '-c', 'core.safecrlf=false',
-    'diff',
-    '--color=never',
-    '--'..(indent_heuristic and '' or 'no-')..'indent-heuristic',
-    '--diff-algorithm='..diff_algo,
-    '--patch-with-raw',
-    '--unified=0',
-    file_cmp,
-    file_buf,
-  }
+  local out = git_diff(file_cmp, file_buf, indent_heuristic, diff_algo)
 
   for _, line in ipairs(out) do
     if vim.startswith(line, '@@') then
