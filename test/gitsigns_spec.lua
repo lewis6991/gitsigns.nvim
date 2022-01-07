@@ -116,7 +116,8 @@ describe('gitsigns', function()
       'attach(1): Attaching (trigger=BufRead)',
       p'run_job: git .* config user.name',
       'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
-      'attach(1): Not in git repo',
+      'new: Not in git repo',
+      'attach(1): Empty git obj',
     }
     command('Gitsigns clear_debug')
 
@@ -127,7 +128,8 @@ describe('gitsigns', function()
       'attach(1): Attaching (trigger=BufWritePost)',
       'run_job: git --no-pager config user.name',
       'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
-      'attach(1): Not in git repo'
+      'new: Not in git repo',
+      'attach(1): Empty git obj'
     }
   end)
 
