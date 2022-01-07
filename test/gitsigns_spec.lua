@@ -164,7 +164,8 @@ describe('gitsigns', function()
         'run_job: git --no-pager --version',
         'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
         'attach(1): Attaching (trigger=BufRead)',
-        'new: In git dir'
+        'new: In git dir',
+        'attach(1): Empty git obj'
       }
     end)
 
