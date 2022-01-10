@@ -32,6 +32,23 @@ local record M
     added: Node
     removed: Node
   end
+
+  enum HunkMarkType
+    "add"
+    "change"
+    "delete"
+    "topdelete"
+    "changedelete"
+  end
+
+  record HunkMark
+    type: HunkMarkType
+    start_line: integer
+    end_line: integer
+    count: integer
+    ids: {integer}
+  end
+
 end
 
 local Hunk = M.Hunk
@@ -140,30 +157,54 @@ function M.parse_diff_line(line: string): Hunk
   return hunk
 end
 
-function M.process_hunks(hunks: {Hunk}): {integer:Sign}
-  local signs = {}
+function M.calc_hunkmarks(hunks: {Hunk}): {M.HunkMark}
+  local hmarks: {M.HunkMark} = {}
+
   for _, hunk in ipairs(hunks or {}) do
-    local count = hunk.type == 'add' and hunk.added.count or hunk.removed.count
-    for i = hunk.start, hunk.dend do
-      local topdelete = hunk.type == 'delete' and i == 0
-      local changedelete = hunk.type == 'change' and hunk.removed.count > hunk.added.count and i == hunk.dend
-      -- topdelete signs get placed one row lower
-      signs[topdelete and 1 or i] = {
-        type = topdelete and 'topdelete' or changedelete and 'changedelete' or hunk.type,
-        count = i == hunk.start and count
+    local add, remove = hunk.added.count, hunk.removed.count
+    local topdelete = hunk.type == 'delete' and hunk.start == 0
+
+    local count = hunk.type == 'add' and add or remove
+
+    if topdelete then
+      hmarks[#hmarks+1] = {
+        type       = 'topdelete',
+        start_line = 1,
+        end_line   = 1,
+        count      = count
       }
-    end
-    if hunk.type == "change" then
-      local add, remove = hunk.added.count, hunk.removed.count
-      if add > remove then
-        local count_diff = add - remove
-        for i = 1, count_diff do
-          signs[hunk.dend + i] = {
-            type = 'add',
-            count = i == 1 and count_diff
-          }
+    else
+      local changedelete = hunk.type == 'change' and remove > add and hunk.start == hunk.dend
+      hmarks[#hmarks+1] = {
+        type       = changedelete and 'changedelete' or hunk.type,
+        start_line = hunk.start,
+        end_line   = hunk.dend,
+        count      = count
+      }
+      if hunk.type == "change" then
+        if add > remove then
+           hmarks[#hmarks+1] = {
+             type       = 'add',
+             start_line = hunk.dend + 1,
+             end_line   = hunk.dend + add - remove,
+             count      = add - remove
+           }
         end
       end
+    end
+  end
+
+  return hmarks
+end
+
+function M.process_hunkmarks(hunks: {M.HunkMark}): {integer:Sign}
+  local signs = {}
+  for _, m in ipairs(hunks or {}) do
+    for i = m.start_line, m.end_line do
+      signs[i] = {
+        type = m.type,
+        count = i == m.start_line and m.count
+      }
     end
   end
 

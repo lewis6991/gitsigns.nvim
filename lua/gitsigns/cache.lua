@@ -1,10 +1,12 @@
 local Hunk = require("gitsigns.hunks").Hunk
+local HunkMark = require("gitsigns.hunks").HunkMark
 local Sign = require('gitsigns.signs').Sign
 local GitObj = require('gitsigns.git').Obj
 
 local util = require('gitsigns.util')
 
 local M = {CacheEntry = {}, CacheObj = {}, }
+
 
 
 
@@ -59,6 +61,7 @@ end
 CacheEntry.new = function(o)
    o.hunks = o.hunks
    o.staged_diffs = o.staged_diffs or {}
+   o.hunk_marks = o.hunk_marks or {}
    o.compare_file = o.compare_file or util.tmpname()
    return setmetatable(o, { __index = CacheEntry })
 end

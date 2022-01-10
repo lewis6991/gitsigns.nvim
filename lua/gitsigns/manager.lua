@@ -21,6 +21,7 @@ local util = require('gitsigns.util')
 
 local gs_hunks = require("gitsigns.hunks")
 local Hunk = gs_hunks.Hunk
+local HunkMark = gs_hunks.HunkMark
 
 local setup_highlights = require('gitsigns.highlight').setup_highlights
 local config = require('gitsigns.config').config
@@ -28,6 +29,8 @@ local config = require('gitsigns.config').config
 local api = vim.api
 
 local M = {}
+
+
 
 
 
@@ -49,7 +52,9 @@ end
 
 local scheduler_if_buf_valid = awrap(schedule_if_buf_valid, 2)
 
-function M.apply_win_signs(bufnr, pending, top, bot)
+function M.apply_win_signs(bufnr, top, bot)
+   local pending = cache[bufnr].pending_signs
+
 
 
    local first_apply = top == nil
@@ -85,58 +90,50 @@ function M.apply_win_signs(bufnr, pending, top, bot)
 
 end
 
+local ns_em = api.nvim_create_namespace('gitsigns_extmarks')
 
+function M.apply_hunkmarks(bufnr, old_hmarks, new_hmarks)
 
-
-
-
-local function speculate_signs(buf, last_orig, last_new)
-   if last_new < last_orig then
-
-
-
-   elseif last_new > last_orig then
-
-
-      if last_orig == 0 then
-         local placed = signs.get(buf, 1)[1]
-
-
-         if not placed or not vim.startswith(placed, 'GitSignsTopDelete') then
-
-            for i = 1, last_new do
-               signs.add(config, buf, { [i] = { type = 'add', count = 0 } })
-            end
-         else
-            signs.remove(buf, 1)
+   if old_hmarks and old_hmarks[1] then
+      for _, hm in ipairs(old_hmarks) do
+         for _, id in ipairs(hm.ids) do
+            assert(api.nvim_buf_del_extmark(bufnr, ns_em, id))
          end
-         return true
-      else
-         local placed = signs.get(buf, last_orig)[last_orig]
-
-
-         if not placed or not vim.startswith(placed, 'GitSignsDelete') then
-
-            for i = last_orig + 1, last_new do
-               signs.add(config, buf, { [i] = { type = 'add', count = 0 } })
-            end
-            return true
-         end
+         hm.ids = {}
       end
    else
+      api.nvim_buf_clear_namespace(bufnr, ns_em, 0, -1)
+   end
 
+   for _, m in ipairs(new_hmarks or {}) do
+      local scfg = config.signs[m.type]
+      m.ids = m.ids or {}
 
-      local placed = signs.get(buf, last_orig)[last_orig]
+      for i = m.start_line, m.end_line do
+         local sign_text = config.signcolumn and scfg.text
 
+         if i == m.start_line and config.signcolumn and scfg.show_count and m.count then
+            local cc = config.count_chars
+            local count_char = cc[m.count] or cc['+'] or ''
+            sign_text = scfg.text .. count_char
+         end
 
-      if not placed then
-         signs.add(config, buf, { [last_orig] = { type = 'change', count = 0 } })
-         return true
+         m.ids[#m.ids + 1] = api.nvim_buf_set_extmark(bufnr, ns_em, i - 1, -1, {
+            id = i,
+            sign_text = sign_text,
+            sign_hl_group = scfg.hl,
+            number_hl_group = config.numhl and scfg.numhl or nil,
+            line_hl_group = config.linehl and scfg.linehl or nil,
+         })
       end
    end
 end
 
-M.on_lines = function(buf, last_orig, last_new)
+function M.clear_hunkmarks(bufnr)
+   M.apply_hunkmarks(bufnr)
+end
+
+M.on_lines = function(buf, first, last, last_new)
    local bcache = cache[buf]
    if not bcache then
       dprint('Cache for buffer was nil. Detaching')
@@ -145,29 +142,20 @@ M.on_lines = function(buf, last_orig, last_new)
 
 
 
-   schedule_if_buf_valid(buf, function()
-      if speculate_signs(buf, last_orig, last_new) then
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-         bcache.hunks = nil
+   if last_new == first then
+      for _, hm in ipairs(bcache.hunk_marks) do
+         if hm.ids and first + 1 <= hm.end_line and last + 1 >= hm.start_line then
+            for _, id in ipairs(hm.ids) do
+               assert(api.nvim_buf_del_extmark(buf, ns_em, id))
+            end
+            hm.ids = {}
+         end
       end
-   end)
+   end
+
    M.update_debounced(buf, cache[buf])
 end
 
@@ -233,8 +221,8 @@ local ns_rm = api.nvim_create_namespace('gitsigns_removed')
 local VIRT_LINE_LEN = 300
 
 local function clear_deleted(bufnr)
-   local marks = api.nvim_buf_get_extmarks(bufnr, ns_rm, 0, -1, {})
-   for _, mark in ipairs(marks) do
+   local dmarks = api.nvim_buf_get_extmarks(bufnr, ns_rm, 0, -1, {})
+   for _, mark in ipairs(dmarks) do
       api.nvim_buf_del_extmark(bufnr, ns_rm, mark[1])
    end
 end
@@ -323,12 +311,17 @@ local update0 = function(bufnr, bcache)
 
    scheduler_if_buf_valid(bufnr)
    if gs_hunks.compare_heads(bcache.hunks, old_hunks) then
-      bcache.pending_signs = gs_hunks.process_hunks(bcache.hunks)
+      local hunk_marks = gs_hunks.calc_hunkmarks(bcache.hunks)
+      if config._extmark_signs then
+         M.apply_hunkmarks(bufnr, bcache.hunk_marks, hunk_marks)
+      else
+         bcache.pending_signs = gs_hunks.process_hunkmarks(hunk_marks)
 
 
 
-      M.apply_win_signs(bufnr, bcache.pending_signs)
-
+         M.apply_win_signs(bufnr)
+      end
+      bcache.hunk_marks = hunk_marks
       show_deleted(bufnr)
    end
    local summary = gs_hunks.get_summary(bcache.hunks)

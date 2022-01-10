@@ -164,6 +164,8 @@ M.stage_hunk = mk_repeatable(void(function(range)
    table.insert(bcache.staged_diffs, hunk)
 
    bcache.compare_text = nil
+
+   scheduler()
    manager.update(bufnr)
 end))
 
@@ -249,6 +251,7 @@ M.undo_stage_hunk = void(function()
 
    bcache.git_obj:stage_hunks({ hunk }, true)
    bcache.compare_text = nil
+   scheduler()
    manager.update(bufnr)
 end)
 
@@ -283,6 +286,7 @@ M.stage_buffer = void(function()
    end
    bcache.compare_text = nil
 
+   scheduler()
    manager.update(bufnr)
 end)
 

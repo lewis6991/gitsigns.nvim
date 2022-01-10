@@ -108,6 +108,7 @@ local M = {Config = {DiffOpts = {}, SignsConfig = {}, watch_gitdir = {}, current
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -626,6 +627,14 @@ M.schema = {
       default = true,
       description = [[
       Cache blame results for current_line_blame
+    ]],
+   },
+
+   _extmark_signs = {
+      type = 'boolean',
+      default = false,
+      description = [[
+      Use extmarks for placing signs.
     ]],
    },
 

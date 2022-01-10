@@ -99,6 +99,7 @@ local record M
     word_diff: boolean
     _refresh_staged_on_update: boolean
     _blame_cache: boolean
+    _extmark_signs: boolean
 
     _git_version: string
     _verbose: boolean
@@ -626,6 +627,14 @@ M.schema = {
     default = true,
     description = [[
       Cache blame results for current_line_blame
+    ]]
+  },
+
+  _extmark_signs = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      Use extmarks for placing signs.
     ]]
   },
 

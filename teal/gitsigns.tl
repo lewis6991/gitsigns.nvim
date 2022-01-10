@@ -148,6 +148,9 @@ M.detach = function(bufnr: integer, _keep_signs: boolean)
 
   if not _keep_signs then
     signs.remove(bufnr)  -- Remove all signs
+    if config._extmark_signs then
+      manager.clear_hunkmarks(bufnr)
+    end
   end
 
   -- Clear status variables
@@ -303,7 +306,7 @@ local attach0 = function(cbuf: integer, aucmd: string)
         -- call which indicates no changes.
         return
       end
-      return manager.on_lines(buf, last_orig, last_new)
+      return manager.on_lines(buf, first, last_orig, last_new)
     end,
     on_reload = function(_, bufnr: integer)
       local __FUNC__ = 'on_reload'
@@ -544,7 +547,9 @@ M.setup = void(function(cfg: Config)
       if not bcache or not bcache.pending_signs then
         return false
       end
-      manager.apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
+      if not config._extmark_signs then
+        manager.apply_win_signs(bufnr, top+1, bot+1)
+      end
 
       if config.word_diff and config.diff_opts.internal then
         for i = top, bot do

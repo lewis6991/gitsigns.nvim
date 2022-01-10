@@ -21,6 +21,7 @@ local util              = require('gitsigns.util')
 
 local gs_hunks          = require("gitsigns.hunks")
 local Hunk              = gs_hunks.Hunk
+local HunkMark          = gs_hunks.HunkMark
 
 local setup_highlights  = require('gitsigns.highlight').setup_highlights
 local config            = require('gitsigns.config').config
@@ -30,8 +31,10 @@ local api = vim.api
 local record M
   update           : function(integer, CacheEntry)
   update_debounced : function(integer, CacheEntry)
-  apply_win_signs  : function(bufnr: integer, pending: {integer:Sign}, top: integer, bot: integer)
-  on_lines         : function(buf: integer, last_orig: integer, last_new: integer): boolean
+  apply_win_signs  : function(bufnr: integer, top: integer, bot: integer)
+  apply_hunkmarks  : function(bufnr: integer, old_hmarks: {HunkMark}, new_hmarks: {HunkMark})
+  clear_hunkmarks  : function(bufnr: integer)
+  on_lines         : function(buf: integer, first: integer, integer, last_new: integer): boolean
 
   apply_word_diff: function(buf: integer, row: integer)
 
@@ -49,7 +52,9 @@ end
 
 local scheduler_if_buf_valid = awrap(schedule_if_buf_valid, 2)
 
-function M.apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: integer, bot: integer)
+function M.apply_win_signs(bufnr: integer, top: integer, bot: integer)
+  local pending = cache[bufnr].pending_signs
+
   -- If called without top or bot, then assume this is the first call after
   -- clearing all the signs
   local first_apply = top == nil
@@ -85,89 +90,72 @@ function M.apply_win_signs(bufnr: integer, pending: {integer:Sign}, top: integer
 
 end
 
--- Speculate on future signs. It's not a big deal if we speculate incorrectly as
--- update() will overwrite all the signs anyway. This has noticeable effect on
--- large files and even makes small files feel very snappy.
---
--- Returns true if signs are added or removed
-local function speculate_signs(buf: integer, last_orig: integer, last_new: integer): boolean
-  if last_new < last_orig then
-    -- Lines removed
-    --
-    -- Cannot do much here due to https://github.com/neovim/neovim/pull/12323
-  elseif last_new > last_orig then
-    -- Lines added
+local ns_em = api.nvim_create_namespace('gitsigns_extmarks')
 
-    if last_orig == 0 then
-      local placed = signs.get(buf, 1)[1]
-
-      -- Add 'added' signs only if there wasn't a 'delete' sign above
-      if not placed or not vim.startswith(placed, 'GitSignsTopDelete') then
-        -- If lines are added, make sure to immediately add the signs
-        for i = 1, last_new do
-          signs.add(config, buf, {[i] = {type='add', count=0}})
-        end
-      else
-        signs.remove(buf, 1)
+function M.apply_hunkmarks(bufnr: integer, old_hmarks: {HunkMark}, new_hmarks: {HunkMark})
+  -- Remove existing
+  if old_hmarks and old_hmarks[1] then
+    for _, hm in ipairs(old_hmarks) do
+      for _, id in ipairs(hm.ids) do
+        assert(api.nvim_buf_del_extmark(bufnr, ns_em, id))
       end
-      return true
-    else
-      local placed = signs.get(buf, last_orig)[last_orig]
-
-      -- Add 'added' signs only if there wasn't a 'delete' sign above
-      if not placed or not vim.startswith(placed, 'GitSignsDelete') then
-        -- If lines are added, make sure to immediately add the signs
-        for i = last_orig+1, last_new do
-          signs.add(config, buf, {[i] = {type='add', count=0}})
-        end
-        return true
-      end
+      hm.ids = {}
     end
   else
-    -- Line change
+    api.nvim_buf_clear_namespace(bufnr, ns_em, 0, -1)
+  end
 
-    local placed = signs.get(buf, last_orig)[last_orig]
+  for _, m in ipairs(new_hmarks or {}) do
+    local scfg = config.signs[m.type]
+    m.ids = m.ids or {}
 
-    -- add a 'change' sign if there are no other signs
-    if not placed then
-      signs.add(config, buf, {[last_orig] = {type='change', count=0}})
-      return true
+    for i = m.start_line, m.end_line do
+      local sign_text = config.signcolumn and scfg.text
+
+      if i == m.start_line and config.signcolumn and scfg.show_count and m.count then
+        local cc = config.count_chars
+        local count_char = cc[m.count] or cc['+'] or ''
+        sign_text = scfg.text..count_char
+      end
+
+      m.ids[#m.ids+1] = api.nvim_buf_set_extmark(bufnr, ns_em, i-1, -1, {
+        id              = i,
+        sign_text       = sign_text,
+        sign_hl_group   = scfg.hl,
+        number_hl_group = config.numhl and scfg.numhl or nil,
+        line_hl_group   = config.linehl and scfg.linehl or nil,
+      })
     end
   end
 end
 
-M.on_lines = function(buf: integer, last_orig: integer, last_new: integer): boolean
+function M.clear_hunkmarks(bufnr: integer)
+  M.apply_hunkmarks(bufnr)
+end
+
+M.on_lines = function(buf: integer, first: integer, last: integer, last_new: integer): boolean
   local bcache = cache[buf]
   if not bcache then
     dprint('Cache for buffer was nil. Detaching')
     return true
   end
 
-  -- Schedule sign speculation ortherwise CTRL-C in insert mode can cause a
-  -- callback error. See #346
-  schedule_if_buf_valid(buf, function()
-    if speculate_signs(buf, last_orig, last_new) then
-      -- Speculative signs are added immediately whereas updates are debounced and
-      -- throttled for each buffer. If we perform two quick updates which result
-      -- in a sign begin added then removed, we need to make sure speculative
-      -- signs don't incorrectly persist. Example:
-      --
-      --   -> buffer change
-      --      - speculative signs (#1)
-      --      - update (#1)
-      --   -> undo (quickly after buffer change)
-      --      - speculative signs (#2)
-      --      - update (#2)
-      --
-      -- Update #1 is dropped due to the debounce which results in update #2 not
-      -- updating signs due to the hunks not changing. Since signs are never
-      -- updated, the speculative signs #1 and #2 will persist.
-      --
-      -- To get around this, we just need to invalidate the hunks to force a sign
-      -- refresh.
-      bcache.hunks = nil
+  -- When there's a change that removes lines, remove extmarks in the range to
+  -- prevent the extmarks from appearing on the line above.
+  -- Note:
+  --  - that this only happens when show_count=2.
+  --  - that signs don't do this.
+  if last_new == first then
+    for _, hm in ipairs(bcache.hunk_marks) do
+      if hm.ids and first+1 <= hm.end_line and last+1 >= hm.start_line then
+        for _, id in ipairs(hm.ids) do
+          assert(api.nvim_buf_del_extmark(buf, ns_em, id))
+        end
+        hm.ids = {}
+      end
     end
-  end)
+  end
+
   M.update_debounced(buf, cache[buf])
 end
 
@@ -233,8 +221,8 @@ local ns_rm = api.nvim_create_namespace('gitsigns_removed')
 local VIRT_LINE_LEN = 300
 
 local function clear_deleted(bufnr: integer)
-  local marks = api.nvim_buf_get_extmarks(bufnr, ns_rm, 0, -1, {})
-  for _, mark in ipairs(marks as {{integer, integer, integer}}) do
+  local dmarks = api.nvim_buf_get_extmarks(bufnr, ns_rm, 0, -1, {})
+  for _, mark in ipairs(dmarks as {{integer, integer, integer}}) do
     api.nvim_buf_del_extmark(bufnr, ns_rm, mark[1])
   end
 end
@@ -323,12 +311,17 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
 
   scheduler_if_buf_valid(bufnr)
   if gs_hunks.compare_heads(bcache.hunks, old_hunks) then
-    bcache.pending_signs = gs_hunks.process_hunks(bcache.hunks)
+    local hunk_marks = gs_hunks.calc_hunkmarks(bcache.hunks)
+    if config._extmark_signs then
+      M.apply_hunkmarks(bufnr, bcache.hunk_marks, hunk_marks)
+    else
+      bcache.pending_signs = gs_hunks.process_hunkmarks(hunk_marks)
 
-    -- Apply signs to the window. Other signs will be added by the decoration
-    -- provider as they are drawn.
-    M.apply_win_signs(bufnr, bcache.pending_signs)
-
+      -- Apply signs to the window. Other signs will be added by the decoration
+      -- provider as they are drawn.
+      M.apply_win_signs(bufnr)
+    end
+    bcache.hunk_marks = hunk_marks
     show_deleted(bufnr)
   end
   local summary = gs_hunks.get_summary(bcache.hunks)

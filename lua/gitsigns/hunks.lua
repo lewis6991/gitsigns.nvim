@@ -1,7 +1,24 @@
 local Sign = require('gitsigns.signs').Sign
 local StatusObj = require('gitsigns.status').StatusObj
 
-local M = {Node = {}, Hunk = {}, Hunk_Public = {}, }
+local M = {Node = {}, Hunk = {}, Hunk_Public = {}, HunkMark = {}, }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -140,30 +157,54 @@ function M.parse_diff_line(line)
    return hunk
 end
 
-function M.process_hunks(hunks)
-   local signs = {}
-   for _, hunk in ipairs(hunks or {}) do
-      local count = hunk.type == 'add' and hunk.added.count or hunk.removed.count
-      for i = hunk.start, hunk.dend do
-         local topdelete = hunk.type == 'delete' and i == 0
-         local changedelete = hunk.type == 'change' and hunk.removed.count > hunk.added.count and i == hunk.dend
+function M.calc_hunkmarks(hunks)
+   local hmarks = {}
 
-         signs[topdelete and 1 or i] = {
-            type = topdelete and 'topdelete' or changedelete and 'changedelete' or hunk.type,
-            count = i == hunk.start and count,
+   for _, hunk in ipairs(hunks or {}) do
+      local add, remove = hunk.added.count, hunk.removed.count
+      local topdelete = hunk.type == 'delete' and hunk.start == 0
+
+      local count = hunk.type == 'add' and add or remove
+
+      if topdelete then
+         hmarks[#hmarks + 1] = {
+            type = 'topdelete',
+            start_line = 1,
+            end_line = 1,
+            count = count,
          }
-      end
-      if hunk.type == "change" then
-         local add, remove = hunk.added.count, hunk.removed.count
-         if add > remove then
-            local count_diff = add - remove
-            for i = 1, count_diff do
-               signs[hunk.dend + i] = {
+      else
+         local changedelete = hunk.type == 'change' and remove > add and hunk.start == hunk.dend
+         hmarks[#hmarks + 1] = {
+            type = changedelete and 'changedelete' or hunk.type,
+            start_line = hunk.start,
+            end_line = hunk.dend,
+            count = count,
+         }
+         if hunk.type == "change" then
+            if add > remove then
+               hmarks[#hmarks + 1] = {
                   type = 'add',
-                  count = i == 1 and count_diff,
+                  start_line = hunk.dend + 1,
+                  end_line = hunk.dend + add - remove,
+                  count = add - remove,
                }
             end
          end
+      end
+   end
+
+   return hmarks
+end
+
+function M.process_hunkmarks(hunks)
+   local signs = {}
+   for _, m in ipairs(hunks or {}) do
+      for i = m.start_line, m.end_line do
+         signs[i] = {
+            type = m.type,
+            count = i == m.start_line and m.count,
+         }
       end
    end
 
