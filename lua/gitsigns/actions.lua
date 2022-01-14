@@ -71,6 +71,7 @@ local M = {QFListOpts = {}, }
 
 
 
+
 M.toggle_signs = function()
    config.signcolumn = not config.signcolumn
    M.refresh()
@@ -97,6 +98,12 @@ end
 
 M.toggle_current_line_blame = function()
    config.current_line_blame = not config.current_line_blame
+   M.refresh()
+end
+
+
+M.toggle_deleted = function()
+   config.show_deleted = not config.show_deleted
    M.refresh()
 end
 

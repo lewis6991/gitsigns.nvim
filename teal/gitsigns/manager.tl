@@ -212,6 +212,67 @@ M.apply_word_diff = function(bufnr: integer, row: integer)
   end
 end
 
+local ns_rm = api.nvim_create_namespace('gitsigns_removed')
+
+local VIRT_LINE_LEN = 300
+
+local function clear_deleted(bufnr: integer)
+  local marks = api.nvim_buf_get_extmarks(bufnr, ns_rm, 0, -1, {})
+  for _, mark in ipairs(marks as {{integer, integer, integer}}) do
+    api.nvim_buf_del_extmark(bufnr, ns_rm, mark[1])
+  end
+end
+
+local function show_deleted(bufnr: integer)
+  local bcache = cache[bufnr]
+
+   clear_deleted(bufnr)
+
+   if not config.show_deleted then
+     return
+   end
+
+  for _, hunk in ipairs(bcache.hunks) do
+    local virt_lines = {}
+    local do_word_diff = config.word_diff and #hunk.removed.lines == #hunk.added.lines
+
+    for i, line in ipairs(hunk.removed.lines) do
+      local vline = {}
+      local last_ecol = 1
+
+      if do_word_diff then
+        local regions = require('gitsigns.diff_int').run_word_diff(
+          {hunk.removed.lines[i]}, {hunk.added.lines[i]})
+
+        for _, region in ipairs(regions) do
+          local rline, scol, ecol = region[1], region[3], region[4]
+          if rline > 1 then
+            break
+          end
+          vline[#vline+1] = { line:sub(last_ecol, scol-1), config.signs.delete.linehl }
+          vline[#vline+1] = { line:sub(scol, ecol-1), 'TermCursor'}
+          last_ecol = ecol
+        end
+      end
+
+      if #line > 0 then
+        vline[#vline+1] = { line:sub(last_ecol, -1), config.signs.delete.linehl }
+      end
+
+      -- Add extra padding so the entire line is highlighted
+      local padding = string.rep(' ', VIRT_LINE_LEN-#line)
+      vline[#vline+1] = { padding, config.signs.delete.linehl }
+
+      virt_lines[i] = vline
+    end
+
+    api.nvim_buf_set_extmark(bufnr, ns_rm, hunk.start-1, -1, {
+      virt_lines       = virt_lines,
+      virt_lines_above = hunk.type ~= 'delete',
+    })
+  end
+end
+
 local update_cnt = 0
 
 local update0 = function(bufnr: integer, bcache: CacheEntry)
@@ -251,6 +312,8 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
     -- Apply signs to the window. Other signs will be added by the decoration
     -- provider as they are drawn.
     M.apply_win_signs(bufnr, bcache.pending_signs)
+
+    show_deleted(bufnr)
   end
   local summary = gs_hunks.get_summary(bcache.hunks)
   summary.head = git_obj.repo.abbrev_head
