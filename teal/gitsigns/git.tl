@@ -419,7 +419,7 @@ Obj.run_blame = function(self: Obj, lines: {string}, lnum: number, ignore_whites
     writer = lines,
   })
   if #results == 0 then
-    return {}
+    return
   end
   local header = vim.split(table.remove(results, 1), ' ')
 
