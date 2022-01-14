@@ -107,7 +107,7 @@ M.update = void(function()
    end
 
    api.nvim_buf_set_var(bufnr, 'gitsigns_blame_line_dict', result)
-   if opts.virt_text then
+   if opts.virt_text and result then
       api.nvim_buf_set_extmark(bufnr, namespace, lnum - 1, 0, {
          id = 1,
          virt_text = config.current_line_blame_formatter(
