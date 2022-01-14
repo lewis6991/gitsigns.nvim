@@ -26,6 +26,7 @@ Super fast git decorations implemented purely in lua/teal.
 - Hunk text object
 - Automatically follow files moved in the index.
 - Live intra-line word diff
+- Ability to display deleted/changed lines via virtual lines.
 - Support for [yadm](https://yadm.io/)
 
 ## Requirements
@@ -189,6 +190,7 @@ Stage/reset all hunks in buffer                          | :white_check_mark:   
 Undo staged hunks                                        | :white_check_mark:   |                                               |
 Word diff in buffer                                      | :white_check_mark:   |                                               |
 Word diff in hunk preview                                | :white_check_mark:   | :white_check_mark:                            |
+Show deleted/changes lines directly in buffer            | :white_check_mark: * |                                               | * Via [virtual lines](https://github.com/neovim/neovim/pull/15351)
 Stage partial hunks                                      | :white_check_mark:   |                                               |
 Hunk text object                                         | :white_check_mark:   | :white_check_mark:                            |
 Diff against index or any commit                         | :white_check_mark:   | :white_check_mark:                            |
