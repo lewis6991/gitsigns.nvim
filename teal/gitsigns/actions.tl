@@ -68,6 +68,7 @@ local record M
   toggle_linehl      : function()
   toggle_word_diff   : function()
   toggle_current_line_blame : function()
+  toggle_deleted     : function()
 end
 
 --- Toggle |gitsigns-config-signcolumn|
@@ -97,6 +98,12 @@ end
 --- Toggle |gitsigns-config-current_line_blame|
 M.toggle_current_line_blame = function()
   config.current_line_blame = not config.current_line_blame
+  M.refresh()
+end
+
+--- Toggle |gitsigns-config-show_deleted|
+M.toggle_deleted = function()
+  config.show_deleted = not config.show_deleted
   M.refresh()
 end
 

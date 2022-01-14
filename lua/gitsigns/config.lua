@@ -105,6 +105,7 @@ local M = {Config = {DiffOpts = {}, SignsConfig = {}, watch_gitdir = {}, current
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -269,6 +270,16 @@ M.schema = {
       When enabled the highlights defined in `signs.*.linehl` are used. If
       the highlight group does not exist, then it is automatically defined
       and linked to the corresponding highlight group in `signs.*.hl`.
+    ]],
+   },
+
+   show_deleted = {
+      type = 'boolean',
+      default = false,
+      description = [[
+      Show the old version of hunks inline in the buffer (via virtual lines).
+
+      Note: Virtual lines currently use the highlight `GitSignsDeleteLn`.
     ]],
    },
 

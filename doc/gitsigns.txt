@@ -388,6 +388,9 @@ stage_hunk({range})                                    *gitsigns.stage_hunk()*
                     {range} table|nil List-like table of two integers making
                     up the line range from which you want to stage the hunks.
 
+toggle_deleted()                                   *gitsigns.toggle_deleted()*
+                Toggle |gitsigns-config-show_deleted|
+
 toggle_current_line_blame()             *gitsigns.toggle_current_line_blame()*
                 Toggle |gitsigns-config-current_line_blame|
 
@@ -557,6 +560,13 @@ linehl                                                *gitsigns-config-linehl*
       When enabled the highlights defined in `signs.*.linehl` are used. If
       the highlight group does not exist, then it is automatically defined
       and linked to the corresponding highlight group in `signs.*.hl`.
+
+show_deleted                                    *gitsigns-config-show_deleted*
+      Type: `boolean`, Default: `false`
+
+      Show the old version of hunks inline in the buffer (via virtual lines).
+
+      Note: Virtual lines currently use the highlight `GitSignsDeleteLn`.
 
 diff_opts                                          *gitsigns-config-diff_opts*
       Type: `table[extended]`, Default: derived from 'diffopt'
