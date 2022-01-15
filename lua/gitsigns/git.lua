@@ -240,7 +240,7 @@ M.get_repo_info = function(path, cmd)
 
    local toplevel = results[1]
    local gitdir = results[2]
-   if not has_abs_gd then
+   if gitdir and not has_abs_gd then
       gitdir = uv.fs_realpath(gitdir)
    end
    local abbrev_head = process_abbrev_head(gitdir, results[3], path, cmd)
