@@ -386,6 +386,15 @@ global record vim
 
   list_extend: function({any}, {any}, integer, integer)
   list_slice: function<T>({T}, integer, integer): {T}
+
+  record keymap
+    record Options
+      buffer: boolean|integer
+      expr: boolean
+    end
+    set: function(string|{string}, string, string|function, Options)
+  end
+
   record log
     record levels
       WARN: integer
