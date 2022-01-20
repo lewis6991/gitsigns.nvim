@@ -702,4 +702,29 @@ describe('gitsigns', function()
     end
   end)
 
+  it('handles filenames with unicode characters', function()
+    screen:try_resize(20,2)
+    setup_test_repo()
+    setup_gitsigns(config)
+    local uni_filename = scratch..'/föobær'
+
+    write_to_file(uni_filename, {'Lorem ipsum'})
+    git{"add", uni_filename}
+    git{"commit", "-m", "another commit"}
+
+    edit(uni_filename)
+
+    screen:expect{grid=[[
+      ^Lorem ipsum         |
+      {6:~                   }|
+    ]]}
+
+    feed 'x'
+
+    screen:expect{grid=[[
+      {2:~ }^orem ipsum        |
+      {6:~                   }|
+    ]]}
+  end)
+
 end)
