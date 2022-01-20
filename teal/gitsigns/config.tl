@@ -625,7 +625,7 @@ M.schema = {
 
   _blame_cache = {
     type = 'boolean',
-    default = false,
+    default = true,
     description = [[
       Cache blame results for current_line_blame
     ]]
