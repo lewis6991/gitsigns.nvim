@@ -336,6 +336,7 @@ end
 
 Obj.file_info = function(self: Obj, file: string): M.FileProps
   local results, stderr = self:command({
+    '-c', 'core.quotepath=off',
     'ls-files',
     '--stage',
     '--others',
