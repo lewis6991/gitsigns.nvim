@@ -180,7 +180,7 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
       signs.remove(bufnr, lnum)
     end
   end
-  void(manager.update)(bufnr)
+  manager.update(bufnr)
 end))
 
 --- Reset the lines of the hunk at the cursor position, or all
@@ -339,7 +339,7 @@ M.reset_buffer_index = void(function()
   if not bcache.base then
     signs.add(config, bufnr, gs_hunks.process_hunks(hunks))
   end
-  void(manager.update)(bufnr)
+  manager.update(bufnr)
 end)
 
 local function process_nav_opts(opts: NavHunkOpts)
