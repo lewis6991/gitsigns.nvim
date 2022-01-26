@@ -828,8 +828,13 @@ M.diffthis = void(function(base: string)
     comp_rev..':'..bcache.git_obj.relpath
   )
 
-  -- TDOD lewis6991 (27/05/21): Respect 'vertical' in diffopt
-  vim.cmd("keepalt aboveleft vertical split "..bufname)
+  vim.cmd'diffthis'
+
+  vim.cmd(table.concat({
+    'keepalt', 'aboveleft',
+    config.diff_opts.vertical and 'vertical' or '',
+    'split', bufname
+  }, ' '))
 
   local dbuf = current_buf()
 
@@ -842,7 +847,7 @@ M.diffthis = void(function(base: string)
 
   vim.cmd(string.format('autocmd! WinClosed <buffer=%d> ++once call nvim_buf_delete(%d, {})', dbuf, dbuf))
 
-  vim.cmd[[windo diffthis]]
+  vim.cmd'diffthis'
 end)
 
 local function hunks_to_qflist(buf_or_filename: number|string, hunks: {Hunk}, qflist: {vim.fn.QFItem})

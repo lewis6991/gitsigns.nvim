@@ -546,6 +546,8 @@ diff_opts                                          *gitsigns-config-diff_opts*
         • indent_heuristic: string
             Use the indent heuristic for the internal
             diff library.
+        • vertical: boolean
+            Start diff mode with vertical splits.
 
 base                                                    *gitsigns-config-base*
       Type: `string`, Default: index
