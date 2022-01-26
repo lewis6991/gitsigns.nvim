@@ -107,6 +107,7 @@ local M = {Config = {DiffOpts = {}, SignsConfig = {}, watch_gitdir = {}, current
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -273,6 +274,7 @@ M.schema = {
             algorithm = 'myers',
             internal = false,
             indent_heuristic = false,
+            vertical = true,
          }
          for _, o in ipairs(vim.opt.diffopt:get()) do
             if o == 'indent-heuristic' then
@@ -284,6 +286,8 @@ M.schema = {
 
                   r.internal = true
                end
+            elseif o == 'horizontal' then
+               r.vertical = false
             elseif vim.startswith(o, 'algorithm:') then
                r.algorithm = string.sub(o, 11)
             end
@@ -310,6 +314,8 @@ M.schema = {
         • indent_heuristic: string
             Use the indent heuristic for the internal
             diff library.
+        • vertical: boolean
+            Start diff mode with vertical splits.
     ]],
    },
 
