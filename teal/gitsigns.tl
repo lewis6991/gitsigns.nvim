@@ -159,6 +159,23 @@ M.detach = function(bufnr: integer, _keep_signs: boolean)
   cache:destroy(bufnr)
 end
 
+local function parse_fugitive_uri(name: string): string, string
+  local _, _, root_path, sub_module_path, commit, real_path =
+    name:find([[^fugitive://(.*)/%.git(.*/)/(%x-)/(.*)]])
+  if root_path then
+    sub_module_path = sub_module_path:gsub("^/modules", "")
+    name = root_path .. sub_module_path .. real_path
+  end
+  return name, commit
+end
+
+if _TEST then
+  local path, commit = parse_fugitive_uri(
+    'fugitive:///home/path/to/project/.git//1b441b947c4bc9a59db428f229456619051dd133/subfolder/to/a/file.txt')
+  assert(path == '/home/path/to/project/subfolder/to/a/file.txt', string.format('GOT %s', path))
+  assert(commit == '1b441b947c4bc9a59db428f229456619051dd133', string.format('GOT %s', commit))
+end
+
 local function get_buf_path(bufnr: integer): string, string
   local file =
     uv.fs_realpath(api.nvim_buf_get_name(bufnr))
@@ -168,19 +185,11 @@ local function get_buf_path(bufnr: integer): string, string
     end)
 
   if vim.startswith(file, 'fugitive://') and vim.wo.diff == false then
-    local orig_path = file
-    local _,_, root_path, sub_module_path, commit, real_path =
-      file:find([[^fugitive://(.*)/%.git(.*)/(%x-)/(.*)]])
-    if root_path then
-      sub_module_path = sub_module_path:gsub("^/modules", "")
-      file = root_path .. sub_module_path .. real_path
-      file = uv.fs_realpath(file)
-      dprintf("Fugitive buffer for file '%s' from path '%s'", file, orig_path)
-      if file then
-        return file, commit
-      else
-        file = orig_path
-      end
+    local path, commit = parse_fugitive_uri(file)
+    dprintf("Fugitive buffer for file '%s' from path '%s'", path, file)
+    path = uv.fs_realpath(path)
+    if path then
+      return path, commit
     end
   end
 
