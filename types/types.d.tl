@@ -1,5 +1,7 @@
 global _: any
 
+global _TEST: boolean
+
 global loadstring: function(string): (function(): any)
 
 global unpack: function<T>({T}, number, number): T...
