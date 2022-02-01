@@ -134,6 +134,7 @@ local record api
   nvim_set_current_tabpage: function(any)
   nvim_set_current_win: function(number)
   nvim_set_decoration_provider: function(number, {string:function})
+  nvim_set_hl: function(integer, string, {string:any})
   nvim_set_keymap: function(string, string, string, {string:any})
   nvim_set_option: function(string, any)
   nvim_set_var: function(string, any)
@@ -456,5 +457,16 @@ global record vim
   end
 
   wait: function(number, function, number, boolean)
+
+  record VersionDetails
+    api_compatible: integer
+    api_level: integer
+    api_prerelease: boolean
+    major: integer
+    minor: integer
+    patch: integer
+  end
+
+  version: function(): VersionDetails
 
 end
