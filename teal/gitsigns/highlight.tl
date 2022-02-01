@@ -47,6 +47,17 @@ local function is_hl_set(hl_name: string): boolean
   return exists and color ~= nil
 end
 
+local hl_default_link: function(from: string, to: string)
+if vim.version().minor >= 7 then
+  hl_default_link = function(from: string, to: string)
+    api.nvim_set_hl(0, from, { default = true, link = to })
+  end
+else
+  hl_default_link = function(from: string, to: string)
+    vim.cmd(('highlight default link %s %s'):format(from, to))
+  end
+end
+
 -- Setup a GitSign* highlight by deriving it from other potentially present
 -- highlights.
 M.setup_highlights = function()
@@ -59,7 +70,7 @@ M.setup_highlights = function()
         for _, d in ipairs(candidates) do
           if is_hl_set(d) then
             dprintf('Deriving %s from %s', hl, d)
-            vim.cmd(('highlight default link %s %s'):format(hl, d))
+            hl_default_link(hl, d)
             break
           end
         end

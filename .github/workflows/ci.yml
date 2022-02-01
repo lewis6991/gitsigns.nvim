@@ -69,6 +69,7 @@ jobs:
 
       - name: Cache neovim
         uses: actions/cache@v2
+        if: env.NEOVIM_BRANCH != 'master'
         with:
           path: deps/neovim
           key: build-${{env.NEOVIM_BRANCH}}
