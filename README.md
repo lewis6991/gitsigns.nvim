@@ -31,7 +31,9 @@ Super fast git decorations implemented purely in lua/teal.
 
 ## Requirements
 
-- Neovim >= 0.5.0
+- Neovim >= 0.5.0 
+
+  Note: If you are running a development version of Neovim (aka `master`), then breakage may occur if your build is behind latest.
 - Newish version of git. Older versions may not work with some features.
 
 ## Installation
