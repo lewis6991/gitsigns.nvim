@@ -16,7 +16,7 @@ function M.mk_repeatable(fn: function): function
       local vimfn = vim.fn as {string:function}
       local sequence = string.format('%sGitsignsRepeat',
         api.nvim_replace_termcodes('<Plug>', true, true, true))
-      vimfn['repeat#set'](sequence, -1)
+      pcall(vimfn['repeat#set'], sequence, -1)
     end
 
     repeat_fn()
