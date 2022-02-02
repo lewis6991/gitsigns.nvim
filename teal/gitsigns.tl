@@ -419,7 +419,7 @@ M._run_func = function(range: {integer, integer, integer}, func: string, ...: st
 end
 
 local _update_cwd_head = function()
-  local cwd = vim.fn.getcwd()
+  local cwd = vim.loop.cwd()
   local head: string
   for _, bcache in pairs(cache as {number:CacheEntry}) do
     local repo = bcache.git_obj.repo

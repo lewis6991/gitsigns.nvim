@@ -295,6 +295,7 @@ global record vim
   end
 
   record loop
+    cwd: function(): string
     record Timer
       start: function(Timer, number, number, function): number
       stop: function(Timer): number
