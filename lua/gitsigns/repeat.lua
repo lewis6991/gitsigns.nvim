@@ -1,4 +1,5 @@
 local tbl = require('plenary.tbl')
+local api = vim.api
 local M = {}
 
 local repeat_fn
@@ -12,14 +13,17 @@ function M.mk_repeatable(fn)
       local args = tbl.pack(...)
       repeat_fn = function()
          fn(tbl.unpack(args))
-         vim.cmd('silent! call repeat#set("\\<Plug>GitsignsRepeat",-1)')
+         local vimfn = vim.fn
+         local sequence = string.format('%sGitsignsRepeat',
+         api.nvim_replace_termcodes('<Plug>', true, true, true))
+         vimfn['repeat#set'](sequence, -1)
       end
 
       repeat_fn()
    end
 end
 
-vim.api.nvim_set_keymap(
+api.nvim_set_keymap(
 'n',
 '<Plug>GitsignsRepeat',
 '<cmd>lua require"gitsigns.repeat".repeat_action()<CR>',
