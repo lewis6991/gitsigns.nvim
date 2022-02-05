@@ -24,6 +24,20 @@ local M = {}
 
 local wait_timer = wrap(vim.loop.timer_start, 4)
 
+local function set_extmark(bufnr, row, opts)
+   opts = opts or {}
+   opts.id = 1
+   api.nvim_buf_set_extmark(bufnr, namespace, row - 1, 0, opts)
+end
+
+local function get_extmark(bufnr)
+   local pos = api.nvim_buf_get_extmark_by_id(bufnr, namespace, 1, {})
+   if pos[1] then
+      return pos[1] + 1
+   end
+   return
+end
+
 M.reset = function(bufnr)
    bufnr = bufnr or current_buf()
    api.nvim_buf_del_extmark(bufnr, namespace, 1)
@@ -44,14 +58,6 @@ local BlameCache = {Elem = {}, }
 
 BlameCache.contents = {}
 
-function BlameCache:init_or_invalidate(bufnr)
-   if not config._blame_cache then return end
-   local tick = api.nvim_buf_get_var(bufnr, 'changedtick')
-   if not self.contents[bufnr] or self.contents[bufnr].tick ~= tick then
-      self.contents[bufnr] = { tick = tick, cache = {}, size = 0 }
-   end
-end
-
 function BlameCache:add(bufnr, lnum, x)
    if not config._blame_cache then return end
    local scache = self.contents[bufnr]
@@ -63,6 +69,13 @@ end
 
 function BlameCache:get(bufnr, lnum)
    if not config._blame_cache then return end
+
+
+   local tick = api.nvim_buf_get_var(bufnr, 'changedtick')
+   if not self.contents[bufnr] or self.contents[bufnr].tick ~= tick then
+      self.contents[bufnr] = { tick = tick, cache = {}, size = 0 }
+   end
+
    return self.contents[bufnr].cache[lnum]
 end
 
@@ -114,32 +127,42 @@ end
 
 
 M.update = void(function()
-   M.reset()
+   local bufnr = current_buf()
+   local lnum = api.nvim_win_get_cursor(0)[1]
+
+   local old_lnum = get_extmark(bufnr)
+   if old_lnum and lnum == old_lnum and BlameCache:get(bufnr, lnum) then
+
+      return
+   end
+
+
+
+
+
+   if get_extmark(bufnr) then
+      M.reset(bufnr)
+      set_extmark(bufnr, lnum)
+   end
+
    local opts = config.current_line_blame_opts
 
 
    wait_timer(timer, opts.delay, 0)
    scheduler()
 
-   local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache or not bcache.git_obj.object_name then
       return
    end
 
-   local lnum = api.nvim_win_get_cursor(0)[1]
-
-   BlameCache:init_or_invalidate(bufnr)
    local result = BlameCache:get(bufnr, lnum)
    if not result then
       local buftext = util.buf_lines(bufnr)
       result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
       BlameCache:add(bufnr, lnum, result)
+      scheduler()
    end
-
-   scheduler()
-
-   M.reset(bufnr)
 
    local lnum1 = api.nvim_win_get_cursor(0)[1]
    if bufnr == current_buf() and lnum ~= lnum1 then
@@ -169,8 +192,7 @@ M.update = void(function()
 
       end
 
-      api.nvim_buf_set_extmark(bufnr, namespace, lnum - 1, 0, {
-         id = 1,
+      set_extmark(bufnr, lnum, {
          virt_text = virt_text,
          virt_text_pos = opts.virt_text_pos,
          hl_mode = 'combine',

@@ -53,7 +53,7 @@ local record api
   nvim_buf_detach: function(number): boolean
   nvim_buf_get_changedtick: function(number): number
   nvim_buf_get_commands: function(number, {string:any}): {string:any}
-  nvim_buf_get_extmark_by_id: function(number, number, number): {number}
+  nvim_buf_get_extmark_by_id: function(number, number, number, table): {number}
   nvim_buf_get_extmarks: function(number, number, any, any, {string:any}): any
   nvim_buf_get_keymap: function(number, string): {{string:any}}
   nvim_buf_get_lines: function(number, number, number, boolean): {string}
