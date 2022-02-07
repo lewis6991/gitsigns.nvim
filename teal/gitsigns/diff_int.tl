@@ -49,6 +49,26 @@ local type Region = {integer, string, integer, integer}
 
 local gaps_between_regions = 5
 
+local function denoise_hunks(hunks: {Hunk}): {Hunk}
+  -- Denoise the hunks
+  local ret = {hunks[1]}
+  for j = 2, #hunks do
+    local h, n = ret[#ret], hunks[j]
+    if not h or not n then break end
+    if n.added.start - h.added.start - h.added.count < gaps_between_regions  then
+      h.added.count   = n.added.start   + n.added.count   - h.added.start
+      h.removed.count = n.removed.start + n.removed.count - h.removed.start
+
+      if h.added.count > 0 or h.removed.count > 0 then
+        h.type = 'change'
+      end
+    else
+      ret[#ret+1] = n
+    end
+  end
+  return ret
+end
+
 function M.run_word_diff(removed: {string}, added: {string}): {Region}, {Region}
   local adds: {Region} = {}
   local rems: {Region} = {}
@@ -59,12 +79,9 @@ function M.run_word_diff(removed: {string}, added: {string}): {Region}, {Region}
 
   for i = 1, #removed do
     -- pair lines by position
-    local rline = removed[i]
-    local aline = added[i]
+    local a, b = vim.split(removed[i], ''), vim.split(added[i], '')
 
-    local a, b = vim.split(rline, ''), vim.split(aline, '')
-
-    local hunks0: {Hunk} = {}
+    local hunks: {Hunk} = {}
     for _, r in ipairs(run_diff_xdl(a, b)) do
       local rs, rc, as, ac = unpack(r)
 
@@ -72,26 +89,10 @@ function M.run_word_diff(removed: {string}, added: {string}): {Region}, {Region}
       if rc == 0 then rs = rs + 1 end
       if ac == 0 then as = as + 1 end
 
-      -- print(string.format('-%d,%d +%d,%d', rs, rc, as, ac))
-      hunks0[#hunks0+1] = create_hunk(rs, rc, as, ac)
+      hunks[#hunks+1] = create_hunk(rs, rc, as, ac)
     end
 
-    -- Denoise the hunks
-    local hunks = {hunks0[1]}
-    for j = 2, #hunks0 do
-      local h, n = hunks[#hunks], hunks0[j]
-      if not h or not n then break end
-      if n.added.start - h.added.start - h.added.count < gaps_between_regions  then
-        h.added.count   = n.added.start   + n.added.count   - h.added.start
-        h.removed.count = n.removed.start + n.removed.count - h.removed.start
-
-        if h.added.count > 0 or h.removed.count > 0 then
-          h.type = 'change'
-        end
-      else
-        hunks[#hunks+1] = n
-      end
-    end
+    hunks = denoise_hunks(hunks)
 
     for _, h in ipairs(hunks) do
       adds[#adds+1] = {i+#removed, h.type, h.added.start  , h.added.start   + h.added.count}

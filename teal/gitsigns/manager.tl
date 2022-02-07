@@ -175,40 +175,56 @@ end
 local ns = api.nvim_create_namespace('gitsigns')
 
 M.apply_word_diff = function(bufnr: integer, row: integer)
-  if not cache[bufnr] or not cache[bufnr].hunks then return end
+  if not cache[bufnr] or not cache[bufnr].hunks then
+    return
+  end
+
+  local line = api.nvim_buf_get_lines(bufnr, row, row+1, false)[1]
+  if not line then
+    -- Invalid line
+    return
+  end
 
   local lnum = row + 1
-  local cols = #api.nvim_buf_get_lines(bufnr, lnum-1, lnum, false)[1]
 
-  for _, hunk in ipairs(cache[bufnr].hunks) do
-    if lnum >= hunk.start and lnum <= hunk.vend then
-      local size = (#hunk.added.lines +#hunk.removed.lines) / 2
-      local removed_regions, added_regions = require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
-      local regions = vim.list_extend(removed_regions or {}, added_regions or {})
-      for _, region in ipairs(regions) do
-        local line = region[1]
-        if lnum == hunk.start + line - size - 1 then
-          -- and vim.startswith(hunk.lines[line], '+') then
-          local rtype, scol, ecol = region[2], region[3], region[4]
-          if scol <= cols then
-            if ecol > cols then
-              ecol = cols
-            elseif ecol == scol then
-              -- Make sure region is at least 1 column width
-              ecol = scol + 1
-            end
-            api.nvim_buf_set_extmark(bufnr, ns, row, scol-1, {
-              end_col = ecol-1,
-              hl_group = rtype == 'add'    and 'GitSignsAddLnInline'
-                      or rtype == 'change' and 'GitSignsChangeLnInline'
-                      or                       'GitSignsDeleteLnInline',
-              ephemeral = true,
-              priority = 1000
-            })
-          end
-        end
+  local hunk = gs_hunks.find_hunk(lnum, cache[bufnr].hunks)
+  if not hunk then
+    -- No hunk at line
+    return
+  end
+
+  if hunk.added.count ~= hunk.removed.count then
+    -- Only word diff if added count == removed
+    return
+  end
+
+  local pos = lnum - hunk.start + 1
+
+  local added_line = hunk.added.lines[pos]
+  local removed_line = hunk.removed.lines[pos]
+
+  local _, added_regions = require('gitsigns.diff_int').run_word_diff({removed_line}, {added_line})
+
+  local cols = #line
+
+  for _, region in ipairs(added_regions) do
+    local rtype, scol, ecol = region[2], region[3], region[4]
+    if scol <= cols then
+      if ecol > cols then
+        ecol = cols
+      elseif ecol == scol then
+        -- Make sure region is at least 1 column width
+        ecol = scol + 1
       end
-      break
+      api.nvim_buf_set_extmark(bufnr, ns, row, scol-1, {
+        end_col = ecol-1,
+        hl_group = rtype == 'add'    and 'GitSignsAddLnInline'
+                or rtype == 'change' and 'GitSignsChangeLnInline'
+                or                       'GitSignsDeleteLnInline',
+        ephemeral = true,
+        priority = 1000
+      })
+      api.nvim__buf_redraw_range(bufnr, row, row+1)
     end
   end
 end
