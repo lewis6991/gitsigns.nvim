@@ -459,6 +459,7 @@ M.schema = {
    current_line_blame_formatter_opts = {
       type = 'table',
       deep_extend = true,
+      deprecated = true,
       default = {
          relative_time = false,
       },
@@ -471,82 +472,82 @@ M.schema = {
    },
 
    current_line_blame_formatter = {
-      type = 'function',
-      default = function(name, blame_info, opts)
-         if blame_info.author == name then
-            blame_info.author = 'You'
-         end
-
-         local text
-         if blame_info.author == 'Not Committed Yet' then
-            text = blame_info.author
-         else
-            local date_time
-
-            if opts.relative_time then
-               date_time = require('gitsigns.util').get_relative_time(tonumber(blame_info['author_time']))
-            else
-               date_time = os.date('%Y-%m-%d', tonumber(blame_info['author_time']))
-            end
-
-            text = string.format('%s, %s - %s', blame_info.author, date_time, blame_info.summary)
-         end
-
-         return { { ' ' .. text, 'GitSignsCurrentLineBlame' } }
-      end,
-      default_help = [[function(name, blame_info, opts)
-      if blame_info.author == name then
-        blame_info.author = 'You'
-      end
-
-      local text
-      if blame_info.author == 'Not Committed Yet' then
-        text = blame_info.author
-      else
-        local date_time
-
-        if opts.relative_time then
-          date_time = require('gitsigns.util').get_relative_time(tonumber(blame_info['author_time']))
-        else
-          date_time = os.date('%Y-%m-%d', tonumber(blame_info['author_time']))
-        end
-
-        text = string.format('%s, %s - %s', blame_info.author, date_time, blame_info.summary)
-      end
-
-      return {{' '..text, 'GitSignsCurrentLineBlame'}}
-    end]],
+      type = { 'string', 'function' },
+      default = ' <author>, <author_time> - <summary>',
       description = [[
-      Function used to format the virtual text of
+      String or function used to format the virtual text of
       |gitsigns-config-current_line_blame|.
 
-      Parameters: ~
-        {name}       Git user name returned from `git config user.name` .
-        {blame_info} Table with the following keys:
-                       • `abbrev_sha`: string
-                       • `orig_lnum`: integer
-                       • `final_lnum`: integer
-                       • `author`: string
-                       • `author_mail`: string
-                       • `author_time`: integer
-                       • `author_tz`: string
-                       • `committer`: string
-                       • `committer_mail`: string
-                       • `committer_time`: integer
-                       • `committer_tz`: string
-                       • `summary`: string
-                       • `previous`: string
-                       • `filename`: string
+      When a string, accepts the following format specifiers:
 
-                     Note that the keys map onto the output of:
-                       `git blame --line-porcelain`
+          • `<abbrev_sha>`
+          • `<orig_lnum>`
+          • `<final_lnum>`
+          • `<author>`
+          • `<author_mail>`
+          • `<author_time>` or `<author_time:FORMAT>`
+          • `<author_tz>`
+          • `<committer>`
+          • `<committer_mail>`
+          • `<committer_time>` or `<committer_time:FORMAT>`
+          • `<committer_tz>`
+          • `<summary>`
+          • `<previous>`
+          • `<filename>`
 
-        {opts}       Passed directly from
-                     |gitsigns-config-current_line_blame_formatter_opts|.
+        For `<author_time:FORMAT>` and `<committer_time:FORMAT>`, `FORMAT` can
+        be any valid date format that is accepted by `os.date()` with the
+        addition of `%R` (defaults to `%Y-%m-%d`):
 
-      Return: ~
-        The result of this function is passed directly to the `opts.virt_text`
-        field of |nvim_buf_set_extmark|.
+          • `%a`  abbreviated weekday name (e.g., Wed)
+          • `%A`  full weekday name (e.g., Wednesday)
+          • `%b`  abbreviated month name (e.g., Sep)
+          • `%B`  full month name (e.g., September)
+          • `%c`  date and time (e.g., 09/16/98 23:48:10)
+          • `%d`  day of the month (16) [01-31]
+          • `%H`  hour, using a 24-hour clock (23) [00-23]
+          • `%I`  hour, using a 12-hour clock (11) [01-12]
+          • `%M`  minute (48) [00-59]
+          • `%m`  month (09) [01-12]
+          • `%p`  either "am" or "pm" (pm)
+          • `%S`  second (10) [00-61]
+          • `%w`  weekday (3) [0-6 = Sunday-Saturday]
+          • `%x`  date (e.g., 09/16/98)
+          • `%X`  time (e.g., 23:48:10)
+          • `%Y`  full year (1998)
+          • `%y`  two-digit year (98) [00-99]
+          • `%%`  the character `%´
+          • `%R`  relative (e.g., 4 months ago)
+
+      When a function:
+        Parameters: ~
+          {name}       Git user name returned from `git config user.name` .
+          {blame_info} Table with the following keys:
+                         • `abbrev_sha`: string
+                         • `orig_lnum`: integer
+                         • `final_lnum`: integer
+                         • `author`: string
+                         • `author_mail`: string
+                         • `author_time`: integer
+                         • `author_tz`: string
+                         • `committer`: string
+                         • `committer_mail`: string
+                         • `committer_time`: integer
+                         • `committer_tz`: string
+                         • `summary`: string
+                         • `previous`: string
+                         • `filename`: string
+
+                       Note that the keys map onto the output of:
+                         `git blame --line-porcelain`
+
+          {opts}       Passed directly from
+                       |gitsigns-config-current_line_blame_formatter_opts|.
+
+        Return: ~
+          The result of this function is passed directly to the `opts.virt_text`
+          field of |nvim_buf_set_extmark| and thus must be a list of
+          [text, highlight] tuples.
     ]],
    },
 
@@ -655,9 +656,11 @@ local function validate_config(config)
       if kschema == nil then
          warn("gitsigns: Ignoring invalid configuration field '%s'", k)
       elseif kschema.type then
-         vim.validate({
-            [k] = { v, kschema.type },
-         })
+         if type(kschema.type) == 'string' then
+            vim.validate({
+               [k] = { v, kschema.type },
+            })
+         end
       end
    end
 end

@@ -414,6 +414,7 @@ global record vim
   gsplit: function(string, string, boolean): function(): string
 
   startswith: function(string, string): boolean
+  endswith: function(string, string): boolean
 
   schedule_wrap: function(function(...:any): any...): function(...:any): any...
   schedule: function(function)
