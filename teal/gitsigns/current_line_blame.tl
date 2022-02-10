@@ -66,6 +66,52 @@ function BlameCache:get(bufnr: integer, lnum: integer): BlameInfo
   return self.contents[bufnr].cache[lnum]
 end
 
+local function expand_blame_format(fmt: string, name: string, info: BlameInfo): string
+  local m: string
+  if info.author == name then
+    info.author = 'You'
+  end
+
+  if info.author == 'Not Committed Yet' then
+    return info.author
+  end
+
+  for k, v in pairs{
+    author_time = info.author_time,
+    committer_time = info.committer_time,
+  } do
+    for _ = 1, 10 do -- loop protection
+      m = fmt:match('<'..k..':([^>]+)>')
+      if not m then
+        break
+      end
+      if m:match('%%R') then
+        m = m:gsub('%%R', util.get_relative_time(v))
+      end
+      m = os.date(m, v)
+      fmt = fmt:gsub('<'..k..':[^>]+>', m)
+    end
+  end
+
+  for k, v in pairs(info as {string:string}) do
+    for _ = 1, 10 do -- loop protection
+      m = fmt:match('<'..k..'>')
+      if not m then
+        break
+      end
+      if vim.endswith(k, '_time') then
+        if config.current_line_blame_formatter_opts.relative_time then
+          v = util.get_relative_time(v as integer)
+        else
+          v = os.date('%Y-%m-%d', v as integer)
+        end
+      end
+      fmt = fmt:gsub('<'..k..'>', v)
+    end
+  end
+  return fmt
+end
+
 -- Update function, must be called in async context
 M.update = void(function()
   M.reset()
@@ -108,13 +154,24 @@ M.update = void(function()
 
   api.nvim_buf_set_var(bufnr, 'gitsigns_blame_line_dict', result)
   if opts.virt_text and result then
-    api.nvim_buf_set_extmark(bufnr, namespace, lnum-1, 0, {
-      id = 1,
-      virt_text = config.current_line_blame_formatter(
+    local virt_text: {{string, string}}
+    local clb_formatter = config.current_line_blame_formatter
+    if clb_formatter is string then
+      virt_text = {{
+        expand_blame_format(clb_formatter, bcache.git_obj.repo.username, result),
+        'GitSignsCurrentLineBlame'
+      }}
+    else -- function
+      virt_text = clb_formatter(
         bcache.git_obj.repo.username,
         result,
         config.current_line_blame_formatter_opts
-      ),
+      )
+    end
+
+    api.nvim_buf_set_extmark(bufnr, namespace, lnum-1, 0, {
+      id = 1,
+      virt_text = virt_text,
       virt_text_pos = opts.virt_text_pos,
       hl_mode = 'combine',
     })

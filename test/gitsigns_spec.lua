@@ -246,9 +246,7 @@ describe('gitsigns', function()
   describe('current line blame', function()
     before_each(function()
       config.current_line_blame = true
-      config.current_line_blame_formatter_opts = {
-        relative_time = true,
-      }
+      config.current_line_blame_formatter = ' <author>, <author_time:%R> - <summary>'
       setup_gitsigns(config)
     end)
 

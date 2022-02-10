@@ -87,7 +87,7 @@ local function get_default(field)
     local l = cfg[i]
     if l:match('^    default =') then
       ds = i
-      if l:match('},') or l:match('nil,') then
+      if l:match('},') or l:match('nil,') or l:match("default = '.*'") then
         de = i
         break
       end
@@ -171,6 +171,9 @@ local function gen_config_doc_field(field, out)
     local vtype = (function()
       if v.type == 'table' and v.deep_extend then
         return 'table[extended]'
+      end
+      if type(v.type) == 'table' then
+        v.type = table.concat(v.type, '|')
       end
       return v.type
     end)()
