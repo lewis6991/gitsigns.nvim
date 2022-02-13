@@ -844,8 +844,7 @@ M.diffthis = void(function(base)
 
    api.nvim_buf_set_option(dbuf, 'filetype', ft)
    api.nvim_buf_set_option(dbuf, 'buftype', 'nowrite')
-
-   vim.cmd(string.format('autocmd! WinClosed <buffer=%d> ++once call nvim_buf_delete(%d, {})', dbuf, dbuf))
+   api.nvim_buf_set_option(dbuf, 'bufhidden', 'wipe')
 
    vim.cmd('diffthis')
 end)
