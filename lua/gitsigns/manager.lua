@@ -6,7 +6,6 @@ local CacheEntry = gs_cache.CacheEntry
 local cache = gs_cache.cache
 
 local signs = require('gitsigns.signs')
-local Sign = signs.Sign
 
 local Status = require("gitsigns.status")
 
@@ -49,40 +48,27 @@ end
 
 local scheduler_if_buf_valid = awrap(schedule_if_buf_valid, 2)
 
-function M.apply_win_signs(bufnr, pending, top, bot)
+function M.apply_win_signs(bufnr, hunks, top, bot, clear)
+   if clear then
+      signs.remove(bufnr)
+   end
 
 
-   local first_apply = top == nil
 
 
-   top = top or vim.fn.line('w0')
-   bot = bot or vim.fn.line('w$')
 
-   local scheduled = {}
 
-   local function schedule_sign(n, _)
-      if n and pending[n] then
-         scheduled[n] = pending[n]
-         pending[n] = nil
+   for i, hunk in ipairs(hunks or {}) do
+      if clear and i == 1 or
+         top <= hunk.vend and bot >= hunk.start then
+         signs.schedule(config, bufnr, gs_hunks.calc_signs(hunk))
+      end
+      if hunk.start > bot then
+         break
       end
    end
 
-   for lnum = top, bot do
-      schedule_sign(lnum)
-   end
-
-   if first_apply then
-      signs.remove(bufnr)
-
-
-
-
-
-      schedule_sign(next(pending))
-   end
-
-   signs.add(config, bufnr, scheduled)
-
+   signs.draw(bufnr, top, bot)
 end
 
 
@@ -99,26 +85,26 @@ local function speculate_signs(buf, last_orig, last_new)
 
 
       if last_orig == 0 then
-         local placed = signs.get(buf, 1)[1]
+         local placed = signs.get(buf, 1)
 
 
          if not placed or not vim.startswith(placed, 'GitSignsTopDelete') then
 
             for i = 1, last_new do
-               signs.add(config, buf, { [i] = { type = 'add', count = 0 } })
+               signs.add(config, buf, { { type = 'add', count = 0, lnum = i } })
             end
          else
             signs.remove(buf, 1)
          end
          return true
       else
-         local placed = signs.get(buf, last_orig)[last_orig]
+         local placed = signs.get(buf, last_orig)
 
 
          if not placed or not vim.startswith(placed, 'GitSignsDelete') then
 
             for i = last_orig + 1, last_new do
-               signs.add(config, buf, { [i] = { type = 'add', count = 0 } })
+               signs.add(config, buf, { { type = 'add', count = 0, lnum = i } })
             end
             return true
          end
@@ -126,11 +112,11 @@ local function speculate_signs(buf, last_orig, last_new)
    else
 
 
-      local placed = signs.get(buf, last_orig)[last_orig]
+      local placed = signs.get(buf, last_orig)
 
 
       if not placed then
-         signs.add(config, buf, { [last_orig] = { type = 'change', count = 0 } })
+         signs.add(config, buf, { { type = 'change', count = 0, lnum = last_orig } })
          return true
       end
    end
@@ -323,11 +309,9 @@ local update0 = function(bufnr, bcache)
 
    scheduler_if_buf_valid(bufnr)
    if gs_hunks.compare_heads(bcache.hunks, old_hunks) then
-      bcache.pending_signs = gs_hunks.process_hunks(bcache.hunks)
 
 
-
-      M.apply_win_signs(bufnr, bcache.pending_signs)
+      M.apply_win_signs(bufnr, bcache.hunks, vim.fn.line('w0'), vim.fn.line('w$'), true)
 
       show_deleted(bufnr)
    end

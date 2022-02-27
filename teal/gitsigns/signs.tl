@@ -1,3 +1,5 @@
+local fn = vim.fn
+
 local Config = require('gitsigns.config').Config
 
 local record M
@@ -20,6 +22,7 @@ local record M
   record Sign
     type: SignType
     count: integer
+    lnum: integer
   end
 
   sign_map: {SignType:SignName}
@@ -33,13 +36,53 @@ M.sign_map = {
   changedelete = "GitSignsChangeDelete",
 }
 
-local ns = 'gitsigns_ns'
+local sign_group = 'gitsigns_ns'
+
+-- The internal representation of signs in Neovim is a linked list which is
+-- slow to index. Also when a sign is added/removed, it causes the sign column
+-- width to re-calculated which requires a full scan of the signs list.
+--
+-- To workaround these shortcomings, we add an abstraction layer to the signs
+-- API which keeps track of which signs have already been placed in the buffer.
+-- This allows us to:
+--   - efficiently query placed signs.
+--   - skip adding a sign if it has already been placed.
+local placed: {integer:{integer:fn.SignPlaceItem}} = {}
+local scheduled: {integer:{integer:fn.SignPlaceItem}} = {}
+
+local function setdefault(tbl: table)
+  setmetatable(tbl, {
+    __index = function(t: table, k: any): any
+      t[k] = {}
+      return t[k]
+    end
+  })
+end
+
+setdefault(placed)
+setdefault(scheduled)
 
 local sign_define_cache = {}
 
+
+function M.draw(bufnr: integer, top: integer, bot: integer): boolean
+  local to_place = {}
+  for i = top, bot do
+    if scheduled[bufnr][i] then
+      to_place[#to_place+1] = scheduled[bufnr][i]
+      placed[bufnr][i] = scheduled[bufnr][i]
+      scheduled[bufnr][i]= nil
+    end
+  end
+  if to_place[1] then
+    fn.sign_placelist(to_place)
+  end
+end
+
 local function sign_get(name: string): table
+
   if not sign_define_cache[name] then
-    local s = vim.fn.sign_getdefined(name)
+    local s = fn.sign_getdefined(name)
     if not vim.tbl_isempty(s) then
       sign_define_cache[name] = s
     end
@@ -50,29 +93,36 @@ end
 function M.define(name: string, opts: {string:any}, redefine: boolean)
   if redefine then
     sign_define_cache[name] = nil
-    vim.fn.sign_undefine(name)
-    vim.fn.sign_define(name, opts)
+    fn.sign_undefine(name)
+    fn.sign_define(name, opts)
   elseif not sign_get(name) then
-    vim.fn.sign_define(name, opts)
+    fn.sign_define(name, opts)
   end
 end
 
 function M.remove(bufnr: integer, lnum: integer)
-  vim.fn.sign_unplace(ns, {buffer = bufnr, id = lnum})
+  if lnum then
+    placed[bufnr][lnum] = nil
+    scheduled[bufnr][lnum] = nil
+  else
+    placed[bufnr] = nil
+    scheduled[bufnr] = nil
+  end
+  fn.sign_unplace(sign_group, {buffer = bufnr, id = lnum})
 end
 
-function M.add(cfg: Config, bufnr: integer, signs: {integer:M.Sign})
+function M.schedule(cfg: Config, bufnr: integer, signs: {M.Sign})
   if not cfg.signcolumn and not cfg.numhl and not cfg.linehl then
     -- Don't place signs if it won't show anything
     return
   end
-  local to_place: {vim.fn.SignPlaceItem} = {}
-  for lnum, s in pairs(signs) do
+
+  for _, s in ipairs(signs) do
     local stype: string = M.sign_map[s.type]
-    local count = s.count
 
     local cs = cfg.signs[s.type]
-    if cfg.signcolumn and cs.show_count and count then
+    if cfg.signcolumn and cs.show_count and s.count then
+      local count = s.count
       local cc = cfg.count_chars
       local count_suffix = cc[count] and tostring(count) or (cc['+'] and 'Plus') or ''
       local count_char   = cc[count]                     or  cc['+']             or ''
@@ -85,27 +135,30 @@ function M.add(cfg: Config, bufnr: integer, signs: {integer:M.Sign})
       })
     end
 
-    to_place[#to_place+1] = {
-      id       = lnum,
-      group    = ns,
-      name     = stype,
-      buffer   = bufnr,
-      lnum     = lnum,
-      priority = cfg.sign_priority
-    }
+
+    if not placed[bufnr][s.lnum] then
+      scheduled[bufnr][s.lnum] = {
+        id       = s.lnum,
+        group    = sign_group,
+        name     = stype,
+        buffer   = bufnr,
+        lnum     = s.lnum,
+        priority = cfg.sign_priority
+      }
+    end
   end
-  vim.fn.sign_placelist(to_place)
 end
 
--- Return map of line number to sign name. Can't use SignName as signs with
--- counts have a suffix on their name.
-function M.get(bufnr: integer, lnum: integer): {integer:string}
-  local placed = vim.fn.sign_getplaced(bufnr, {group=ns, id=lnum})[1].signs
-  local ret = {}
-  for _, s in ipairs(placed) do
-    ret[s.id] = s.name
+function M.add(cfg: Config, bufnr: integer, signs: {M.Sign})
+  M.schedule(cfg, bufnr, signs)
+  for _, s in ipairs(signs) do
+    M.draw(bufnr, s.lnum, s.lnum)
   end
-  return ret
+end
+
+function M.get(bufnr: integer, lnum: integer): string
+  local s = (placed[bufnr] or {})[lnum]
+  return s and s.name
 end
 
 return M

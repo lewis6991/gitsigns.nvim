@@ -1,5 +1,4 @@
 local Hunk = require("gitsigns.hunks").Hunk
-local Sign = require('gitsigns.signs').Sign
 local GitObj = require('gitsigns.git').Obj
 
 local util = require('gitsigns.util')
@@ -11,8 +10,8 @@ local record M
     compare_file  : string    -- For use with externl diff
     compare_text  : {string}  -- For use with internal diff
     hunks         : {Hunk}
+    pending_hunks : {Hunk}    -- Hunks which haven't been drawn
     staged_diffs  : {Hunk}
-    pending_signs : {integer:Sign}
     gitdir_watcher : vim.loop.FSPollObj -- Timer object watching the gitdir
     git_obj       : GitObj
     commit        : string

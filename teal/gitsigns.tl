@@ -541,10 +541,10 @@ M.setup = void(function(cfg: Config)
   api.nvim_set_decoration_provider(namespace, {
     on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
       local bcache = cache[bufnr]
-      if not bcache or not bcache.pending_signs then
+      if not bcache or not bcache.hunks then
         return false
       end
-      manager.apply_win_signs(bufnr, bcache.pending_signs, top+1, bot+1)
+      manager.apply_win_signs(bufnr, bcache.hunks, top+1, bot+1)
 
       if config.word_diff and config.diff_opts.internal then
         for i = top, bot do

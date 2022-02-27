@@ -90,4 +90,12 @@ function M.get_relative_time(timestamp)
    end
 end
 
+function M.copy_array(x)
+   local r = {}
+   for i, e in ipairs(x) do
+      r[i] = e
+   end
+   return r
+end
+
 return M
