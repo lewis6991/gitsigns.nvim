@@ -99,7 +99,6 @@ local function speculate_signs(buf, last_orig, last_new)
 
 
       if last_orig == 0 then
-
          local placed = signs.get(buf, 1)[1]
 
 
