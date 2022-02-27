@@ -9,14 +9,14 @@ global unpack: function<T>({T}, number, number): T...
 global getfenv: function(function): table
 
 global record jit
-    arch: string
-    os: string
-    version: string
-    version_num: number
-    off: function()
-    off: function(function)
-    on: function()
-    status: function(): boolean
+  arch: string
+  os: string
+  version: string
+  version_num: number
+  off: function()
+  off: function(function)
+  on: function()
+  status: function(): boolean
 end
 
 local record api
@@ -252,6 +252,8 @@ global record vim
   cmd: function(string): any
 
   deepcopy: function<T>(T): T
+
+  defer_fn: function(function, integer): loop.Timer
 
   diff: function(string|{string}, string|{string}, table)
 

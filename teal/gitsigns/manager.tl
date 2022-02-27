@@ -99,7 +99,6 @@ local function speculate_signs(buf: integer, last_orig: integer, last_new: integ
     -- Lines added
 
     if last_orig == 0 then
-      -- Note: It seems that
       local placed = signs.get(buf, 1)[1]
 
       -- Add 'added' signs only if there wasn't a 'delete' sign above

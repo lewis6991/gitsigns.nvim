@@ -1,11 +1,9 @@
 local void = require('plenary.async.async').void
 local scheduler = require('plenary.async.util').scheduler
 
-local Status = require("gitsigns.status")
 local config = require('gitsigns.config').config
 local mk_repeatable = require('gitsigns.repeat').mk_repeatable
 local popup = require('gitsigns.popup')
-local signs = require('gitsigns.signs')
 local util = require('gitsigns.util')
 local manager = require('gitsigns.manager')
 local git = require('gitsigns.git')
@@ -166,21 +164,6 @@ M.stage_hunk = mk_repeatable(void(function(range)
    table.insert(bcache.staged_diffs, hunk)
 
    bcache.compare_text = nil
-
-   local hunk_signs = gs_hunks.process_hunks({ hunk })
-
-   scheduler()
-
-
-
-
-
-
-   if not bcache.base then
-      for lnum, _ in pairs(hunk_signs) do
-         signs.remove(bufnr, lnum)
-      end
-   end
    manager.update(bufnr)
 end))
 
@@ -266,10 +249,6 @@ M.undo_stage_hunk = void(function()
 
    bcache.git_obj:stage_hunks({ hunk }, true)
    bcache.compare_text = nil
-   scheduler()
-   if not bcache.base then
-      signs.add(config, bufnr, gs_hunks.process_hunks({ hunk }))
-   end
    manager.update(bufnr)
 end)
 
@@ -304,11 +283,7 @@ M.stage_buffer = void(function()
    end
    bcache.compare_text = nil
 
-   scheduler()
-   if not bcache.base then
-      signs.remove(bufnr)
-   end
-   Status:clear_diff(bufnr)
+   manager.update(bufnr)
 end)
 
 
@@ -330,16 +305,12 @@ M.reset_buffer_index = void(function()
 
 
 
-   local hunks = bcache.staged_diffs
    bcache.staged_diffs = {}
 
    bcache.git_obj:unstage_file()
    bcache.compare_text = nil
 
    scheduler()
-   if not bcache.base then
-      signs.add(config, bufnr, gs_hunks.process_hunks(hunks))
-   end
    manager.update(bufnr)
 end)
 
@@ -557,16 +528,6 @@ M.get_hunks = function(bufnr)
    return ret
 end
 
-local function defer(duration, callback)
-   local timer = vim.loop.new_timer()
-   timer:start(duration, 0, function()
-      timer:stop()
-      timer:close()
-      vim.schedule_wrap(callback)()
-   end)
-   return timer
-end
-
 local function run_diff(a, b)
    local diff_opts = config.diff_opts
    local f
@@ -625,9 +586,9 @@ M.blame_line = void(function(opts)
       ignore_whitespace = opts.ignore_whitespace
    end
 
-   local loading = defer(1000, function()
+   local loading = vim.defer_fn(function()
       popup.create({ 'Loading...' }, config.preview_config)
-   end)
+   end, 1000)
 
    scheduler()
    local buftext = util.buf_lines(bufnr)

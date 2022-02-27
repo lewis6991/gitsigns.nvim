@@ -1,11 +1,9 @@
 local void      = require('plenary.async.async').void
 local scheduler = require('plenary.async.util').scheduler
 
-local Status        = require("gitsigns.status")
 local config        = require('gitsigns.config').config
 local mk_repeatable = require('gitsigns.repeat').mk_repeatable
 local popup         = require('gitsigns.popup')
-local signs         = require('gitsigns.signs')
 local util          = require('gitsigns.util')
 local manager       = require('gitsigns.manager')
 local git           = require('gitsigns.git')
@@ -166,21 +164,6 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
   table.insert(bcache.staged_diffs, hunk)
 
   bcache.compare_text = nil -- Invalidate
-
-  local hunk_signs = gs_hunks.process_hunks({hunk})
-
-  scheduler()
-
-  -- If watch_gitdir is enabled then that will eventually kick in and update the
-  -- signs, however for  smoother UX we can update the signs immediately without
-  -- running a full diff.
-  --
-  -- We cannot update the status bar as that requires a full diff.
-  if not bcache.base then
-    for lnum, _ in pairs(hunk_signs) do
-      signs.remove(bufnr, lnum)
-    end
-  end
   manager.update(bufnr)
 end))
 
@@ -266,10 +249,6 @@ M.undo_stage_hunk = void(function()
 
   bcache.git_obj:stage_hunks({hunk}, true)
   bcache.compare_text = nil -- Invalidate
-  scheduler()
-  if not bcache.base then
-    signs.add(config, bufnr, gs_hunks.process_hunks({hunk}))
-  end
   manager.update(bufnr)
 end)
 
@@ -304,11 +283,7 @@ M.stage_buffer = void(function()
   end
   bcache.compare_text = nil -- Invalidate
 
-  scheduler()
-  if not bcache.base then
-    signs.remove(bufnr)
-  end
-  Status:clear_diff(bufnr)
+  manager.update(bufnr)
 end)
 
 --- Unstage all hunks for current buffer in the index. Note:
@@ -330,16 +305,12 @@ M.reset_buffer_index = void(function()
   -- some sort of initial population from git diff, after that this function can
   -- be improved to check if any staged hunks exists and it can undo changes
   -- using git apply line by line instead of reseting whole file
-  local hunks = bcache.staged_diffs
   bcache.staged_diffs = {}
 
   bcache.git_obj:unstage_file()
   bcache.compare_text = nil -- Invalidate
 
   scheduler()
-  if not bcache.base then
-    signs.add(config, bufnr, gs_hunks.process_hunks(hunks))
-  end
   manager.update(bufnr)
 end)
 
@@ -557,16 +528,6 @@ M.get_hunks = function(bufnr: integer): {Hunk_Public}
   return ret
 end
 
-local function defer(duration: integer, callback: function()): vim.loop.Timer
-  local timer = vim.loop.new_timer()
-  timer:start(duration, 0, function()
-    timer:stop()
-    timer:close()
-    vim.schedule_wrap(callback)()
-  end)
-  return timer
-end
-
 local function run_diff(a: {string}, b: {string}): {Hunk}
   local diff_opts = config.diff_opts
   local f: function({string}, {string}, string, boolean): {Hunk}
@@ -625,9 +586,9 @@ M.blame_line = void(function(opts: boolean | BlameOpts)
     ignore_whitespace = opts.ignore_whitespace
   end
 
-  local loading = defer(1000, function()
+  local loading = vim.defer_fn(function()
     popup.create({'Loading...'}, config.preview_config)
-  end)
+  end, 1000)
 
   scheduler()
   local buftext = util.buf_lines(bufnr)
