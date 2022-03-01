@@ -48,7 +48,6 @@ body:
 
          local plugins = {
            gitsigns = 'https://github.com/lewis6991/gitsigns.nvim',
-           plenary  = 'https://github.com/nvim-lua/plenary.nvim',
            -- ADD OTHER PLUGINS _NECESSARY_ TO REPRODUCE THE ISSUE
          }
 

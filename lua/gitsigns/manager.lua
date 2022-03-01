@@ -1,5 +1,5 @@
-local void = require('plenary.async.async').void
-local awrap = require('plenary.async.async').wrap
+local void = require('gitsigns.async').void
+local awrap = require('gitsigns.async').wrap
 
 local gs_cache = require('gitsigns.cache')
 local CacheEntry = gs_cache.CacheEntry

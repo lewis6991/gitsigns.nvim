@@ -14,15 +14,11 @@ deps/neovim:
 	git clone --depth 1 https://github.com/neovim/neovim --branch $(NEOVIM_BRANCH) $@
 	make -C $@
 
-deps/plenary.nvim:
-	@mkdir -p deps
-	git clone --depth 1 https://github.com/nvim-lua/plenary.nvim $@
-
 export VIMRUNTIME=$(PWD)/deps/neovim/runtime
 export TEST_COLORS=1
 
 .PHONY: test
-test: deps/neovim deps/plenary.nvim
+test: deps/neovim
 	$(INIT_LUAROCKS) deps/neovim/.deps/usr/bin/busted \
 		-v \
 		--lazy \
@@ -33,8 +29,6 @@ test: deps/neovim deps/plenary.nvim
 		--lpath=$(PWD)/deps/neovim/runtime/lua/?.lua \
 		--lpath=$(PWD)/deps/?.lua \
 		--lpath=$(PWD)/lua/?.lua \
-		--lpath=$(PWD)/deps/plenary.nvim/lua/?.lua \
-		--lpath=$(PWD)/deps/plenary.nvim/lua/?/init.lua \
 		--filter="$(FILTER)" \
 		$(PWD)/test
 

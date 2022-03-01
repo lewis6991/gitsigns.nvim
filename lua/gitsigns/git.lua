@@ -1,5 +1,5 @@
-local wrap = require('plenary.async.async').wrap
-local scheduler = require('plenary.async.util').scheduler
+local wrap = require('gitsigns.async').wrap
+local scheduler = require('gitsigns.async').scheduler
 
 local gsd = require("gitsigns.debug")
 local util = require('gitsigns.util')
