@@ -1,5 +1,5 @@
-local void = require('plenary.async.async').void
-local scheduler = require('plenary.async.util').scheduler
+local void = require('gitsigns.async').void
+local scheduler = require('gitsigns.async').scheduler
 
 local config = require('gitsigns.config').config
 local mk_repeatable = require('gitsigns.repeat').mk_repeatable

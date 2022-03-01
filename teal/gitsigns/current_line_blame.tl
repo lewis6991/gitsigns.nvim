@@ -1,7 +1,7 @@
-local a = require('plenary.async.async')
+local a = require('gitsigns.async')
 local wrap      = a.wrap
 local void      = a.void
-local scheduler = require('plenary.async.util').scheduler
+local scheduler = a.scheduler
 
 local cache     = require('gitsigns.cache').cache
 local config    = require('gitsigns.config').config

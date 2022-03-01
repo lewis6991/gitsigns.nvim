@@ -1,4 +1,3 @@
-local tbl = require('plenary.tbl')
 local api = vim.api
 local M = {}
 
@@ -10,9 +9,10 @@ end
 
 function M.mk_repeatable(fn)
    return function(...)
-      local args = tbl.pack(...)
+      local args = { ... }
+      local nargs = select('#', ...)
       repeat_fn = function()
-         fn(tbl.unpack(args))
+         fn(unpack(args, 1, nargs))
          local vimfn = vim.fn
          local sequence = string.format('%sGitsignsRepeat',
          api.nvim_replace_termcodes('<Plug>', true, true, true))

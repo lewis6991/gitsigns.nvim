@@ -1,5 +1,5 @@
-local void = require('plenary.async.async').void
-local scheduler = require('plenary.async.util').scheduler
+local void = require('gitsigns.async').void
+local scheduler = require('gitsigns.async').scheduler
 
 local Status = require("gitsigns.status")
 local git = require('gitsigns.git')

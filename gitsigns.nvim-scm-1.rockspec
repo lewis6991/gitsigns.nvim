@@ -16,7 +16,6 @@ description = {
 
 dependencies = {
   'lua == 5.1',
-  'plenary.nvim',
 }
 
 source = {
@@ -35,6 +34,7 @@ build = {
   modules = {
     ['gitsigns']                       = 'lua/gitsigns.lua',
     ['gitsigns.actions']               = 'lua/gitsigns/actions.lua',
+    ['gitsigns.async']                 = 'lua/gitsigns/async.lua',
     ['gitsigns.cache']                 = 'lua/gitsigns/cache.lua',
     ['gitsigns.config']                = 'lua/gitsigns/config.lua',
     ['gitsigns.current_line_blame']    = 'lua/gitsigns/current_line_blame.lua',

@@ -3,7 +3,7 @@ local git_diff = require('gitsigns.git').diff
 local gs_hunks = require("gitsigns.hunks")
 local Hunk = gs_hunks.Hunk
 local util = require('gitsigns.util')
-local scheduler = require('plenary.async.util').scheduler
+local scheduler = require('gitsigns.async').scheduler
 
 local record M
   -- Async function
