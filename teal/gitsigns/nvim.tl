@@ -1,5 +1,3 @@
-local require_ = require as function(string): table
-
 local lookups: {string:string} = {
   autocmd = "autocmds",
   augroup = "autocmds",
@@ -19,6 +17,7 @@ return setmetatable(NvimModule, {
       return
     end
 
+    local require_ = require as function(string): table
     local mod = require_("gitsigns.nvim." .. modname)
 
     t[k] = mod[k]
