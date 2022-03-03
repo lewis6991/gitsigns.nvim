@@ -79,6 +79,25 @@ local record api
   nvim_command: function(string)
   nvim_create_buf: function(boolean, boolean): integer
   nvim_create_namespace: function(string): integer
+
+  record AugroupOpts
+    clear: boolean
+  end
+
+  nvim_create_augroup: function(string, AugroupOpts): integer
+
+  record AutoCmdOpts
+    callback: function()
+    command: string
+    group: string
+    pattern: string|{string}
+    once: boolean
+    nested: boolean
+    desc: string
+    buffer: integer
+  end
+
+  nvim_create_autocmd: function(string|{string}, AutoCmdOpts): integer
   nvim_del_current_line: function()
   nvim_del_keymap: function(string, string)
   nvim_del_var: function(string)
@@ -275,9 +294,17 @@ global record vim
 
   bo: BufOption
 
+  record BufVar
+    {BufVar}
+    changedtick: integer
+  end
+
+  b: BufVar
+
   record v
     vim_did_enter: integer
   end
+
 
   record opt
     record Opt<T>

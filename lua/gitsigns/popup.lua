@@ -1,3 +1,5 @@
+local nvim = require('gitsigns.nvim')
+
 local popup = {}
 
 local api = vim.api
@@ -69,20 +71,21 @@ function popup.create(lines, opts)
 
 
 
-   vim.cmd("augroup GitsignsPopup" .. win_id)
-   vim.cmd("autocmd CursorMoved,CursorMovedI * " ..
-   ("lua package.loaded['gitsigns.popup'].close(%d)"):format(win_id))
-   vim.cmd("augroup END")
+   local group = 'gitsigns_popup' .. win_id
+   nvim.augroup(group)
+   nvim.autocmd({ 'CursorMoved', 'CursorMovedI' }, {
+      group = group,
+      callback = function()
+         if api.nvim_get_current_win() ~= win_id then
+
+            nvim.augroup(group)
+            pcall(api.nvim_win_close, win_id, true)
+         end
+      end,
+   })
 
    return win_id, bufnr
 end
 
-function popup.close(win_id)
-   if api.nvim_get_current_win() ~= win_id then
-
-      vim.cmd("silent! augroup! GitsignsPopup" .. win_id)
-      pcall(api.nvim_win_close, win_id, true)
-   end
-end
 
 return popup
