@@ -7,6 +7,7 @@ local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local BlameInfo = require('gitsigns.git').BlameInfo
 local util = require('gitsigns.util')
+local nvim = require('gitsigns.nvim')
 
 local api = vim.api
 
@@ -17,8 +18,6 @@ local namespace = api.nvim_create_namespace('gitsigns_blame')
 local timer = vim.loop.new_timer()
 
 local M = {}
-
-
 
 
 
@@ -38,7 +37,7 @@ local function get_extmark(bufnr)
    return
 end
 
-M.reset = function(bufnr)
+local reset = function(bufnr)
    bufnr = bufnr or current_buf()
    api.nvim_buf_del_extmark(bufnr, namespace, 1)
    pcall(api.nvim_buf_del_var, bufnr, 'gitsigns_blame_line_dict')
@@ -71,7 +70,7 @@ function BlameCache:get(bufnr, lnum)
    if not config._blame_cache then return end
 
 
-   local tick = api.nvim_buf_get_var(bufnr, 'changedtick')
+   local tick = vim.b[bufnr].changedtick
    if not self.contents[bufnr] or self.contents[bufnr].tick ~= tick then
       self.contents[bufnr] = { tick = tick, cache = {}, size = 0 }
    end
@@ -126,7 +125,7 @@ local function expand_blame_format(fmt, name, info)
 end
 
 
-M.update = void(function()
+local update = void(function()
    local bufnr = current_buf()
    local lnum = api.nvim_win_get_cursor(0)[1]
 
@@ -141,7 +140,7 @@ M.update = void(function()
 
 
    if get_extmark(bufnr) then
-      M.reset(bufnr)
+      reset(bufnr)
       set_extmark(bufnr, lnum)
    end
 
@@ -201,20 +200,24 @@ M.update = void(function()
 end)
 
 M.setup = function()
-   vim.cmd([[
-    augroup gitsigns_blame
-      autocmd!
-    augroup END
-  ]])
+   nvim.augroup('gitsigns_blame')
 
    for k, _ in pairs(cache) do
-      M.reset(k)
+      reset(k)
    end
 
    if config.current_line_blame then
-      vim.cmd([[autocmd gitsigns_blame FocusGained,BufEnter,CursorMoved,CursorMovedI * lua require("gitsigns.current_line_blame").update()]])
-      vim.cmd([[autocmd gitsigns_blame FocusLost,BufLeave                            * lua require("gitsigns.current_line_blame").reset()]])
-      M.update()
+      nvim.autocmd(
+      { 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' },
+      { group = 'gitsigns_blame', callback = function() update() end })
+
+
+      nvim.autocmd(
+      { 'FocusLost', 'BufLeave' },
+      { group = 'gitsigns_blame', callback = function() reset() end })
+
+
+      update()
    end
 end
 

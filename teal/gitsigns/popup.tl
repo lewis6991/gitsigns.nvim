@@ -1,3 +1,5 @@
+local nvim = require('gitsigns.nvim')
+
 local popup = {}
 
 local api = vim.api
@@ -69,20 +71,21 @@ function popup.create(lines: {string}, opts: {string:any}): integer, integer
 
   -- Close the popup when navigating to any window which is not the preview
   -- itself.
-  vim.cmd("augroup GitsignsPopup"..win_id)
-  vim.cmd("autocmd CursorMoved,CursorMovedI * "..
-          ("lua package.loaded['gitsigns.popup'].close(%d)"):format(win_id))
-  vim.cmd("augroup END")
+  local group = 'gitsigns_popup'..win_id
+  nvim.augroup(group)
+  nvim.autocmd({'CursorMoved', 'CursorMovedI'}, {
+    group = group,
+    callback = function()
+      if api.nvim_get_current_win() ~= win_id then
+        -- Clear the augroup
+        nvim.augroup(group)
+        pcall(api.nvim_win_close, win_id, true)
+      end
+    end
+  })
 
   return win_id, bufnr
 end
 
-function popup.close(win_id: integer)
-  if api.nvim_get_current_win() ~= win_id then
-    -- Delete the augroup
-    vim.cmd("silent! augroup! GitsignsPopup"..win_id)
-    pcall(api.nvim_win_close, win_id, true)
-  end
-end
 
 return popup
