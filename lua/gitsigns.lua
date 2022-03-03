@@ -520,7 +520,7 @@ M.setup = void(function(cfg)
    if vim.v.vim_did_enter == 1 then
       manager.setup_signs_and_highlights()
    else
-      autocmd('VimEnter', {
+      nvim.autocmd('VimEnter', {
          callback = wrap_func(manager.setup_signs_and_highlights),
          once = true,
       })
