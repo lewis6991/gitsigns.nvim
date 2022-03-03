@@ -478,6 +478,17 @@ local function autocmd(event: string, opts: function|vim.api.AutoCmdOpts)
   nvim.autocmd(event, opts0)
 end
 
+local function on_or_after_vimenter(fn: function)
+  if vim.v.vim_did_enter == 1 then
+    fn()
+  else
+    nvim.autocmd('VimEnter', {
+      callback = wrap_func(fn),
+      once = true
+    })
+  end
+end
+
 --- Setup and start Gitsigns.
 ---
 --- Attributes: ~
@@ -517,14 +528,7 @@ M.setup = void(function(cfg: Config)
   -- Make sure highlights are setup on or after VimEnter so the colorscheme is
   -- loaded. Do not set them up with vim.schedule as this removes the intro
   -- message.
-  if vim.v.vim_did_enter == 1 then
-    manager.setup_signs_and_highlights()
-  else
-    nvim.autocmd('VimEnter', {
-      callback = wrap_func(manager.setup_signs_and_highlights),
-      once = true
-    })
-  end
+  on_or_after_vimenter(manager.setup_signs_and_highlights)
 
   setup_command()
 
