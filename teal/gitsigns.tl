@@ -159,6 +159,10 @@ end
 local function parse_fugitive_uri(name: string): string, string
   local _, _, root_path, sub_module_path, commit, real_path =
     name:find([[^fugitive://(.*)/%.git(.*/)/(%x-)/(.*)]])
+  if commit == '0' then
+    -- '0' means the index so cleat commit so we attach normally
+    commit = nil
+  end
   if root_path then
     sub_module_path = sub_module_path:gsub("^/modules", "")
     name = root_path .. sub_module_path .. real_path
