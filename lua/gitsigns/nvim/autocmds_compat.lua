@@ -9,7 +9,14 @@ function M._exec(id)
 end
 
 local function set_callback(fn)
-   local id = string.format("%p", fn)
+   local id
+
+   if jit then
+      id = string.format("%p", fn)
+   else
+      id = tostring(fn):match('function: (.*)')
+   end
+
    callbacks[id] = function() fn() end
    return string.format('lua require("gitsigns.nvim.autocmds_compat")._exec("%s")', id)
 end
