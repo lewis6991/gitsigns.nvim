@@ -991,7 +991,8 @@ end
 
 
 M.refresh = void(function()
-   manager.setup_signs_and_highlights(true)
+   manager.setup_signs(true)
+   require('gitsigns.highlight').setup_highlights()
    require('gitsigns.current_line_blame').setup()
    for k, v in pairs(cache) do
 

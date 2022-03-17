@@ -21,7 +21,6 @@ local util              = require('gitsigns.util')
 local gs_hunks          = require("gitsigns.hunks")
 local Hunk              = gs_hunks.Hunk
 
-local setup_highlights  = require('gitsigns.highlight').setup_highlights
 local config            = require('gitsigns.config').config
 
 local api = vim.api
@@ -35,7 +34,7 @@ local record M
   apply_word_diff: function(buf: integer, row: integer)
 
   setup: function()
-  setup_signs_and_highlights: function(redefine: boolean)
+  setup_signs: function(redefine: boolean)
 end
 
 local schedule_if_buf_valid = function(buf: integer, cb: function)
@@ -335,7 +334,7 @@ M.setup = function()
   M.update_debounced = debounce_trailing(config.update_debounce, void(M.update)) as function(integer)
 end
 
-M.setup_signs_and_highlights = function(redefine: boolean)
+M.setup_signs = function(redefine: boolean)
   -- Define signs
   for t, sign_name in pairs(signs.sign_map) do
     local cs = config.signs[t]
@@ -348,8 +347,6 @@ M.setup_signs_and_highlights = function(redefine: boolean)
     }, redefine)
 
   end
-
-  setup_highlights()
 end
 
 return M
