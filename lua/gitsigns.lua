@@ -7,6 +7,7 @@ local manager = require('gitsigns.manager')
 local nvim = require('gitsigns.nvim')
 local signs = require('gitsigns.signs')
 local util = require('gitsigns.util')
+local hl = require('gitsigns.highlight')
 
 local gs_cache = require('gitsigns.cache')
 local cache = gs_cache.cache
@@ -532,7 +533,8 @@ M.setup = void(function(cfg)
 
 
 
-   on_or_after_vimenter(manager.setup_signs_and_highlights)
+   on_or_after_vimenter(hl.setup_highlights)
+   manager.setup_signs()
 
    setup_command()
 
@@ -570,7 +572,7 @@ M.setup = void(function(cfg)
    nvim.augroup('gitsigns')
 
    autocmd('VimLeavePre', M.detach_all)
-   autocmd('ColorScheme', manager.setup_signs_and_highlights)
+   autocmd('ColorScheme', hl.setup_highlights)
    autocmd('BufRead', wrap_func(M.attach, nil, 'BufRead'))
    autocmd('BufNewFile', wrap_func(M.attach, nil, 'BufNewFile'))
    autocmd('BufWritePost', wrap_func(M.attach, nil, 'BufWritePost'))

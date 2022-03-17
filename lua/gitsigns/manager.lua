@@ -21,7 +21,6 @@ local util = require('gitsigns.util')
 local gs_hunks = require("gitsigns.hunks")
 local Hunk = gs_hunks.Hunk
 
-local setup_highlights = require('gitsigns.highlight').setup_highlights
 local config = require('gitsigns.config').config
 
 local api = vim.api
@@ -335,7 +334,7 @@ M.setup = function()
    M.update_debounced = debounce_trailing(config.update_debounce, void(M.update))
 end
 
-M.setup_signs_and_highlights = function(redefine)
+M.setup_signs = function(redefine)
 
    for t, sign_name in pairs(signs.sign_map) do
       local cs = config.signs[t]
@@ -348,8 +347,6 @@ M.setup_signs_and_highlights = function(redefine)
       }, redefine)
 
    end
-
-   setup_highlights()
 end
 
 return M
