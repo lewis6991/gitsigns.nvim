@@ -45,6 +45,15 @@ function M.buf_lines(bufnr: integer): {string}
   return buftext
 end
 
+function M.set_lines(bufnr: integer, start_row: integer, end_row: integer, lines: {string})
+  if vim.bo[bufnr].fileformat == 'dos' then
+    for i = 1, #lines do
+      lines[i] = lines[i]:gsub('\r$', '')
+    end
+  end
+  vim.api.nvim_buf_set_lines(bufnr, start_row, end_row, false, lines)
+end
+
 function M.tmpname(): string
   if is_unix then
     return os.tmpname()

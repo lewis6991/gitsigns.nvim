@@ -212,8 +212,7 @@ M.reset_hunk = mk_repeatable(function(range: {integer, integer})
     lstart = hunk.start - 1
     lend = hunk.start - 1 + hunk.added.count
   end
-  local lines = hunk.removed.lines
-  api.nvim_buf_set_lines(bufnr, lstart, lend, false, lines)
+  util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
 end)
 
 --- Reset the lines of all hunks in the buffer.
@@ -224,7 +223,7 @@ M.reset_buffer = function()
     return
   end
 
-  api.nvim_buf_set_lines(bufnr, 0, -1, false, bcache:get_compare_text())
+  util.set_lines(bufnr, 0, -1, bcache:get_compare_text())
 end
 
 --- Undo the last call of stage_hunk().
@@ -800,7 +799,7 @@ M.diffthis = void(function(base: string)
   local dbuf = current_buf()
 
   api.nvim_buf_set_option(dbuf, 'modifiable', true)
-  api.nvim_buf_set_lines(dbuf, 0, -1, false, text)
+  util.set_lines(dbuf, 0, -1, text)
   api.nvim_buf_set_option(dbuf, 'modifiable', false)
 
   api.nvim_buf_set_option(dbuf, 'filetype', ft)
