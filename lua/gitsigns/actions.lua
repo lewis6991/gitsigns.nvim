@@ -28,6 +28,7 @@ local NavHunkOpts = {}
 
 
 
+
 local M = {QFListOpts = {}, }
 
 
@@ -329,6 +330,15 @@ local function process_nav_opts(opts)
    end
 end
 
+
+local function defer(fn)
+   if vim.in_fast_event() then
+      vim.schedule(fn)
+   else
+      vim.defer_fn(fn, 1)
+   end
+end
+
 local function nav_hunk(opts)
    process_nav_opts(opts)
    local bcache = cache[current_buf()]
@@ -365,8 +375,10 @@ local function nav_hunk(opts)
       if opts.foldopen then
          vim.cmd('silent! foldopen!')
       end
-      if pcall(api.nvim_buf_get_var, 0, '_gitsigns_preview_open') then
-         vim.schedule(M.preview_hunk)
+      if opts.preview or popup.is_open() then
+
+
+         defer(M.preview_hunk)
       end
 
       if index ~= nil and opts.navigation_message then
@@ -375,6 +387,9 @@ local function nav_hunk(opts)
 
    end
 end
+
+
+
 
 
 
@@ -475,9 +490,6 @@ M.preview_hunk = noautocmd(function()
    local _, bufnr = popup.create(lines, config.preview_config)
 
    add_highlight(bufnr, -1, 'Title', 0, 0, -1)
-
-   api.nvim_buf_set_var(cbuf, '_gitsigns_preview_open', true)
-   vim.cmd([[autocmd CursorMoved,CursorMovedI <buffer> ++once silent! unlet b:_gitsigns_preview_open]])
 
    local offset = #lines - hunk.removed.count - hunk.added.count
    highlight_hunk_lines(bufnr, offset, hunk)

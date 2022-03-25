@@ -26,6 +26,7 @@ local record NavHunkOpts
   wrap: boolean
   navigation_message: boolean
   foldopen: boolean
+  preview: boolean
 end
 
 local record M
@@ -329,6 +330,15 @@ local function process_nav_opts(opts: NavHunkOpts)
   end
 end
 
+-- Defer function to the next main event
+local function defer(fn: function)
+  if vim.in_fast_event() then
+    vim.schedule(fn)
+  else
+    vim.defer_fn(fn, 1)
+  end
+end
+
 local function nav_hunk(opts: NavHunkOpts)
   process_nav_opts(opts)
   local bcache = cache[current_buf()]
@@ -365,8 +375,10 @@ local function nav_hunk(opts: NavHunkOpts)
     if opts.foldopen then
       vim.cmd('silent! foldopen!')
     end
-    if pcall(api.nvim_buf_get_var, 0, '_gitsigns_preview_open') then
-      vim.schedule(M.preview_hunk)
+    if opts.preview or popup.is_open() then
+      -- Use defer so the cursor change can settle, otherwise the popup might
+      -- appear in the old position
+      defer(M.preview_hunk)
     end
 
     if index ~= nil and opts.navigation_message then
@@ -390,6 +402,9 @@ end
 ---               Expand folds when navigating to a hunk which is
 ---               inside a fold. Defaults to `true` if 'foldopen'
 ---               contains `search`.
+---             • {preview}: (boolean)
+---               Automatically open preview_hunk() upon navigating
+---               to a hunk.
 M.next_hunk = function(opts: NavHunkOpts)
   opts = opts or {}
   opts.forwards = true
@@ -475,9 +490,6 @@ M.preview_hunk = noautocmd(function()
   local _, bufnr = popup.create(lines, config.preview_config)
 
   add_highlight(bufnr, -1, 'Title', 0, 0, -1)
-
-  api.nvim_buf_set_var(cbuf, '_gitsigns_preview_open', true)
-  vim.cmd[[autocmd CursorMoved,CursorMovedI <buffer> ++once silent! unlet b:_gitsigns_preview_open]]
 
   local offset = #lines - hunk.removed.count - hunk.added.count
   highlight_hunk_lines(bufnr as integer, offset, hunk)
