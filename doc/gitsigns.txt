@@ -312,6 +312,9 @@ next_hunk({opts})                                       *gitsigns.next_hunk()*
                               Expand folds when navigating to a hunk which is
                               inside a fold. Defaults to `true` if 'foldopen'
                               contains `search`.
+                            • {preview}: (boolean)
+                              Automatically open preview_hunk() upon navigating
+                              to a hunk.
 
 reset_buffer_index()                           *gitsigns.reset_buffer_index()*
                 Unstage all hunks for current buffer in the index. Note:
