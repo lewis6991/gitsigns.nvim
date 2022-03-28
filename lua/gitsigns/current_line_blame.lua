@@ -135,6 +135,11 @@ local update = void(function()
       return
    end
 
+   if api.nvim_get_mode().mode == 'i' then
+      reset(bufnr)
+      return
+   end
+
 
 
 
@@ -213,7 +218,7 @@ M.setup = function()
 
 
       nvim.autocmd(
-      { 'FocusLost', 'BufLeave' },
+      { 'InsertEnter', 'FocusLost', 'BufLeave' },
       { group = 'gitsigns_blame', callback = function() reset() end })
 
 

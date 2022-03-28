@@ -135,6 +135,11 @@ local update = void(function()
     return
   end
 
+  if api.nvim_get_mode().mode == 'i' then
+    reset(bufnr)
+    return
+  end
+
   -- Set an empty extmark to save the line number.
   -- This will also clear virt_text.
   -- Only do this if there was already an extmark to avoid clearing the intro
@@ -213,7 +218,7 @@ M.setup = function()
     )
 
     nvim.autocmd(
-      {'FocusLost', 'BufLeave'},
+      {'InsertEnter', 'FocusLost', 'BufLeave'},
       { group = 'gitsigns_blame', callback = function() reset() end }
     )
 
