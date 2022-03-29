@@ -613,7 +613,7 @@ M.schema = {
 
    _refresh_staged_on_update = {
       type = 'boolean',
-      default = true,
+      default = false,
       description = [[
       Always refresh the staged file on each update. Disabling this will cause
       the staged file to only be refreshed when an update to the index is
