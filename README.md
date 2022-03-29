@@ -31,7 +31,7 @@ Super fast git decorations implemented purely in lua/teal.
 
 ## Requirements
 
-- Neovim >= 0.5.0 
+- Neovim >= 0.5.0
 
   Note: If you are running a development version of Neovim (aka `master`), then breakage may occur if your build is behind latest.
 - Newish version of git. Older versions may not work with some features.
@@ -140,25 +140,19 @@ require('gitsigns').setup{
 
     -- Navigation
     map('n', ']c', function()
-      if vim.wo.diff then
-        return ']c'
-      else
-        vim.schedule(function()
-          gitsigns.next_hunk()
-        end)
-        return '<Ignore>'
-      end
+      if vim.wo.diff then return ']c' end
+      vim.schedule(function()
+        gitsigns.next_hunk()
+      end)
+      return '<Ignore>'
     end, {expr=true})
 
     map('n', '[c', function()
-      if vim.wo.diff then
-        return '[c'
-      else
-        vim.schedule(function()
-          gitsigns.prev_hunk()
-        end)
-        return '<Ignore>'
-      end
+      if vim.wo.diff then return '[c' end
+      vim.schedule(function()
+        gitsigns.prev_hunk()
+      end)
+      return '<Ignore>'
     end, {expr=true})
 
     -- Actions
