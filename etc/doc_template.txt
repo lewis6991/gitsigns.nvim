@@ -39,20 +39,10 @@ of the default settings:
 ==============================================================================
 MAPPINGS                                                   *gitsigns-mappings*
 
-All mappings are configurable via |gitsigns-setup()|.
+Custom mappings can be defined in the `on_attach` callback in the config table
+passed to |gitsigns-setup()|. See |gitsigns-config-on_attach|.
 
 Most actions can be repeated with `.` if you have |vim-repeat| installed.
-
-Buffer ~
-    ]c         Jump to the next hunk.
-    [c         Jump to the previous hunk.
-    <leader>hs Stage the hunk at the cursor position.
-    <leader>hu Undo the last stage hunk.
-    <leader>hr Reset the lines of the hunk to what is in Git's index.
-    <leader>hp Preview the hunk in a floating window.
-
-Custom mappings are defined using the `keymaps` table in the config table
-passed to |gitsigns-setup()|. See |gitsigns-config-keymaps|.
 
 ==============================================================================
 FUNCTIONS                                                 *gitsigns-functions*
