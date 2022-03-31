@@ -146,7 +146,7 @@ M.stage_hunk = mk_repeatable(void(function(range)
       table.sort(range)
       local top, bot = range[1], range[2]
       hunk = gs_hunks.create_partial_hunk(bcache.hunks, top, bot)
-      hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
+      hunk.added.lines = util.buf_lines(bufnr, top - 1, bot)
       hunk.removed.lines = vim.list_slice(
       bcache.compare_text,
       hunk.removed.start,
@@ -191,7 +191,7 @@ M.reset_hunk = mk_repeatable(function(range)
       table.sort(range)
       local top, bot = range[1], range[2]
       hunk = gs_hunks.create_partial_hunk(bcache.hunks, top, bot)
-      hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
+      hunk.added.lines = util.buf_lines(bufnr, top - 1, bot)
       hunk.removed.lines = vim.list_slice(
       bcache.compare_text,
       hunk.removed.start,
