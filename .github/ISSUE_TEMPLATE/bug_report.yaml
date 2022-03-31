@@ -71,7 +71,7 @@ body:
       label: "Steps to reproduce"
       description: "Steps to reproduce using the minimal config provided."
       value: |
-        1. `nvim -nu minimal.lua`
+        1. `nvim --clean -u minimal.lua`
         2. ...
     validations:
       required: true
