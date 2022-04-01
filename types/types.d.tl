@@ -137,7 +137,7 @@ local record api
   nvim_list_runtime_paths: function(): {string}
   nvim_list_tabpages: function(): {any}
   nvim_list_uis: function(): any
-  nvim_list_wins: function(): {number}
+  nvim_list_wins: function(): {integer}
   nvim_load_context: function({string:any}): any
   nvim_open_win: function(number, boolean, {string:any}): integer
   nvim_out_write: function(string)
@@ -178,7 +178,7 @@ local record api
   nvim_win_call: function<T>(number, (function(): T)): T
   nvim_win_close: function(number, boolean)
   nvim_win_del_var: function(number, string)
-  nvim_win_get_buf: function(number): number
+  nvim_win_get_buf: function(integer): integer
   nvim_win_get_config: function(number): {string:any}
   nvim_win_get_cursor: function(number): {integer}
   nvim_win_get_height: function(integer): integer
@@ -209,6 +209,7 @@ global record vim
     executable: function(string): integer
     expand: function(string): string
     getcwd: function(): string
+    input: function(string, string): string
 
     record QFItem
       bufnr: integer
@@ -290,6 +291,20 @@ global record vim
   record BufOption
     {BufOption}
     fileformat: string
+    filetype: string
+    modifiable: boolean
+    modified: boolean
+
+    enum BufHidden
+      '' 'hide' 'unload' 'delete' 'wipe'
+    end
+
+    bufhidden: BufHidden
+
+    enum BufType
+      '' 'acwrite' 'help' 'nofile' 'nowrite' 'quickfix' 'terminal' 'prompt'
+    end
+    buftype: BufType
   end
 
   bo: BufOption
@@ -488,6 +503,10 @@ global record vim
   end
 
   wait: function(number, function, number, boolean)
+
+  record ui
+    input: function({string:any}, function(string))
+  end
 
   record VersionDetails
     api_compatible: integer

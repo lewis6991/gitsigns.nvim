@@ -5,11 +5,13 @@ local type fun1   = function <A1>          (A1)
 local type fun2   = function <A1,A2>       (A1,A2)
 local type fun2_2 = function <A1,A2,R1,R2> (A1,A2)   : R1,R2
 local type fun3   = function <A1,A2,A3>    (A1,A2,A3)
+local type fun4   = function <A1,A2,A3,A4> (A1,A2,A3,A4)
 
 local record Async
   void: function       (fun0       ): fun0
   void: function<A1>   (fun1<A1>   ): fun1<A1>
   void: function<A1,A2>(fun2<A1,A2>): fun2<A1,A2>
+  void: function<A1,A2,A3,A4>(fun4<A1,A2,A3,A4>): fun4<A1,A2,A3,A4>
 
   wrap: function<A1,A2,R1,R2>(function(A1,A2,   function(R1,R2)), integer): fun2_2 <A1,A2,R1,R2>
   wrap: function<A1,A2,A3>   (function(A1,A2,A3,function())     , integer): fun3   <A1,A2,A3>

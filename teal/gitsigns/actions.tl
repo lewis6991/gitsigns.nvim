@@ -47,7 +47,7 @@ local record M
   blame_line         : function -- function()
   change_base        : function(base: string, global: boolean)
   reset_base         : function(global: boolean)
-  diffthis           : function -- function(base: string)
+  diffthis           : function(base: string)
 
   record QFListOpts
     use_location_list: boolean
@@ -115,6 +115,13 @@ local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk, integer
   return gs_hunks.find_hunk(lnum, hunks)
 end
 
+local function update(bufnr: integer)
+  manager.update(bufnr)
+  if vim.wo.diff then
+    require('gitsigns.diffthis').update(bufnr)
+  end
+end
+
 --- Stage the hunk at the cursor position, or all lines in the
 --- given range. If {range} is provided, all lines in the given
 --- range are staged. This supports partial-hunks, meaning if a
@@ -165,7 +172,7 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
   table.insert(bcache.staged_diffs, hunk)
 
   bcache.compare_text = nil -- Invalidate
-  manager.update(bufnr)
+  update(bufnr)
 end))
 
 --- Reset the lines of the hunk at the cursor position, or all
@@ -249,7 +256,7 @@ M.undo_stage_hunk = void(function()
 
   bcache.git_obj:stage_hunks({hunk}, true)
   bcache.compare_text = nil -- Invalidate
-  manager.update(bufnr)
+  update(bufnr)
 end)
 
 --- Stage all hunks in current buffer.
@@ -283,7 +290,7 @@ M.stage_buffer = void(function()
   end
   bcache.compare_text = nil -- Invalidate
 
-  manager.update(bufnr)
+  update(bufnr)
 end)
 
 --- Unstage all hunks for current buffer in the index. Note:
@@ -311,7 +318,7 @@ M.reset_buffer_index = void(function()
   bcache.compare_text = nil -- Invalidate
 
   scheduler()
-  manager.update(bufnr)
+  update(bufnr)
 end)
 
 local function process_nav_opts(opts: NavHunkOpts)
@@ -451,22 +458,6 @@ local function noautocmd(f: function()): function()
   end
 end
 
--- Strip '\r' from the EOL of each line only if all lines end with '\r'
-local function strip_cr(xs0: {string}): {string}
-  for i = 1, #xs0 do
-    if xs0[i]:sub(-1) ~= '\r' then
-      -- don't strip, return early
-      return xs0
-    end
-  end
-  -- all lines end with '\r', need to strip
-  local xs = vim.deepcopy(xs0)
-  for i = 1, #xs do
-    xs[i] = xs[i]:sub(1, -2)
-  end
-  return xs
-end
-
 --- Preview the hunk at the cursor position in a floating
 --- window.
 M.preview_hunk = noautocmd(function()
@@ -479,7 +470,7 @@ M.preview_hunk = noautocmd(function()
 
   local hlines = gs_hunks.patch_lines(hunk)
   if vim.bo[cbuf].fileformat == 'dos' then
-    hlines = strip_cr(hlines)
+    hlines = util.strip_cr(hlines)
   end
 
   local lines = {
@@ -677,17 +668,10 @@ M.blame_line = void(function(opts: boolean | BlameOpts)
   end
 end)
 
-local function calc_base(base: string): string
-  if base and base:sub(1, 1):match('[~\\^]') then
-    base = 'HEAD'..base
-  end
-  return base
-end
-
 local function update_buf_base(buf: integer, bcache: CacheEntry, base: string)
     bcache.base = base
     bcache.compare_text = nil
-    manager.update(buf, bcache)
+    update(buf)
 end
 
 --- Change the base revision to diff against. If {base} is not
@@ -724,7 +708,7 @@ end
 --- For a more complete list of ways to specify bases, see
 --- |gitsigns-revision|.
 M.change_base = void(function(base: string, global: boolean)
-  base = calc_base(base)
+  base = util.calc_base(base)
 
   if global then
     config.base = base
@@ -752,6 +736,9 @@ end
 --- Perform a |vimdiff| on the given file with {base} if it is
 --- given, or with the currently set base (index by default).
 ---
+--- If {base} is the index, then the opened diff buffer is editable
+--- and any written changes will update the index accordingly.
+---
 --- Examples: >
 ---   " Diff against the index
 ---   :Gitsigns diffthis
@@ -765,61 +752,10 @@ end
 ---
 --- Attributes: ~
 ---     {async}
-M.diffthis = void(function(base: string)
-  local bufnr = current_buf()
-  local bcache = cache[bufnr]
-  if not bcache then return end
-
-  if api.nvim_win_get_option(0, 'diff') then return end
-
-  local ff = vim.bo[bufnr].fileformat
-
-  local text: {string}
-  local err: string
-  local comp_rev = bcache:get_compare_rev(calc_base(base))
-
-  if base then
-    text, err = bcache.git_obj:get_show_text(comp_rev)
-    if ff == 'dos' then
-      text = strip_cr(text)
-    end
-    if err then
-      print(err)
-      return
-    end
-    scheduler()
-  else
-    text = bcache:get_compare_text()
-  end
-
-  local ft = api.nvim_buf_get_option(bufnr, 'filetype')
-
-  local bufname = string.format(
-    'gitsigns://%s/%s',
-    bcache.git_obj.repo.gitdir,
-    comp_rev..':'..bcache.git_obj.relpath
-  )
-
-  vim.cmd'diffthis'
-
-  vim.cmd(table.concat({
-    'keepalt', 'aboveleft',
-    config.diff_opts.vertical and 'vertical' or '',
-    'split', bufname
-  }, ' '))
-
-  local dbuf = current_buf()
-
-  api.nvim_buf_set_option(dbuf, 'modifiable', true)
-  util.set_lines(dbuf, 0, -1, text)
-  api.nvim_buf_set_option(dbuf, 'modifiable', false)
-
-  api.nvim_buf_set_option(dbuf, 'filetype', ft)
-  api.nvim_buf_set_option(dbuf, 'buftype', 'nowrite')
-  api.nvim_buf_set_option(dbuf, 'bufhidden', 'wipe')
-
-  vim.cmd'diffthis'
-end)
+M.diffthis = function(base: string)
+  local diffthis = require('gitsigns.diffthis')
+  diffthis.run(base, config.diff_opts.vertical)
+end
 
 local function hunks_to_qflist(buf_or_filename: number|string, hunks: {Hunk}, qflist: {vim.fn.QFItem})
   for i, hunk in ipairs(hunks) do

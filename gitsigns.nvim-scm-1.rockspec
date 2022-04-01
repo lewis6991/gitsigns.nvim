@@ -40,6 +40,7 @@ build = {
     ['gitsigns.current_line_blame']    = 'lua/gitsigns/current_line_blame.lua',
     ['gitsigns.debounce']              = 'lua/gitsigns/debounce.lua',
     ['gitsigns.debug']                 = 'lua/gitsigns/debug.lua',
+    ['gitsigns.diffthis']              = 'lua/gitsigns/diffthis.lua',
     ['gitsigns.diff_ext']              = 'lua/gitsigns/diff_ext.lua',
     ['gitsigns.diff_int']              = 'lua/gitsigns/diff_int.lua',
     ['gitsigns.diff_int.xdl_diff_ffi'] = 'lua/gitsigns/diff_int/xdl_diff_ffi.lua',

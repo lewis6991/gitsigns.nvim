@@ -328,7 +328,7 @@ end
 -- Since updates are asynchronous we need to make sure an update isn't performed
 -- whilst another one is in progress. If this happens then schedule another
 -- update after the current one has completed.
-M.update = throttle_by_id(update0) as function(integer, CacheEntry)
+M.update = throttle_by_id(update0, true) as function(integer, CacheEntry)
 
 M.setup = function()
   M.update_debounced = debounce_trailing(config.update_debounce, void(M.update)) as function(integer)

@@ -51,7 +51,7 @@ end
 --
 --@param fn (function) Function to throttle
 --@returns (function) throttled function.
-function M.throttle_by_id(fn: function): function
+function M.throttle_by_id(fn: function, schedule: boolean): function
   local scheduled: {any:boolean} = {}
   local running: {any:boolean} = {}
   return function(id: any, ...)
@@ -59,7 +59,9 @@ function M.throttle_by_id(fn: function): function
       -- If fn is already scheduled, then drop
       return
     end
-    scheduled[id] = true
+    if not running[id] or schedule then
+      scheduled[id] = true
+    end
     if running[id] then
       return
     end
