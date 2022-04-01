@@ -31,6 +31,7 @@ local M = {CacheEntry = {}, CacheObj = {}, }
 
 
 
+
 local CacheEntry = M.CacheEntry
 
 CacheEntry.get_compare_rev = function(self, base)
@@ -46,6 +47,15 @@ CacheEntry.get_compare_rev = function(self, base)
 
    local stage = self.git_obj.has_conflicts and 1 or 0
    return string.format(':%d', stage)
+end
+
+CacheEntry.get_diffthis_bufname = function(self, rev)
+   rev = rev or self:get_compare_rev()
+   return string.format(
+   'gitsigns://%s/%s',
+   self.git_obj.repo.gitdir,
+   rev .. ':' .. self.git_obj.relpath)
+
 end
 
 CacheEntry.get_compare_text = function(self)

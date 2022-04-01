@@ -328,7 +328,7 @@ end
 
 
 
-M.update = throttle_by_id(update0)
+M.update = throttle_by_id(update0, true)
 
 M.setup = function()
    M.update_debounced = debounce_trailing(config.update_debounce, void(M.update))

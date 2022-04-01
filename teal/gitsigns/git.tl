@@ -103,6 +103,7 @@ local record M
     get_show_text        : function(Obj, string): {string}, string
     ensure_file_in_index : function(Obj)
     stage_hunks          : function(Obj, {Hunk}, boolean)
+    stage_lines          : function(Obj, {string})
     has_moved            : function(Obj): string
     new                  : function(string): Obj
   end
@@ -451,12 +452,24 @@ Obj.ensure_file_in_index = function(self: Obj)
     else
       -- Update the index with the common ancestor (stage 1) which is what bcache
       -- stores
-      local info = table.concat({self.mode_bits, self.object_name, self.relpath}, ',')
+      local info = string.format('%s,%s,%s', self.mode_bits, self.object_name, self.relpath)
       self:command{'update-index', '--add', '--cacheinfo', info}
     end
 
     self:update_file_info()
   end
+end
+
+Obj.stage_lines = function(self: Obj, lines: {string})
+  local stdout = self:command({
+    'hash-object', '-w', '--path', self.relpath, '--stdin'
+  }, { writer = lines })
+
+  local new_object = stdout[1]
+
+  self:command{
+    'update-index', '--cacheinfo', string.format('%s,%s,%s', self.mode_bits, new_object, self.relpath)
+  }
 end
 
 Obj.stage_hunks = function(self: Obj, hunks: {Hunk}, invert: boolean)

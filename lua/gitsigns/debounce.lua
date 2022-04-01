@@ -51,7 +51,7 @@ end
 
 
 
-function M.throttle_by_id(fn)
+function M.throttle_by_id(fn, schedule)
    local scheduled = {}
    local running = {}
    return function(id, ...)
@@ -59,7 +59,9 @@ function M.throttle_by_id(fn)
 
          return
       end
-      scheduled[id] = true
+      if not running[id] or schedule then
+         scheduled[id] = true
+      end
       if running[id] then
          return
       end

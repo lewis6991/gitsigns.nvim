@@ -109,6 +109,7 @@ local M = {BlameInfo = {}, Version = {}, Repo = {}, FileProps = {}, Obj = {}, }
 
 
 
+
 local in_git_dir = function(file)
    for _, p in ipairs(vim.split(file, util.path_sep)) do
       if p == '.git' then
@@ -451,12 +452,24 @@ Obj.ensure_file_in_index = function(self)
       else
 
 
-         local info = table.concat({ self.mode_bits, self.object_name, self.relpath }, ',')
+         local info = string.format('%s,%s,%s', self.mode_bits, self.object_name, self.relpath)
          self:command({ 'update-index', '--add', '--cacheinfo', info })
       end
 
       self:update_file_info()
    end
+end
+
+Obj.stage_lines = function(self, lines)
+   local stdout = self:command({
+      'hash-object', '-w', '--path', self.relpath, '--stdin',
+   }, { writer = lines })
+
+   local new_object = stdout[1]
+
+   self:command({
+      'update-index', '--cacheinfo', string.format('%s,%s,%s', self.mode_bits, new_object, self.relpath),
+   })
 end
 
 Obj.stage_hunks = function(self, hunks, invert)

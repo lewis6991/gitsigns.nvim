@@ -115,6 +115,13 @@ local function get_cursor_hunk(bufnr, hunks)
    return gs_hunks.find_hunk(lnum, hunks)
 end
 
+local function update(bufnr)
+   manager.update(bufnr)
+   if vim.wo.diff then
+      require('gitsigns.diffthis').update(bufnr)
+   end
+end
+
 
 
 
@@ -165,7 +172,7 @@ M.stage_hunk = mk_repeatable(void(function(range)
    table.insert(bcache.staged_diffs, hunk)
 
    bcache.compare_text = nil
-   manager.update(bufnr)
+   update(bufnr)
 end))
 
 
@@ -249,7 +256,7 @@ M.undo_stage_hunk = void(function()
 
    bcache.git_obj:stage_hunks({ hunk }, true)
    bcache.compare_text = nil
-   manager.update(bufnr)
+   update(bufnr)
 end)
 
 
@@ -283,7 +290,7 @@ M.stage_buffer = void(function()
    end
    bcache.compare_text = nil
 
-   manager.update(bufnr)
+   update(bufnr)
 end)
 
 
@@ -311,7 +318,7 @@ M.reset_buffer_index = void(function()
    bcache.compare_text = nil
 
    scheduler()
-   manager.update(bufnr)
+   update(bufnr)
 end)
 
 local function process_nav_opts(opts)
@@ -452,22 +459,6 @@ local function noautocmd(f)
 end
 
 
-local function strip_cr(xs0)
-   for i = 1, #xs0 do
-      if xs0[i]:sub(-1) ~= '\r' then
-
-         return xs0
-      end
-   end
-
-   local xs = vim.deepcopy(xs0)
-   for i = 1, #xs do
-      xs[i] = xs[i]:sub(1, -2)
-   end
-   return xs
-end
-
-
 
 M.preview_hunk = noautocmd(function()
 
@@ -479,7 +470,7 @@ M.preview_hunk = noautocmd(function()
 
    local hlines = gs_hunks.patch_lines(hunk)
    if vim.bo[cbuf].fileformat == 'dos' then
-      hlines = strip_cr(hlines)
+      hlines = util.strip_cr(hlines)
    end
 
    local lines = {
@@ -677,17 +668,10 @@ M.blame_line = void(function(opts)
    end
 end)
 
-local function calc_base(base)
-   if base and base:sub(1, 1):match('[~\\^]') then
-      base = 'HEAD' .. base
-   end
-   return base
-end
-
 local function update_buf_base(buf, bcache, base)
    bcache.base = base
    bcache.compare_text = nil
-   manager.update(buf, bcache)
+   update(buf)
 end
 
 
@@ -724,7 +708,7 @@ end
 
 
 M.change_base = void(function(base, global)
-   base = calc_base(base)
+   base = util.calc_base(base)
 
    if global then
       config.base = base
@@ -765,61 +749,13 @@ end
 
 
 
-M.diffthis = void(function(base)
-   local bufnr = current_buf()
-   local bcache = cache[bufnr]
-   if not bcache then return end
-
-   if api.nvim_win_get_option(0, 'diff') then return end
-
-   local ff = vim.bo[bufnr].fileformat
-
-   local text
-   local err
-   local comp_rev = bcache:get_compare_rev(calc_base(base))
-
-   if base then
-      text, err = bcache.git_obj:get_show_text(comp_rev)
-      if ff == 'dos' then
-         text = strip_cr(text)
-      end
-      if err then
-         print(err)
-         return
-      end
-      scheduler()
-   else
-      text = bcache:get_compare_text()
-   end
-
-   local ft = api.nvim_buf_get_option(bufnr, 'filetype')
-
-   local bufname = string.format(
-   'gitsigns://%s/%s',
-   bcache.git_obj.repo.gitdir,
-   comp_rev .. ':' .. bcache.git_obj.relpath)
 
 
-   vim.cmd('diffthis')
 
-   vim.cmd(table.concat({
-      'keepalt', 'aboveleft',
-      config.diff_opts.vertical and 'vertical' or '',
-      'split', bufname,
-   }, ' '))
-
-   local dbuf = current_buf()
-
-   api.nvim_buf_set_option(dbuf, 'modifiable', true)
-   util.set_lines(dbuf, 0, -1, text)
-   api.nvim_buf_set_option(dbuf, 'modifiable', false)
-
-   api.nvim_buf_set_option(dbuf, 'filetype', ft)
-   api.nvim_buf_set_option(dbuf, 'buftype', 'nowrite')
-   api.nvim_buf_set_option(dbuf, 'bufhidden', 'wipe')
-
-   vim.cmd('diffthis')
-end)
+M.diffthis = function(base)
+   local diffthis = require('gitsigns.diffthis')
+   diffthis.run(base, config.diff_opts.vertical)
+end
 
 local function hunks_to_qflist(buf_or_filename, hunks, qflist)
    for i, hunk in ipairs(hunks) do

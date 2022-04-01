@@ -182,6 +182,9 @@ diffthis({base})                                         *gitsigns.diffthis()*
                 Perform a |vimdiff| on the given file with {base} if it is
                 given, or with the currently set base (index by default).
 
+                If {base} is the index, then the opened diff buffer is editable
+                and any written changes will update the index accordingly.
+
                 Examples: >
                   " Diff against the index
                   :Gitsigns diffthis

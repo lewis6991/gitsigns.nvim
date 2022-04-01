@@ -107,4 +107,28 @@ function M.copy_array(x)
    return r
 end
 
+
+function M.strip_cr(xs0)
+   for i = 1, #xs0 do
+      if xs0[i]:sub(-1) ~= '\r' then
+
+         return xs0
+      end
+   end
+
+   local xs = vim.deepcopy(xs0)
+   for i = 1, #xs do
+      xs[i] = xs[i]:sub(1, -2)
+   end
+   return xs
+end
+
+function M.calc_base(base)
+   if base and base:sub(1, 1):match('[~\\^]') then
+      base = 'HEAD' .. base
+   end
+   return base
+end
+
+
 return M
