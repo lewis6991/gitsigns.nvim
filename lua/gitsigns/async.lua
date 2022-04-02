@@ -48,7 +48,7 @@ end
 
 function async_thread.finished(x)
    if co.status(x) == 'dead' then
-      local id = string.format("%p", x)
+      local id = threadtostring(x)
       async_thread.threads[id] = nil
       return true
    end
