@@ -360,23 +360,65 @@ stage_hunk({range})                                    *gitsigns.stage_hunk()*
                     {range} table|nil List-like table of two integers making
                     up the line range from which you want to stage the hunks.
 
-toggle_deleted()                                   *gitsigns.toggle_deleted()*
+toggle_deleted({value})                            *gitsigns.toggle_deleted()*
                 Toggle |gitsigns-config-show_deleted|
 
-toggle_current_line_blame()             *gitsigns.toggle_current_line_blame()*
+                Parameters:~
+                    {value} boolean|nil Value to set toggle. If `nil`
+                    the toggle value is inverted.
+
+                Returns:~
+                    Current value of |gitsigns-config-show_deleted|
+
+toggle_current_line_blame({value})      *gitsigns.toggle_current_line_blame()*
                 Toggle |gitsigns-config-current_line_blame|
 
-toggle_word_diff()                               *gitsigns.toggle_word_diff()*
+                Parameters:~
+                    {value} boolean|nil Value to set toggle. If `nil`
+                    the toggle value is inverted.
+
+                Returns:~
+                    Current value of |gitsigns-config-current_line_blame|
+
+toggle_word_diff({value})                        *gitsigns.toggle_word_diff()*
                 Toggle |gitsigns-config-word_diff|
 
-toggle_linehl()                                     *gitsigns.toggle_linehl()*
+                Parameters:~
+                    {value} boolean|nil Value to set toggle. If `nil`
+                    the toggle value is inverted.
+
+                Returns:~
+                    Current value of |gitsigns-config-word_diff|
+
+toggle_linehl({value})                              *gitsigns.toggle_linehl()*
                 Toggle |gitsigns-config-linehl|
 
-toggle_numhl()                                       *gitsigns.toggle_numhl()*
+                Parameters:~
+                    {value} boolean|nil Value to set toggle. If `nil`
+                    the toggle value is inverted.
+
+                Returns:~
+                    Current value of |gitsigns-config-linehl|
+
+toggle_numhl({value})                                *gitsigns.toggle_numhl()*
                 Toggle |gitsigns-config-numhl|
 
-toggle_signs()                                       *gitsigns.toggle_signs()*
-                Toggle |gitsigns-config-signcolumn|
+                Parameters:~
+                    {value} boolean|nil Value to set toggle. If `nil`
+                    the toggle value is inverted.
+
+                Returns:~
+                    Current value of |gitsigns-config-numhl|
+
+toggle_signs({value})                                *gitsigns.toggle_signs()*
+                Toggle |gitsigns-config-signbooleancolumn|
+
+                Parameters:~
+                    {value} boolean|nil Value to set toggle. If `nil`
+                    the toggle value is inverted.
+
+                Returns:~
+                    Current value of |gitsigns-config-signcolumn|
 
 
 ==============================================================================
