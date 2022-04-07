@@ -63,48 +63,120 @@ local record M
   get_actions        : function(bufnr: integer, lnum: integer)
 
   refresh            : function()
-  toggle_signs       : function()
-  toggle_numhl       : function()
-  toggle_linehl      : function()
-  toggle_word_diff   : function()
-  toggle_current_line_blame : function()
-  toggle_deleted     : function()
+  toggle_signs       : function(boolean): boolean
+  toggle_numhl       : function(boolean): boolean
+  toggle_linehl      : function(boolean): boolean
+  toggle_word_diff   : function(boolean): boolean
+  toggle_current_line_blame : function(boolean): boolean
+  toggle_deleted     : function(boolean): boolean
 end
 
---- Toggle |gitsigns-config-signcolumn|
-M.toggle_signs = function()
-  config.signcolumn = not config.signcolumn
+--- Toggle |gitsigns-config-signbooleancolumn|
+---
+--- Parameters:~
+---     {value} boolean|nil Value to set toggle. If `nil`
+---     the toggle value is inverted.
+---
+--- Returns:~
+---     Current value of |gitsigns-config-signcolumn|
+M.toggle_signs = function(value: boolean): boolean
+  if value ~= nil then
+    config.signcolumn = value
+  else
+    config.signcolumn = not config.signcolumn
+  end
   M.refresh()
+  return config.signcolumn
 end
 
 --- Toggle |gitsigns-config-numhl|
-M.toggle_numhl = function()
-  config.numhl = not config.numhl
+---
+--- Parameters:~
+---     {value} boolean|nil Value to set toggle. If `nil`
+---     the toggle value is inverted.
+---
+--- Returns:~
+---     Current value of |gitsigns-config-numhl|
+M.toggle_numhl = function(value: boolean): boolean
+  if value ~= nil then
+    config.numhl = value
+  else
+    config.numhl = not config.numhl
+  end
   M.refresh()
+  return config.numhl
 end
 
 --- Toggle |gitsigns-config-linehl|
-M.toggle_linehl = function()
-  config.linehl = not config.linehl
+---
+--- Parameters:~
+---     {value} boolean|nil Value to set toggle. If `nil`
+---     the toggle value is inverted.
+---
+--- Returns:~
+---     Current value of |gitsigns-config-linehl|
+M.toggle_linehl = function(value: boolean): boolean
+  if value ~= nil then
+    config.linehl = value
+  else
+    config.linehl = not config.linehl
+  end
   M.refresh()
+  return config.linehl
 end
 
 --- Toggle |gitsigns-config-word_diff|
-M.toggle_word_diff = function()
-  config.word_diff = not config.word_diff
+---
+--- Parameters:~
+---     {value} boolean|nil Value to set toggle. If `nil`
+---     the toggle value is inverted.
+---
+--- Returns:~
+---     Current value of |gitsigns-config-word_diff|
+M.toggle_word_diff = function(value: boolean): boolean
+  if value ~= nil then
+    config.word_diff = value
+  else
+    config.word_diff = not config.word_diff
+  end
   M.refresh()
+  return config.word_diff
 end
 
 --- Toggle |gitsigns-config-current_line_blame|
-M.toggle_current_line_blame = function()
-  config.current_line_blame = not config.current_line_blame
+---
+--- Parameters:~
+---     {value} boolean|nil Value to set toggle. If `nil`
+---     the toggle value is inverted.
+---
+--- Returns:~
+---     Current value of |gitsigns-config-current_line_blame|
+M.toggle_current_line_blame = function(value: boolean): boolean
+  if value ~= nil then
+    config.current_line_blame = value
+  else
+    config.current_line_blame = not config.current_line_blame
+  end
   M.refresh()
+  return config.current_line_blame
 end
 
 --- Toggle |gitsigns-config-show_deleted|
-M.toggle_deleted = function()
-  config.show_deleted = not config.show_deleted
+---
+--- Parameters:~
+---     {value} boolean|nil Value to set toggle. If `nil`
+---     the toggle value is inverted.
+---
+--- Returns:~
+---     Current value of |gitsigns-config-show_deleted|
+M.toggle_deleted = function(value: boolean): boolean
+  if value ~= nil then
+    config.show_deleted = value
+  else
+    config.show_deleted = not config.show_deleted
+  end
   M.refresh()
+  return config.show_deleted
 end
 
 local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk, integer

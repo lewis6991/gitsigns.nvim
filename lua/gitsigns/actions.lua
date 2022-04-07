@@ -72,39 +72,111 @@ local M = {QFListOpts = {}, }
 
 
 
-M.toggle_signs = function()
-   config.signcolumn = not config.signcolumn
+
+
+
+
+
+
+
+M.toggle_signs = function(value)
+   if value ~= nil then
+      config.signcolumn = value
+   else
+      config.signcolumn = not config.signcolumn
+   end
    M.refresh()
+   return config.signcolumn
 end
 
 
-M.toggle_numhl = function()
-   config.numhl = not config.numhl
+
+
+
+
+
+
+
+M.toggle_numhl = function(value)
+   if value ~= nil then
+      config.numhl = value
+   else
+      config.numhl = not config.numhl
+   end
    M.refresh()
+   return config.numhl
 end
 
 
-M.toggle_linehl = function()
-   config.linehl = not config.linehl
+
+
+
+
+
+
+
+M.toggle_linehl = function(value)
+   if value ~= nil then
+      config.linehl = value
+   else
+      config.linehl = not config.linehl
+   end
    M.refresh()
+   return config.linehl
 end
 
 
-M.toggle_word_diff = function()
-   config.word_diff = not config.word_diff
+
+
+
+
+
+
+
+M.toggle_word_diff = function(value)
+   if value ~= nil then
+      config.word_diff = value
+   else
+      config.word_diff = not config.word_diff
+   end
    M.refresh()
+   return config.word_diff
 end
 
 
-M.toggle_current_line_blame = function()
-   config.current_line_blame = not config.current_line_blame
+
+
+
+
+
+
+
+M.toggle_current_line_blame = function(value)
+   if value ~= nil then
+      config.current_line_blame = value
+   else
+      config.current_line_blame = not config.current_line_blame
+   end
    M.refresh()
+   return config.current_line_blame
 end
 
 
-M.toggle_deleted = function()
-   config.show_deleted = not config.show_deleted
+
+
+
+
+
+
+
+M.toggle_deleted = function(value)
+   if value ~= nil then
+      config.show_deleted = value
+   else
+      config.show_deleted = not config.show_deleted
+   end
    M.refresh()
+   return config.show_deleted
 end
 
 local function get_cursor_hunk(bufnr, hunks)
