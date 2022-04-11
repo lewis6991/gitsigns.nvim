@@ -309,6 +309,8 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
   summary.head = git_obj.repo.abbrev_head
   Status:update(bufnr, summary)
 
+  vim.cmd [[ doautocmd <nomodeline> User FugitiveChanged ]]
+
   update_cnt = update_cnt + 1
 
   dprintf('updates: %s, jobs: %s', update_cnt, subprocess.job_cnt)
