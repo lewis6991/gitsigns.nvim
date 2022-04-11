@@ -41,7 +41,7 @@ local record api
     force: boolean
     complete: string|function(arglead: string, line: string): {string}
   end
-  nvim_add_user_command: function(string, function(UserCmdParams), UserCmdOpts)
+  nvim_create_user_command: function(string, function(UserCmdParams), UserCmdOpts)
   nvim_buf_add_highlight: function(number, number, string, number, number, number): number
   nvim_buf_attach: function(number, boolean, {string:any}): boolean
   nvim_buf_call: function(number, function)

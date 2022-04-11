@@ -442,8 +442,8 @@ local _update_cwd_head = function()
 end
 
 local function setup_command()
-   if api.nvim_add_user_command then
-      api.nvim_add_user_command('Gitsigns', function(params)
+   if api.nvim_create_user_command then
+      api.nvim_create_user_command('Gitsigns', function(params)
          local fargs = vim.split(params.args, '%s+')
          M._run_func({ params.range, params.line1, params.line2 }, unpack(fargs))
       end, {
