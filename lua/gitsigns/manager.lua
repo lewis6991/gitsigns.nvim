@@ -37,7 +37,6 @@ local M = {}
 
 
 
-
 local schedule_if_buf_valid = function(buf, cb)
    vim.schedule(function()
       if vim.api.nvim_buf_is_valid(buf) then
@@ -71,89 +70,13 @@ function M.apply_win_signs(bufnr, hunks, top, bot, clear)
    signs.draw(bufnr, top, bot)
 end
 
-
-
-
-
-
-local function speculate_signs(buf, last_orig, last_new)
-   if last_new < last_orig then
-
-
-
-   elseif last_new > last_orig then
-
-
-      if last_orig == 0 then
-         local placed = signs.get(buf, 1)
-
-
-         if not placed or not vim.startswith(placed, 'GitSignsTopDelete') then
-
-            for i = 1, last_new do
-               signs.add(config, buf, { { type = 'add', count = 0, lnum = i } })
-            end
-         else
-            signs.remove(buf, 1)
-         end
-         return true
-      else
-         local placed = signs.get(buf, last_orig)
-
-
-         if not placed or not vim.startswith(placed, 'GitSignsDelete') then
-
-            for i = last_orig + 1, last_new do
-               signs.add(config, buf, { { type = 'add', count = 0, lnum = i } })
-            end
-            return true
-         end
-      end
-   else
-
-
-      local placed = signs.get(buf, last_orig)
-
-
-      if not placed then
-         signs.add(config, buf, { { type = 'change', count = 0, lnum = last_orig } })
-         return true
-      end
-   end
-end
-
-M.on_lines = function(buf, last_orig, last_new)
+M.on_lines = function(buf, _, _)
    local bcache = cache[buf]
    if not bcache then
       dprint('Cache for buffer was nil. Detaching')
       return true
    end
 
-
-
-   schedule_if_buf_valid(buf, function()
-      if speculate_signs(buf, last_orig, last_new) then
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-         bcache.hunks = nil
-      end
-   end)
    M.update_debounced(buf, cache[buf])
 end
 
@@ -323,21 +246,6 @@ M.update = throttle_by_id(update0, true)
 
 M.setup = function()
    M.update_debounced = debounce_trailing(config.update_debounce, void(M.update))
-end
-
-M.setup_signs = function(redefine)
-
-   for t, sign_name in pairs(signs.sign_map) do
-      local cs = config.signs[t]
-
-      signs.define(sign_name, {
-         texthl = cs.hl,
-         text = config.signcolumn and cs.text or nil,
-         numhl = config.numhl and cs.numhl,
-         linehl = config.linehl and cs.linehl,
-      }, redefine)
-
-   end
 end
 
 return M

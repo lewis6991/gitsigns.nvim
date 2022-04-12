@@ -481,6 +481,7 @@ global record vim
     'force'
   end
 
+  tbl_add_reverse_lookup: function<K,I>({K:I}): {I:K}
   tbl_deep_extend: function(ExtendBehavior, table, table, ...: table): table
 
   tbl_extend: function(ExtendBehavior, table, table, ...: table): table

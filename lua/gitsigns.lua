@@ -534,7 +534,7 @@ M.setup = void(function(cfg)
 
 
    on_or_after_vimenter(hl.setup_highlights)
-   manager.setup_signs()
+   signs.setup()
 
    setup_command()
 

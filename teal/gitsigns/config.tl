@@ -100,6 +100,7 @@ local record M
     _refresh_staged_on_update: boolean
     _blame_cache: boolean
     _threaded_diff: boolean
+    _extmark_signs: boolean
 
     _git_version: string
     _verbose: boolean
@@ -635,6 +636,14 @@ M.schema = {
     default = false,
     description = [[
       Run diffs on a separate thread
+    ]]
+  },
+
+  _extmark_signs = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      Use extmarks for placing signs.
     ]]
   },
 
