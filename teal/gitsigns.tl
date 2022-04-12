@@ -534,7 +534,7 @@ M.setup = void(function(cfg: Config)
   -- loaded. Do not set them up with vim.schedule as this removes the intro
   -- message.
   on_or_after_vimenter(hl.setup_highlights)
-  manager.setup_signs()
+  signs.setup()
 
   setup_command()
 

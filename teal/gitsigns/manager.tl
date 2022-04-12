@@ -35,7 +35,6 @@ local record M
   apply_word_diff: function(buf: integer, row: integer)
 
   setup: function()
-  setup_signs: function(redefine: boolean)
 end
 
 local schedule_if_buf_valid = function(buf: integer, cb: function)
@@ -71,89 +70,13 @@ function M.apply_win_signs(bufnr: integer, hunks: {Hunk}, top: integer, bot: int
   signs.draw(bufnr, top, bot)
 end
 
--- Speculate on future signs. It's not a big deal if we speculate incorrectly as
--- update() will overwrite all the signs anyway. This has noticeable effect on
--- large files and even makes small files feel very snappy.
---
--- Returns true if signs are added or removed
-local function speculate_signs(buf: integer, last_orig: integer, last_new: integer): boolean
-  if last_new < last_orig then
-    -- Lines removed
-    --
-    -- Cannot do much here due to https://github.com/neovim/neovim/pull/12323
-  elseif last_new > last_orig then
-    -- Lines added
-
-    if last_orig == 0 then
-      local placed = signs.get(buf, 1)
-
-      -- Add 'added' signs only if there wasn't a 'delete' sign above
-      if not placed or not vim.startswith(placed, 'GitSignsTopDelete') then
-        -- If lines are added, make sure to immediately add the signs
-        for i = 1, last_new do
-          signs.add(config, buf, {{type='add', count=0, lnum=i}})
-        end
-      else
-        signs.remove(buf, 1)
-      end
-      return true
-    else
-      local placed = signs.get(buf, last_orig)
-
-      -- Add 'added' signs only if there wasn't a 'delete' sign above
-      if not placed or not vim.startswith(placed, 'GitSignsDelete') then
-        -- If lines are added, make sure to immediately add the signs
-        for i = last_orig+1, last_new do
-          signs.add(config, buf, {{type='add', count=0, lnum=i}})
-        end
-        return true
-      end
-    end
-  else
-    -- Line change
-
-    local placed = signs.get(buf, last_orig)
-
-    -- add a 'change' sign if there are no other signs
-    if not placed then
-      signs.add(config, buf, {{type='change', count=0, lnum=last_orig}})
-      return true
-    end
-  end
-end
-
-M.on_lines = function(buf: integer, last_orig: integer, last_new: integer): boolean
+M.on_lines = function(buf: integer, _: integer, _: integer): boolean
   local bcache = cache[buf]
   if not bcache then
     dprint('Cache for buffer was nil. Detaching')
     return true
   end
 
-  -- Schedule sign speculation ortherwise CTRL-C in insert mode can cause a
-  -- callback error. See #346
-  schedule_if_buf_valid(buf, function()
-    if speculate_signs(buf, last_orig, last_new) then
-      -- Speculative signs are added immediately whereas updates are debounced and
-      -- throttled for each buffer. If we perform two quick updates which result
-      -- in a sign begin added then removed, we need to make sure speculative
-      -- signs don't incorrectly persist. Example:
-      --
-      --   -> buffer change
-      --      - speculative signs (#1)
-      --      - update (#1)
-      --   -> undo (quickly after buffer change)
-      --      - speculative signs (#2)
-      --      - update (#2)
-      --
-      -- Update #1 is dropped due to the debounce which results in update #2 not
-      -- updating signs due to the hunks not changing. Since signs are never
-      -- updated, the speculative signs #1 and #2 will persist.
-      --
-      -- To get around this, we just need to invalidate the hunks to force a sign
-      -- refresh.
-      bcache.hunks = nil
-    end
-  end)
   M.update_debounced(buf, cache[buf])
 end
 
@@ -323,21 +246,6 @@ M.update = throttle_by_id(update0, true) as function(integer, CacheEntry)
 
 M.setup = function()
   M.update_debounced = debounce_trailing(config.update_debounce, void(M.update)) as function(integer)
-end
-
-M.setup_signs = function(redefine: boolean)
-  -- Define signs
-  for t, sign_name in pairs(signs.sign_map) do
-    local cs = config.signs[t]
-
-    signs.define(sign_name, {
-      texthl = cs.hl,
-      text   = config.signcolumn and cs.text or nil,
-      numhl  = config.numhl      and cs.numhl,
-      linehl = config.linehl     and cs.linehl
-    }, redefine)
-
-  end
 end
 
 return M

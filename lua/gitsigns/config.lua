@@ -109,6 +109,7 @@ local M = {Config = {DiffOpts = {}, SignsConfig = {}, watch_gitdir = {}, current
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -635,6 +636,14 @@ M.schema = {
       default = false,
       description = [[
       Run diffs on a separate thread
+    ]],
+   },
+
+   _extmark_signs = {
+      type = 'boolean',
+      default = false,
+      description = [[
+      Use extmarks for placing signs.
     ]],
    },
 

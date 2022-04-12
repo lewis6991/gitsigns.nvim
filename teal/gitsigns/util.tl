@@ -130,5 +130,13 @@ function M.calc_base(base: string): string
   return base
 end
 
+function M.setdefault(tbl: table)
+  setmetatable(tbl, {
+    __index = function(t: table, k: any): any
+      t[k] = {}
+      return t[k]
+    end
+  })
+end
 
 return M
