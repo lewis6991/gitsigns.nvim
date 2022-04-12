@@ -199,6 +199,7 @@ local update = void(function()
       set_extmark(bufnr, lnum, {
          virt_text = virt_text,
          virt_text_pos = opts.virt_text_pos,
+         priority = opts.virt_text_priority,
          hl_mode = 'combine',
       })
    end

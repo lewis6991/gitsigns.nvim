@@ -84,6 +84,7 @@ local record M
 
       delay: integer
       ignore_whitespace: boolean
+      virt_text_priority: integer
     end
 
     preview_config: {string:any}
@@ -436,6 +437,7 @@ M.schema = {
     default = {
       virt_text = true,
       virt_text_pos = 'eol',
+      virt_text_priority = 100,
       delay = 1000
     },
     description = [[
@@ -455,6 +457,8 @@ M.schema = {
           displayed.
         • ignore_whitespace: boolean
           Ignore whitespace when running blame.
+        • virt_text_priority: integer
+          Priority of virtual text.
     ]]
   },
 
