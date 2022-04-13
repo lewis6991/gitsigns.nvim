@@ -33,10 +33,10 @@ local bufread = void(function(bufnr: integer, dbufnr: integer, base: string, bca
       print(err)
       return
     end
+    scheduler()
     if vim.bo[bufnr].fileformat == 'dos' then
       text = util.strip_cr(text)
     end
-    scheduler()
   end
 
   local modifiable = vim.bo[dbufnr].modifiable
