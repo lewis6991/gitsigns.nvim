@@ -412,26 +412,61 @@ M._run_func = function(range, func, ...)
    end
 end
 
-local _update_cwd_head = function()
-   local cwd = vim.loop.cwd()
-   local head
-   for _, bcache in pairs(cache) do
-      local repo = bcache.git_obj.repo
-      if repo.toplevel == cwd then
-         head = repo.abbrev_head
-         break
-      end
-   end
-   if not head then
-      _, _, head = git.get_repo_info(cwd)
-      scheduler()
-   end
+local cwd_watcher = uv.new_fs_poll()
+
+local function update_cwd_head_var(head)
    if head then
       api.nvim_set_var('gitsigns_head', head)
    else
       pcall(api.nvim_del_var, 'gitsigns_head')
    end
 end
+
+local update_cwd_head = void(function()
+   cwd_watcher:stop()
+
+   local cwd = uv.cwd()
+   local gitdir, head
+
+
+   for _, bcache in pairs(cache) do
+      local repo = bcache.git_obj.repo
+      if repo.toplevel == cwd then
+         head = repo.abbrev_head
+         gitdir = repo.gitdir
+         break
+      end
+   end
+
+   if not head or not gitdir then
+      _, gitdir, head = git.get_repo_info(cwd)
+      scheduler()
+   end
+
+   update_cwd_head_var(head)
+
+   if not gitdir then
+      return
+   end
+
+
+   cwd_watcher:start(
+   gitdir .. '/HEAD',
+   config.watch_gitdir.interval,
+   void(function(err)
+      local __FUNC__ = 'cwd_watcher_cb'
+      if err then
+         dprintf('Git dir update error: %s', err)
+         return
+      end
+      dprint('Git cwd dir update')
+
+      local _, _, new_head = git.get_repo_info(cwd)
+      scheduler()
+      update_cwd_head_var(new_head)
+   end))
+
+end)
 
 local function setup_command()
    if api.nvim_create_user_command then
@@ -584,8 +619,8 @@ M.setup = void(function(cfg)
    require('gitsigns.current_line_blame').setup()
 
    scheduler()
-   _update_cwd_head()
-   autocmd('DirChanged', void(_update_cwd_head))
+   update_cwd_head()
+   autocmd('DirChanged', update_cwd_head)
 end)
 
 setmetatable(M, {
