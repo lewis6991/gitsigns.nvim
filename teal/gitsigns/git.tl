@@ -94,6 +94,7 @@ local record M
     has_conflicts : boolean
     i_crlf        : boolean  -- Object has crlf
     w_crlf        : boolean  -- Working copy has crlf
+    encoding      : string
 
     command              : function(Obj, {string}, GJobSpec): {string}, string
     update_file_info     : function(Obj, boolean): boolean
@@ -105,7 +106,7 @@ local record M
     stage_hunks          : function(Obj, {Hunk}, boolean)
     stage_lines          : function(Obj, {string})
     has_moved            : function(Obj): string
-    new                  : function(string): Obj
+    new                  : function(string, string): Obj
   end
 
 end
@@ -391,6 +392,13 @@ Obj.get_show_text = function(self: Obj, revision: string): {string}, string
     end
   end
 
+  if self.encoding ~= 'utf-8' then
+    scheduler()
+    for i, l in ipairs(stdout) do
+      stdout[i] = vim.fn.iconv(l, self.encoding, 'utf-8')
+    end
+  end
+
   return stdout, stderr
 end
 
@@ -498,7 +506,7 @@ Obj.has_moved = function(self: Obj): string
   end
 end
 
-Obj.new = function(file: string): Obj
+Obj.new = function(file: string, encoding: string): Obj
   if in_git_dir(file) then
       dprint('In git dir')
       return nil
@@ -506,6 +514,7 @@ Obj.new = function(file: string): Obj
   local self = setmetatable({} as Obj, {__index = Obj})
 
   self.file = file
+  self.encoding = encoding
   self.repo = Repo.new(util.dirname(file))
 
   if not self.repo.gitdir then

@@ -216,6 +216,7 @@ end
 global record vim
   api: api
   record fn
+    iconv: function(string, string, string): string
     line: function(string): integer
     join: function({any}, string): string
     getpos: function(string): {integer}
@@ -307,6 +308,7 @@ global record vim
   record BufOption
     {BufOption}
     fileformat: string
+    fileencoding: string
     filetype: string
     modifiable: boolean
     modified: boolean
