@@ -112,4 +112,10 @@ function M.add(cfg: Config, bufnr: integer, signs: {M.Sign})
   end
 end
 
+function M.need_redraw(bufnr: integer, start: integer, last: integer): boolean
+  -- Use nvim_buf_get_extmarks as that should be quicker than scanning 'placed'
+  local marks = api.nvim_buf_get_extmarks(bufnr, ns_em, {start, 0}, {last+1, 0}, {limit=1})
+  return #marks > 0
+end
+
 return M

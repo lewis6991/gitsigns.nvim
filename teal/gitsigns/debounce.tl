@@ -2,9 +2,9 @@ local M = {}
 
 --- Debounces a function on the trailing edge.
 ---
---@param ms (number) Timeout in ms
---@param fn (function) Function to debounce
---@returns (function) Debounced function.
+---@param ms (number) Timeout in ms
+---@param fn (function) Function to debounce
+---@returns (function) Debounced function.
 function M.debounce_trailing(ms: number, fn: function): function
   local timer = vim.loop.new_timer()
   return function(...)

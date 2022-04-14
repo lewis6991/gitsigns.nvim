@@ -147,4 +147,13 @@ function M.add(cfg, bufnr, signs)
    end
 end
 
+function M.need_redraw(bufnr, start, last)
+   for i = start + 1, last + 1 do
+      if placed[bufnr][i] then
+         return true
+      end
+   end
+   return false
+end
+
 return M

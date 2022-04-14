@@ -112,4 +112,10 @@ function M.add(cfg, bufnr, signs)
    end
 end
 
+function M.need_redraw(bufnr, start, last)
+
+   local marks = api.nvim_buf_get_extmarks(bufnr, ns_em, { start, 0 }, { last + 1, 0 }, { limit = 1 })
+   return #marks > 0
+end
+
 return M
