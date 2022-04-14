@@ -27,10 +27,10 @@ local config            = require('gitsigns.config').config
 local api = vim.api
 
 local record M
-  update           : function(integer, CacheEntry)
-  update_debounced : function(integer, CacheEntry)
+  update           : function(integer, CacheEntry, boolean)
+  update_debounced : function( bufnr: integer, CacheEntry)
   apply_win_signs  : function(bufnr: integer, {Hunk}, top: integer, bot: integer)
-  on_lines         : function(buf: integer, last_orig: integer, last_new: integer): boolean
+  on_lines         : function(buf: integer, first: integer, last_orig: integer, last_new: integer): boolean
 
   apply_word_diff: function(buf: integer, row: integer)
 
@@ -70,11 +70,18 @@ function M.apply_win_signs(bufnr: integer, hunks: {Hunk}, top: integer, bot: int
   signs.draw(bufnr, top, bot)
 end
 
-M.on_lines = function(buf: integer, _: integer, _: integer): boolean
+M.on_lines = function(buf: integer, first: integer, _: integer, last_new: integer): boolean
   local bcache = cache[buf]
   if not bcache then
     dprint('Cache for buffer was nil. Detaching')
     return true
+  end
+
+  -- Signs in changed regions get invalidated so we need to force a redraw if
+  -- any signs get removed.
+  if bcache.hunks and signs.need_redraw(buf, first, last_new) then
+    -- invalidate hunks to force a sign redraw
+    bcache.hunks = nil
   end
 
   M.update_debounced(buf, cache[buf])
@@ -245,7 +252,7 @@ end
 M.update = throttle_by_id(update0, true) as function(integer, CacheEntry)
 
 M.setup = function()
-  M.update_debounced = debounce_trailing(config.update_debounce, void(M.update)) as function(integer)
+  M.update_debounced = debounce_trailing(config.update_debounce, void(M.update)) as function(integer, CacheEntry)
 end
 
 return M

@@ -70,11 +70,18 @@ function M.apply_win_signs(bufnr, hunks, top, bot, clear)
    signs.draw(bufnr, top, bot)
 end
 
-M.on_lines = function(buf, _, _)
+M.on_lines = function(buf, first, _, last_new)
    local bcache = cache[buf]
    if not bcache then
       dprint('Cache for buffer was nil. Detaching')
       return true
+   end
+
+
+
+   if bcache.hunks and signs.need_redraw(buf, first, last_new) then
+
+      bcache.hunks = nil
    end
 
    M.update_debounced(buf, cache[buf])

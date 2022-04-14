@@ -20,6 +20,7 @@ local record M
   remove  : function(bufnr: integer, lnum: integer)
   schedule: function(cfg: Config, bufnr: integer, signs: {M.Sign})
   add     : function(cfg: Config, bufnr: integer, signs: {M.Sign})
+  need_redraw: function(bufnr: integer, start: integer, last: integer): boolean
 end
 
 return M

@@ -147,4 +147,13 @@ function M.add(cfg: Config, bufnr: integer, signs: {M.Sign})
   end
 end
 
+function M.need_redraw(bufnr: integer, start: integer, last: integer): boolean
+  for i = start+1, last+1 do
+    if placed[bufnr][i] then
+      return true
+    end
+  end
+  return false
+end
+
 return M

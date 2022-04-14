@@ -304,7 +304,7 @@ local attach0 = function(cbuf, aucmd)
 
             return
          end
-         return manager.on_lines(buf, last_orig, last_new)
+         return manager.on_lines(buf, first, last_orig, last_new)
       end,
       on_reload = function(_, bufnr)
          local __FUNC__ = 'on_reload'
