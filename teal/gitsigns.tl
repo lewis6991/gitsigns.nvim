@@ -241,7 +241,7 @@ local attach0 = function(cbuf: integer, aucmd: string)
     return
   end
 
-  local git_obj = git.Obj.new(file)
+  local git_obj = git.Obj.new(file, vim.bo[cbuf].fileencoding)
   if not git_obj then
     dprint('Empty git obj')
     return

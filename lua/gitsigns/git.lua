@@ -110,6 +110,7 @@ local M = {BlameInfo = {}, Version = {}, Repo = {}, FileProps = {}, Obj = {}, }
 
 
 
+
 local in_git_dir = function(file)
    for _, p in ipairs(vim.split(file, util.path_sep)) do
       if p == '.git' then
@@ -392,6 +393,13 @@ Obj.get_show_text = function(self, revision)
       end
    end
 
+   if self.encoding ~= 'utf-8' then
+      scheduler()
+      for i, l in ipairs(stdout) do
+         stdout[i] = vim.fn.iconv(l, self.encoding, 'utf-8')
+      end
+   end
+
    return stdout, stderr
 end
 
@@ -508,7 +516,7 @@ Obj.has_moved = function(self)
    end
 end
 
-Obj.new = function(file)
+Obj.new = function(file, encoding)
    if in_git_dir(file) then
       dprint('In git dir')
       return nil
@@ -516,6 +524,7 @@ Obj.new = function(file)
    local self = setmetatable({}, { __index = Obj })
 
    self.file = file
+   self.encoding = encoding
    self.repo = Repo.new(util.dirname(file))
 
    if not self.repo.gitdir then
