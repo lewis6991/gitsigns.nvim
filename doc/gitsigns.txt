@@ -787,6 +787,15 @@ current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
           field of |nvim_buf_set_extmark| and thus must be a list of
           [text, highlight] tuples.
 
+current_line_blame_formatter_nc
+                             *gitsigns-config-current_line_blame_formatter_nc*
+      Type: `string|function`, Default: `' <author>'`
+
+      String or function used to format the virtual text of
+      |gitsigns-config-current_line_blame| for lines that aren't committed.
+
+      See |gitsigns-config-current_line_blame_formatter| for more information.
+
 trouble                                              *gitsigns-config-trouble*
       Type: `boolean`, Default: true if installed
 

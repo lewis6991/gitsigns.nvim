@@ -71,6 +71,7 @@ local record M
     end
 
     current_line_blame_formatter: string|function(string, {string:any}, current_line_blame_formatter_opts): {{string,string}}
+    current_line_blame_formatter_nc: string|function(string, {string:any}, current_line_blame_formatter_opts): {{string,string}}
 
     record current_line_blame_opts
       virt_text: boolean
@@ -554,6 +555,17 @@ M.schema = {
           The result of this function is passed directly to the `opts.virt_text`
           field of |nvim_buf_set_extmark| and thus must be a list of
           [text, highlight] tuples.
+    ]]
+  },
+
+  current_line_blame_formatter_nc = {
+    type = {'string', 'function'},
+    default = ' <author>',
+    description = [[
+      String or function used to format the virtual text of
+      |gitsigns-config-current_line_blame| for lines that aren't committed.
+
+      See |gitsigns-config-current_line_blame_formatter| for more information.
     ]]
   },
 

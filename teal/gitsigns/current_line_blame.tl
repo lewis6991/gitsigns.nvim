@@ -84,10 +84,6 @@ local function expand_blame_format(fmt: string, name: string, info: BlameInfo): 
     info.author = 'You'
   end
 
-  if info.author == 'Not Committed Yet' then
-    return info.author
-  end
-
   for k, v in pairs{
     author_time = info.author_time,
     committer_time = info.committer_time,
@@ -182,7 +178,9 @@ local update = void(function()
   api.nvim_buf_set_var(bufnr, 'gitsigns_blame_line_dict', result)
   if opts.virt_text and result then
     local virt_text: {{string, string}}
-    local clb_formatter = config.current_line_blame_formatter
+    local clb_formatter = result.author == 'Not Committed Yet' and
+      config.current_line_blame_formatter_nc or
+      config.current_line_blame_formatter
     if clb_formatter is string then
       virt_text = {{
         expand_blame_format(clb_formatter, bcache.git_obj.repo.username, result),
