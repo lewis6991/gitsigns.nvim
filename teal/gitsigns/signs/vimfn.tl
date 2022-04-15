@@ -92,15 +92,20 @@ function M.setup(redefine: boolean)
   end
 end
 
-function M.remove(bufnr: integer, lnum: integer)
-  if lnum then
-    placed[bufnr][lnum] = nil
-    scheduled[bufnr][lnum] = nil
+function M.remove(bufnr: integer, start_lnum: integer, end_lnum: integer)
+  end_lnum = end_lnum or start_lnum
+
+  if start_lnum then
+    for lnum = start_lnum, end_lnum do
+      placed[bufnr][lnum] = nil
+      scheduled[bufnr][lnum] = nil
+      fn.sign_unplace(sign_group, {buffer = bufnr, id = lnum})
+    end
   else
     placed[bufnr] = nil
     scheduled[bufnr] = nil
+    fn.sign_unplace(sign_group, {buffer = bufnr})
   end
-  fn.sign_unplace(sign_group, {buffer = bufnr, id = lnum})
 end
 
 function M.schedule(cfg: Config, bufnr: integer, signs: {M.Sign})
