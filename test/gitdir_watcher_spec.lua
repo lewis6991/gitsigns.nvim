@@ -39,7 +39,7 @@ describe('gitdir_watcher', function()
     match_debug_messages {
       'attach(1): Attaching (trigger=BufRead)',
       p"run_job: git .* config user.name",
-      "run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD",
+      p"run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD",
       p('run_job: git .* ls%-files .* '..test_file),
       'watch_gitdir(1): Watching git dir',
       p'run_job: git .* show :0:dummy.txt',
@@ -52,7 +52,7 @@ describe('gitdir_watcher', function()
 
     match_debug_messages {
       'watcher_cb(1): Git dir update',
-      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+      p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
       p('run_job: git .* ls%-files .* '..test_file),
       p'run_job: git .* diff %-%-name%-status %-C %-%-cached',
       'handle_moved(1): File moved to dummy.txt2',
@@ -69,7 +69,7 @@ describe('gitdir_watcher', function()
 
     match_debug_messages {
       'watcher_cb(1): Git dir update',
-      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+      p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
       p('run_job: git .* ls%-files .* '..test_file..'2'),
       p'run_job: git .* diff %-%-name%-status %-C %-%-cached',
       'handle_moved(1): File moved to dummy.txt3',
@@ -86,7 +86,7 @@ describe('gitdir_watcher', function()
 
     match_debug_messages {
       'watcher_cb(1): Git dir update',
-      'run_job: git --no-pager rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD',
+      p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
       p('run_job: git .* ls%-files .* '..test_file..'3'),
       p'run_job: git .* diff %-%-name%-status %-C %-%-cached',
       p('run_job: git .* ls%-files .* '..test_file),

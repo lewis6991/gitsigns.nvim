@@ -157,7 +157,8 @@ local JobSpec = subprocess.JobSpec
 M.command = wrap(function(args, spec, callback)
    spec = spec or {}
    spec.command = spec.command or 'git'
-   spec.args = spec.command == 'git' and { '--no-pager', unpack(args) } or args
+   spec.args = spec.command == 'git' and
+   { '--no-pager', '--literal-pathspecs', unpack(args) } or args
    subprocess.run_job(spec, function(_, _, stdout, stderr)
       if not spec.supress_stderr then
          if stderr then
