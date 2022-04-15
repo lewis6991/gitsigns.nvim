@@ -1,77 +1,66 @@
 local api = vim.api
 
 local Config = require('gitsigns.config').Config
-local config = require('gitsigns.config').config
-
-local setdefault = require('gitsigns.util').setdefault
+local nvim = require('gitsigns.nvim')
 
 local B = require('gitsigns.signs.base')
 
 local M = {}
 
-local ExtmarkSign = {}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-local placed = {}
-local scheduled = {}
-
-setdefault(placed)
-setdefault(scheduled)
-
 local ns_em
 
-function M.draw(bufnr, top, bot)
-   local to_place = {}
-   for i = top, bot do
-      if scheduled[bufnr][i] then
-         to_place[#to_place + 1] = scheduled[bufnr][i]
-         placed[bufnr][i] = scheduled[bufnr][i]
-         scheduled[bufnr][i] = nil
-      end
-   end
 
-   for _, item in ipairs(to_place) do
-      api.nvim_buf_set_extmark(bufnr, ns_em, item.row, -1, {
-         id = item.id,
-         sign_text = item.text,
-         priority = item.priority,
-         sign_hl_group = item.hl,
-         number_hl_group = config.numhl and item.numhl or nil,
-         line_hl_group = config.linehl and item.linehl or nil,
-      })
-   end
+
+local function attach(bufnr)
+   bufnr = bufnr or api.nvim_get_current_buf()
+   api.nvim_buf_attach(bufnr, false, {
+      on_lines = function(_, buf, _, _, last_orig, last_new)
+         if last_orig > last_new then
+            M.remove(buf, last_new + 1, last_orig)
+         end
+      end,
+   })
 end
+
+local group = 'gitsigns_extmark_signs'
 
 function M.setup(_redefine)
-   ns_em = api.nvim_create_namespace('gitsigns_signs')
+   ns_em = api.nvim_create_namespace(group)
+   nvim.augroup(group)
+   nvim.autocmd('BufRead', {
+      group = group,
+      callback = vim.schedule_wrap(function()
+         attach()
+      end),
+   })
+
+
+   for _, buf in ipairs(api.nvim_list_bufs()) do
+      if api.nvim_buf_is_loaded(buf) and api.nvim_buf_get_name(buf) ~= '' then
+         attach(buf)
+      end
+   end
 end
 
-function M.remove(bufnr, lnum)
-   if lnum then
-      placed[bufnr][lnum] = nil
-      scheduled[bufnr][lnum] = nil
-   else
-      placed[bufnr] = nil
-      scheduled[bufnr] = nil
-   end
+function M.draw(_bufnr, _top, _bot)
+end
 
-   if not lnum then
-      api.nvim_buf_clear_namespace(bufnr, ns_em, 0, -1)
+function M.remove(bufnr, start_lnum, end_lnum)
+   if start_lnum then
+      api.nvim_buf_clear_namespace(bufnr, ns_em, start_lnum - 1, end_lnum or start_lnum)
    else
-      api.nvim_buf_clear_namespace(bufnr, ns_em, lnum - 1, lnum)
+      api.nvim_buf_clear_namespace(bufnr, ns_em, 0, -1)
    end
+end
+
+local function placed(bufnr, start, last)
+   local marks = api.nvim_buf_get_extmarks(
+   bufnr, ns_em,
+   { start - 1, 0 },
+   { last or start, 0 },
+   { limit = 1 })
+
+   return #marks > 0
 end
 
 function M.schedule(cfg, bufnr, signs)
@@ -81,7 +70,7 @@ function M.schedule(cfg, bufnr, signs)
    end
 
    for _, s in ipairs(signs) do
-      if not placed[bufnr][s.lnum] then
+      if not placed(bufnr, s.lnum) then
          local cs = cfg.signs[s.type]
          local text = cs.text
          if cfg.signcolumn and cs.show_count and s.count then
@@ -91,31 +80,24 @@ function M.schedule(cfg, bufnr, signs)
             text = cs.text .. count_char
          end
 
-         scheduled[bufnr][s.lnum] = {
+         api.nvim_buf_set_extmark(bufnr, ns_em, s.lnum - 1, -1, {
             id = s.lnum,
-            text = cfg.signcolumn and text or '',
-            row = s.lnum - 1,
-            hl = cs.hl,
-            numhl = cfg.numhl and cs.numhl,
-            linehl = cfg.linehl and cs.linehl,
+            sign_text = cfg.signcolumn and text or '',
             priority = cfg.sign_priority,
-            type = s.type,
-         }
+            sign_hl_group = cs.hl,
+            number_hl_group = cfg.numhl and cs.numhl or nil,
+            line_hl_group = cfg.linehl and cs.linehl or nil,
+         })
       end
    end
 end
 
 function M.add(cfg, bufnr, signs)
    M.schedule(cfg, bufnr, signs)
-   for _, s in ipairs(signs) do
-      M.draw(bufnr, s.lnum, s.lnum)
-   end
 end
 
 function M.need_redraw(bufnr, start, last)
-
-   local marks = api.nvim_buf_get_extmarks(bufnr, ns_em, { start, 0 }, { last + 1, 0 }, { limit = 1 })
-   return #marks > 0
+   return placed(bufnr, start, last)
 end
 
 return M

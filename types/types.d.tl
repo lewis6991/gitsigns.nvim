@@ -483,7 +483,9 @@ global record vim
   startswith: function(string, string): boolean
   endswith: function(string, string): boolean
 
+  schedule_wrap: function(function()): function()
   schedule_wrap: function(function(...:any): any...): function(...:any): any...
+
   schedule: function(function)
   validate: function({string:{any}})
   trim: function(string): string
