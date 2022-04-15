@@ -15,6 +15,12 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  commit_lint:
+    runs-on: ubuntu-latest
+    steps:
+      # Check commit messages
+      - uses: webiny/action-conventional-commits@v1.0.3
+
   # This workflow contains a single job called "build"
   build:
     strategy:
