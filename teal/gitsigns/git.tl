@@ -411,16 +411,25 @@ Obj.run_blame = function(self: Obj, lines: {string}, lnum: number, ignore_whites
       ['committer-mail'] = '<not.committed.yet>',
     }
   end
-  local results = self:command({
-      'blame',
-      '--contents', '-',
-      '-L', lnum..',+1',
-      '--line-porcelain',
-      self.file,
-      ignore_whitespace and '-w' or nil,
-    }, {
-    writer = lines,
-  })
+
+  local args = {
+    'blame',
+    '--contents', '-',
+    '-L', lnum..',+1',
+    '--line-porcelain',
+    self.file
+  }
+
+  if ignore_whitespace then
+    args[#args+1] = '-w'
+  end
+
+  local ignore_file = self.repo.toplevel ..'/.git-blame-ignore-revs'
+  if uv.fs_stat(ignore_file) then
+    vim.list_extend(args, {'--ignore-revs-file', ignore_file})
+  end
+
+  local results = self:command(args, { writer = lines })
   if #results == 0 then
     return
   end
