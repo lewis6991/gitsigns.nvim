@@ -1,6 +1,8 @@
 local Sign = require('gitsigns.signs').Sign
 local StatusObj = require('gitsigns.status').StatusObj
 
+local util = require('gitsigns.util')
+
 local record M
   enum Type
     "add"
@@ -111,13 +113,17 @@ function M.create_partial_hunk(hunks: {Hunk}, top: integer, bot: integer): Hunk
   return M.create_hunk(pretop, precount, top, bot - top + 1)
 end
 
-function M.patch_lines(hunk: Hunk): {string}
+function M.patch_lines(hunk: Hunk, fileformat: string): {string}
   local lines: {string} = {}
   for _, l in ipairs(hunk.removed.lines) do
     lines[#lines+1] = '-'..l
   end
   for _, l in ipairs(hunk.added.lines) do
     lines[#lines+1] = '+'..l
+  end
+
+  if fileformat == 'dos' then
+    lines = util.strip_cr(lines)
   end
   return lines
 end

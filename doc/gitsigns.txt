@@ -248,7 +248,7 @@ blame_line({opts})                                     *gitsigns.blame_line()*
                     {opts}   (table|nil):
                              Additional options:
                              • {full}: (boolean)
-                               Display full commit message
+                               Display full commit message with hunk.
                              • {ignore_whitespace}: (boolean)
                                Ignore whitespace when running blame.
 
