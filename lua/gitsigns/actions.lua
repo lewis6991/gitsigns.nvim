@@ -7,7 +7,6 @@ local popup = require('gitsigns.popup')
 local util = require('gitsigns.util')
 local manager = require('gitsigns.manager')
 local git = require('gitsigns.git')
-local warn = require('gitsigns.message').warn
 local run_diff = require('gitsigns.diff')
 local signs = require('gitsigns.signs')
 
@@ -21,7 +20,6 @@ local Hunk_Public = gs_hunks.Hunk_Public
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
-local add_highlight = api.nvim_buf_add_highlight
 
 local NavHunkOpts = {}
 
@@ -502,23 +500,78 @@ M.prev_hunk = function(opts)
    nav_hunk(opts)
 end
 
-local function highlight_hunk_lines(bufnr, offset, hunk)
-   for i = 1, #hunk.removed.lines do
-      add_highlight(bufnr, -1, 'GitSignsDeleteLn', offset + i - 1, 0, -1)
-   end
-   for i = 1, #hunk.added.lines do
-      add_highlight(bufnr, -1, 'GitSignsAddLn', #hunk.removed.lines + offset + i - 1, 0, -1)
+local HlMark = popup.HlMark
+
+local function lines_format(fmt,
+   info)
+
+   local ret = vim.deepcopy(fmt)
+
+   for _, line in ipairs(ret) do
+      for _, s in ipairs(line) do
+         s[1] = util.expand_format(s[1], info)
+      end
    end
 
+   return ret
+end
+
+local function hlmarks_for_hunk(hunk, hl)
+   local hls = {}
+
+   local removed, added = hunk.removed, hunk.added
+
+   if hl then
+      hls[#hls + 1] = {
+         hl_group = hl,
+         start_row = 0,
+         end_row = removed.count + added.count,
+      }
+   end
+
+   hls[#hls + 1] = {
+      hl_group = 'GitSignsDeleteLn',
+      start_row = 0,
+      end_row = removed.count,
+   }
+
+   hls[#hls + 1] = {
+      hl_group = 'GitSignsAddLn',
+      start_row = removed.count,
+      end_row = removed.count + added.count,
+   }
+
    if config.diff_opts.internal then
-      local removed_regions, added_regions = require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
+      local removed_regions, added_regions = 
+      require('gitsigns.diff_int').run_word_diff(removed.lines, added.lines)
       for _, region in ipairs(removed_regions) do
-         local line, scol, ecol = region[1], region[3], region[4]
-         add_highlight(bufnr, -1, 'GitSignsDeleteInline', line + offset - 1, scol, ecol)
+         hls[#hls + 1] = {
+            hl_group = 'GitSignsDeleteInline',
+            start_row = region[1] - 1,
+            start_col = region[3],
+            end_col = region[4],
+         }
       end
       for _, region in ipairs(added_regions) do
-         local line, scol, ecol = region[1], region[3], region[4]
-         add_highlight(bufnr, -1, 'GitSignsAddInline', line + offset - 1, scol, ecol)
+         hls[#hls + 1] = {
+            hl_group = 'GitSignsAddInline',
+            start_row = region[1] - 1,
+            start_col = region[3],
+            end_col = region[4],
+         }
+      end
+   end
+
+   return hls
+end
+
+local function insert_hunk_hlmarks(fmt, hunk)
+   for _, line in ipairs(fmt) do
+      for _, s in ipairs(line) do
+         if s[1] == '<hunk>' then
+            local orig_hl = s[2]
+            s[2] = hlmarks_for_hunk(hunk, orig_hl)
+         end
       end
    end
 end
@@ -542,22 +595,18 @@ M.preview_hunk = noautocmd(function()
 
    if not hunk then return end
 
-   local hlines = gs_hunks.patch_lines(hunk)
-   if vim.bo[cbuf].fileformat == 'dos' then
-      hlines = util.strip_cr(hlines)
-   end
+   local lines_spec = lines_format({
+      { { 'Hunk <hunk_no> of <num_hunks>', 'Title' } },
+      { { '<hunk>', 'Normal' } },
+   }, {
+      hunk_no = index,
+      num_hunks = #bcache.hunks,
+      hunk = gs_hunks.patch_lines(hunk, vim.bo[cbuf].fileformat),
+   })
 
-   local lines = {
-      ('Hunk %d of %d'):format(index, #bcache.hunks),
-      unpack(hlines),
-   }
+   insert_hunk_hlmarks(lines_spec, hunk)
 
-   local _, bufnr = popup.create(lines, config.preview_config)
-
-   add_highlight(bufnr, -1, 'Title', 0, 0, -1)
-
-   local offset = #lines - hunk.removed.count - hunk.added.count
-   highlight_hunk_lines(bufnr, offset, hunk)
+   popup.create(lines_spec, config.preview_config)
 end)
 
 
@@ -595,7 +644,7 @@ M.get_hunks = function(bufnr)
    for _, h in ipairs(cache[bufnr].hunks) do
       ret[#ret + 1] = {
          head = h.head,
-         lines = gs_hunks.patch_lines(h),
+         lines = gs_hunks.patch_lines(h, vim.bo[bufnr].fileformat),
          type = h.type,
          added = h.added,
          removed = h.removed,
@@ -614,6 +663,35 @@ local function get_blame_hunk(repo, info)
    local hunks = run_diff(a, b)
    local hunk, i = gs_hunks.find_hunk(info.orig_lnum, hunks)
    return hunk, i, #hunks
+end
+
+local function create_blame_fmt(is_committed, full)
+   if not is_committed then
+      return {
+         { { '<author>', 'Label' } },
+      }
+   end
+
+   local header = {
+      { '<abbrev_sha> ', 'Directory' },
+      { '<author> ', 'MoreMsg' },
+      { '(<author_time:%Y-%m-%d %H:%M>)', 'Label' },
+      { ':', 'Normal' },
+   }
+
+   if full then
+      return {
+         header,
+         { { '<body>', 'Normal' } },
+         { { 'Hunk <hunk_no> of <num_hunks>', 'Title' }, { ' <hunk_head>', 'LineNr' } },
+         { { '<hunk>', 'Normal' } },
+      }
+   end
+
+   return {
+      header,
+      { { '<summary>', 'Normal' } },
+   }
 end
 
 local BlameOpts = {}
@@ -635,100 +713,46 @@ local BlameOpts = {}
 
 
 M.blame_line = void(function(opts)
+   opts = opts or {}
+
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then return end
 
-   local full
-   local ignore_whitespace
-   if type(opts) == "boolean" then
-
-      warn('Passing boolean as the first argument to blame_line is now deprecated; please pass an options table')
-      full = opts
-   else
-      opts = opts or {}
-      full = opts.full
-      ignore_whitespace = opts.ignore_whitespace
-   end
-
    local loading = vim.defer_fn(function()
-      popup.create({ 'Loading...' }, config.preview_config)
+      popup.create({ { { 'Loading...', 'Title' } } }, config.preview_config)
    end, 1000)
 
    scheduler()
    local buftext = util.buf_lines(bufnr)
+   local fileformat = vim.bo[bufnr].fileformat
    local lnum = api.nvim_win_get_cursor(0)[1]
-   local result = bcache.git_obj:run_blame(buftext, lnum, ignore_whitespace)
+   local result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
    pcall(function()
       loading:close()
    end)
 
-   local hunk, ihunk, nhunk
-   local lines = {}
-
-   local highlights = {}
-
-   local function add_hl(hlgroup, start, length)
-      highlights[#highlights + 1] = { hlgroup, #lines - 1, start or 0, length or -1 }
-   end
-
    local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
-   if is_committed then
-      local commit_message = {}
-      if full then
-         commit_message = bcache.git_obj:command({ 'show', '-s', '--format=%B', result.sha })
-         while commit_message[#commit_message] == '' do
-            commit_message[#commit_message] = nil
-         end
-      else
-         commit_message = { result.summary }
-      end
 
-      local date = os.date('%Y-%m-%d %H:%M', tonumber(result['author_time']))
+   local blame_fmt = create_blame_fmt(is_committed, opts.full)
 
-      lines[#lines + 1] = ('%s %s (%s):'):format(result.abbrev_sha, result.author, date)
-      local p1 = #result.abbrev_sha
-      local p2 = #result.author
-      local p3 = #date
+   local info = result
 
-      add_hl('Directory', 0, p1)
-      add_hl('MoreMsg', p1 + 1, p2)
-      add_hl('Label', p1 + p2 + 2, p3 + 2)
+   if is_committed and opts.full then
+      info.body = bcache.git_obj:command({ 'show', '-s', '--format=%B', result.sha })
 
-      vim.list_extend(lines, commit_message)
+      local hunk
 
-      if full then
-         hunk, ihunk, nhunk = get_blame_hunk(bcache.git_obj.repo, result)
-      end
-   else
-      lines[#lines + 1] = result.author
-      add_hl('ErrorMsg')
-      if full then
-         scheduler()
-         hunk, ihunk = get_cursor_hunk(bufnr, bcache.hunks)
-         nhunk = #bcache.hunks
-      end
-   end
+      hunk, info.hunk_no, info.num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
 
-   if hunk then
-      lines[#lines + 1] = ''
-      lines[#lines + 1] = ('Hunk %d of %d'):format(ihunk, nhunk)
-      add_hl('Title')
-      vim.list_extend(lines, gs_hunks.patch_lines(hunk))
+      info.hunk = gs_hunks.patch_lines(hunk, fileformat)
+      info.hunk_head = hunk.head
+      insert_hunk_hlmarks(blame_fmt, hunk)
    end
 
    scheduler()
-   local _, pbufnr = popup.create(lines, config.preview_config)
 
-   for _, h in ipairs(highlights) do
-      local hlgroup, line, start, length = h[1], h[2], h[3], h[4]
-      add_highlight(pbufnr, -1, hlgroup, line, start, start + length)
-   end
-
-   if hunk then
-      local offset = #lines - hunk.removed.count - hunk.added.count
-      highlight_hunk_lines(pbufnr, offset, hunk)
-   end
+   popup.create(lines_format(blame_fmt, info), config.preview_config)
 end)
 
 local function update_buf_base(buf, bcache, base)

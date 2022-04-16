@@ -1,4 +1,6 @@
 local record M
+  type FmtInfo = {string:string|integer|{string}}
+
   path_sep: string
 end
 
@@ -137,6 +139,49 @@ function M.setdefault(tbl: table)
       return t[k]
     end
   })
+end
+
+local function expand_date(fmt: string, time: integer): string
+  if fmt == '%R' then
+    return M.get_relative_time(time)
+  end
+  return os.date(fmt, time)
+end
+
+---@param reltime Use relative time as the default date format
+function M.expand_format(fmt: string, info: M.FmtInfo, reltime: boolean): string
+  local ret = {}
+
+  local fmt0: string
+
+  for _ = 1, 20 do -- loop protection
+    local _, ecol, m, kr = fmt:find('(<([^>]+)>)')
+    if not m then
+      break
+    end
+
+    fmt0, fmt = fmt:sub(1, ecol), fmt:sub(ecol+1)
+
+    local k, df = kr:match('([^:]+):?(.*)')
+
+    local v = info[k]
+
+    if v then
+      if v is {string} then
+        v = table.concat(v, '\n')
+      end
+      if vim.endswith(k, '_time') then
+        if df == '' then
+          df = reltime and '%R' or '%Y-%m-%d'
+        end
+        v = expand_date(df, v as integer)
+      end
+      fmt0 = fmt0:gsub(vim.pesc(m), tostring(v))
+    end
+    ret[#ret+1] = fmt0
+  end
+  ret[#ret+1] = fmt
+  return table.concat(ret, '')
 end
 
 return M

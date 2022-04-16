@@ -79,45 +79,10 @@ function BlameCache:get(bufnr, lnum)
 end
 
 local function expand_blame_format(fmt, name, info)
-   local m
    if info.author == name then
       info.author = 'You'
    end
-
-   for k, v in pairs({
-         author_time = info.author_time,
-         committer_time = info.committer_time,
-      }) do
-      for _ = 1, 10 do
-         m = fmt:match('<' .. k .. ':([^>]+)>')
-         if not m then
-            break
-         end
-         if m:match('%%R') then
-            m = m:gsub('%%R', util.get_relative_time(v))
-         end
-         m = os.date(m, v)
-         fmt = fmt:gsub('<' .. k .. ':[^>]+>', m)
-      end
-   end
-
-   for k, v in pairs(info) do
-      for _ = 1, 10 do
-         m = fmt:match('<' .. k .. '>')
-         if not m then
-            break
-         end
-         if vim.endswith(k, '_time') then
-            if config.current_line_blame_formatter_opts.relative_time then
-               v = util.get_relative_time(v)
-            else
-               v = os.date('%Y-%m-%d', v)
-            end
-         end
-         fmt = fmt:gsub('<' .. k .. '>', v)
-      end
-   end
-   return fmt
+   return util.expand_format(fmt, info, config.current_line_blame_formatter_opts.relative_time)
 end
 
 

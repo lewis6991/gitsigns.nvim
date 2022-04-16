@@ -482,6 +482,8 @@ global record vim
 
   gsplit: function(string, string, boolean): function(): string
 
+  pesc: function(string): string
+
   startswith: function(string, string): boolean
   endswith: function(string, string): boolean
 
