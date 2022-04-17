@@ -147,10 +147,6 @@ M.update = throttle_by_id(void(function(bufnr)
          if bname == bufname or vim.startswith(bname, 'fugitive://') then
             if should_reload(b) then
                api.nvim_buf_call(b, function()
-
-
-
-
                   vim.cmd('doautocmd BufReadCmd')
                   vim.cmd('diffthis')
                end)

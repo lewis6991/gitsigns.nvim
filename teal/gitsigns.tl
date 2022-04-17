@@ -34,8 +34,8 @@ local record M
   attach     : function(cbuf: integer, trigger: string)
 
   -- Internal, API unstable
-  _run_func          : function(range: {integer, integer, integer}, func: string, ...: any)
-  _complete          : function(arglead: string, line: string): {string}
+  _run_func  : function(range: {integer, integer, integer}, func: string, ...: any)
+  _complete  : function(arglead: string, line: string): {string}
 end
 
 local namespace: integer
@@ -202,7 +202,10 @@ end
 
 local attach_disabled = false
 
-local attach0 = function(cbuf: integer, aucmd: string)
+-- Ensure attaches cannot be interleaved.
+-- Since attaches are asynchronous we need to make sure an attach isn't
+-- performed whilst another one is in progress.
+local attach_throttled = throttle_by_id(function(cbuf: integer, aucmd: string)
   local __FUNC__ = 'attach'
   if attach_disabled then
     dprint('attaching is disabled')
@@ -322,20 +325,7 @@ local attach0 = function(cbuf: integer, aucmd: string)
   if config.keymaps and not vim.tbl_isempty(config.keymaps) then
     require('gitsigns.mappings')(config.keymaps as {string:any}, cbuf)
   end
-end
-
-local function _attach_enable()
-  attach_disabled = false
-end
-
-local function _attach_disable()
-  attach_disabled = true
-end
-
--- Ensure attaches cannot be interleaved.
--- Since attaches are asynchronous we need to make sure an attach isn't
--- performed whilst another one is in progress.
-local attach_throttled = throttle_by_id(attach0)
+end)
 
 --- Attach Gitsigns to the buffer.
 ---
@@ -347,6 +337,14 @@ local attach_throttled = throttle_by_id(attach0)
 M.attach = void(function(bufnr: integer, _trigger: string)
   attach_throttled(bufnr or current_buf(), _trigger)
 end)
+
+local function _attach_enable()
+  attach_disabled = false
+end
+
+local function _attach_disable()
+  attach_disabled = true
+end
 
 local M0 = M as {string:function}
 

@@ -202,7 +202,10 @@ end
 
 local attach_disabled = false
 
-local attach0 = function(cbuf, aucmd)
+
+
+
+local attach_throttled = throttle_by_id(function(cbuf, aucmd)
    local __FUNC__ = 'attach'
    if attach_disabled then
       dprint('attaching is disabled')
@@ -322,20 +325,7 @@ local attach0 = function(cbuf, aucmd)
    if config.keymaps and not vim.tbl_isempty(config.keymaps) then
       require('gitsigns.mappings')(config.keymaps, cbuf)
    end
-end
-
-local function _attach_enable()
-   attach_disabled = false
-end
-
-local function _attach_disable()
-   attach_disabled = true
-end
-
-
-
-
-local attach_throttled = throttle_by_id(attach0)
+end)
 
 
 
@@ -347,6 +337,14 @@ local attach_throttled = throttle_by_id(attach0)
 M.attach = void(function(bufnr, _trigger)
    attach_throttled(bufnr or current_buf(), _trigger)
 end)
+
+local function _attach_enable()
+   attach_disabled = false
+end
+
+local function _attach_disable()
+   attach_disabled = true
+end
 
 local M0 = M
 
