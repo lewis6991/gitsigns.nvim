@@ -54,6 +54,7 @@ end)
 local bufwrite = void(function(bufnr, dbufnr, base, bcache)
    local buftext = util.buf_lines(dbufnr)
    bcache.git_obj:stage_lines(buftext)
+   scheduler()
    vim.bo[dbufnr].modified = false
 
 

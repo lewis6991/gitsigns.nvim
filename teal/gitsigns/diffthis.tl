@@ -54,6 +54,7 @@ end)
 local bufwrite = void(function(bufnr: integer, dbufnr: integer, base: string, bcache: CacheEntry)
   local buftext = util.buf_lines(dbufnr)
   bcache.git_obj:stage_lines(buftext)
+  scheduler()
   vim.bo[dbufnr].modified = false
   -- If diff buffer base matches the bcache base then also update the
   -- signs.
