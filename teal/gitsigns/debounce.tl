@@ -1,4 +1,6 @@
-local M = {}
+local record M
+  throttle_by_id: function<T1,T2>(fn: function(T1, T2), schedule: boolean): function(T1, T2)
+end
 
 --- Debounces a function on the trailing edge.
 ---

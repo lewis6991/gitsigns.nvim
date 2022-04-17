@@ -207,7 +207,11 @@ end
 
 local update_cnt = 0
 
-local update0 = function(bufnr: integer, bcache: CacheEntry)
+-- Ensure updates cannot be interleaved.
+-- Since updates are asynchronous we need to make sure an update isn't performed
+-- whilst another one is in progress. If this happens then schedule another
+-- update after the current one has completed.
+M.update = throttle_by_id(function(bufnr: integer, bcache: CacheEntry)
   local __FUNC__ = 'update'
   bcache = bcache or cache[bufnr]
   if not bcache then
@@ -242,14 +246,7 @@ local update0 = function(bufnr: integer, bcache: CacheEntry)
   update_cnt = update_cnt + 1
 
   dprintf('updates: %s, jobs: %s', update_cnt, subprocess.job_cnt)
-end
-
-
--- Ensure updates cannot be interleaved.
--- Since updates are asynchronous we need to make sure an update isn't performed
--- whilst another one is in progress. If this happens then schedule another
--- update after the current one has completed.
-M.update = throttle_by_id(update0, true) as function(integer, CacheEntry)
+end)
 
 M.setup = function()
   M.update_debounced = debounce_trailing(config.update_debounce, void(M.update)) as function(integer, CacheEntry)

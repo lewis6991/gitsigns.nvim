@@ -207,7 +207,11 @@ end
 
 local update_cnt = 0
 
-local update0 = function(bufnr, bcache)
+
+
+
+
+M.update = throttle_by_id(function(bufnr, bcache)
    local __FUNC__ = 'update'
    bcache = bcache or cache[bufnr]
    if not bcache then
@@ -242,14 +246,7 @@ local update0 = function(bufnr, bcache)
    update_cnt = update_cnt + 1
 
    dprintf('updates: %s, jobs: %s', update_cnt, subprocess.job_cnt)
-end
-
-
-
-
-
-
-M.update = throttle_by_id(update0, true)
+end)
 
 M.setup = function()
    M.update_debounced = debounce_trailing(config.update_debounce, void(M.update))
