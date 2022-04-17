@@ -21,6 +21,8 @@ local gs_debug   = require("gitsigns.debug")
 local dprintf    = gs_debug.dprintf
 local dprint     = gs_debug.dprint
 
+local throttle_by_id = require("gitsigns.debounce").throttle_by_id
+
 local api = vim.api
 local uv = vim.loop
 local current_buf = api.nvim_get_current_buf
@@ -201,6 +203,7 @@ end
 local attach_disabled = false
 
 local attach0 = function(cbuf: integer, aucmd: string)
+  local __FUNC__ = 'attach'
   if attach_disabled then
     dprint('attaching is disabled')
     return
@@ -332,18 +335,7 @@ end
 -- Ensure attaches cannot be interleaved.
 -- Since attaches are asynchronous we need to make sure an attach isn't
 -- performed whilst another one is in progress.
-local attach_running: {integer:boolean} = {}
-
-local attach = function(cbuf: integer, trigger: string)
-  cbuf = cbuf or current_buf()
-  if attach_running[cbuf] then
-    dprint('Attach in progress')
-    return
-  end
-  attach_running[cbuf] = true
-  attach0(cbuf, trigger)
-  attach_running[cbuf] = nil
-end
+local attach_throttled = throttle_by_id(attach0)
 
 --- Attach Gitsigns to the buffer.
 ---
@@ -352,7 +344,9 @@ end
 ---
 --- Parameters: ~
 ---     {bufnr}  (number): Buffer number
-M.attach = void(attach) as function(bufnr: integer)
+M.attach = void(function(bufnr: integer, _trigger: string)
+  attach_throttled(bufnr or current_buf(), _trigger)
+end)
 
 local M0 = M as {string:function}
 
@@ -564,7 +558,7 @@ M.setup = void(function(cfg: Config)
   for _, buf in ipairs(api.nvim_list_bufs()) do
     if    api.nvim_buf_is_loaded(buf)
       and api.nvim_buf_get_name(buf) ~= '' then
-      attach(buf, 'setup')
+      M.attach(buf, 'setup')
       scheduler()
     end
   end
