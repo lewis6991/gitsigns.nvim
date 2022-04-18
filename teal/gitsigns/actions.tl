@@ -244,19 +244,49 @@ local function get_range(params: api.UserCmdParams): {integer, integer}
   return range
 end
 
-local function get_hunks(bufnr: integer, bcache: CacheEntry, greedy: boolean): {Hunk}
+local function get_hunks(bufnr: integer, bcache: CacheEntry, greedy: boolean, staged: boolean): {Hunk}
   local hunks: {Hunk}
 
   if greedy then
     -- Re-run the diff without linematch
     local buftext = util.buf_lines(bufnr)
-    hunks = run_diff(bcache.compare_text, buftext, false)
+    local text: {string}
+    if staged then
+      text = bcache.compare_text_head
+    else
+      text = bcache.compare_text
+    end
+    hunks = run_diff(text, buftext, false)
     scheduler()
   else
-    hunks = bcache.hunks
+    if staged then
+      hunks = bcache.hunks_staged
+    else
+      hunks = bcache.hunks
+    end
   end
 
   return hunks
+end
+
+local function get_hunk(bufnr: integer, range: {integer, integer}, greedy: boolean, staged: boolean): Hunk
+  local bcache = cache[bufnr]
+  local hunks = get_hunks(bufnr, bcache, greedy, staged)
+  local hunk: Hunk
+  if range then
+    table.sort(range)
+    local top, bot = range[1], range[2]
+    hunk = gs_hunks.create_partial_hunk(hunks, top, bot)
+    hunk.added.lines = api.nvim_buf_get_lines(bufnr, top-1, bot, false)
+    hunk.removed.lines = vim.list_slice(
+      bcache.compare_text,
+      hunk.removed.start,
+      hunk.removed.start + hunk.removed.count - 1
+    )
+  else
+    hunk = get_cursor_hunk(bufnr, hunks)
+  end
+  return hunk
 end
 
 --- Stage the hunk at the cursor position, or all lines in the
@@ -291,28 +321,19 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer}, opts: Stag
     return
   end
 
-  local hunks = get_hunks(bufnr, bcache, opts.greedy ~= false)
-  local hunk: Hunk
+  local hunk = get_hunk(bufnr, range, opts.greedy ~= false, false)
 
-  if range then
-    table.sort(range)
-    local top, bot = range[1], range[2]
-    hunk = gs_hunks.create_partial_hunk(hunks, top, bot)
-    hunk.added.lines = api.nvim_buf_get_lines(bufnr, top-1, bot, false)
-    hunk.removed.lines = vim.list_slice(
-      bcache.compare_text,
-      hunk.removed.start,
-      hunk.removed.start + hunk.removed.count - 1
-    )
-  else
-    hunk = get_cursor_hunk(bufnr, hunks)
+  local invert = false
+  if not hunk then
+    invert = true
+    hunk = get_hunk(bufnr, range, opts.greedy ~= false, true)
   end
 
   if not hunk then
     return
   end
 
-  bcache.git_obj:stage_hunks({hunk})
+  bcache.git_obj:stage_hunks({hunk}, invert)
 
   table.insert(bcache.staged_diffs, hunk)
 
@@ -348,22 +369,7 @@ M.reset_hunk = mk_repeatable(void(function(range: {integer, integer}, opts: Rese
     return
   end
 
-  local hunks = get_hunks(bufnr, bcache, opts.greedy ~= false)
-  local hunk: Hunk
-
-  if range then
-    table.sort(range)
-    local top, bot = range[1], range[2]
-    hunk = gs_hunks.create_partial_hunk(hunks, top, bot)
-    hunk.added.lines = api.nvim_buf_get_lines(bufnr, top-1, bot, false)
-    hunk.removed.lines = vim.list_slice(
-      bcache.compare_text,
-      hunk.removed.start,
-      hunk.removed.start + hunk.removed.count - 1
-    )
-  else
-    hunk = get_cursor_hunk(bufnr, hunks)
-  end
+  local hunk = get_hunk(bufnr, range, opts.greedy ~= false, false)
 
   if not hunk then
     return

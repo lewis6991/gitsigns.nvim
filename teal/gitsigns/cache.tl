@@ -5,9 +5,13 @@ local record M
   record CacheEntry
     file          : string
     base          : string
-    compare_text  : {string}  -- For use with internal diff
+    compare_text  : {string}
     hunks         : {Hunk}
     force_next_update: boolean
+
+    compare_text_head : {string}
+    hunks_staged      : {Hunk}
+
     staged_diffs  : {Hunk}
     gitdir_watcher : vim.loop.FSPollObj -- Timer object watching the gitdir
     git_obj       : GitObj
@@ -58,7 +62,9 @@ end
 
 CacheEntry.invalidate = function(self: CacheEntry)
   self.compare_text = nil
+  self.compare_text_head = nil
   self.hunks = nil
+  self.hunks_staged = nil
 end
 
 CacheEntry.new = function(o: CacheEntry): CacheEntry

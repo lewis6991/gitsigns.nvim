@@ -16,6 +16,7 @@ local record M
     lnum: integer
   end
 
+  name: string
   group: string
   config: SignsConfig
 

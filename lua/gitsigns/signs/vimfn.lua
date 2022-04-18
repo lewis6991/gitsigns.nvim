@@ -69,6 +69,7 @@ local group_base = 'gitsigns_vimfn_signs_'
 
 function M.new(cfg, name)
    local self = setmetatable({}, { __index = M })
+   self.name = name or ''
    self.group = group_base .. (name or '')
    self.config = cfg
    self.placed = emptytable()
@@ -103,11 +104,10 @@ function M:add(bufnr, signs)
 
    local to_place = {}
 
-   local cfg = self.config
    for _, s in ipairs(signs) do
       local sign_name = get_sign_name(s.type)
 
-      local cs = cfg[s.type]
+      local cs = self.config[s.type]
       if config.signcolumn and cs.show_count and s.count then
          local count = s.count
          local cc = config.count_chars

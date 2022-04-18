@@ -29,6 +29,10 @@ local M = {CacheEntry = {}, CacheObj = {}, }
 
 
 
+
+
+
+
 local CacheEntry = M.CacheEntry
 
 CacheEntry.get_compare_rev = function(self, base)
@@ -58,7 +62,9 @@ end
 
 CacheEntry.invalidate = function(self)
    self.compare_text = nil
+   self.compare_text_head = nil
    self.hunks = nil
+   self.hunks_staged = nil
 end
 
 CacheEntry.new = function(o)

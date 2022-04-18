@@ -134,7 +134,15 @@ local record M
   nvim_get_current_tabpage: function(): any
   nvim_get_current_win: function(): integer
   nvim_get_hl_by_id: function(number, boolean): {string:any}
-  nvim_get_hl_by_name: function(string, boolean): {string:any}
+
+  record HlAttrs
+    foreground: integer
+    background: integer
+    reverse: boolean
+  end
+
+  nvim_get_hl_by_name: function(string, boolean): HlAttrs
+
   nvim_get_hl_id_by_name: function(string): number
   nvim_get_keymap: function(string): {{string:any}}
   nvim_get_mode: function(): {string:any}
