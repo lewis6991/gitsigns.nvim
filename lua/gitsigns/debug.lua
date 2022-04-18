@@ -113,7 +113,7 @@ local function process(raw_item, path)
       return nil
    elseif type(raw_item) == "table" then
       local key = path[#path]
-      if key == 'compare_text' then
+      if key == 'compare_text' or key == 'compare_text_head' then
          local item = raw_item
          return { '...', length = #item, head = item[1] }
       elseif not vim.tbl_isempty(raw_item) and key == 'staged_diffs' then

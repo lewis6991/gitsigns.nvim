@@ -249,7 +249,7 @@ function M.get_summary(hunks)
 end
 
 function M.find_hunk(lnum, hunks)
-   for i, hunk in ipairs(hunks) do
+   for i, hunk in ipairs(hunks or {}) do
       if lnum == 1 and hunk.added.start == 0 and hunk.vend == 0 then
          return hunk, i
       end
@@ -301,6 +301,99 @@ function M.compare_heads(a, b)
       end
    end
    return false
+end
+
+local function compare_new(a, b)
+   if a.added.start ~= b.added.start then
+      return false
+   end
+
+   if a.added.count ~= b.added.count then
+      return false
+   end
+
+   for i = 1, a.added.count do
+      if a.added.lines[i] ~= b.added.lines[i] then
+         return false
+      end
+   end
+
+   return true
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function M.filter_common(a, b)
+   if not a and not b then
+      return
+   end
+
+   a, b = a or {}, b or {}
+   local max_iter = math.max(#a, #b)
+
+   local a_i = 1
+   local b_i = 1
+
+   local ret = {}
+
+   for _ = 1, max_iter do
+      local a_h, b_h = a[a_i], b[b_i]
+
+      if not a_h then
+
+         break
+      end
+
+      if not b_h then
+
+         for i = a_i, #a do
+            ret[#ret + 1] = a[i]
+         end
+         break
+      end
+
+      if a_h.added.start > b_h.added.start then
+
+         b_i = b_i + 1
+      elseif a_h.added.start < b_h.added.start then
+
+         ret[#ret + 1] = a_h
+         a_i = a_i + 1
+      else
+
+
+
+
+         if not compare_new(a_h, b_h) then
+            ret[#ret + 1] = a_h
+         end
+         a_i = a_i + 1
+         b_i = b_i + 1
+      end
+   end
+
+   return ret
 end
 
 return M

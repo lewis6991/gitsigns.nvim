@@ -39,11 +39,9 @@ function M:add(bufnr: integer, signs: {M.Sign})
     return
   end
 
-  local cfg = self.config
-
   for _, s in ipairs(signs) do
     if not self:contains(bufnr, s.lnum) then
-      local cs = cfg[s.type]
+      local cs = self.config[s.type]
       local text = cs.text
       if config.signcolumn and cs.show_count and s.count then
         local count = s.count

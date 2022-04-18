@@ -249,7 +249,7 @@ function M.get_summary(hunks: {Hunk}): StatusObj
 end
 
 function M.find_hunk(lnum: number, hunks: {Hunk}): Hunk, integer
-  for i, hunk in ipairs(hunks) do
+  for i, hunk in ipairs(hunks or {}) do
     if lnum == 1 and hunk.added.start == 0 and hunk.vend == 0 then
       return hunk, i
     end
@@ -301,6 +301,99 @@ function M.compare_heads(a: {Hunk}, b: {Hunk}): boolean
     end
   end
   return false
+end
+
+local function compare_new(a: Hunk, b: Hunk): boolean
+  if a.added.start ~= b.added.start then
+    return false
+  end
+
+  if a.added.count ~= b.added.count then
+    return false
+  end
+
+  for i = 1, a.added.count do
+    if a.added.lines[i] ~= b.added.lines[i] then
+      return false
+    end
+  end
+
+  return true
+end
+
+-- Return hunks in a using b's hunks as a filter. Only compare the 'new' section
+-- of the hunk.
+--
+-- Eg. Given:
+--
+--     a = {
+--         1 = '@@ -24 +25,1 @@',
+--         2 = '@@ -32 +34,1 @@',
+--         3 = '@@ -37 +40,1 @@'
+--     }
+--
+--     b = {
+--         1 = '@@ -26 +25,1 @@'
+--     }
+--
+-- Since a[1] and b[1] introduce the same changes to the buffer (both have
+-- +25,1), we exclude this hunk in the output so we return:
+--
+--     {
+--         1 = '@@ -32 +34,1 @@',
+--         2 = '@@ -37 +40,1 @@'
+--     }
+--
+function M.filter_common(a: {Hunk}, b: {Hunk}): {Hunk}
+  if not a and not b then
+    return
+  end
+
+  a, b = a or {}, b or {}
+  local max_iter = math.max(#a, #b)
+
+  local a_i = 1
+  local b_i = 1
+
+  local ret: {Hunk} = {}
+
+  for _ = 1, max_iter do
+    local a_h, b_h = a[a_i], b[b_i]
+
+    if not a_h then
+      -- Reached the end of a
+      break
+    end
+
+    if not b_h then
+      -- Reached the end of b, add remainder of a
+      for i = a_i, #a do
+        ret[#ret+1] = a[i]
+      end
+      break
+    end
+
+    if a_h.added.start > b_h.added.start then
+      -- a pointer is ahead of b; increment b pointer
+      b_i = b_i + 1
+    elseif a_h.added.start < b_h.added.start then
+      -- b pointer is ahead of a; add a_h to ret and increment a pointer
+      ret[#ret+1] = a_h
+      a_i = a_i + 1
+    else -- a_h.start == b_h.start
+      -- a_h and b_h start on the same line, if hunks have the same changes then
+      -- skip (filtered) otherwise add a_h to ret. Increment both hunk
+      -- pointers
+      -- TODO(lewis6991): Be smarter; if bh intercepts then break down ah.
+      if not compare_new(a_h, b_h) then
+        ret[#ret+1] = a_h
+      end
+      a_i = a_i + 1
+      b_i = b_i + 1
+    end
+  end
+
+  return ret
 end
 
 return M
