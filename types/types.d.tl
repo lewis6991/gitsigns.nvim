@@ -477,6 +477,8 @@ global record vim
     end
   end
   notify: function(string, integer, table)
+  pretty_print: function(any)
+
   split: function(string, string): {string}
   split: function(string, string, boolean): {string}
 

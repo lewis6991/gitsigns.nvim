@@ -568,9 +568,9 @@ end
 local function insert_hunk_hlmarks(fmt: popup.LinesSpec, hunk: Hunk)
   for _, line in ipairs(fmt) do
     for _, s in ipairs(line) do
-      if s[1] == '<hunk>' then
-        local orig_hl = s[2] as string
-        s[2] = hlmarks_for_hunk(hunk, orig_hl)
+      local hl = s[2]
+      if s[1] == '<hunk>' and hl is string then
+        s[2] = hlmarks_for_hunk(hunk, hl)
       end
     end
   end
@@ -595,16 +595,18 @@ M.preview_hunk = noautocmd(function()
 
   if not hunk then return end
 
-  local lines_spec = lines_format({
+  local lines_fmt = {
     {{'Hunk <hunk_no> of <num_hunks>', 'Title'}},
     {{'<hunk>', 'Normal' }}
-  }, {
+  }
+
+  insert_hunk_hlmarks(lines_fmt, hunk)
+
+  local lines_spec = lines_format(lines_fmt, {
     hunk_no = index,
     num_hunks = #bcache.hunks,
     hunk = gs_hunks.patch_lines(hunk, vim.bo[cbuf].fileformat),
   })
-
-  insert_hunk_hlmarks(lines_spec, hunk)
 
   popup.create(lines_spec, config.preview_config)
 end)
