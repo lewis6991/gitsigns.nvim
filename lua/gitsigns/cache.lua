@@ -31,7 +31,6 @@ local M = {CacheEntry = {}, CacheObj = {}, }
 
 
 
-
 local CacheEntry = M.CacheEntry
 
 CacheEntry.get_compare_rev = function(self, base)

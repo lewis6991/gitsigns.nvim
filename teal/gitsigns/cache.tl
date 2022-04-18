@@ -10,7 +10,6 @@ local record M
     compare_file  : string    -- For use with externl diff
     compare_text  : {string}  -- For use with internal diff
     hunks         : {Hunk}
-    pending_hunks : {Hunk}    -- Hunks which haven't been drawn
     staged_diffs  : {Hunk}
     gitdir_watcher : vim.loop.FSPollObj -- Timer object watching the gitdir
     git_obj       : GitObj
