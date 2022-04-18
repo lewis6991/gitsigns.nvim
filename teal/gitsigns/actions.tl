@@ -8,7 +8,6 @@ local util          = require('gitsigns.util')
 local manager       = require('gitsigns.manager')
 local git           = require('gitsigns.git')
 local run_diff      = require('gitsigns.diff')
-local signs         = require('gitsigns.signs')
 
 local gs_cache       = require('gitsigns.cache')
 local cache          = gs_cache.cache
@@ -758,9 +757,9 @@ M.blame_line = void(function(opts: BlameOpts)
 end)
 
 local function update_buf_base(buf: integer, bcache: CacheEntry, base: string)
-    bcache.base = base
-    bcache.compare_text = nil
-    update(buf)
+  bcache.base = base
+  bcache.compare_text = nil
+  update(buf)
 end
 
 --- Change the base revision to diff against. If {base} is not
@@ -1027,7 +1026,7 @@ end
 --- Attributes: ~
 ---     {async}
 M.refresh = void(function()
-  signs.setup(true)
+  manager.reset_signs()
   require('gitsigns.highlight').setup_highlights()
   require('gitsigns.current_line_blame').setup()
   for k, v in pairs(cache as {integer:CacheEntry}) do

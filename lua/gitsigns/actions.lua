@@ -8,7 +8,6 @@ local util = require('gitsigns.util')
 local manager = require('gitsigns.manager')
 local git = require('gitsigns.git')
 local run_diff = require('gitsigns.diff')
-local signs = require('gitsigns.signs')
 
 local gs_cache = require('gitsigns.cache')
 local cache = gs_cache.cache
@@ -1027,7 +1026,7 @@ end
 
 
 M.refresh = void(function()
-   signs.setup(true)
+   manager.reset_signs()
    require('gitsigns.highlight').setup_highlights()
    require('gitsigns.current_line_blame').setup()
    for k, v in pairs(cache) do

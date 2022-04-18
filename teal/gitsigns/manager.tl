@@ -5,7 +5,7 @@ local gs_cache = require('gitsigns.cache')
 local CacheEntry = gs_cache.CacheEntry
 local cache = gs_cache.cache
 
-local signs             = require('gitsigns.signs')
+local Signs             = require('gitsigns.signs')
 
 local Status            = require("gitsigns.status")
 
@@ -26,6 +26,8 @@ local config            = require('gitsigns.config').config
 
 local api = vim.api
 
+local signs: Signs
+
 local record M
   update           : function(integer, CacheEntry, boolean)
   update_debounced : function( bufnr: integer, CacheEntry)
@@ -33,6 +35,9 @@ local record M
   on_lines         : function(buf: integer, first: integer, last_orig: integer, last_new: integer): boolean
 
   apply_word_diff: function(buf: integer, row: integer)
+
+  detach: function(bufnr: integer, keep_signs: boolean)
+  reset_signs: function()
 
   setup: function()
 end
@@ -49,7 +54,7 @@ local scheduler_if_buf_valid = awrap(schedule_if_buf_valid, 2)
 
 function M.apply_win_signs(bufnr: integer, hunks: {Hunk}, top: integer, bot: integer, clear: boolean)
   if clear then
-    signs.remove(bufnr)  -- Remove all signs
+    signs:remove(bufnr)  -- Remove all signs
   end
 
   -- To stop the sign column width changing too much, if there are signs to be
@@ -60,14 +65,14 @@ function M.apply_win_signs(bufnr: integer, hunks: {Hunk}, top: integer, bot: int
   for i, hunk in ipairs(hunks or {}) do
     if clear and i == 1
         or top <= hunk.vend and bot >= hunk.start then
-      signs.schedule(config, bufnr, gs_hunks.calc_signs(hunk))
+      signs:schedule(bufnr, gs_hunks.calc_signs(hunk))
     end
     if hunk.start > bot then
       break
     end
   end
 
-  signs.draw(bufnr, top, bot)
+  signs:draw(bufnr, top, bot)
 end
 
 M.on_lines = function(buf: integer, first: integer, _: integer, last_new: integer): boolean
@@ -79,7 +84,7 @@ M.on_lines = function(buf: integer, first: integer, _: integer, last_new: intege
 
   -- Signs in changed regions get invalidated so we need to force a redraw if
   -- any signs get removed.
-  if bcache.hunks and signs.need_redraw(buf, first, last_new) then
+  if bcache.hunks and signs:need_redraw(buf, first, last_new) then
     -- invalidate hunks to force a sign redraw
     bcache.hunks = nil
   end
@@ -248,7 +253,18 @@ M.update = throttle_by_id(function(bufnr: integer, bcache: CacheEntry)
   dprintf('updates: %s, jobs: %s', update_cnt, subprocess.job_cnt)
 end)
 
+M.detach = function(bufnr: integer, keep_signs: boolean)
+  if not keep_signs then
+    signs:remove(bufnr)  -- Remove all signs
+  end
+end
+
+M.reset_signs = function()
+  signs:reset()  -- Remove all signs
+end
+
 M.setup = function()
+  signs = Signs.new(config.signs)
   M.update_debounced = debounce_trailing(config.update_debounce, void(M.update)) as function(integer, CacheEntry)
 end
 
