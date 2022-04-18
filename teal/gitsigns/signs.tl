@@ -1,4 +1,6 @@
 local config = require('gitsigns.config').config
+local SignsConfig = require('gitsigns.config').Config.SignsConfig
+
 local dprint = require('gitsigns.debug').dprint
 
 local B = require('gitsigns.signs.base')
@@ -16,12 +18,12 @@ local function init()
   end
 end
 
-function M.setup(redefine: boolean)
+function M.new(cfg: SignsConfig, name: string): B
   init()
-  M.setup(redefine)
+  return M.new(cfg, name)
 end
 
-return setmetatable(M, {
+return setmetatable(B, {
   __index = function(_, k: string): any
     return rawget(M as table, k)
   end

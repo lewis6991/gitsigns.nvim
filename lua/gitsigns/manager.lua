@@ -5,7 +5,7 @@ local gs_cache = require('gitsigns.cache')
 local CacheEntry = gs_cache.CacheEntry
 local cache = gs_cache.cache
 
-local signs = require('gitsigns.signs')
+local Signs = require('gitsigns.signs')
 
 local Status = require("gitsigns.status")
 
@@ -26,7 +26,12 @@ local config = require('gitsigns.config').config
 
 local api = vim.api
 
+local signs
+
 local M = {}
+
+
+
 
 
 
@@ -49,7 +54,7 @@ local scheduler_if_buf_valid = awrap(schedule_if_buf_valid, 2)
 
 function M.apply_win_signs(bufnr, hunks, top, bot, clear)
    if clear then
-      signs.remove(bufnr)
+      signs:remove(bufnr)
    end
 
 
@@ -60,14 +65,14 @@ function M.apply_win_signs(bufnr, hunks, top, bot, clear)
    for i, hunk in ipairs(hunks or {}) do
       if clear and i == 1 or
          top <= hunk.vend and bot >= hunk.start then
-         signs.schedule(config, bufnr, gs_hunks.calc_signs(hunk))
+         signs:schedule(bufnr, gs_hunks.calc_signs(hunk))
       end
       if hunk.start > bot then
          break
       end
    end
 
-   signs.draw(bufnr, top, bot)
+   signs:draw(bufnr, top, bot)
 end
 
 M.on_lines = function(buf, first, _, last_new)
@@ -79,7 +84,7 @@ M.on_lines = function(buf, first, _, last_new)
 
 
 
-   if bcache.hunks and signs.need_redraw(buf, first, last_new) then
+   if bcache.hunks and signs:need_redraw(buf, first, last_new) then
 
       bcache.hunks = nil
    end
@@ -248,7 +253,18 @@ M.update = throttle_by_id(function(bufnr, bcache)
    dprintf('updates: %s, jobs: %s', update_cnt, subprocess.job_cnt)
 end)
 
+M.detach = function(bufnr, keep_signs)
+   if not keep_signs then
+      signs:remove(bufnr)
+   end
+end
+
+M.reset_signs = function()
+   signs:reset()
+end
+
 M.setup = function()
+   signs = Signs.new(config.signs)
    M.update_debounced = debounce_trailing(config.update_debounce, void(M.update))
 end
 

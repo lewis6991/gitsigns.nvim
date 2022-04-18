@@ -38,7 +38,7 @@ local record M
     diff_opts: DiffOpts
     base: string
 
-    record SignsConfig
+    record SignConfig
       show_count: boolean
       hl: string
       text: string
@@ -46,7 +46,10 @@ local record M
       linehl: string
       keymaps: {string:string}
     end
-    signs: {string: SignsConfig}
+
+    type SignsConfig = {string: SignConfig}
+
+    signs: SignsConfig
 
     count_chars: {string|integer:string}
     signcolumn: boolean

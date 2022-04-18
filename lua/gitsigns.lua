@@ -5,7 +5,6 @@ local Status = require("gitsigns.status")
 local git = require('gitsigns.git')
 local manager = require('gitsigns.manager')
 local nvim = require('gitsigns.nvim')
-local signs = require('gitsigns.signs')
 local util = require('gitsigns.util')
 local hl = require('gitsigns.highlight')
 
@@ -117,6 +116,7 @@ local watch_gitdir = function(bufnr, gitdir)
          handle_moved(bufnr, bcache, old_relpath)
       end
 
+
       bcache.compare_text = nil
 
       manager.update(bufnr, bcache)
@@ -151,9 +151,7 @@ M.detach = function(bufnr, _keep_signs)
       return
    end
 
-   if not _keep_signs then
-      signs.remove(bufnr)
-   end
+   manager.detach(bufnr, _keep_signs)
 
 
    Status:clear(bufnr)
@@ -568,7 +566,6 @@ M.setup = void(function(cfg)
 
 
    on_or_after_vimenter(hl.setup_highlights)
-   signs.setup()
 
    setup_command()
 

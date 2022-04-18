@@ -5,7 +5,6 @@ local Status     = require("gitsigns.status")
 local git        = require('gitsigns.git')
 local manager    = require('gitsigns.manager')
 local nvim       = require('gitsigns.nvim')
-local signs      = require('gitsigns.signs')
 local util       = require('gitsigns.util')
 local hl         = require('gitsigns.highlight')
 
@@ -117,7 +116,8 @@ local watch_gitdir = function(bufnr: integer, gitdir: string): uv.FSPollObj
       handle_moved(bufnr, bcache, old_relpath)
     end
 
-    bcache.compare_text = nil -- Invalidate
+    -- Invalidate
+    bcache.compare_text = nil
 
     manager.update(bufnr, bcache)
   end))
@@ -151,9 +151,7 @@ M.detach = function(bufnr: integer, _keep_signs: boolean)
     return
   end
 
-  if not _keep_signs then
-    signs.remove(bufnr)  -- Remove all signs
-  end
+  manager.detach(bufnr, _keep_signs)
 
   -- Clear status variables
   Status:clear(bufnr)
@@ -568,7 +566,6 @@ M.setup = void(function(cfg: Config)
   -- loaded. Do not set them up with vim.schedule as this removes the intro
   -- message.
   on_or_after_vimenter(hl.setup_highlights)
-  signs.setup()
 
   setup_command()
 

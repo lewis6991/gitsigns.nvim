@@ -221,7 +221,7 @@ local id = 0
 M.it = function(it)
   return function(name, test)
     id = id+1
-    return it(name..' #'..id, test)
+    return it(name..' #'..id..'#', test)
   end
 end
 
@@ -270,7 +270,7 @@ function M.check(attrs, interval)
         signs[k] = signs[k] or 0
       end
 
-      local buf_signs = fn.sign_getplaced("%", {group='gitsigns_ns'})[1].signs
+      local buf_signs = fn.sign_getplaced("%", {group='*'})[1].signs
 
       for _, s in ipairs(buf_signs) do
         if     s.name == "GitSignsAdd"          then act.added        = act.added   + 1
