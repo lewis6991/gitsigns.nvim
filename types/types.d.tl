@@ -375,8 +375,9 @@ global record vim
 
     record FSPollObj
       userdata
-      start: function
-      stop: function
+      start: function(FSPollObj, string, integer, function)
+      stop: function(FSPollObj)
+      getpath: function(FSPollObj): string
     end
     new_fs_poll: function(): FSPollObj
 
