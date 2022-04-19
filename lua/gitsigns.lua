@@ -21,7 +21,9 @@ local gs_debug = require("gitsigns.debug")
 local dprintf = gs_debug.dprintf
 local dprint = gs_debug.dprint
 
-local throttle_by_id = require("gitsigns.debounce").throttle_by_id
+local Debounce = require("gitsigns.debounce")
+local debounce_trailing = Debounce.debounce_trailing
+local throttle_by_id = Debounce.throttle_by_id
 
 local api = vim.api
 local uv = vim.loop
@@ -200,14 +202,14 @@ local function get_buf_path(bufnr)
    return file
 end
 
-local attach_disabled = false
+local vimgrep_running = false
 
 
 
 
 local attach_throttled = throttle_by_id(function(cbuf, aucmd)
    local __FUNC__ = 'attach'
-   if attach_disabled then
+   if vimgrep_running then
       dprint('attaching is disabled')
       return
    end
@@ -338,14 +340,6 @@ M.attach = void(function(bufnr, _trigger)
    attach_throttled(bufnr or current_buf(), _trigger)
 end)
 
-local function _attach_enable()
-   attach_disabled = false
-end
-
-local function _attach_disable()
-   attach_disabled = true
-end
-
 local M0 = M
 
 M._complete = function(arglead, line)
@@ -412,7 +406,7 @@ M._run_func = function(range, func, ...)
    end
 end
 
-local cwd_watcher = uv.new_fs_poll()
+local cwd_watcher
 
 local function update_cwd_head_var(head)
    if head then
@@ -422,8 +416,14 @@ local function update_cwd_head_var(head)
    end
 end
 
+
+
 local update_cwd_head = void(function()
-   cwd_watcher:stop()
+   if cwd_watcher then
+      cwd_watcher:stop()
+   else
+      cwd_watcher = uv.new_fs_poll()
+   end
 
    local cwd = uv.cwd()
    local gitdir, head
@@ -440,18 +440,25 @@ local update_cwd_head = void(function()
 
    if not head or not gitdir then
       _, gitdir, head = git.get_repo_info(cwd)
-      scheduler()
    end
 
+   scheduler()
    update_cwd_head_var(head)
 
    if not gitdir then
       return
    end
 
+   local towatch = gitdir .. '/HEAD'
+
+   if cwd_watcher:getpath() == towatch then
+
+      return
+   end
+
 
    cwd_watcher:start(
-   gitdir .. '/HEAD',
+   towatch,
    config.watch_gitdir.interval,
    void(function(err)
       local __FUNC__ = 'cwd_watcher_cb'
@@ -613,14 +620,25 @@ M.setup = void(function(cfg)
 
 
 
-   autocmd('QuickFixCmdPre', { pattern = '*vimgrep*', callback = _attach_disable })
-   autocmd('QuickFixCmdPost', { pattern = '*vimgrep*', callback = _attach_enable })
+   autocmd('QuickFixCmdPre', {
+      pattern = '*vimgrep*',
+      callback = function()
+         vimgrep_running = true
+      end,
+   })
+
+   autocmd('QuickFixCmdPost', {
+      pattern = '*vimgrep*',
+      callback = function()
+         vimgrep_running = false
+      end,
+   })
 
    require('gitsigns.current_line_blame').setup()
 
    scheduler()
    update_cwd_head()
-   autocmd('DirChanged', update_cwd_head)
+   autocmd('DirChanged', debounce_trailing(100, update_cwd_head))
 end)
 
 setmetatable(M, {
