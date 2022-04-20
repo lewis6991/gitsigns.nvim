@@ -86,6 +86,7 @@ M.on_lines = function(buf: integer, first: integer, _: integer, last_new: intege
   -- any signs get removed.
   if bcache.hunks and signs:need_redraw(buf, first, last_new) then
     -- invalidate hunks to force a sign redraw
+    -- TODO(lewis6991): Force redraw without having to re-diff
     bcache.hunks = nil
   end
 

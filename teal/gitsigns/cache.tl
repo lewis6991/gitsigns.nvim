@@ -18,6 +18,7 @@ local record M
     get_compare_rev: function(CacheEntry, base: string): string
     get_compare_text: function(self: CacheEntry): {string}
     get_diffthis_bufname: function(self: CacheEntry, rev: string): string
+    invalidate: function(CacheEntry)
     new: function(CacheEntry): CacheEntry
     destroy: function(CacheEntry)
   end
@@ -62,6 +63,11 @@ CacheEntry.get_compare_text = function(self: CacheEntry): {string}
     return self.compare_text
   end
   return util.file_lines(self.compare_file)
+end
+
+CacheEntry.invalidate = function(self: CacheEntry)
+  self.compare_text = nil
+  self.hunks = nil
 end
 
 CacheEntry.new = function(o: CacheEntry): CacheEntry

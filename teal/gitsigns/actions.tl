@@ -242,7 +242,7 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
 
   table.insert(bcache.staged_diffs, hunk)
 
-  bcache.compare_text = nil -- Invalidate
+  bcache:invalidate()
   update(bufnr)
 end))
 
@@ -326,7 +326,7 @@ M.undo_stage_hunk = void(function()
   end
 
   bcache.git_obj:stage_hunks({hunk}, true)
-  bcache.compare_text = nil -- Invalidate
+  bcache:invalidate()
   update(bufnr)
 end)
 
@@ -359,8 +359,8 @@ M.stage_buffer = void(function()
   for _, hunk in ipairs(hunks) do
     table.insert(bcache.staged_diffs, hunk)
   end
-  bcache.compare_text = nil -- Invalidate
 
+  bcache:invalidate()
   update(bufnr)
 end)
 
@@ -386,9 +386,8 @@ M.reset_buffer_index = void(function()
   bcache.staged_diffs = {}
 
   bcache.git_obj:unstage_file()
-  bcache.compare_text = nil -- Invalidate
 
-  scheduler()
+  bcache:invalidate()
   update(bufnr)
 end)
 
@@ -758,7 +757,7 @@ end)
 
 local function update_buf_base(buf: integer, bcache: CacheEntry, base: string)
   bcache.base = base
-  bcache.compare_text = nil
+  bcache:invalidate()
   update(buf)
 end
 
@@ -1030,9 +1029,7 @@ M.refresh = void(function()
   require('gitsigns.highlight').setup_highlights()
   require('gitsigns.current_line_blame').setup()
   for k, v in pairs(cache as {integer:CacheEntry}) do
-    -- Invalidate cache fields
-    v.compare_text = nil
-    v.hunks = nil
+    v:invalidate()
     manager.update(k, v)
   end
 end)

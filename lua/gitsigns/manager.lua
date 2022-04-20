@@ -86,6 +86,7 @@ M.on_lines = function(buf, first, _, last_new)
 
    if bcache.hunks and signs:need_redraw(buf, first, last_new) then
 
+
       bcache.hunks = nil
    end
 
