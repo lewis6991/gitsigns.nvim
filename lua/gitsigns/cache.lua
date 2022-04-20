@@ -31,6 +31,7 @@ local M = {CacheEntry = {}, CacheObj = {}, }
 
 
 
+
 local CacheEntry = M.CacheEntry
 
 CacheEntry.get_compare_rev = function(self, base)
@@ -62,6 +63,11 @@ CacheEntry.get_compare_text = function(self)
       return self.compare_text
    end
    return util.file_lines(self.compare_file)
+end
+
+CacheEntry.invalidate = function(self)
+   self.compare_text = nil
+   self.hunks = nil
 end
 
 CacheEntry.new = function(o)
