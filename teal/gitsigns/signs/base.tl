@@ -24,14 +24,15 @@ local record M
   -- Used by signs/vimfn.tl
   placed: {integer:{integer:vim.fn.SignPlaceItem}}
   scheduled: {integer:{integer:vim.fn.SignPlaceItem}}
+  sign_define_cache: {string:table}
+  sign_name_cache: {string:string}
 
-  new         : function(cfg: SignsConfig, name: string): M
-  draw        : function(M, bufnr: integer, top: integer, bot: integer): boolean
-  remove      : function(M, bufnr: integer, start_lnum: integer, end_lnum: integer)
-  schedule    : function(M, bufnr: integer, signs: {M.Sign})
-  add         : function(M, bufnr: integer, signs: {M.Sign})
-  need_redraw : function(M, bufnr: integer, start: integer, last: integer): boolean
-  reset       : function(M)
+  new      : function(cfg: SignsConfig, name: string): M
+  remove   : function(M, bufnr: integer, start_lnum: integer, end_lnum: integer)
+  add      : function(M, bufnr: integer, signs: {M.Sign})
+  contains : function(M, bufnr: integer, start: integer, last: integer): boolean
+  on_lines : function(M, bufnr: integer, first: integer, last_orig: integer, last_new: integer)
+  reset    : function(M)
 end
 
 return M

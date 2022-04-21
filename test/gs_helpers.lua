@@ -91,7 +91,7 @@ end
 
 function M.expectf(cond, interval)
   local duration = 0
-  interval = interval or 5
+  interval = interval or 1
   while duration < timeout do
     if pcall(cond) then
       return
@@ -276,8 +276,8 @@ function M.check(attrs, interval)
         if     s.name == "GitSignsAdd"          then act.added        = act.added   + 1
         elseif s.name == "GitSignsChange"       then act.changed      = act.changed + 1
         elseif s.name == "GitSignsDelete"       then act.delete       = act.delete + 1
-        elseif s.name == "GitSignsChangeDelete" then act.changedelete = act.changedelete + 1
-        elseif s.name == "GitSignsTopDelete"    then act.topdelete    = act.topdelete + 1
+        elseif s.name == "GitSignsChangedelete" then act.changedelete = act.changedelete + 1
+        elseif s.name == "GitSignsTopdelete"    then act.topdelete    = act.topdelete + 1
         end
       end
 

@@ -132,8 +132,8 @@ function M.calc_base(base)
    return base
 end
 
-function M.setdefault(tbl)
-   setmetatable(tbl, {
+function M.emptytable()
+   return setmetatable({}, {
       __index = function(t, k)
          t[k] = {}
          return t[k]

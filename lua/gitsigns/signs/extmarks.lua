@@ -2,24 +2,10 @@ local api = vim.api
 
 local SignsConfig = require('gitsigns.config').Config.SignsConfig
 local config = require('gitsigns.config').config
-local nvim = require('gitsigns.nvim')
 
 local B = require('gitsigns.signs.base')
 
 local M = {}
-
-
-
-local function attach(obj, bufnr)
-   bufnr = bufnr or api.nvim_get_current_buf()
-   api.nvim_buf_attach(bufnr, false, {
-      on_lines = function(_, buf, _, _, last_orig, last_new)
-         if last_orig > last_new then
-            obj:remove(buf, last_new + 1, last_orig)
-         end
-      end,
-   })
-end
 
 local group_base = 'gitsigns_extmark_signs_'
 
@@ -28,29 +14,18 @@ function M.new(cfg, name)
    self.config = cfg
    self.group = group_base .. (name or '')
    self.ns = api.nvim_create_namespace(self.group)
-
-   nvim.augroup(self.group)
-   nvim.autocmd('BufRead', {
-      group = self.group,
-      callback = vim.schedule_wrap(function()
-         attach(self)
-      end),
-   })
-
-
-   for _, buf in ipairs(api.nvim_list_bufs()) do
-      if api.nvim_buf_is_loaded(buf) and api.nvim_buf_get_name(buf) ~= '' then
-         attach(self, buf)
-      end
-   end
-
    return self
 end
 
-function M.draw(_self, _bufnr, _top, _bot)
+function M:on_lines(buf, _, last_orig, last_new)
+
+
+   if last_orig > last_new then
+      self:remove(buf, last_new + 1, last_orig)
+   end
 end
 
-function M.remove(self, bufnr, start_lnum, end_lnum)
+function M:remove(bufnr, start_lnum, end_lnum)
    if start_lnum then
       api.nvim_buf_clear_namespace(bufnr, self.ns, start_lnum - 1, end_lnum or start_lnum)
    else
@@ -58,17 +33,7 @@ function M.remove(self, bufnr, start_lnum, end_lnum)
    end
 end
 
-local function placed(self, bufnr, start, last)
-   local marks = api.nvim_buf_get_extmarks(
-   bufnr, self.ns,
-   { start - 1, 0 },
-   { last or start, 0 },
-   { limit = 1 })
-
-   return #marks > 0
-end
-
-function M.schedule(self, bufnr, signs)
+function M:add(bufnr, signs)
    if not config.signcolumn and not config.numhl and not config.linehl then
 
       return
@@ -77,7 +42,7 @@ function M.schedule(self, bufnr, signs)
    local cfg = self.config
 
    for _, s in ipairs(signs) do
-      if not placed(self, bufnr, s.lnum) then
+      if not self:contains(bufnr, s.lnum) then
          local cs = cfg[s.type]
          local text = cs.text
          if config.signcolumn and cs.show_count and s.count then
@@ -99,15 +64,13 @@ function M.schedule(self, bufnr, signs)
    end
 end
 
-function M.add(self, bufnr, signs)
-   self:schedule(bufnr, signs)
+function M:contains(bufnr, start, last)
+   local marks = api.nvim_buf_get_extmarks(
+   bufnr, self.ns, { start - 1, 0 }, { last or start, 0 }, { limit = 1 })
+   return #marks > 0
 end
 
-function M.need_redraw(self, bufnr, start, last)
-   return placed(self, bufnr, start, last)
-end
-
-function M.reset(self)
+function M:reset()
    for _, buf in ipairs(api.nvim_list_bufs()) do
       self:remove(buf)
    end
