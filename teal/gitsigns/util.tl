@@ -132,8 +132,8 @@ function M.calc_base(base: string): string
   return base
 end
 
-function M.setdefault(tbl: table)
-  setmetatable(tbl, {
+function M.emptytable<T>(): T
+  return setmetatable({} as T, {
     __index = function(t: table, k: any): any
       t[k] = {}
       return t[k]

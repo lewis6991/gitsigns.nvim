@@ -3,6 +3,8 @@ local StatusObj = require('gitsigns.status').StatusObj
 
 local util = require('gitsigns.util')
 
+local min, max = math.min, math.max
+
 local M = {Node = {}, Hunk = {}, Hunk_Public = {}, }
 
 
@@ -64,8 +66,8 @@ function M.create_hunk(start_a, count_a, start_b, count_b)
       hunk.type = "add"
    else
 
-      hunk.dend = added.start + math.min(added.count, removed.count) - 1
-      hunk.vend = hunk.dend + math.max(added.count - removed.count, 0)
+      hunk.dend = added.start + min(added.count, removed.count) - 1
+      hunk.vend = hunk.dend + max(added.count - removed.count, 0)
       hunk.type = "change"
    end
 
@@ -82,8 +84,8 @@ function M.create_partial_hunk(hunks, top, bot)
 
          added_in_range = added_in_hunk
       else
-         local added_above_bot = math.max(0, bot + 1 - (h.start + h.removed.count))
-         local added_above_top = math.max(0, top - (h.start + h.removed.count))
+         local added_above_bot = max(0, bot + 1 - (h.start + h.removed.count))
+         local added_above_top = max(0, top - (h.start + h.removed.count))
 
          if h.start >= top and h.start <= bot then
 
@@ -146,35 +148,40 @@ function M.parse_diff_line(line)
    return hunk
 end
 
-function M.calc_signs(hunk)
+
+function M.calc_signs(hunk, min_lnum, max_lnum)
+   local added, removed = hunk.added.count, hunk.removed.count
+
+   if hunk.type == 'delete' and hunk.start == 0 then
+      if min_lnum <= 1 then
+
+         return { { type = 'topdelete', count = removed, lnum = 1 } }
+      else
+         return {}
+      end
+   end
+
    local signs = {}
-   local count = hunk.type == 'add' and hunk.added.count or
-   hunk.removed.count
-   for i = hunk.start, hunk.dend do
-      local topdelete = hunk.type == 'delete' and i == 0
-      local changedelete = hunk.type == 'change' and
-      hunk.removed.count > hunk.added.count and
-      i == hunk.dend
+
+   for lnum = max(hunk.start, min_lnum), min(hunk.dend, max_lnum) do
+      local changedelete = hunk.type == 'change' and removed > added and lnum == hunk.dend
 
       signs[#signs + 1] = {
-         type = topdelete and 'topdelete' or
-         changedelete and 'changedelete' or
-         hunk.type,
-         count = i == hunk.start and count,
-         lnum = topdelete and 1 or i,
+         type = changedelete and 'changedelete' or hunk.type,
+         count = lnum == hunk.start and (hunk.type == 'add' and added or removed),
+         lnum = lnum,
       }
    end
-   if hunk.type == "change" then
-      local add, remove = hunk.added.count, hunk.removed.count
-      if add > remove then
-         local count_diff = add - remove
-         for i = 1, count_diff do
-            signs[#signs + 1] = {
-               type = 'add',
-               count = i == 1 and count_diff,
-               lnum = hunk.dend + i,
-            }
-         end
+
+   if hunk.type == "change" and added > removed and
+      hunk.dend >= min_lnum and hunk.dend <= max_lnum then
+      local count = added - removed
+      for lnum = max(hunk.dend, min_lnum), min(hunk.dend + count, max_lnum) do
+         signs[#signs + 1] = {
+            type = 'add',
+            count = lnum == hunk.dend and count,
+            lnum = lnum,
+         }
       end
    end
 
@@ -234,10 +241,10 @@ function M.get_summary(hunks)
          status.removed = status.removed + hunk.removed.count
       elseif hunk.type == 'change' then
          local add, remove = hunk.added.count, hunk.removed.count
-         local min = math.min(add, remove)
-         status.changed = status.changed + min
-         status.added = status.added + add - min
-         status.removed = status.removed + remove - min
+         local delta = min(add, remove)
+         status.changed = status.changed + delta
+         status.added = status.added + add - delta
+         status.removed = status.removed + remove - delta
       end
    end
 

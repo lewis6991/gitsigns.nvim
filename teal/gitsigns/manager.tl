@@ -65,26 +65,26 @@ function M.apply_win_signs(bufnr: integer, hunks: {Hunk}, top: integer, bot: int
   for i, hunk in ipairs(hunks or {}) do
     if clear and i == 1
         or top <= hunk.vend and bot >= hunk.start then
-      signs:schedule(bufnr, gs_hunks.calc_signs(hunk))
+      signs:add(bufnr, gs_hunks.calc_signs(hunk, top, bot))
     end
     if hunk.start > bot then
       break
     end
   end
-
-  signs:draw(bufnr, top, bot)
 end
 
-M.on_lines = function(buf: integer, first: integer, _: integer, last_new: integer): boolean
+M.on_lines = function(buf: integer, first: integer, last_orig: integer, last_new: integer): boolean
   local bcache = cache[buf]
   if not bcache then
     dprint('Cache for buffer was nil. Detaching')
     return true
   end
 
+  signs:on_lines(buf, first, last_orig, last_new)
+
   -- Signs in changed regions get invalidated so we need to force a redraw if
   -- any signs get removed.
-  if bcache.hunks and signs:need_redraw(buf, first, last_new) then
+  if bcache.hunks and signs:contains(buf, first, last_new) then
     -- invalidate hunks to force a sign redraw
     -- TODO(lewis6991): Force redraw without having to re-diff
     bcache.hunks = nil

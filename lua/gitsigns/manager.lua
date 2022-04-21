@@ -65,26 +65,26 @@ function M.apply_win_signs(bufnr, hunks, top, bot, clear)
    for i, hunk in ipairs(hunks or {}) do
       if clear and i == 1 or
          top <= hunk.vend and bot >= hunk.start then
-         signs:schedule(bufnr, gs_hunks.calc_signs(hunk))
+         signs:add(bufnr, gs_hunks.calc_signs(hunk, top, bot))
       end
       if hunk.start > bot then
          break
       end
    end
-
-   signs:draw(bufnr, top, bot)
 end
 
-M.on_lines = function(buf, first, _, last_new)
+M.on_lines = function(buf, first, last_orig, last_new)
    local bcache = cache[buf]
    if not bcache then
       dprint('Cache for buffer was nil. Detaching')
       return true
    end
 
+   signs:on_lines(buf, first, last_orig, last_new)
 
 
-   if bcache.hunks and signs:need_redraw(buf, first, last_new) then
+
+   if bcache.hunks and signs:contains(buf, first, last_new) then
 
 
       bcache.hunks = nil
