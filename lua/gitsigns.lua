@@ -113,6 +113,25 @@ end
 
 local vimgrep_running = false
 
+local function on_lines(_, bufnr, _, first, last_orig, last_new, byte_count)
+   if first == last_orig and last_orig == last_new and byte_count == 0 then
+
+
+      return
+   end
+   return manager.on_lines(bufnr, first, last_orig, last_new)
+end
+
+local function on_reload(_, bufnr)
+   local __FUNC__ = 'on_reload'
+   dprint('Reload')
+   manager.update_debounced(bufnr)
+end
+
+local function on_detach(_, bufnr)
+   M.detach(bufnr, true)
+end
+
 
 
 
@@ -215,22 +234,9 @@ local attach_throttled = throttle_by_id(function(cbuf, aucmd)
    scheduler()
 
    api.nvim_buf_attach(cbuf, false, {
-      on_lines = function(_, buf, _, first, last_orig, last_new, byte_count)
-         if first == last_orig and last_orig == last_new and byte_count == 0 then
-
-
-            return
-         end
-         return manager.on_lines(buf, first, last_orig, last_new)
-      end,
-      on_reload = function(_, bufnr)
-         local __FUNC__ = 'on_reload'
-         dprint('Reload')
-         manager.update_debounced(bufnr)
-      end,
-      on_detach = function(_, buf)
-         M.detach(buf, true)
-      end,
+      on_lines = on_lines,
+      on_reload = on_reload,
+      on_detach = on_detach,
    })
 
    if config.keymaps and not vim.tbl_isempty(config.keymaps) then
@@ -446,10 +452,8 @@ M.setup = void(function(cfg)
    autocmd('DirChanged', debounce_trailing(100, manager.update_cwd_head))
 end)
 
-setmetatable(M, {
+return setmetatable(M, {
    __index = function(_, f)
       return (require('gitsigns.actions'))[f]
    end,
 })
-
-return M

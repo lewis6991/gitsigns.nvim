@@ -113,6 +113,25 @@ end
 
 local vimgrep_running = false
 
+local function on_lines(_, bufnr: integer, _, first: integer, last_orig: integer, last_new: integer, byte_count: integer): boolean
+  if first == last_orig and last_orig == last_new and byte_count == 0 then
+    -- on_lines can be called twice for undo events; ignore the second
+    -- call which indicates no changes.
+    return
+  end
+  return manager.on_lines(bufnr, first, last_orig, last_new)
+end
+
+local function on_reload(_, bufnr: integer)
+  local __FUNC__ = 'on_reload'
+  dprint('Reload')
+  manager.update_debounced(bufnr)
+end
+
+local function on_detach(_, bufnr: integer)
+  M.detach(bufnr, true)
+end
+
 -- Ensure attaches cannot be interleaved.
 -- Since attaches are asynchronous we need to make sure an attach isn't
 -- performed whilst another one is in progress.
@@ -215,22 +234,9 @@ local attach_throttled = throttle_by_id(function(cbuf: integer, aucmd: string)
   scheduler()
 
   api.nvim_buf_attach(cbuf, false, {
-    on_lines = function(_, buf: integer, _, first: integer, last_orig: integer, last_new: integer, byte_count: integer): boolean
-      if first == last_orig and last_orig == last_new and byte_count == 0 then
-        -- on_lines can be called twice for undo events; ignore the second
-        -- call which indicates no changes.
-        return
-      end
-      return manager.on_lines(buf, first, last_orig, last_new)
-    end,
-    on_reload = function(_, bufnr: integer)
-      local __FUNC__ = 'on_reload'
-      dprint('Reload')
-      manager.update_debounced(bufnr)
-    end,
-    on_detach = function(_, buf: integer)
-      M.detach(buf, true)
-    end
+    on_lines  = on_lines,
+    on_reload = on_reload,
+    on_detach = on_detach
   })
 
   if config.keymaps and not vim.tbl_isempty(config.keymaps) then
@@ -446,10 +452,8 @@ M.setup = void(function(cfg: Config)
   autocmd('DirChanged', debounce_trailing(100, manager.update_cwd_head))
 end)
 
-setmetatable(M, {
+return setmetatable(M, {
   __index = function(_, f: string): any
     return (require('gitsigns.actions') as {string:function})[f]
   end
 })
-
-return M

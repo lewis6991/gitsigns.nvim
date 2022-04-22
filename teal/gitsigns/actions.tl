@@ -13,8 +13,8 @@ local gs_cache       = require('gitsigns.cache')
 local cache          = gs_cache.cache
 local CacheEntry     = gs_cache.CacheEntry
 
-local gs_hunks = require('gitsigns.hunks')
-local Hunk = gs_hunks.Hunk
+local gs_hunks    = require('gitsigns.hunks')
+local Hunk        = gs_hunks.Hunk
 local Hunk_Public = gs_hunks.Hunk_Public
 
 local api = vim.api
@@ -28,14 +28,19 @@ local record NavHunkOpts
   preview: boolean
 end
 
-local record M
-  stage_hunk         : function -- function()
-  undo_stage_hunk    : function -- function()
-  reset_hunk         : function -- function(bufnr: integer, hunk: Hunk)
+local record BlameOpts
+  full: boolean
+  ignore_whitespace: boolean
+end
 
-  stage_buffer       : function -- function()
-  reset_buffer       : function -- function()
-  reset_buffer_index : function -- function()
+local record M
+  stage_hunk         : function({integer, integer})
+  undo_stage_hunk    : function()
+  reset_hunk         : function({integer, integer})
+
+  stage_buffer       : function()
+  reset_buffer       : function()
+  reset_buffer_index : function()
 
   next_hunk          : function(NavHunkOpts)
   prev_hunk          : function(NavHunkOpts)
@@ -43,7 +48,7 @@ local record M
   select_hunk        : function()
   get_hunks          : function(bufnr: integer): {Hunk_Public}
 
-  blame_line         : function -- function()
+  blame_line         : function(BlameOpts)
   change_base        : function(base: string, global: boolean)
   reset_base         : function(global: boolean)
   diffthis           : function(base: string)
@@ -588,9 +593,9 @@ end
 --- window.
 M.preview_hunk = noautocmd(function()
   -- Wrap in noautocmd so vim-repeat continues to work
-  local cbuf = current_buf()
-  local bcache = cache[cbuf]
-  local hunk, index = get_cursor_hunk(cbuf, bcache.hunks)
+  local bufnr = current_buf()
+  local bcache = cache[bufnr]
+  local hunk, index = get_cursor_hunk(bufnr, bcache.hunks)
 
   if not hunk then return end
 
@@ -604,7 +609,7 @@ M.preview_hunk = noautocmd(function()
   local lines_spec = lines_format(lines_fmt, {
     hunk_no = index,
     num_hunks = #bcache.hunks,
-    hunk = gs_hunks.patch_lines(hunk, vim.bo[cbuf].fileformat),
+    hunk = gs_hunks.patch_lines(hunk, vim.bo[bufnr].fileformat),
   })
 
   popup.create(lines_spec, config.preview_config)
@@ -693,11 +698,6 @@ local function create_blame_fmt(is_committed: boolean, full: boolean): popup.Lin
     header,
     {{'<summary>', 'Normal'}}
   }
-end
-
-local record BlameOpts
-  full: boolean
-  ignore_whitespace: boolean
 end
 
 --- Run git blame on the current line and show the results in a
@@ -801,15 +801,15 @@ M.change_base = void(function(base: string, global: boolean)
   if global then
     config.base = base
 
-    for buf,bcache in pairs(cache as {integer:CacheEntry}) do
-      update_buf_base(buf, bcache, base)
+    for bufnr, bcache in pairs(cache as {integer:CacheEntry}) do
+      update_buf_base(bufnr, bcache, base)
     end
   else
-    local buf = current_buf()
-    local bcache = cache[buf]
+    local bufnr = current_buf()
+    local bcache = cache[bufnr]
     if not bcache then return end
 
-    update_buf_base(buf, bcache, base)
+    update_buf_base(bufnr, bcache, base)
   end
 end)
 

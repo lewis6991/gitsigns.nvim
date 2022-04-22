@@ -42,10 +42,6 @@ local M = {}
 
 
 
-
-
-
-
 local schedule_if_buf_valid = function(buf, cb)
    vim.schedule(function()
       if vim.api.nvim_buf_is_valid(buf) then

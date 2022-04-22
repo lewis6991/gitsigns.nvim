@@ -114,7 +114,6 @@ M.run = void(function(base, vertical)
    end
 end)
 
-
 local function should_reload(bufnr)
    if not vim.bo[bufnr].modified then
       return true

@@ -1,4 +1,3 @@
-
 local api = vim.api
 
 local nvim = require('gitsigns.nvim')

@@ -15,8 +15,8 @@ local HlMark = popup.HlMark
 
 local api = vim.api
 
-local function bufnr_calc_width(buf, lines)
-   return api.nvim_buf_call(buf, function()
+local function bufnr_calc_width(bufnr, lines)
+   return api.nvim_buf_call(bufnr, function()
       local width = 0
       for _, l in ipairs(lines) do
          local len = vim.fn.strdisplaywidth(l)
@@ -29,22 +29,22 @@ local function bufnr_calc_width(buf, lines)
 end
 
 
-local function expand_height(win_id, nlines)
+local function expand_height(winid, nlines)
    local newheight = 0
    for _ = 0, 50 do
-      local winheight = api.nvim_win_get_height(win_id)
+      local winheight = api.nvim_win_get_height(winid)
       if newheight > winheight then
 
          break
       end
-      local wd = api.nvim_win_call(win_id, function()
+      local wd = api.nvim_win_call(winid, function()
          return vim.fn.line('w$')
       end)
       if wd >= nlines then
          break
       end
       newheight = winheight + nlines - wd
-      api.nvim_win_set_height(win_id, newheight)
+      api.nvim_win_set_height(winid, newheight)
    end
 end
 
@@ -127,23 +127,23 @@ function popup.create0(lines, opts)
    opts1.height = opts1.height or #lines
    opts1.width = opts1.width or bufnr_calc_width(bufnr, lines)
 
-   local win_id = api.nvim_open_win(bufnr, false, opts1)
+   local winid = api.nvim_open_win(bufnr, false, opts1)
 
-   api.nvim_win_set_var(win_id, 'gitsigns_preview', true)
+   api.nvim_win_set_var(winid, 'gitsigns_preview', true)
 
    if not opts.height then
-      expand_height(win_id, #lines)
+      expand_height(winid, #lines)
    end
 
    if opts1.style == 'minimal' then
 
 
-      api.nvim_win_set_option(win_id, 'signcolumn', 'no')
+      api.nvim_win_set_option(winid, 'signcolumn', 'no')
    end
 
 
 
-   local group = 'gitsigns_popup' .. win_id
+   local group = 'gitsigns_popup' .. winid
    nvim.augroup(group)
    local old_cursor = api.nvim_win_get_cursor(0)
 
@@ -153,17 +153,17 @@ function popup.create0(lines, opts)
          local cursor = api.nvim_win_get_cursor(0)
 
          if (old_cursor[1] ~= cursor[1] or old_cursor[2] ~= cursor[2]) and
-            api.nvim_get_current_win() ~= win_id then
+            api.nvim_get_current_win() ~= winid then
 
             nvim.augroup(group)
-            pcall(api.nvim_win_close, win_id, true)
+            pcall(api.nvim_win_close, winid, true)
             return
          end
          old_cursor = cursor
       end,
    })
 
-   return win_id, bufnr
+   return winid, bufnr
 end
 
 local ns = api.nvim_create_namespace('gitsigns_popup')

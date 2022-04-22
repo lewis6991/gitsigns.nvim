@@ -28,6 +28,11 @@ local NavHunkOpts = {}
 
 
 
+local BlameOpts = {}
+
+
+
+
 local M = {QFListOpts = {}, }
 
 
@@ -588,9 +593,9 @@ end
 
 M.preview_hunk = noautocmd(function()
 
-   local cbuf = current_buf()
-   local bcache = cache[cbuf]
-   local hunk, index = get_cursor_hunk(cbuf, bcache.hunks)
+   local bufnr = current_buf()
+   local bcache = cache[bufnr]
+   local hunk, index = get_cursor_hunk(bufnr, bcache.hunks)
 
    if not hunk then return end
 
@@ -604,7 +609,7 @@ M.preview_hunk = noautocmd(function()
    local lines_spec = lines_format(lines_fmt, {
       hunk_no = index,
       num_hunks = #bcache.hunks,
-      hunk = gs_hunks.patch_lines(hunk, vim.bo[cbuf].fileformat),
+      hunk = gs_hunks.patch_lines(hunk, vim.bo[bufnr].fileformat),
    })
 
    popup.create(lines_spec, config.preview_config)
@@ -694,11 +699,6 @@ local function create_blame_fmt(is_committed, full)
       { { '<summary>', 'Normal' } },
    }
 end
-
-local BlameOpts = {}
-
-
-
 
 
 
@@ -801,15 +801,15 @@ M.change_base = void(function(base, global)
    if global then
       config.base = base
 
-      for buf, bcache in pairs(cache) do
-         update_buf_base(buf, bcache, base)
+      for bufnr, bcache in pairs(cache) do
+         update_buf_base(bufnr, bcache, base)
       end
    else
-      local buf = current_buf()
-      local bcache = cache[buf]
+      local bufnr = current_buf()
+      local bcache = cache[bufnr]
       if not bcache then return end
 
-      update_buf_base(buf, bcache, base)
+      update_buf_base(bufnr, bcache, base)
    end
 end)
 

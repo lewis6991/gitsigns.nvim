@@ -2,9 +2,9 @@ local void = require('gitsigns.async').void
 local awrap = require('gitsigns.async').wrap
 local scheduler = require('gitsigns.async').scheduler
 
-local gs_cache = require('gitsigns.cache')
+local gs_cache   = require('gitsigns.cache')
 local CacheEntry = gs_cache.CacheEntry
-local cache = gs_cache.cache
+local cache      = gs_cache.cache
 
 local Signs             = require('gitsigns.signs')
 
@@ -35,15 +35,11 @@ local record M
   update           : function(integer, CacheEntry, boolean)
   update_debounced : function( bufnr: integer, CacheEntry)
   on_lines         : function(buf: integer, first: integer, last_orig: integer, last_new: integer): boolean
-
-  watch_gitdir: function(bufnr: integer, gitdir: string): uv.FSPollObj
-
-  update_cwd_head: function()
-
-  detach: function(bufnr: integer, keep_signs: boolean)
-  reset_signs: function()
-
-  setup: function()
+  watch_gitdir     : function(bufnr: integer, gitdir: string): uv.FSPollObj
+  update_cwd_head  : function()
+  detach           : function(bufnr: integer, keep_signs: boolean)
+  reset_signs      : function()
+  setup            : function()
 end
 
 local schedule_if_buf_valid = function(buf: integer, cb: function)
