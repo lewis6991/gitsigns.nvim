@@ -188,6 +188,7 @@ end
 
 local function update(bufnr)
    manager.update(bufnr)
+   scheduler()
    if vim.wo.diff then
       require('gitsigns.diffthis').update(bufnr)
    end
