@@ -39,91 +39,6 @@ local record M
   _complete  : function(arglead: string, line: string): {string}
 end
 
-local namespace: integer
-
-local handle_moved = function(bufnr: integer, bcache: CacheEntry, old_relpath: string)
-  local git_obj = bcache.git_obj
-  local do_update = false
-
-  local new_name = git_obj:has_moved()
-  if new_name then
-    dprintf('File moved to %s', new_name)
-    git_obj.relpath = new_name
-    if not git_obj.orig_relpath then
-      git_obj.orig_relpath = old_relpath
-    end
-    do_update = true
-  elseif git_obj.orig_relpath then
-    local orig_file = git_obj.repo.toplevel..util.path_sep..git_obj.orig_relpath
-    if git_obj:file_info(orig_file).relpath then
-      dprintf('Moved file reset')
-      git_obj.relpath = git_obj.orig_relpath
-      git_obj.orig_relpath = nil
-      do_update = true
-    end
-  else
-    -- File removed from index, do nothing
-  end
-
-  if do_update then
-    git_obj.file = git_obj.repo.toplevel..util.path_sep..git_obj.relpath
-    bcache.file = git_obj.file
-    git_obj:update_file_info()
-    scheduler()
-    api.nvim_buf_set_name(bufnr, bcache.file)
-  end
-end
-
-local watch_gitdir = function(bufnr: integer, gitdir: string): uv.FSPollObj
-  dprintf('Watching git dir')
-  local w = uv.new_fs_poll()
-  w:start(gitdir, config.watch_gitdir.interval, void(function(err: string)
-    local __FUNC__ = 'watcher_cb'
-    if err then
-      dprintf('Git dir update error: %s', err)
-      return
-    end
-    dprint('Git dir update')
-
-    local bcache = cache[bufnr]
-
-    if not bcache then
-      -- Very occasionally an external git operation may cause the buffer to
-      -- detach and update the git dir simultaneously. When this happens this
-      -- handler will trigger but there will be no cache.
-      dprint('Has detached, aborting')
-      return
-    end
-
-    local git_obj = bcache.git_obj
-
-    git_obj.repo:update_abbrev_head()
-
-    scheduler()
-    Status:update(bufnr, { head = git_obj.repo.abbrev_head})
-
-    local was_tracked = git_obj.object_name ~= nil
-    local old_relpath = git_obj.relpath
-
-    if not git_obj:update_file_info() then
-      dprint('File not changed')
-      return
-    end
-
-    if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
-      -- File was tracked but is no longer tracked. Must of been removed or
-      -- moved. Check if it was moved and switch to it.
-      handle_moved(bufnr, bcache, old_relpath)
-    end
-
-    -- Invalidate
-    bcache.compare_text = nil
-
-    manager.update(bufnr, bcache)
-  end))
-  return w
-end
-
 --- Detach Gitsigns from all buffers it is attached to.
 M.detach_all = function()
   for k, _ in pairs(cache as {integer:CacheEntry}) do
@@ -294,7 +209,7 @@ local attach_throttled = throttle_by_id(function(cbuf: integer, aucmd: string)
     base           = config.base,
     file           = file,
     commit         = commit,
-    gitdir_watcher = watch_gitdir(cbuf, repo.gitdir),
+    gitdir_watcher = manager.watch_gitdir(cbuf, repo.gitdir),
     git_obj        = git_obj
   }
 
@@ -404,75 +319,6 @@ M._run_func = function(range: {integer, integer, integer}, func: string, ...: st
   end
 end
 
-local cwd_watcher: uv.FSPollObj
-
-local function update_cwd_head_var(head: string)
-  if head then
-    api.nvim_set_var('gitsigns_head', head)
-  else
-    pcall(api.nvim_del_var, 'gitsigns_head')
-  end
-end
-
--- Need to debounce in case some plugin changes the cwd too often
--- (like vim-grepper)
-local update_cwd_head = void(function()
-  if cwd_watcher then
-    cwd_watcher:stop()
-  else
-    cwd_watcher = uv.new_fs_poll()
-  end
-
-  local cwd = uv.cwd()
-  local gitdir, head: string, string
-
-  -- Look in the cache first
-  for _, bcache in pairs(cache as {number:CacheEntry}) do
-    local repo = bcache.git_obj.repo
-    if repo.toplevel == cwd then
-      head = repo.abbrev_head
-      gitdir = repo.gitdir
-      break
-    end
-  end
-
-  if not head or not gitdir then
-    _, gitdir, head = git.get_repo_info(cwd)
-  end
-
-  scheduler()
-  update_cwd_head_var(head)
-
-  if not gitdir then
-    return
-  end
-
-  local towatch = gitdir..'/HEAD'
-
-  if cwd_watcher:getpath() == towatch then
-    -- Already watching
-    return
-  end
-
-  -- Watch .git/HEAD to detect branch changes
-  cwd_watcher:start(
-    towatch,
-    config.watch_gitdir.interval,
-    void(function(err: string)
-      local __FUNC__ = 'cwd_watcher_cb'
-      if err then
-        dprintf('Git dir update error: %s', err)
-        return
-      end
-      dprint('Git cwd dir update')
-
-      local _, _, new_head = git.get_repo_info(cwd)
-      scheduler()
-      update_cwd_head_var(new_head)
-    end)
-  )
-end)
-
 local function setup_command()
   if api.nvim_create_user_command then
     api.nvim_create_user_command('Gitsigns', function(params: api.UserCmdParams)
@@ -547,8 +393,6 @@ M.setup = void(function(cfg: Config)
     return
   end
 
-  namespace = api.nvim_create_namespace('gitsigns')
-
   gs_debug.debug_mode = config.debug_mode
   gs_debug.verbose = config._verbose
 
@@ -568,25 +412,6 @@ M.setup = void(function(cfg: Config)
   on_or_after_vimenter(hl.setup_highlights)
 
   setup_command()
-
-  -- Calling this before any await calls will stop nvim's intro messages being
-  -- displayed
-  api.nvim_set_decoration_provider(namespace, {
-    on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
-      local bcache = cache[bufnr]
-      if not bcache or not bcache.hunks then
-        return false
-      end
-      manager.apply_win_signs(bufnr, bcache.hunks, top+1, bot+1)
-
-      if not (config.word_diff and config.diff_opts.internal) then
-        return false
-      end
-    end,
-    on_line = function(_, _winid: integer, bufnr: integer, row: integer)
-      manager.apply_word_diff(bufnr, row)
-    end
-  })
 
   git.enable_yadm = config.yadm.enable
   git.set_version(config._git_version)
@@ -635,8 +460,10 @@ M.setup = void(function(cfg: Config)
   require('gitsigns.current_line_blame').setup()
 
   scheduler()
-  update_cwd_head()
-  autocmd('DirChanged', debounce_trailing(100, update_cwd_head))
+  manager.update_cwd_head()
+  -- Need to debounce in case some plugin changes the cwd too often
+  -- (like vim-grepper)
+  autocmd('DirChanged', debounce_trailing(100, manager.update_cwd_head))
 end)
 
 setmetatable(M, {

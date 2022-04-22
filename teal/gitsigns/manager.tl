@@ -1,5 +1,6 @@
 local void = require('gitsigns.async').void
 local awrap = require('gitsigns.async').wrap
+local scheduler = require('gitsigns.async').scheduler
 
 local gs_cache = require('gitsigns.cache')
 local CacheEntry = gs_cache.CacheEntry
@@ -18,6 +19,7 @@ local eprint            = gs_debug.eprint
 local subprocess        = require('gitsigns.subprocess')
 local util              = require('gitsigns.util')
 local run_diff          = require('gitsigns.diff')
+local git               = require('gitsigns.git')
 
 local gs_hunks          = require("gitsigns.hunks")
 local Hunk              = gs_hunks.Hunk
@@ -25,16 +27,18 @@ local Hunk              = gs_hunks.Hunk
 local config            = require('gitsigns.config').config
 
 local api = vim.api
+local uv = vim.loop
 
 local signs: Signs
 
 local record M
   update           : function(integer, CacheEntry, boolean)
   update_debounced : function( bufnr: integer, CacheEntry)
-  apply_win_signs  : function(bufnr: integer, {Hunk}, top: integer, bot: integer)
   on_lines         : function(buf: integer, first: integer, last_orig: integer, last_new: integer): boolean
 
-  apply_word_diff: function(buf: integer, row: integer)
+  watch_gitdir: function(bufnr: integer, gitdir: string): uv.FSPollObj
+
+  update_cwd_head: function()
 
   detach: function(bufnr: integer, keep_signs: boolean)
   reset_signs: function()
@@ -52,7 +56,7 @@ end
 
 local scheduler_if_buf_valid = awrap(schedule_if_buf_valid, 2)
 
-function M.apply_win_signs(bufnr: integer, hunks: {Hunk}, top: integer, bot: integer, clear: boolean)
+local function apply_win_signs(bufnr: integer, hunks: {Hunk}, top: integer, bot: integer, clear: boolean)
   if clear then
     signs:remove(bufnr)  -- Remove all signs
   end
@@ -95,7 +99,7 @@ end
 
 local ns = api.nvim_create_namespace('gitsigns')
 
-M.apply_word_diff = function(bufnr: integer, row: integer)
+local function apply_word_diff(bufnr: integer, row: integer)
   if not cache[bufnr] or not cache[bufnr].hunks then
     return
   end
@@ -241,7 +245,7 @@ M.update = throttle_by_id(function(bufnr: integer, bcache: CacheEntry)
   if gs_hunks.compare_heads(bcache.hunks, old_hunks) then
     -- Apply signs to the window. Other signs will be added by the decoration
     -- provider as they are drawn.
-    M.apply_win_signs(bufnr, bcache.hunks, vim.fn.line('w0'), vim.fn.line('w$'), true)
+    apply_win_signs(bufnr, bcache.hunks, vim.fn.line('w0'), vim.fn.line('w$'), true)
 
     show_deleted(bufnr)
   end
@@ -260,11 +264,181 @@ M.detach = function(bufnr: integer, keep_signs: boolean)
   end
 end
 
+local function handle_moved(bufnr: integer, bcache: CacheEntry, old_relpath: string)
+  local git_obj = bcache.git_obj
+  local do_update = false
+
+  local new_name = git_obj:has_moved()
+  if new_name then
+    dprintf('File moved to %s', new_name)
+    git_obj.relpath = new_name
+    if not git_obj.orig_relpath then
+      git_obj.orig_relpath = old_relpath
+    end
+    do_update = true
+  elseif git_obj.orig_relpath then
+    local orig_file = git_obj.repo.toplevel..util.path_sep..git_obj.orig_relpath
+    if git_obj:file_info(orig_file).relpath then
+      dprintf('Moved file reset')
+      git_obj.relpath = git_obj.orig_relpath
+      git_obj.orig_relpath = nil
+      do_update = true
+    end
+  else
+    -- File removed from index, do nothing
+  end
+
+  if do_update then
+    git_obj.file = git_obj.repo.toplevel..util.path_sep..git_obj.relpath
+    bcache.file = git_obj.file
+    git_obj:update_file_info()
+    scheduler()
+    api.nvim_buf_set_name(bufnr, bcache.file)
+  end
+end
+
+
+M.watch_gitdir = function(bufnr: integer, gitdir: string): uv.FSPollObj
+  dprintf('Watching git dir')
+  local w = uv.new_fs_poll()
+  w:start(gitdir, config.watch_gitdir.interval, void(function(err: string)
+    local __FUNC__ = 'watcher_cb'
+    if err then
+      dprintf('Git dir update error: %s', err)
+      return
+    end
+    dprint('Git dir update')
+
+    local bcache = cache[bufnr]
+
+    if not bcache then
+      -- Very occasionally an external git operation may cause the buffer to
+      -- detach and update the git dir simultaneously. When this happens this
+      -- handler will trigger but there will be no cache.
+      dprint('Has detached, aborting')
+      return
+    end
+
+    local git_obj = bcache.git_obj
+
+    git_obj.repo:update_abbrev_head()
+
+    scheduler()
+    Status:update(bufnr, { head = git_obj.repo.abbrev_head})
+
+    local was_tracked = git_obj.object_name ~= nil
+    local old_relpath = git_obj.relpath
+
+    if not git_obj:update_file_info() then
+      dprint('File not changed')
+      return
+    end
+
+    if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
+      -- File was tracked but is no longer tracked. Must of been removed or
+      -- moved. Check if it was moved and switch to it.
+      handle_moved(bufnr, bcache, old_relpath)
+    end
+
+    -- Invalidate
+    bcache.compare_text = nil
+
+    M.update(bufnr, bcache)
+  end))
+  return w
+end
+
+local cwd_watcher: uv.FSPollObj
+
+local function update_cwd_head_var(head: string)
+  if head then
+    api.nvim_set_var('gitsigns_head', head)
+  else
+    pcall(api.nvim_del_var, 'gitsigns_head')
+  end
+end
+
+M.update_cwd_head = void(function()
+  if cwd_watcher then
+    cwd_watcher:stop()
+  else
+    cwd_watcher = uv.new_fs_poll()
+  end
+
+  local cwd = uv.cwd()
+  local gitdir, head: string, string
+
+  -- Look in the cache first
+  for _, bcache in pairs(cache as {number:CacheEntry}) do
+    local repo = bcache.git_obj.repo
+    if repo.toplevel == cwd then
+      head = repo.abbrev_head
+      gitdir = repo.gitdir
+      break
+    end
+  end
+
+  if not head or not gitdir then
+    _, gitdir, head = git.get_repo_info(cwd)
+  end
+
+  scheduler()
+  update_cwd_head_var(head)
+
+  if not gitdir then
+    return
+  end
+
+  local towatch = gitdir..'/HEAD'
+
+  if cwd_watcher:getpath() == towatch then
+    -- Already watching
+    return
+  end
+
+  -- Watch .git/HEAD to detect branch changes
+  cwd_watcher:start(
+    towatch,
+    config.watch_gitdir.interval,
+    void(function(err: string)
+      local __FUNC__ = 'cwd_watcher_cb'
+      if err then
+        dprintf('Git dir update error: %s', err)
+        return
+      end
+      dprint('Git cwd dir update')
+
+      local _, _, new_head = git.get_repo_info(cwd)
+      scheduler()
+      update_cwd_head_var(new_head)
+    end)
+  )
+end)
+
 M.reset_signs = function()
   signs:reset()  -- Remove all signs
 end
 
 M.setup = function()
+  -- Calling this before any await calls will stop nvim's intro messages being
+  -- displayed
+  api.nvim_set_decoration_provider(ns, {
+    on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
+      local bcache = cache[bufnr]
+      if not bcache or not bcache.hunks then
+        return false
+      end
+      apply_win_signs(bufnr, bcache.hunks, top+1, bot+1)
+
+      if not (config.word_diff and config.diff_opts.internal) then
+        return false
+      end
+    end,
+    on_line = function(_, _winid: integer, bufnr: integer, row: integer)
+      apply_word_diff(bufnr, row)
+    end
+  })
+
   signs = Signs.new(config.signs)
   M.update_debounced = debounce_trailing(config.update_debounce, void(M.update)) as function(integer, CacheEntry)
 end
