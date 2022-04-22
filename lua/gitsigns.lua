@@ -579,11 +579,12 @@ M.setup = void(function(cfg)
          end
          manager.apply_win_signs(bufnr, bcache.hunks, top + 1, bot + 1)
 
-         if config.word_diff and config.diff_opts.internal then
-            for i = top, bot do
-               manager.apply_word_diff(bufnr, i)
-            end
+         if not (config.word_diff and config.diff_opts.internal) then
+            return false
          end
+      end,
+      on_line = function(_, _winid, bufnr, row)
+         manager.apply_word_diff(bufnr, row)
       end,
    })
 
