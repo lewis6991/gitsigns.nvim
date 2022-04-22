@@ -2,13 +2,13 @@ local M = {}
 
 local callbacks = {}
 
-function M._exec(id)
-   callbacks[id]()
+function M._exec(id, ...)
+   callbacks[id](...)
 end
 
 local F = M
 
-function M.set(fn, is_expr)
+function M.set(fn, is_expr, args)
    local id
 
    if jit then
@@ -21,8 +21,13 @@ function M.set(fn, is_expr)
       F[id] = fn
       return string.format("v:lua.require'gitsigns.nvim.callbacks'." .. id)
    else
-      callbacks[id] = function() fn() end
-      return string.format('lua require("gitsigns.nvim.callbacks")._exec("%s")', id)
+      if args then
+         callbacks[id] = fn
+         return string.format('lua require("gitsigns.nvim.callbacks")._exec("%s", %s)', id, args)
+      else
+         callbacks[id] = function() fn() end
+         return string.format('lua require("gitsigns.nvim.callbacks")._exec("%s")', id)
+      end
    end
 end
 
