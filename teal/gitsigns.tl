@@ -33,10 +33,6 @@ local record M
   detach     : function(bufnr: integer, _keep_signs: boolean)
   detach_all : function()
   attach     : function(cbuf: integer, trigger: string)
-
-  -- Internal, API unstable
-  _run_func  : function(range: {integer, integer, integer}, func: string, ...: any)
-  _complete  : function(arglead: string, line: string): {string}
 end
 
 --- Detach Gitsigns from all buffers it is attached to.
@@ -255,7 +251,7 @@ end)
 
 local M0 = M as {string:function}
 
-M._complete = function(arglead: string, line: string): {string}
+local function complete(arglead: string, line: string): {string}
   local n: integer = #vim.split(line, '%s+')
 
   local matches: {string} = {}
@@ -297,7 +293,7 @@ local function parse_args_to_lua(...: string): {any}
   return args
 end
 
-M._run_func = function(range: {integer, integer, integer}, func: string, ...: string)
+local function run_func(range: {integer, integer, integer}, func: string, ...: string)
   local actions = require('gitsigns.actions')
   local actions0 = actions as {string:function}
 
@@ -320,26 +316,10 @@ M._run_func = function(range: {integer, integer, integer}, func: string, ...: st
 end
 
 local function setup_command()
-  if api.nvim_create_user_command then
-    api.nvim_create_user_command('Gitsigns', function(params: api.UserCmdParams)
-      local fargs = vim.split(params.args, '%s+')
-      M._run_func({params.range, params.line1, params.line2}, unpack(fargs))
-    end, {
-      force = true,
-      nargs = '+',
-      range = true,
-      complete = M._complete
-    })
-  else
-    vim.cmd(table.concat({
-      'command!',
-      '-range',
-      '-nargs=+',
-      '-complete=customlist,v:lua.package.loaded.gitsigns._complete',
-      'Gitsigns',
-      'lua require("gitsigns")._run_func({<range>, <line1>, <line2>}, <f-args>)'
-    }, ' '))
-  end
+  nvim.command('Gitsigns', function(params: api.UserCmdParams)
+    local fargs = vim.split(params.args, '%s+')
+    run_func({params.range, params.line1, params.line2}, unpack(fargs))
+  end, { force = true, nargs = '+', range = true, complete = complete })
 end
 
 local function wrap_func(fn: function, ...: any): function()

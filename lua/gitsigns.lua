@@ -36,10 +36,6 @@ local M = {}
 
 
 
-
-
-
-
 M.detach_all = function()
    for k, _ in pairs(cache) do
       M.detach(k)
@@ -255,7 +251,7 @@ end)
 
 local M0 = M
 
-M._complete = function(arglead, line)
+local function complete(arglead, line)
    local n = #vim.split(line, '%s+')
 
    local matches = {}
@@ -297,7 +293,7 @@ local function parse_args_to_lua(...)
    return args
 end
 
-M._run_func = function(range, func, ...)
+local function run_func(range, func, ...)
    local actions = require('gitsigns.actions')
    local actions0 = actions
 
@@ -320,26 +316,10 @@ M._run_func = function(range, func, ...)
 end
 
 local function setup_command()
-   if api.nvim_create_user_command then
-      api.nvim_create_user_command('Gitsigns', function(params)
-         local fargs = vim.split(params.args, '%s+')
-         M._run_func({ params.range, params.line1, params.line2 }, unpack(fargs))
-      end, {
-         force = true,
-         nargs = '+',
-         range = true,
-         complete = M._complete,
-      })
-   else
-      vim.cmd(table.concat({
-         'command!',
-         '-range',
-         '-nargs=+',
-         '-complete=customlist,v:lua.package.loaded.gitsigns._complete',
-         'Gitsigns',
-         'lua require("gitsigns")._run_func({<range>, <line1>, <line2>}, <f-args>)',
-      }, ' '))
-   end
+   nvim.command('Gitsigns', function(params)
+      local fargs = vim.split(params.args, '%s+')
+      run_func({ params.range, params.line1, params.line2 }, unpack(fargs))
+   end, { force = true, nargs = '+', range = true, complete = complete })
 end
 
 local function wrap_func(fn, ...)

@@ -1,13 +1,17 @@
+local api = vim.api
+
 local lookups: {string:string} = {
   autocmd = "autocmds",
   augroup = "autocmds",
   highlight = "highlights",
+  command = "command",
 }
 
 local record NvimModule
-  augroup: function(string, vim.api.AugroupOpts)
-  autocmd: function(string|{string}, vim.api.AutoCmdOpts)
+  augroup: function(string, api.AugroupOpts)
+  autocmd: function(string|{string}, api.AutoCmdOpts)
   highlight: function(string, {string:any})
+  command: function(name: string, fn: function(api.UserCmdParams), opts: api.UserCmdOpts)
 end
 
 return setmetatable(NvimModule, {

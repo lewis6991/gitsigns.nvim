@@ -1,25 +1,8 @@
 local cmd = vim.cmd
 
+local set_callback = require('gitsigns.nvim.callbacks').set
+
 local M = {}
-
-local callbacks: {string:function} = {}
-
-function M._exec(id: string)
-  callbacks[id]()
-end
-
-local function set_callback(fn: function): string
-  local id: string
-
-  if jit then
-    id = string.format("%p", fn)
-  else
-    id = tostring(fn):match('function: (.*)')
-  end
-
-  callbacks[id] = function() fn() end
-  return string.format('lua require("gitsigns.nvim.autocmds_compat")._exec("%s")', id)
-end
 
 local function flatten(x: string|{string}): string
   if x is {string} then
