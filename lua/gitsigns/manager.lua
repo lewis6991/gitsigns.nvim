@@ -64,10 +64,10 @@ local function apply_win_signs(bufnr, hunks, top, bot, clear)
 
    for i, hunk in ipairs(hunks or {}) do
       if clear and i == 1 or
-         top <= hunk.vend and bot >= hunk.start then
+         top <= hunk.vend and bot >= hunk.added.start then
          signs:add(bufnr, gs_hunks.calc_signs(hunk, top, bot))
       end
-      if hunk.start > bot then
+      if hunk.added.start > bot then
          break
       end
    end
@@ -119,7 +119,7 @@ local function apply_word_diff(bufnr, row)
       return
    end
 
-   local pos = lnum - hunk.start + 1
+   local pos = lnum - hunk.added.start + 1
 
    local added_line = hunk.added.lines[pos]
    local removed_line = hunk.removed.lines[pos]
@@ -204,7 +204,7 @@ local function show_deleted(bufnr)
          virt_lines[i] = vline
       end
 
-      api.nvim_buf_set_extmark(bufnr, ns_rm, hunk.start - 1, -1, {
+      api.nvim_buf_set_extmark(bufnr, ns_rm, hunk.added.start - 1, -1, {
          virt_lines = virt_lines,
          virt_lines_above = hunk.type ~= 'delete',
       })
