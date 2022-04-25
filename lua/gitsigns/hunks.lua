@@ -174,12 +174,11 @@ function M.calc_signs(hunk, min_lnum, max_lnum)
    end
 
    if hunk.type == "change" and added > removed and
-      hunk.dend >= min_lnum and hunk.dend <= max_lnum then
-      local count = added - removed
-      for lnum = max(hunk.dend, min_lnum), min(hunk.dend + count, max_lnum) do
+      hunk.vend >= min_lnum and hunk.dend <= max_lnum then
+      for lnum = max(hunk.dend, min_lnum), min(hunk.vend, max_lnum) do
          signs[#signs + 1] = {
             type = 'add',
-            count = lnum == hunk.dend and count,
+            count = lnum == hunk.vend and (added - removed),
             lnum = lnum,
          }
       end
