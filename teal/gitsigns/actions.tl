@@ -291,11 +291,11 @@ M.reset_hunk = mk_repeatable(function(range: {integer, integer})
 
   local lstart, lend: integer, integer
   if hunk.type == 'delete' then
-    lstart = hunk.start
-    lend = hunk.start
+    lstart = hunk.added.start
+    lend = hunk.added.start
   else
-    lstart = hunk.start - 1
-    lend = hunk.start - 1 + hunk.added.count
+    lstart = hunk.added.start - 1
+    lend = hunk.added.start - 1 + hunk.added.count
   end
   util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
 end)
@@ -447,7 +447,7 @@ local function nav_hunk(opts: NavHunkOpts)
     return
   end
 
-  local row = opts.forwards and hunk.start or hunk.vend
+  local row = opts.forwards and hunk.added.start or hunk.vend
   if row then
     -- Handle topdelete
     if row == 0 then
@@ -620,7 +620,7 @@ M.select_hunk = function()
   local hunk = get_cursor_hunk()
   if not hunk then return end
 
-  vim.cmd('normal! '..hunk.start..'GV'..hunk.vend..'G')
+  vim.cmd('normal! '..hunk.added.start..'GV'..hunk.vend..'G')
 end
 
 --- Get hunk array for specified buffer.
@@ -850,9 +850,9 @@ local function hunks_to_qflist(buf_or_filename: number|string, hunks: {Hunk}, qf
     qflist[#qflist+1] = {
       bufnr    = buf_or_filename is number and (buf_or_filename as integer) or nil,
       filename = buf_or_filename is string and buf_or_filename or nil,
-      lnum = hunk.start,
+      lnum = hunk.added.start,
       text = string.format('Lines %d-%d (%d/%d)',
-      hunk.start, hunk.vend, i, #hunks),
+      hunk.added.start, hunk.vend, i, #hunks),
     }
   end
 end
