@@ -25,7 +25,7 @@ local bufread = void(function(bufnr, dbufnr, base, bcache)
    local comp_rev = bcache:get_compare_rev(util.calc_base(base))
    local text
    if util.calc_base(base) == util.calc_base(bcache.base) then
-      text = bcache:get_compare_text()
+      text = bcache.compare_text
    else
       local err
       text, err = bcache.git_obj:get_show_text(comp_rev)

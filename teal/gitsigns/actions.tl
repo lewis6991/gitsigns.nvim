@@ -308,7 +308,7 @@ M.reset_buffer = function()
     return
   end
 
-  util.set_lines(bufnr, 0, -1, bcache:get_compare_text())
+  util.set_lines(bufnr, 0, -1, bcache.compare_text)
 end
 
 --- Undo the last call of stage_hunk().
