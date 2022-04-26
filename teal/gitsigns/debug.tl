@@ -105,39 +105,28 @@ function M.eprintf(fmt: string, ...:any)
   eprint(fmt:format(...), 1)
 end
 
+local function process(raw_item: any, path: {string}): any
+  if path[#path] == vim.inspect.METATABLE then
+    return nil
+  elseif raw_item is function then
+    return nil
+  elseif raw_item is table then
+    local key = path[#path]
+    if key == 'compare_text' then
+      local item = raw_item as {string}
+      return { '...', length=#item, head=item[1] }
+    elseif not vim.tbl_isempty(raw_item) and key == 'staged_diffs' then
+      return { '...', length=#vim.tbl_keys(raw_item) }
+    end
+  end
+  return raw_item
+end
+
 function M.add_debug_functions(cache: any): {string:function}
   local R: {string:function} = {}
   R.dump_cache = function(): any
-    vim.api.nvim_echo({{vim.inspect(cache, {
-      process = function(raw_item: any, path: {string}): any
-        if path[#path] == vim.inspect.METATABLE then
-          return nil
-        elseif raw_item is function then
-          return nil
-        elseif raw_item is table then
-          local key <const> = path[#path]
-          if key == 'compare_text' then
-            local item <const> = raw_item as {string}
-            return { '...', length=#item, head=item[1] }
-          elseif not vim.tbl_isempty(raw_item) and vim.tbl_contains({
-            'staged_diffs' }, key) then
-            return { '...', length=#vim.tbl_keys(raw_item) }
-          elseif key == 'pending_signs' then
-            local keys = vim.tbl_keys(raw_item)
-            local max <const> = 100
-            if #keys > max then
-              keys.length = #keys
-              for i = max, #keys do
-                keys[i] = nil
-              end
-              keys[max] = '...'
-            end
-            return keys
-          end
-        end
-        return raw_item
-      end
-    })}}, false, {})
+    local text = vim.inspect(cache, { process = process })
+    vim.api.nvim_echo({{text}}, false, {})
     return cache
   end
 

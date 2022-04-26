@@ -1,13 +1,10 @@
 local Hunk = require("gitsigns.hunks").Hunk
 local GitObj = require('gitsigns.git').Obj
 
-local util = require('gitsigns.util')
-
 local record M
   record CacheEntry
     file          : string
     base          : string
-    compare_file  : string    -- For use with externl diff
     compare_text  : {string}  -- For use with internal diff
     hunks         : {Hunk}
     staged_diffs  : {Hunk}
@@ -16,7 +13,6 @@ local record M
     commit        : string
 
     get_compare_rev: function(CacheEntry, base: string): string
-    get_compare_text: function(self: CacheEntry): {string}
     get_diffthis_bufname: function(self: CacheEntry, rev: string): string
     invalidate: function(CacheEntry)
     new: function(CacheEntry): CacheEntry
@@ -58,13 +54,6 @@ CacheEntry.get_diffthis_bufname = function(self: CacheEntry, rev: string): strin
   )
 end
 
-CacheEntry.get_compare_text = function(self: CacheEntry): {string}
-  if self.compare_text then
-    return self.compare_text
-  end
-  return util.file_lines(self.compare_file)
-end
-
 CacheEntry.invalidate = function(self: CacheEntry)
   self.compare_text = nil
   self.hunks = nil
@@ -73,12 +62,10 @@ end
 CacheEntry.new = function(o: CacheEntry): CacheEntry
   o.hunks        = o.hunks
   o.staged_diffs = o.staged_diffs or {}
-  o.compare_file = o.compare_file or util.tmpname()
   return setmetatable(o, {__index = CacheEntry})
 end
 
 CacheEntry.destroy = function(self: CacheEntry)
-  os.remove(self.compare_file)
   local w = self.gitdir_watcher
   if w then
     w:stop()
