@@ -69,7 +69,7 @@ local record M
 
     command            : function(Repo, {string}, GJobSpec): {string}, string
     files_changed      : function(Repo): {string}
-    get_show_text      : function(Repo, string): {string}, string
+    get_show_text      : function(Repo, string, string): {string}, string
     update_abbrev_head : function(Repo)
     new                : function(string): Repo
   end
@@ -286,8 +286,20 @@ Repo.files_changed = function(self: Repo): {string}
 end
 
 --- Get version of file in the index, return array lines
-Repo.get_show_text = function(self: Repo, object: string): {string}, string
-  return self:command({'show', object}, {supress_stderr = true})
+Repo.get_show_text = function(self: Repo, object: string, encoding: string): {string}, string
+  local stdout, stderr = self:command({'show', object}, {supress_stderr = true})
+
+  if encoding ~= 'utf-8' then
+    scheduler()
+    for i, l in ipairs(stdout) do
+      -- TODO(lewis6991): How should we handle blob types?
+      if vim.fn.type(l) == vim.v.t_string then
+        stdout[i] = vim.fn.iconv(l, encoding, 'utf-8')
+      end
+    end
+  end
+
+  return stdout, stderr
 end
 
 Repo.update_abbrev_head = function(self: Repo)
@@ -384,19 +396,12 @@ Obj.get_show_text = function(self: Obj, revision: string): {string}, string
     return {}
   end
 
-  local stdout, stderr =  self.repo:get_show_text(revision..':'..self.relpath)
+  local stdout, stderr =  self.repo:get_show_text(revision..':'..self.relpath, self.encoding)
 
   if not self.i_crlf and self.w_crlf then
     -- Add cr
     for i = 1, #stdout do
       stdout[i] = stdout[i]..'\r'
-    end
-  end
-
-  if self.encoding ~= 'utf-8' then
-    scheduler()
-    for i, l in ipairs(stdout) do
-      stdout[i] = vim.fn.iconv(l, self.encoding, 'utf-8')
     end
   end
 

@@ -19,9 +19,11 @@ local function bufnr_calc_width(bufnr: integer, lines: {string}): integer
   return api.nvim_buf_call(bufnr, function(): integer
     local width = 0
     for _, l in ipairs(lines) do
-      local len = vim.fn.strdisplaywidth(l)
-      if len > width then
-        width = len
+      if vim.fn.type(l) == vim.v.t_string then
+        local len = vim.fn.strdisplaywidth(l)
+        if len > width then
+          width = len
+        end
       end
     end
     return width + 1 -- Add 1 for some miinor padding

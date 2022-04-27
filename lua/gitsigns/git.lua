@@ -286,8 +286,20 @@ Repo.files_changed = function(self)
 end
 
 
-Repo.get_show_text = function(self, object)
-   return self:command({ 'show', object }, { supress_stderr = true })
+Repo.get_show_text = function(self, object, encoding)
+   local stdout, stderr = self:command({ 'show', object }, { supress_stderr = true })
+
+   if encoding ~= 'utf-8' then
+      scheduler()
+      for i, l in ipairs(stdout) do
+
+         if vim.fn.type(l) == vim.v.t_string then
+            stdout[i] = vim.fn.iconv(l, encoding, 'utf-8')
+         end
+      end
+   end
+
+   return stdout, stderr
 end
 
 Repo.update_abbrev_head = function(self)
@@ -384,19 +396,12 @@ Obj.get_show_text = function(self, revision)
       return {}
    end
 
-   local stdout, stderr = self.repo:get_show_text(revision .. ':' .. self.relpath)
+   local stdout, stderr = self.repo:get_show_text(revision .. ':' .. self.relpath, self.encoding)
 
    if not self.i_crlf and self.w_crlf then
 
       for i = 1, #stdout do
          stdout[i] = stdout[i] .. '\r'
-      end
-   end
-
-   if self.encoding ~= 'utf-8' then
-      scheduler()
-      for i, l in ipairs(stdout) do
-         stdout[i] = vim.fn.iconv(l, self.encoding, 'utf-8')
       end
    end
 
