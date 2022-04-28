@@ -152,36 +152,39 @@ end
 function M.expand_format(fmt: string, info: M.FmtInfo, reltime: boolean): string
   local ret = {}
 
-  local fmt0: string
-
   for _ = 1, 20 do -- loop protection
-    local _, ecol, m, kr = fmt:find('(<([^>]+)>)')
-    if not m then
+    -- Capture <name> or <name:format>
+    local scol, ecol, match, key, time_fmt = fmt:find('(<([^:>]+):?([^>]*)>)')
+    if not match then
       break
     end
 
-    fmt0, fmt = fmt:sub(1, ecol), fmt:sub(ecol+1)
+    ret[#ret+1], fmt = fmt:sub(1, scol-1), fmt:sub(ecol+1)
 
-    local k, df = kr:match('([^:]+):?(.*)')
-
-    local v = info[k]
+    local v = info[key]
 
     if v then
       if v is {string} then
         v = table.concat(v, '\n')
       end
-      if vim.endswith(k, '_time') then
-        if df == '' then
-          df = reltime and '%R' or '%Y-%m-%d'
+      if vim.endswith(key, '_time') then
+        if time_fmt == '' then
+          time_fmt = reltime and '%R' or '%Y-%m-%d'
         end
-        v = expand_date(df, v as integer)
+        v = expand_date(time_fmt, v as integer)
       end
-      fmt0 = fmt0:gsub(vim.pesc(m), tostring(v))
+      match = tostring(v)
     end
-    ret[#ret+1] = fmt0
+    ret[#ret+1] = match
   end
+
   ret[#ret+1] = fmt
   return table.concat(ret, '')
+end
+
+if _TEST then
+  assert('hello % world % 2021' == M.expand_format('<var1> % <var2> % <var_time:%Y>' , {
+    var1 = 'hello', var2 = 'world', var_time = 1616838297 }))
 end
 
 return M
