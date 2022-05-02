@@ -330,7 +330,7 @@ end
 
 local function setup_command()
    nvim.command('Gitsigns', function(params)
-      local fargs = vim.split(params.args, '%s+')
+      local fargs = require('gitsigns.argparse').parse_args(params.args)
       run_func({ params.range, params.line1, params.line2 }, unpack(fargs))
    end, { force = true, nargs = '+', range = true, complete = complete })
 end

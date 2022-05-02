@@ -1,0 +1,117 @@
+local record M
+  parse_args: function(x: string): {string}, {string:string}
+
+  _tests: {string:function}
+end
+
+if _TEST then
+  M._tests = {}
+end
+
+local function is_char(x: string): boolean
+  return x:match('[^=\'"%s]') ~= nil
+end
+
+local enum ArgState
+  "in_arg"
+  "in_ws"
+  "in_value"
+  "in_quote"
+end
+
+-- Return positional arguments and names arguments
+function M.parse_args(x: string): {string}, {string:string}
+  local pos_args, named_args: {string}, {string:string} = {}, {}
+
+  local state: ArgState = 'in_arg'
+  local cur_arg = ''
+  local cur_val = ''
+  local cur_quote = ''
+
+  local function peek(idx: integer): string
+    return x:sub(idx+1, idx+1)
+  end
+
+  local i = 1
+  while i <= #x do
+    local ch = x:sub(i, i)
+    -- dprintf('L(%d)(%s): cur_arg="%s" ch="%s"', i, state, cur_arg, ch)
+
+    if state == 'in_arg' then
+      if is_char(ch) then
+        cur_arg = cur_arg .. ch
+      elseif ch:match('%s') then
+        pos_args[#pos_args+1] = cur_arg
+        state = 'in_ws'
+      elseif ch == '=' then
+        cur_val = ''
+        local next_ch = peek(i)
+        if next_ch == "'" or next_ch == '"' then
+          cur_quote = next_ch
+          i = i + 1
+          state = 'in_quote'
+        else
+          state = 'in_value'
+        end
+      end
+    elseif state == 'in_ws' then
+      if is_char(ch) then
+        cur_arg = ch
+        state = 'in_arg'
+      end
+    elseif state == 'in_value' then
+      if is_char(ch) then
+        cur_val = cur_val .. ch
+      elseif ch:match('%s') then
+        named_args[cur_arg] = cur_val
+        cur_arg = ''
+        state = 'in_ws'
+      end
+    elseif state == 'in_quote' then
+      local next_ch = peek(i)
+      if ch == "\\" and next_ch == cur_quote then
+        cur_val = cur_val .. next_ch
+        i = i + 1
+      elseif ch == cur_quote then
+        named_args[cur_arg] = cur_val
+        state = 'in_ws'
+        if next_ch ~= '' and not next_ch:match('%s') then
+          error('malformed argument: '..next_ch)
+        end
+      else
+        cur_val = cur_val .. ch
+      end
+    end
+    i = i + 1
+  end
+
+  if state == 'in_arg' and #cur_arg > 0 then
+    pos_args[#pos_args+1] = cur_arg
+  elseif state == 'in_value' and #cur_arg > 0 then
+    named_args[cur_arg] = cur_val
+  end
+
+  return pos_args, named_args
+end
+
+if _TEST then
+  local function eq(act: any, exp: any)
+    assert(act == exp, string.format('%s != %s', act, exp))
+  end
+
+  M._tests.test_args = function()
+    local pos_args, named_args = M.parse_args('hello  there key=value, key1="a b c"')
+
+    eq(pos_args[1], 'hello')
+    eq(pos_args[2], 'there')
+    eq(named_args.key, 'value,')
+    eq(named_args.key1, 'a b c')
+
+    pos_args, named_args = M.parse_args('base=HEAD~1 posarg')
+
+    eq(named_args.base, 'HEAD~1')
+    eq(pos_args[1], 'posarg')
+  end
+end
+
+return M
