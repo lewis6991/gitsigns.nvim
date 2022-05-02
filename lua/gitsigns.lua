@@ -36,6 +36,11 @@ local M = {}
 
 
 
+if _TEST then
+   M._tests = {}
+end
+
+
 M.detach_all = function()
    for k, _ in pairs(cache) do
       M.detach(k)
@@ -85,10 +90,12 @@ local function parse_fugitive_uri(name)
 end
 
 if _TEST then
-   local path, commit = parse_fugitive_uri(
-   'fugitive:///home/path/to/project/.git//1b441b947c4bc9a59db428f229456619051dd133/subfolder/to/a/file.txt')
-   assert(path == '/home/path/to/project/subfolder/to/a/file.txt', string.format('GOT %s', path))
-   assert(commit == '1b441b947c4bc9a59db428f229456619051dd133', string.format('GOT %s', commit))
+   M._tests.test_name_parse = function()
+      local path, commit = parse_fugitive_uri(
+      'fugitive:///home/path/to/project/.git//1b441b947c4bc9a59db428f229456619051dd133/subfolder/to/a/file.txt')
+      assert(path == '/home/path/to/project/subfolder/to/a/file.txt', string.format('GOT %s', path))
+      assert(commit == '1b441b947c4bc9a59db428f229456619051dd133', string.format('GOT %s', commit))
+   end
 end
 
 local function get_buf_path(bufnr)
