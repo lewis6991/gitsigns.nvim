@@ -318,7 +318,7 @@ M.schema = {
 
             Note Neovim v0.5 uses LuaJIT's FFI interface, whereas v0.5+ uses
             `vim.diff`.
-        • indent_heuristic: string
+        • indent_heuristic: boolean
             Use the indent heuristic for the internal
             diff library.
         • vertical: boolean
