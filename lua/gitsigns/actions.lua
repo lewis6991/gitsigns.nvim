@@ -595,6 +595,10 @@ M.preview_hunk = noautocmd(function()
 
    local bufnr = current_buf()
    local bcache = cache[bufnr]
+   if not bcache then
+      return
+   end
+
    local hunk, index = get_cursor_hunk(bufnr, bcache.hunks)
 
    if not hunk then return end
