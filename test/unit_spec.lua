@@ -36,14 +36,11 @@ describe('unit test', function()
   clear()
   exec_lua('package.path = ...', package.path)
   exec_lua('_TEST = true')
-  local config = helpers.deepcopy(helpers.test_config)
-  setup_gitsigns(config)
+  setup_gitsigns{debug_mode = true}
 
   -- Add modules which have unit tests
   -- TODO(lewis6991): automate
-  load('gitsigns')
-  load('gitsigns.util')
-  load('gitsigns.argparse')
+  load('gitsigns.test')
 
   local gs_tests = get_tests('^gitsigns')
 
@@ -53,7 +50,7 @@ describe('unit test', function()
         local ok, err = run_test(mod, test)
 
         if not ok then
-          local msgs = exec_lua([[return require('gitsigns.debug').messages]])
+          local msgs = helpers.debug_messages()
           for _, msg in ipairs(msgs) do
             print(msg)
           end

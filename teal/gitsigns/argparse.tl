@@ -1,11 +1,5 @@
 local record M
   parse_args: function(x: string): {string}, {string:string}
-
-  _tests: {string:function}
-end
-
-if _TEST then
-  M._tests = {}
 end
 
 local function is_char(x: string): boolean
@@ -92,26 +86,6 @@ function M.parse_args(x: string): {string}, {string:string}
   end
 
   return pos_args, named_args
-end
-
-if _TEST then
-  local function eq(act: any, exp: any)
-    assert(act == exp, string.format('%s != %s', act, exp))
-  end
-
-  M._tests.test_args = function()
-    local pos_args, named_args = M.parse_args('hello  there key=value, key1="a b c"')
-
-    eq(pos_args[1], 'hello')
-    eq(pos_args[2], 'there')
-    eq(named_args.key, 'value,')
-    eq(named_args.key1, 'a b c')
-
-    pos_args, named_args = M.parse_args('base=HEAD~1 posarg')
-
-    eq(named_args.base, 'HEAD~1')
-    eq(pos_args[1], 'posarg')
-  end
 end
 
 return M
