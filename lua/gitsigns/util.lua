@@ -4,6 +4,12 @@ local M = {}
 
 
 
+
+
+if _TEST then
+   M._tests = {}
+end
+
 function M.path_exists(path)
    return vim.loop.fs_stat(path) and true or false
 end
@@ -183,8 +189,10 @@ function M.expand_format(fmt, info, reltime)
 end
 
 if _TEST then
-   assert('hello % world % 2021' == M.expand_format('<var1> % <var2> % <var_time:%Y>', {
-      var1 = 'hello', var2 = 'world', var_time = 1616838297, }))
+   M._tests.expand_format = function()
+      assert('hello % world % 2021' == M.expand_format('<var1> % <var2> % <var_time:%Y>', {
+         var1 = 'hello', var2 = 'world', var_time = 1616838297, }))
+   end
 end
 
 return M
