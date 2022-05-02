@@ -34,6 +34,7 @@ build = {
   modules = {
     ['gitsigns']                       = 'lua/gitsigns.lua',
     ['gitsigns.actions']               = 'lua/gitsigns/actions.lua',
+    ['gitsigns.argparse']              = 'lua/gitsigns/argparse.lua',
     ['gitsigns.async']                 = 'lua/gitsigns/async.lua',
     ['gitsigns.cache']                 = 'lua/gitsigns/cache.lua',
     ['gitsigns.config']                = 'lua/gitsigns/config.lua',

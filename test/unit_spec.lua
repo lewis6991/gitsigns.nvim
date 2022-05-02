@@ -43,6 +43,7 @@ describe('unit test', function()
   -- TODO(lewis6991): automate
   load('gitsigns')
   load('gitsigns.util')
+  load('gitsigns.argparse')
 
   local gs_tests = get_tests('^gitsigns')
 
