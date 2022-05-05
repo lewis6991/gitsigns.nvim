@@ -651,7 +651,7 @@ M.get_hunks = function(bufnr)
    bufnr = current_buf()
    if not cache[bufnr] then return end
    local ret = {}
-   for _, h in ipairs(cache[bufnr].hunks) do
+   for _, h in ipairs(cache[bufnr].hunks or {}) do
       ret[#ret + 1] = {
          head = h.head,
          lines = gs_hunks.patch_lines(h, vim.bo[bufnr].fileformat),
