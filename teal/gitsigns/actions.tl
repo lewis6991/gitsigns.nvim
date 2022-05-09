@@ -648,7 +648,7 @@ end
 ---        • `"start"`: Line number (1-based)
 ---        • `"count"`: Line count
 M.get_hunks = function(bufnr: integer): {Hunk_Public}
-  bufnr = current_buf()
+  bufnr = bufnr or current_buf()
   if not cache[bufnr] then return end
   local ret = {}
   for _, h in ipairs(cache[bufnr].hunks or {}) do
