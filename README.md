@@ -301,7 +301,6 @@ null_ls.setup {
 ```
 
 Will enable `:lua vim.lsp.buf.code_action()` to retrieve code actions from Gitsigns.
-Alternatively if you have [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim) installed, you can use `:Telescope lsp_code_actions`.
 
 ### [trouble.nvim](https://github.com/folke/trouble.nvim)
 
