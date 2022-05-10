@@ -11,6 +11,7 @@ local CacheEntry = gs_cache.CacheEntry
 local nvim    = require('gitsigns.nvim')
 local util    = require('gitsigns.util')
 local manager = require('gitsigns.manager')
+local message = require('gitsigns.message')
 
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
@@ -30,8 +31,7 @@ local bufread = void(function(bufnr: integer, dbufnr: integer, base: string, bca
     local err: string
     text, err = bcache.git_obj:get_show_text(comp_rev)
     if err then
-      print(err)
-      return
+      error(err, 2)
     end
     scheduler()
     if vim.bo[bufnr].fileformat == 'dos' then
@@ -88,7 +88,15 @@ M.run = void(function(base: string, vertical: boolean)
 
   local dbuf = vim.api.nvim_get_current_buf()
 
-  bufread(bufnr, dbuf, base, bcache)
+  local ok, err = pcall(bufread as function, bufnr, dbuf, base, bcache)
+
+  if not ok then
+    message.error(err as string)
+    scheduler()
+    vim.cmd'bdelete'
+    vim.cmd'diffoff'
+    return
+  end
 
   if comp_rev == ':0' then
     vim.bo[dbuf].buftype = 'acwrite'

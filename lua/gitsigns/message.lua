@@ -1,8 +1,16 @@
+local MsgFun = {}
 
 local M = {}
 
-function M.warn(s, ...)
+
+
+
+M.warn = vim.schedule_wrap(function(s, ...)
    vim.notify(s:format(...), vim.log.levels.WARN, { title = 'gitsigns' })
-end
+end)
+
+M.error = vim.schedule_wrap(function(s, ...)
+   vim.notify(s:format(...), vim.log.levels.ERROR, { title = 'gitsigns' })
+end)
 
 return M

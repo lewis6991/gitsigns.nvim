@@ -130,7 +130,7 @@ local record api
   nvim_get_current_buf: function(): integer
   nvim_get_current_line: function(): string
   nvim_get_current_tabpage: function(): any
-  nvim_get_current_win: function(): number
+  nvim_get_current_win: function(): integer
   nvim_get_hl_by_id: function(number, boolean): {string:any}
   nvim_get_hl_by_name: function(string, boolean): {string:any}
   nvim_get_hl_id_by_name: function(string): number
@@ -303,9 +303,12 @@ global record vim
     shortmess: string
   end
 
-  record wo
+  record WinOption
+    {WinOption}
     diff: boolean
   end
+
+  wo: WinOption
 
   record BufOption
     {BufOption}
