@@ -75,6 +75,96 @@ local M = {QFListOpts = {}, }
 
 
 
+local function check_args(spec)
+   return #spec, function(...)
+      for i, e in ipairs(spec) do
+         vim.validate({ [e[1]] = { select(i, ...), e[2], true } })
+      end
+   end
+end
+
+local function is_integer_tuple(v, n)
+   if not v then
+      return true
+   end
+
+   if type(v) ~= 'table' then
+      return false
+   end
+
+   for i = 1, n do
+      if type((v)[i]) ~= 'number' then
+         return false
+      end
+   end
+
+   return true
+end
+
+local function check_range_arg(range)
+   vim.validate({
+      range = { range, function(v)
+         return is_integer_tuple(v, 2)
+      end, 'a 2-element integer tuple', },
+   })
+end
+
+local args_spec = {
+   stage_hunk = { 1, check_range_arg },
+   undo_stage_hunk = { check_args({}) },
+   reset_hunk = { 1, check_range_arg },
+   stage_buffer = { check_args({}) },
+   reset_buffer = { check_args({}) },
+   reset_buffer_index = { check_args({}) },
+   next_hunk = { check_args({ { 'opts', 'table' } }) },
+   prev_hunk = { check_args({ { 'opts', 'table' } }) },
+   preview_hunk = { check_args({}) },
+   select_hunk = { check_args({}) },
+   get_hunks = { check_args({ { 'bufnr', 'number' } }) },
+   blame_line = { check_args({ { 'opts', 'table' } }) },
+   change_base = { check_args({ { 'base', 'string' },
+{ 'global', 'boolean' }, }), },
+   reset_base = { check_args({ { 'global', 'boolean' } }) },
+   diffthis = { check_args({ { 'base', 'string' } }) },
+   setqflist = { check_args({ { 'target', { 'number', 'string' } },
+{ 'opts', 'table' }, }), },
+   setloclist = { check_args({ { 'target', { 'number', 'string' } },
+{ 'opts', 'table' }, }), },
+   get_actions = { check_args({}) },
+   refresh = { check_args({}) },
+
+   toggle_signs = { check_args({ { 'value', 'boolean' } }) },
+   toggle_numhl = { check_args({ { 'value', 'boolean' } }) },
+   toggle_linehl = { check_args({ { 'value', 'boolean' } }) },
+   toggle_word_diff = { check_args({ { 'value', 'boolean' } }) },
+   toggle_current_line_blame = { check_args({ { 'value', 'boolean' } }) },
+   toggle_deleted = { check_args({ { 'value', 'boolean' } }) },
+}
+
+
+local M1 = setmetatable({}, {
+   __index = function(t, k)
+      local v = (M)[k]
+
+      if type(v) == "function" then
+         t[k] = function(...)
+            local nargs = args_spec[k][1]
+            local validate = args_spec[k][2]
+            if validate then
+               validate(...)
+            end
+            if nargs and select('#', ...) - nargs > 0 then
+               error(string.format('%s: too many arguments, expected maximum of %d', k, nargs))
+            end
+            return v(...)
+         end
+      else
+         t[k] = v
+      end
+      return t[k]
+   end,
+})
+
 
 
 
@@ -192,6 +282,10 @@ local function get_cursor_hunk(bufnr, hunks)
 end
 
 local function update(bufnr)
+   vim.validate({
+      bufnr = { bufnr, 'number', true },
+   })
+   bufnr = bufnr or current_buf()
    manager.update(bufnr)
    scheduler()
    if vim.wo.diff then
@@ -1039,4 +1133,4 @@ M.refresh = void(function()
    end
 end)
 
-return M
+return M1
