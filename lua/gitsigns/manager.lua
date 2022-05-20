@@ -204,9 +204,13 @@ local function show_deleted(bufnr)
          virt_lines[i] = vline
       end
 
-      api.nvim_buf_set_extmark(bufnr, ns_rm, hunk.added.start - 1, -1, {
+      local topdelete = hunk.added.start == 0 and hunk.type == 'delete'
+
+      local row = topdelete and 0 or hunk.added.start
+      api.nvim_buf_set_extmark(bufnr, ns_rm, row, -1, {
          virt_lines = virt_lines,
-         virt_lines_above = hunk.type ~= 'delete',
+
+         virt_lines_above = hunk.type ~= 'delete' or topdelete,
       })
    end
 end
