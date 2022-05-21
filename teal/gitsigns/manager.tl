@@ -206,7 +206,7 @@ local function show_deleted(bufnr: integer)
 
     local topdelete = hunk.added.start == 0 and hunk.type == 'delete'
 
-    local row = topdelete and 0 or hunk.added.start
+    local row = topdelete and 0 or hunk.added.start - 1
     api.nvim_buf_set_extmark(bufnr, ns_rm, row, -1, {
       virt_lines       = virt_lines,
       -- TODO(lewis6991): Note virt_lines_above doesn't work on row 0 neovim/neovim#16166
