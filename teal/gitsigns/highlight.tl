@@ -19,7 +19,8 @@ local hls: {{string:{string}}} = {
 
   {GitSignsAddLn              = {'GitGutterAddLine'   , 'SignifyLineAdd'   , 'DiffAdd'   }},
   {GitSignsChangeLn           = {'GitGutterChangeLine', 'SignifyLineChange', 'DiffChange'}},
-  {GitSignsDeleteLn           = {'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete'}},
+  -- Don't set GitSignsDeleteLn by default
+  -- {GitSignsDeleteLn           = {}},
 
   {GitSignsCurrentLineBlame   = {'NonText'}},
 
@@ -33,7 +34,7 @@ local hls: {{string:{string}}} = {
 
   {GitSignsAddLnVirtLn        = {'GitSignsAddLn'   }},
   {GitSignsChangeVirtLn       = {'GitSignsChangeLn'}},
-  {GitSignsDeleteVirtLn       = {'GitSignsDeleteLn'}},
+  {GitSignsDeleteVirtLn       = {'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete'}},
 
   {GitSignsAddLnVirtLnInLine  = {'GitSignsAddLnInline'   }},
   {GitSignsChangeVirtLnInLine = {'GitSignsChangeLnInline'}},
