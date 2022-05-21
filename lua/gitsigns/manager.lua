@@ -187,19 +187,19 @@ local function show_deleted(bufnr)
                if rline > 1 then
                   break
                end
-               vline[#vline + 1] = { line:sub(last_ecol, scol - 1), 'GitsignsDeleteVirtLn' }
-               vline[#vline + 1] = { line:sub(scol, ecol - 1), 'GitsignsDeleteVirtLnInline' }
+               vline[#vline + 1] = { line:sub(last_ecol, scol - 1), 'GitSignsDeleteVirtLn' }
+               vline[#vline + 1] = { line:sub(scol, ecol - 1), 'GitSignsDeleteVirtLnInline' }
                last_ecol = ecol
             end
          end
 
          if #line > 0 then
-            vline[#vline + 1] = { line:sub(last_ecol, -1), 'GitsignsDeleteVirtLn' }
+            vline[#vline + 1] = { line:sub(last_ecol, -1), 'GitSignsDeleteVirtLn' }
          end
 
 
          local padding = string.rep(' ', VIRT_LINE_LEN - #line)
-         vline[#vline + 1] = { padding, 'GitsignsDeleteVirtLn' }
+         vline[#vline + 1] = { padding, 'GitSignsDeleteVirtLn' }
 
          virt_lines[i] = vline
       end

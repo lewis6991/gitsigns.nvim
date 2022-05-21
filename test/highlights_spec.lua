@@ -69,7 +69,6 @@ describe('highlights', function()
         p'Deriving GitSignsChangeLn from DiffChange',
         p'Deriving GitSignsChangeNr from GitSignsChange',
         p'Deriving GitSignsDelete from DiffDelete',
-        p'Deriving GitSignsDeleteLn from DiffDelete',
         p'Deriving GitSignsDeleteNr from GitSignsDelete',
       })
     end)
