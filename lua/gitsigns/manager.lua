@@ -256,7 +256,7 @@ M.update = throttle_by_id(function(bufnr, bcache)
    update_cnt = update_cnt + 1
 
    dprintf('updates: %s, jobs: %s', update_cnt, subprocess.job_cnt)
-end)
+end, true)
 
 M.detach = function(bufnr, keep_signs)
    if not keep_signs then
