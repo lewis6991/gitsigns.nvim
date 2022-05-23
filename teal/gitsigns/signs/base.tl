@@ -22,10 +22,7 @@ local record M
   ns: integer
 
   -- Used by signs/vimfn.tl
-  placed: {integer:{integer:vim.fn.SignPlaceItem}}
-  scheduled: {integer:{integer:vim.fn.SignPlaceItem}}
-  sign_define_cache: {string:table}
-  sign_name_cache: {string:string}
+  placed: {integer:{integer:Sign}}
 
   new      : function(cfg: SignsConfig, name: string): M
   remove   : function(M, bufnr: integer, start_lnum: integer, end_lnum: integer)

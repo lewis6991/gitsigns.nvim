@@ -21,32 +21,34 @@ local function capitalise_word(x: string): string
   return x:sub(1, 1):upper()..x:sub(2)
 end
 
-local function get_sign_name(obj: B, stype: string): string
-  local cache = obj.sign_name_cache
-  if not cache[stype] then
-    cache[stype] = string.format(
+local sign_define_cache: {string:table} = {}
+local sign_name_cache: {string:string} = {}
+
+local function get_sign_name(stype: string): string
+  if not sign_name_cache[stype] then
+    sign_name_cache[stype] = string.format(
     '%s%s', 'GitSigns', capitalise_word(stype))
   end
 
-  return cache[stype]
+  return sign_name_cache[stype]
 end
 
-local function sign_get(obj: B, name: string): table
-  if not obj.sign_define_cache[name] then
+local function sign_get(name: string): table
+  if not sign_define_cache[name] then
     local s = fn.sign_getdefined(name)
     if not vim.tbl_isempty(s) then
-      obj.sign_define_cache[name] = s
+      sign_define_cache[name] = s
     end
   end
-  return obj.sign_define_cache[name]
+  return sign_define_cache[name]
 end
 
-local function define_sign(obj: B, name: string, opts: {string:any}, redefine: boolean)
+local function define_sign(name: string, opts: {string:any}, redefine: boolean)
   if redefine then
-    obj.sign_define_cache[name] = nil
+    sign_define_cache[name] = nil
     fn.sign_undefine(name)
     fn.sign_define(name, opts)
-  elseif not sign_get(obj, name) then
+  elseif not sign_get(name) then
     fn.sign_define(name, opts)
   end
 end
@@ -54,7 +56,7 @@ end
 local function define_signs(obj: B, redefine: boolean)
   -- Define signs
   for stype, cs in pairs(obj.config) do
-    define_sign(obj, get_sign_name(obj, stype), {
+    define_sign(get_sign_name(stype), {
       texthl = cs.hl,
       text   = config.signcolumn and cs.text or nil,
       numhl  = config.numhl      and cs.numhl,
@@ -70,8 +72,6 @@ function M.new(cfg: SignsConfig, name: string): B
   self.group = group_base..(name or '')
   self.config = cfg
   self.placed = emptytable()
-  self.sign_name_cache = {}
-  self.sign_define_cache = {}
 
   define_signs(self, false)
 
@@ -105,7 +105,7 @@ function M:add(bufnr: integer, signs: {M.Sign})
 
   local cfg = self.config
   for _, s in ipairs(signs) do
-    local sign_name = get_sign_name(self, s.type)
+    local sign_name = get_sign_name(s.type)
 
     local cs = cfg[s.type]
     if config.signcolumn and cs.show_count and s.count then
@@ -114,7 +114,7 @@ function M:add(bufnr: integer, signs: {M.Sign})
       local count_suffix = cc[count] and tostring(count) or (cc['+'] and 'Plus') or ''
       local count_char   = cc[count]                     or  cc['+']             or ''
       sign_name = sign_name..count_suffix
-      define_sign(self, sign_name, {
+      define_sign(sign_name, {
         texthl = cs.hl,
         text   = config.signcolumn and cs.text..count_char or '',
         numhl  = config.numhl      and cs.numhl,
@@ -131,7 +131,7 @@ function M:add(bufnr: integer, signs: {M.Sign})
         lnum     = s.lnum,
         priority = config.sign_priority
       }
-      self.placed[bufnr][s.lnum] = sign
+      self.placed[bufnr][s.lnum] = s
       to_place[#to_place+1] = sign
     end
   end

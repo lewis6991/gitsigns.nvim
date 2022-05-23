@@ -242,6 +242,8 @@ M.update = throttle_by_id(function(bufnr, bcache)
    bcache.hunks = run_diff(bcache.compare_text, buftext)
 
    scheduler_if_buf_valid(bufnr)
+
+
    if gs_hunks.compare_heads(bcache.hunks, old_hunks) then
 
 
