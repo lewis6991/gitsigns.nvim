@@ -7,6 +7,7 @@ local record M
     base          : string
     compare_text  : {string}  -- For use with internal diff
     hunks         : {Hunk}
+    force_next_update: boolean
     staged_diffs  : {Hunk}
     gitdir_watcher : vim.loop.FSPollObj -- Timer object watching the gitdir
     git_obj       : GitObj
