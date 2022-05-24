@@ -84,10 +84,9 @@ M.on_lines = function(buf: integer, first: integer, last_orig: integer, last_new
 
   -- Signs in changed regions get invalidated so we need to force a redraw if
   -- any signs get removed.
-  if bcache.hunks and signs:contains(buf, first, last_new) then
-    -- invalidate hunks to force a sign redraw
-    -- TODO(lewis6991): Force redraw without having to re-diff
-    bcache.hunks = nil
+  if signs:contains(buf, first, last_new) then
+    -- Force a sign redraw on the next update (fixes #521)
+    bcache.force_next_update = true
   end
 
   M.update_debounced(buf, cache[buf])
@@ -228,8 +227,6 @@ M.update = throttle_by_id(function(bufnr: integer, bcache: CacheEntry)
     eprint('Cache for buffer '..bufnr..' was nil')
     return
   end
-  local old_hunks = bcache.hunks
-  bcache.hunks = nil
 
   scheduler_if_buf_valid(bufnr)
   local buftext = util.buf_lines(bufnr)
@@ -239,17 +236,19 @@ M.update = throttle_by_id(function(bufnr: integer, bcache: CacheEntry)
     bcache.compare_text = git_obj:get_show_text(bcache:get_compare_rev())
   end
 
+  local old_hunks = bcache.hunks
   bcache.hunks = run_diff(bcache.compare_text, buftext)
 
   scheduler_if_buf_valid(bufnr)
   -- Note the decoration provider may have invalidated bcache.hunks at this
   -- point
-  if gs_hunks.compare_heads(bcache.hunks, old_hunks) then
+  if bcache.force_next_update or gs_hunks.compare_heads(bcache.hunks, old_hunks) then
     -- Apply signs to the window. Other signs will be added by the decoration
     -- provider as they are drawn.
     apply_win_signs(bufnr, bcache.hunks, vim.fn.line('w0'), vim.fn.line('w$'), true)
 
     show_deleted(bufnr)
+    bcache.force_next_update = false
   end
   local summary = gs_hunks.get_summary(bcache.hunks)
   summary.head = git_obj.repo.abbrev_head

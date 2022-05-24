@@ -75,7 +75,8 @@ describe('gitsigns', function()
   it('gitdir watcher works on a fresh repo', function()
     screen:try_resize(20,6)
     setup_test_repo{no_add=true}
-    config.watch_gitdir = {interval = 5}
+    -- Don't set this too low, or else the test will lock up
+    config.watch_gitdir = {interval = 100}
     setup_gitsigns(config)
     edit(test_file)
 
@@ -714,6 +715,36 @@ describe('gitsigns', function()
       {2:~ }^orem ipsum        |
       {6:~                   }|
     ]]}
+  end)
+
+  it('handle #521', function()
+    screen:detach()
+    screen:attach({ext_messages=false})
+    screen:try_resize(20,3)
+    setup_test_repo()
+    setup_gitsigns(config)
+    edit(test_file)
+    feed('dd')
+
+    local function check_screen()
+      screen:expect{grid=[[
+        {4:^ }^is                |
+        {1:  }a                 |
+        {1:  }file              |
+      ]]}
+    end
+
+    check_screen()
+
+    -- Write over the text with itself. This will remove all the signs but the
+    -- calculated hunks won't change.
+    exec_lua[[
+      local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+      vim.api.nvim_buf_set_lines(0, 0, -1, true, text)
+    ]]
+
+    check_screen()
+
   end)
 
 end)
