@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Check commit messages
-      - uses: webiny/action-conventional-commits@v1.0.3
+      - uses: webiny/action-conventional-commits@v1.0.5
 
   # This workflow contains a single job called "build"
   build:

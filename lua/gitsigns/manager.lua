@@ -95,6 +95,11 @@ end
 local ns = api.nvim_create_namespace('gitsigns')
 
 local function apply_word_diff(bufnr, row)
+
+   if vim.fn.foldclosed(row + 1) ~= -1 then
+      return
+   end
+
    if not cache[bufnr] or not cache[bufnr].hunks then
       return
    end

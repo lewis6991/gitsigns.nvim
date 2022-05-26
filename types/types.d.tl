@@ -253,6 +253,7 @@ global record vim
     executable: function(string): integer
     expand: function(string): string
     foldclosed: function(integer): integer
+    foldclosedend: function(integer): integer
     getcwd: function(): string
     input: function(string, string): string
 
