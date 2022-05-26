@@ -178,12 +178,33 @@ setqflist({target}, {opts})                             *gitsigns.setqflist()*
                                Open the quickfix/location list viewer.
                                Defaults to `true`.
 
+show({revision})                                             *gitsigns.show()*
+                Show revision {base} of the current file, if it is given, or
+                with the currently set base (index by default).
+
+                If {base} is the index, then the opened buffer is editable and
+                any written changes will update the index accordingly.
+
+                Examples: >
+                  " View the index version of the file
+                  :Gitsigns show
+
+                  " View revision of file in the last commit
+                  :Gitsigns show ~1
+<
+
+                For a more complete list of ways to specify bases, see
+                |gitsigns-revision|.
+
+                Attributes: ~
+                    {async}
+
 diffthis({base})                                         *gitsigns.diffthis()*
                 Perform a |vimdiff| on the given file with {base} if it is
                 given, or with the currently set base (index by default).
 
-                If {base} is the index, then the opened diff buffer is editable
-                and any written changes will update the index accordingly.
+                If {base} is the index, then the opened buffer is editable and
+                any written changes will update the index accordingly.
 
                 Examples: >
                   " Diff against the index

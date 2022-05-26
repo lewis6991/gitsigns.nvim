@@ -83,6 +83,7 @@ local M = {QFListOpts = {}, }
 
 
 
+
 M.toggle_signs = function(value)
    if value ~= nil then
       config.signcolumn = value
@@ -846,7 +847,31 @@ end
 
 M.diffthis = function(base)
    local diffthis = require('gitsigns.diffthis')
-   diffthis.run(base, config.diff_opts.vertical)
+   diffthis.diffthis(base, config.diff_opts.vertical)
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+M.show = function(revision)
+   local diffthis = require('gitsigns.diffthis')
+   diffthis.show(revision)
 end
 
 local function hunks_to_qflist(buf_or_filename, hunks, qflist)

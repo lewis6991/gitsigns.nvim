@@ -52,6 +52,7 @@ local record M
   change_base        : function(base: string, global: boolean)
   reset_base         : function(global: boolean)
   diffthis           : function(base: string)
+  show               : function(base: string)
 
   record QFListOpts
     use_location_list: boolean
@@ -828,8 +829,8 @@ end
 --- Perform a |vimdiff| on the given file with {base} if it is
 --- given, or with the currently set base (index by default).
 ---
---- If {base} is the index, then the opened diff buffer is editable
---- and any written changes will update the index accordingly.
+--- If {base} is the index, then the opened buffer is editable and
+--- any written changes will update the index accordingly.
 ---
 --- Examples: >
 ---   " Diff against the index
@@ -846,7 +847,31 @@ end
 ---     {async}
 M.diffthis = function(base: string)
   local diffthis = require('gitsigns.diffthis')
-  diffthis.run(base, config.diff_opts.vertical)
+  diffthis.diffthis(base, config.diff_opts.vertical)
+end
+
+--- Show revision {base} of the current file, if it is given, or
+--- with the currently set base (index by default).
+---
+--- If {base} is the index, then the opened buffer is editable and
+--- any written changes will update the index accordingly.
+---
+--- Examples: >
+---   " View the index version of the file
+---   :Gitsigns show
+---
+---   " View revision of file in the last commit
+---   :Gitsigns show ~1
+--- <
+---
+--- For a more complete list of ways to specify bases, see
+--- |gitsigns-revision|.
+---
+--- Attributes: ~
+---     {async}
+M.show = function(revision: string)
+  local diffthis = require('gitsigns.diffthis')
+  diffthis.show(revision)
 end
 
 local function hunks_to_qflist(buf_or_filename: number|string, hunks: {Hunk}, qflist: {vim.fn.QFItem})

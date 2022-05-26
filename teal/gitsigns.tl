@@ -87,6 +87,20 @@ local function parse_fugitive_uri(name: string): string, string
   return name, commit
 end
 
+local function parse_gitsigns_uri(name: string): string, string
+  -- TODO(lewis6991): Support submodules
+  local _, _, root_path, commit, rel_path =
+    name:find([[^gitsigns://(.*)/%.git/(.*):(.*)]])
+  if commit == ':0' then
+    -- ':0' means the index so clear commit so we attach normally
+    commit = nil
+  end
+  if root_path then
+    name = root_path .. '/' .. rel_path
+  end
+  return name, commit
+end
+
 local function get_buf_path(bufnr: integer): string, string
   local file =
     uv.fs_realpath(api.nvim_buf_get_name(bufnr))
@@ -95,12 +109,23 @@ local function get_buf_path(bufnr: integer): string, string
       return vim.fn.expand('%:p')
     end)
 
-  if vim.startswith(file, 'fugitive://') and vim.wo.diff == false then
-    local path, commit = parse_fugitive_uri(file)
-    dprintf("Fugitive buffer for file '%s' from path '%s'", path, file)
-    path = uv.fs_realpath(path)
-    if path then
-      return path, commit
+  if not vim.wo.diff then
+    if vim.startswith(file, 'fugitive://') then
+      local path, commit = parse_fugitive_uri(file)
+      dprintf("Fugitive buffer for file '%s' from path '%s'", path, file)
+      path = uv.fs_realpath(path)
+      if path then
+        return path, commit
+      end
+    end
+
+    if vim.startswith(file, 'gitsigns://') then
+      local path, commit = parse_gitsigns_uri(file)
+      dprintf("Gitsigns buffer for file '%s' from path '%s'", path, file)
+      path = uv.fs_realpath(path)
+      if path then
+        return path, commit
+      end
     end
   end
 
@@ -224,16 +249,16 @@ local attach_throttled = throttle_by_id(function(cbuf: integer, aucmd: string)
     git_obj        = git_obj
   }
 
-  -- Initial update
-  manager.update(cbuf, cache[cbuf])
-
-  scheduler()
-
+  -- Make sure to attach before the first update (which is async) so we pick up
+  -- changes from BufReadCmd.
   api.nvim_buf_attach(cbuf, false, {
     on_lines  = on_lines,
     on_reload = on_reload,
     on_detach = on_detach
   })
+
+  -- Initial update
+  manager.update(cbuf, cache[cbuf])
 
   if config.keymaps and not vim.tbl_isempty(config.keymaps) then
     require('gitsigns.mappings')(config.keymaps as {string:any}, cbuf)

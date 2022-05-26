@@ -14,7 +14,7 @@ local record M
     commit        : string
 
     get_compare_rev: function(CacheEntry, base: string): string
-    get_diffthis_bufname: function(self: CacheEntry, rev: string): string
+    get_rev_bufname: function(self: CacheEntry, rev: string): string
     invalidate: function(CacheEntry)
     new: function(CacheEntry): CacheEntry
     destroy: function(CacheEntry)
@@ -46,12 +46,13 @@ CacheEntry.get_compare_rev = function(self: CacheEntry, base: string): string
   return string.format(':%d', stage)
 end
 
-CacheEntry.get_diffthis_bufname = function(self: CacheEntry, rev: string): string
+CacheEntry.get_rev_bufname = function(self: CacheEntry, rev: string): string
   rev = rev or self:get_compare_rev()
   return string.format(
-    'gitsigns://%s/%s',
+    'gitsigns://%s/%s:%s',
     self.git_obj.repo.gitdir,
-    rev..':'..self.git_obj.relpath
+    rev,
+    self.git_obj.relpath
   )
 end
 

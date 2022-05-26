@@ -46,12 +46,13 @@ CacheEntry.get_compare_rev = function(self, base)
    return string.format(':%d', stage)
 end
 
-CacheEntry.get_diffthis_bufname = function(self, rev)
+CacheEntry.get_rev_bufname = function(self, rev)
    rev = rev or self:get_compare_rev()
    return string.format(
-   'gitsigns://%s/%s',
+   'gitsigns://%s/%s:%s',
    self.git_obj.repo.gitdir,
-   rev .. ':' .. self.git_obj.relpath)
+   rev,
+   self.git_obj.relpath)
 
 end
 
