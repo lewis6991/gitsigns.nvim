@@ -222,6 +222,7 @@ global record vim
     getpos: function(string): {integer}
     executable: function(string): integer
     expand: function(string): string
+    foldclosed: function(integer): integer
     getcwd: function(): string
     input: function(string, string): string
 

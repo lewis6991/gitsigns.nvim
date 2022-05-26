@@ -110,6 +110,11 @@ local update = void(function()
     set_extmark(bufnr, lnum)
   end
 
+  -- Can't show extmarks on folded lines so skip
+  if vim.fn.foldclosed(lnum) ~= -1 then
+    return
+  end
+
   local opts = config.current_line_blame_opts
 
   -- Note because the same timer is re-used, this call has a debouncing effect.

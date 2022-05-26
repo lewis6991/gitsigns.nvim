@@ -110,6 +110,11 @@ local update = void(function()
       set_extmark(bufnr, lnum)
    end
 
+
+   if vim.fn.foldclosed(lnum) ~= -1 then
+      return
+   end
+
    local opts = config.current_line_blame_opts
 
 
