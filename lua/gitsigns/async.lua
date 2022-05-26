@@ -1,13 +1,5 @@
 local co = coroutine
 
-local fun0 = {}
-local fun1 = {}
-local fun2 = {}
-local fun2_2 = {}
-local fun3 = {}
-local fun4 = {}
-local fun4_1 = {}
-
 local Async = {}
 
 

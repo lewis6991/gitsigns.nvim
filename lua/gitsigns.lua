@@ -87,6 +87,20 @@ local function parse_fugitive_uri(name)
    return name, commit
 end
 
+local function parse_gitsigns_uri(name)
+
+   local _, _, root_path, commit, rel_path = 
+   name:find([[^gitsigns://(.*)/%.git/(.*):(.*)]])
+   if commit == ':0' then
+
+      commit = nil
+   end
+   if root_path then
+      name = root_path .. '/' .. rel_path
+   end
+   return name, commit
+end
+
 local function get_buf_path(bufnr)
    local file = 
    uv.fs_realpath(api.nvim_buf_get_name(bufnr)) or
@@ -95,12 +109,23 @@ local function get_buf_path(bufnr)
       return vim.fn.expand('%:p')
    end)
 
-   if vim.startswith(file, 'fugitive://') and vim.wo.diff == false then
-      local path, commit = parse_fugitive_uri(file)
-      dprintf("Fugitive buffer for file '%s' from path '%s'", path, file)
-      path = uv.fs_realpath(path)
-      if path then
-         return path, commit
+   if not vim.wo.diff then
+      if vim.startswith(file, 'fugitive://') then
+         local path, commit = parse_fugitive_uri(file)
+         dprintf("Fugitive buffer for file '%s' from path '%s'", path, file)
+         path = uv.fs_realpath(path)
+         if path then
+            return path, commit
+         end
+      end
+
+      if vim.startswith(file, 'gitsigns://') then
+         local path, commit = parse_gitsigns_uri(file)
+         dprintf("Gitsigns buffer for file '%s' from path '%s'", path, file)
+         path = uv.fs_realpath(path)
+         if path then
+            return path, commit
+         end
       end
    end
 
@@ -225,15 +250,15 @@ local attach_throttled = throttle_by_id(function(cbuf, aucmd)
    })
 
 
-   manager.update(cbuf, cache[cbuf])
-
-   scheduler()
 
    api.nvim_buf_attach(cbuf, false, {
       on_lines = on_lines,
       on_reload = on_reload,
       on_detach = on_detach,
    })
+
+
+   manager.update(cbuf, cache[cbuf])
 
    if config.keymaps and not vim.tbl_isempty(config.keymaps) then
       require('gitsigns.mappings')(config.keymaps, cbuf)

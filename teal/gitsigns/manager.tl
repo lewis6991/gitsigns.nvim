@@ -32,8 +32,8 @@ local uv = vim.loop
 local signs: Signs
 
 local record M
-  update           : function(integer, CacheEntry, boolean)
-  update_debounced : function( bufnr: integer, CacheEntry)
+  update           : function(bufnr: integer, CacheEntry)
+  update_debounced : function(bufnr: integer, CacheEntry)
   on_lines         : function(buf: integer, first: integer, last_orig: integer, last_new: integer): boolean
   watch_gitdir     : function(bufnr: integer, gitdir: string): uv.FSPollObj
   update_cwd_head  : function()
@@ -441,7 +441,7 @@ M.setup = function()
   })
 
   signs = Signs.new(config.signs)
-  M.update_debounced = debounce_trailing(config.update_debounce, void(M.update)) as function(integer, CacheEntry)
+  M.update_debounced = debounce_trailing(config.update_debounce, void(M.update))
 end
 
 return M

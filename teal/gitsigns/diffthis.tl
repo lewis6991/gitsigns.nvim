@@ -18,8 +18,9 @@ local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 local input = awrap(vim.ui.input, 2)
 
 local record M
-  run: function
-  update: function
+  diffthis: function(base: string, vertical: boolean)
+  show: function(base: string)
+  update: function(bufnr: integer)
 end
 
 local bufread = void(function(bufnr: integer, dbufnr: integer, base: string, bcache: CacheEntry)
@@ -47,8 +48,6 @@ local bufread = void(function(bufnr: integer, dbufnr: integer, base: string, bca
   vim.bo[dbufnr].modified = false
   vim.bo[dbufnr].filetype = vim.bo[bufnr].filetype
   vim.bo[dbufnr].bufhidden = 'wipe'
-
-  vim.cmd'diffthis'
 end)
 
 local bufwrite = void(function(bufnr: integer, dbufnr: integer, base: string, bcache: CacheEntry)
@@ -64,37 +63,48 @@ local bufwrite = void(function(bufnr: integer, dbufnr: integer, base: string, bc
   end
 end)
 
-M.run = void(function(base: string, vertical: boolean)
+local function run(base: string, diffthis: boolean, vertical: boolean)
   local bufnr = vim.api.nvim_get_current_buf()
   local bcache = cache[bufnr]
   if not bcache then
     return
   end
 
-  if vim.wo.diff then
-    return
-  end
-
   local comp_rev = bcache:get_compare_rev(util.calc_base(base))
-  local bufname = bcache:get_diffthis_bufname(comp_rev)
+  local bufname = bcache:get_rev_bufname(comp_rev)
 
-  vim.cmd'diffthis'
+  if diffthis then
+    -- Enable diff on the currently open buffer
+    vim.cmd'diffthis'
 
-  vim.cmd(table.concat({
-    'keepalt', 'aboveleft',
-    vertical and 'vertical' or '',
-    'split', bufname
-  }, ' '))
+    vim.cmd(table.concat({
+      'keepalt', 'aboveleft',
+      vertical and 'vertical' or '',
+      'split', bufname
+    }, ' '))
+  else
+    -- TODO(lewis6991): Pull in mods from the :Gitsigns command (split, vsplit,
+    -- etc)
+    vim.cmd(table.concat({
+      'edit', bufname
+    }, ' '))
+  end
 
   local dbuf = vim.api.nvim_get_current_buf()
 
   local ok, err = pcall(bufread as function, bufnr, dbuf, base, bcache)
 
+  if diffthis then
+    vim.cmd'diffthis'
+  end
+
   if not ok then
     message.error(err as string)
     scheduler()
     vim.cmd'bdelete'
-    vim.cmd'diffoff'
+    if diffthis then
+      vim.cmd'diffoff'
+    end
     return
   end
 
@@ -106,6 +116,9 @@ M.run = void(function(base: string, vertical: boolean)
       buffer = dbuf,
       callback = function()
         bufread(bufnr, dbuf, base, bcache)
+        if diffthis then
+          vim.cmd'diffthis'
+        end
       end
     })
 
@@ -120,6 +133,17 @@ M.run = void(function(base: string, vertical: boolean)
     vim.bo[dbuf].buftype = 'nowrite'
     vim.bo[dbuf].modifiable = false
   end
+end
+
+M.diffthis = void(function(base: string, vertical: boolean)
+  if vim.wo.diff then
+    return
+  end
+  run(base, true, vertical)
+end)
+
+M.show = void(function(base: string)
+  run(base, false)
 end)
 
 local function should_reload(bufnr: integer): boolean
@@ -145,7 +169,7 @@ M.update = throttle_by_id(void(function(bufnr: integer)
 
   -- Note this will be the bufname for the currently set base
   -- which are the only ones we want to update
-  local bufname = bcache:get_diffthis_bufname()
+  local bufname = bcache:get_rev_bufname()
 
   for _, w in ipairs(api.nvim_list_wins()) do
     if api.nvim_win_is_valid(w) then
