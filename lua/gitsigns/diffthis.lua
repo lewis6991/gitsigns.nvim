@@ -73,31 +73,10 @@ local function run(base, diffthis, vertical)
    local comp_rev = bcache:get_compare_rev(util.calc_base(base))
    local bufname = bcache:get_rev_bufname(comp_rev)
 
-   if diffthis then
-
-      vim.cmd('diffthis')
-
-      vim.cmd(table.concat({
-         'keepalt', 'aboveleft',
-         vertical and 'vertical' or '',
-         'split', bufname,
-      }, ' '))
-   else
-
-
-      vim.cmd(table.concat({
-         'edit', bufname,
-      }, ' '))
-   end
-
-   local dbuf = vim.api.nvim_get_current_buf()
+   local dbuf = vim.api.nvim_create_buf(false, true)
+   vim.api.nvim_buf_set_name(dbuf, bufname)
 
    local ok, err = pcall(bufread, bufnr, dbuf, base, bcache)
-
-   if diffthis then
-      vim.cmd('diffthis')
-   end
-
    if not ok then
       message.error(err)
       scheduler()
@@ -132,6 +111,20 @@ local function run(base, diffthis, vertical)
    else
       vim.bo[dbuf].buftype = 'nowrite'
       vim.bo[dbuf].modifiable = false
+   end
+
+   if diffthis then
+      vim.cmd(table.concat({
+         'keepalt', 'aboveleft',
+         vertical and 'vertical' or '',
+         'diffsplit', bufname,
+      }, ' '))
+   else
+
+
+      vim.cmd(table.concat({
+         'edit', bufname,
+      }, ' '))
    end
 end
 
