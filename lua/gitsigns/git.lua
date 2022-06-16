@@ -223,6 +223,25 @@ local function process_abbrev_head(gitdir, head_str, path, cmd)
    return head_str
 end
 
+local has_cygpath = jit and jit.os == 'Windows' and vim.fn.executable('cygpath') == 1
+
+local cygpath_convert
+
+if has_cygpath then
+   cygpath_convert = function(path)
+      return M.command({ '-aw', path }, { command = 'cygpath' })[1]
+   end
+end
+
+local function normalize_path(path)
+   if has_cygpath and not uv.fs_stat(path) then
+
+
+      path = cygpath_convert(path)
+   end
+   return path
+end
+
 M.get_repo_info = function(path, cmd)
 
 
@@ -241,8 +260,8 @@ M.get_repo_info = function(path, cmd)
       cwd = path,
    })
 
-   local toplevel = results[1]
-   local gitdir = results[2]
+   local toplevel = normalize_path(results[1])
+   local gitdir = normalize_path(results[2])
    if gitdir and not has_abs_gd then
       gitdir = uv.fs_realpath(gitdir)
    end

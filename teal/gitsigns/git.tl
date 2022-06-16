@@ -223,6 +223,25 @@ local function process_abbrev_head(gitdir: string, head_str: string, path: strin
   return head_str
 end
 
+local has_cygpath = jit and jit.os == 'Windows' and vim.fn.executable('cygpath') == 1
+
+local cygpath_convert: function(path: string): string
+
+if has_cygpath then
+  cygpath_convert = function(path: string): string
+    return M.command({ '-aw', path }, { command = 'cygpath' })[1]
+  end
+end
+
+local function normalize_path(path: string): string
+  if has_cygpath and not uv.fs_stat(path) then
+    -- If on windows and path isn't recognizable as a file, try passing it
+    -- through cygpath
+    path = cygpath_convert(path)
+  end
+  return path
+end
+
 M.get_repo_info = function(path: string, cmd: string): string,string,string
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --   https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
@@ -241,8 +260,8 @@ M.get_repo_info = function(path: string, cmd: string): string,string,string
     cwd = path
   })
 
-  local toplevel = results[1]
-  local gitdir = results[2]
+  local toplevel = normalize_path(results[1])
+  local gitdir = normalize_path(results[2])
   if gitdir and not has_abs_gd then
     gitdir = uv.fs_realpath(gitdir)
   end
