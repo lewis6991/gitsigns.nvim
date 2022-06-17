@@ -234,7 +234,7 @@ if has_cygpath then
 end
 
 local function normalize_path(path)
-   if has_cygpath and not uv.fs_stat(path) then
+   if path and has_cygpath and not uv.fs_stat(path) then
 
 
       path = cygpath_convert(path)

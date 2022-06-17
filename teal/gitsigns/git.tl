@@ -234,7 +234,7 @@ if has_cygpath then
 end
 
 local function normalize_path(path: string): string
-  if has_cygpath and not uv.fs_stat(path) then
+  if path and has_cygpath and not uv.fs_stat(path) then
     -- If on windows and path isn't recognizable as a file, try passing it
     -- through cygpath
     path = cygpath_convert(path)
