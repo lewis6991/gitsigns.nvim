@@ -902,7 +902,7 @@ C.diffthis = function(pos_args, named_args, params)
    }
 
    if params.smods then
-      if opts.split == nil then
+      if params.smods.split ~= '' and opts.split == nil then
          opts.split = params.smods.split
       end
       if opts.vertical == nil then
