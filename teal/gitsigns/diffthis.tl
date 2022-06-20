@@ -114,8 +114,9 @@ local function run(base: string, diffthis: boolean, vertical: boolean)
   end
 
   if diffthis then
+    local split_mod = vim.o.splitright and 'botright' or 'aboveleft'
     vim.cmd(table.concat({
-      'keepalt', 'aboveleft',
+      'keepalt', split_mod,
       vertical and 'vertical' or '',
       'diffsplit', bufname
     }, ' '))

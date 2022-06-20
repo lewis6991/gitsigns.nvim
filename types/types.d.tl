@@ -299,9 +299,10 @@ global record vim
 
   record o
     diffopt: string
-    wrapscan: boolean
-    updatetime: number
     shortmess: string
+    splitright: boolean
+    updatetime: number
+    wrapscan: boolean
   end
 
   record WinOption
