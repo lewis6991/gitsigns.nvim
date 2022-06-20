@@ -29,7 +29,37 @@ local record api
     count: number
     reg: string
     mods: string
+
+    record Mods
+      browse       : boolean
+      confirm      : boolean
+      emsg_silent  : boolean
+      hide         : boolean
+      keepalt      : boolean
+      keepjumps    : boolean
+      keepmarks    : boolean
+      keeppatterns : boolean
+      lockmarks    : boolean
+      noautocmd    : boolean
+      noswapfile   : boolean
+      sandbox      : boolean
+      silent       : boolean
+      tab          : integer
+      verbose      : integer
+      vertical     : boolean
+
+      enum Split ''
+        'aboveleft'
+        'belowright'
+        'topleft'
+        'botright'
+      end
+
+      split : Split
+    end
+    smods: Mods
   end
+
   record UserCmdOpts
     nargs: string|integer
     range: boolean|string|integer
