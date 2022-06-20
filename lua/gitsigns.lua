@@ -304,49 +304,52 @@ end
 
 
 
-local function parse_args_to_lua(...)
-   local args = {}
-   for i, a in ipairs({ ... }) do
-      if tonumber(a) then
-         args[i] = tonumber(a)
-      elseif a == 'false' or a == 'true' then
-         args[i] = a == 'true'
-      elseif a == 'nil' then
-         args[i] = nil
-      else
-         args[i] = a
-      end
+local function parse_to_lua(a)
+   if tonumber(a) then
+      return tonumber(a)
+   elseif a == 'false' or a == 'true' then
+      return a == 'true'
+   elseif a == 'nil' then
+      return nil
    end
-   return args
+   return a
 end
 
-local function run_func(range, func, ...)
+local function run_cmd_func(params)
+   local pos_args_raw, named_args_raw = require('gitsigns.argparse').parse_args(params.args)
+
+   local func = pos_args_raw[1]
+   local pos_args = vim.tbl_map(parse_to_lua, vim.list_slice(pos_args_raw, 2))
+   local named_args = vim.tbl_map(parse_to_lua, named_args_raw)
+
    local actions = require('gitsigns.actions')
    local actions0 = actions
 
-   local args = parse_args_to_lua(...)
+   local cmd_func = actions.get_cmd_func(func)
+   if cmd_func then
+
+
+      cmd_func(pos_args, named_args, params)
+      return
+   end
 
    if type(actions0[func]) == 'function' then
-      if range and range[1] > 0 then
-         actions.user_range = { range[2], range[3] }
-      else
-         actions.user_range = nil
-      end
-      actions0[func](unpack(args))
-      actions.user_range = nil
+      actions0[func](unpack(pos_args), named_args)
       return
    end
+
    if type(M0[func]) == 'function' then
-      M0[func](unpack(args))
+
+      M0[func](unpack(pos_args))
       return
    end
+
+   error(string.format('%s is not a valid function or action', func))
 end
 
 local function setup_command()
-   nvim.command('Gitsigns', function(params)
-      local fargs = require('gitsigns.argparse').parse_args(params.args)
-      run_func({ params.range, params.line1, params.line2 }, unpack(fargs))
-   end, { force = true, nargs = '+', range = true, complete = complete })
+   nvim.command('Gitsigns', run_cmd_func,
+   { force = true, nargs = '+', range = true, complete = complete })
 end
 
 local function wrap_func(fn, ...)

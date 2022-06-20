@@ -20,6 +20,11 @@ local Hunk_Public = gs_hunks.Hunk_Public
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
+local record DiffthisOpts
+  vertical: boolean
+  split: string
+end
+
 local record NavHunkOpts
   forwards: boolean
   wrap: boolean
@@ -51,8 +56,10 @@ local record M
   blame_line         : function(BlameOpts)
   change_base        : function(base: string, global: boolean)
   reset_base         : function(global: boolean)
-  diffthis           : function(base: string)
+  diffthis           : function(base: string, opts: DiffthisOpts)
   show               : function(base: string)
+
+  test: function(base: string, opts: {string:any})
 
   record QFListOpts
     use_location_list: boolean
@@ -63,8 +70,6 @@ local record M
   setqflist          : function(target:integer|string, opts: QFListOpts, callback: function)
   setloclist         : function(nr: integer, target:integer|string)
 
-  user_range         : {integer, integer}
-
   get_actions        : function(bufnr: integer, lnum: integer)
 
   refresh            : function()
@@ -74,7 +79,14 @@ local record M
   toggle_word_diff   : function(boolean): boolean
   toggle_current_line_blame : function(boolean): boolean
   toggle_deleted     : function(boolean): boolean
+
+  arg_spec: {string:{integer,boolean,boolean}}
 end
+
+local type CmdFunc = function(pos_args: {any}, named_args: {string:any}, params: api.UserCmdParams)
+
+-- Variations of functions from M which are used for the Gitsigns command
+local C: {string:CmdFunc} = {}
 
 --- Toggle |gitsigns-config-signbooleancolumn|
 ---
@@ -200,6 +212,14 @@ local function update(bufnr: integer)
   end
 end
 
+local function get_range(params: api.UserCmdParams): {integer, integer}
+  local range: {integer, integer}
+  if params.range > 0 then
+    range = {params.line1, params.line2}
+  end
+  return range
+end
+
 --- Stage the hunk at the cursor position, or all lines in the
 --- given range. If {range} is provided, all lines in the given
 --- range are staged. This supports partial-hunks, meaning if a
@@ -212,8 +232,9 @@ end
 --- Parameters:~
 ---     {range} table|nil List-like table of two integers making
 ---     up the line range from which you want to stage the hunks.
+---     If running via command line, then this is taken from the
+---     command modifiers.
 M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
-  range = range or M.user_range
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
@@ -253,6 +274,10 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
   update(bufnr)
 end))
 
+C.stage_hunk = function(_pos_args: {any}, _named_args: {string:any}, params: api.UserCmdParams)
+  M.stage_hunk(get_range(params))
+end
+
 --- Reset the lines of the hunk at the cursor position, or all
 --- lines in the given range. If {range} is provided, all lines in
 --- the given range are reset. This supports partial-hunks,
@@ -263,7 +288,6 @@ end))
 ---     {range} table|nil List-like table of two integers making
 ---     up the line range from which you want to reset the hunks.
 M.reset_hunk = mk_repeatable(function(range: {integer, integer})
-  range = range or M.user_range
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
@@ -300,6 +324,10 @@ M.reset_hunk = mk_repeatable(function(range: {integer, integer})
   end
   util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
 end)
+
+C.reset_hunk = function(_pos_args: {any}, _named_args: {string:any}, params: api.UserCmdParams)
+  M.reset_hunk(get_range(params))
+end
 
 --- Reset the lines of all hunks in the buffer.
 M.reset_buffer = function()
@@ -832,6 +860,19 @@ end
 --- If {base} is the index, then the opened buffer is editable and
 --- any written changes will update the index accordingly.
 ---
+--- Parameters: ~
+---     {base}   (string|nil): Revision to diff against. Defaults
+---              to index.
+---     {opts}   (table|nil):
+---              Additional options:
+---              • {vertical}: {boolean}. Split window vertically. Defaults to
+---              config.diff_opts.vertical. If running via command line, then
+---              this is taken from the command modifiers.
+---              • {split}: {string}. One of: 'aboveleft', 'belowright',
+---              'botright', 'rightbelow', 'leftabove', 'topleft'. Defaults to
+---              'aboveleft'. If running via command line, then this is taken
+---              from the command modifiers.
+---
 --- Examples: >
 ---   " Diff against the index
 ---   :Gitsigns diffthis
@@ -845,10 +886,38 @@ end
 ---
 --- Attributes: ~
 ---     {async}
-M.diffthis = function(base: string)
+M.diffthis = function(base: string, opts: DiffthisOpts)
+  opts = opts or {}
   local diffthis = require('gitsigns.diffthis')
-  diffthis.diffthis(base, config.diff_opts.vertical)
+  if not opts.vertical then
+    opts.vertical = config.diff_opts.vertical
+  end
+  diffthis.diffthis(base, opts as diffthis.DiffthisOpts)
 end
+
+C.diffthis = function(pos_args: {any}, named_args: {string:any}, params: api.UserCmdParams)
+  local opts: DiffthisOpts = {
+    vertical = named_args.vertical as boolean,
+    split    = named_args.split as string
+  }
+
+  if params.mods then
+    if opts.split == nil then
+      opts.split = params.smods.split
+    end
+    if opts.vertical == nil then
+      opts.vertical = params.smods.vertical
+    end
+  end
+
+  M.diffthis(pos_args[1] as string, opts)
+end
+
+-- C.test = function(pos_args: {any}, named_args: {string:any}, params: api.UserCmdParams)
+--   print('POS ARGS:', vim.inspect(pos_args))
+--   print('NAMED ARGS:', vim.inspect(named_args))
+--   print('PARAMS:', vim.inspect(params))
+-- end
 
 --- Show revision {base} of the current file, if it is given, or
 --- with the currently set base (index by default).
@@ -1063,5 +1132,9 @@ M.refresh = void(function()
     manager.update(k, v)
   end
 end)
+
+function M.get_cmd_func(name: string): CmdFunc
+  return C[name]
+end
 
 return M

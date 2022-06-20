@@ -199,12 +199,25 @@ show({revision})                                             *gitsigns.show()*
                 Attributes: ~
                     {async}
 
-diffthis({base})                                         *gitsigns.diffthis()*
+diffthis({base}, {opts})                                 *gitsigns.diffthis()*
                 Perform a |vimdiff| on the given file with {base} if it is
                 given, or with the currently set base (index by default).
 
                 If {base} is the index, then the opened buffer is editable and
                 any written changes will update the index accordingly.
+
+                Parameters: ~
+                    {base}   (string|nil): Revision to diff against. Defaults
+                             to index.
+                    {opts}   (table|nil):
+                             Additional options:
+                             • {vertical}: {boolean}. Split window vertically. Defaults to
+                             config.diff_opts.vertical. If running via command line, then
+                             this is taken from the command modifiers.
+                             • {split}: {string}. One of: 'aboveleft', 'belowright',
+                             'botright', 'rightbelow', 'leftabove', 'topleft'. Defaults to
+                             'aboveleft'. If running via command line, then this is taken
+                             from the command modifiers.
 
                 Examples: >
                   " Diff against the index
@@ -380,6 +393,8 @@ stage_hunk({range})                                    *gitsigns.stage_hunk()*
                 Parameters:~
                     {range} table|nil List-like table of two integers making
                     up the line range from which you want to stage the hunks.
+                    If running via command line, then this is taken from the
+                    command modifiers.
 
 toggle_deleted({value})                            *gitsigns.toggle_deleted()*
                 Toggle |gitsigns-config-show_deleted|

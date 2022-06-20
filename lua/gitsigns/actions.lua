@@ -20,6 +20,11 @@ local Hunk_Public = gs_hunks.Hunk_Public
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
+local DiffthisOpts = {}
+
+
+
+
 local NavHunkOpts = {}
 
 
@@ -75,6 +80,13 @@ local M = {QFListOpts = {}, }
 
 
 
+
+
+
+local CmdFunc = {}
+
+
+local C = {}
 
 
 
@@ -200,6 +212,16 @@ local function update(bufnr)
    end
 end
 
+local function get_range(params)
+   local range
+   if params.range > 0 then
+      range = { params.line1, params.line2 }
+   end
+   return range
+end
+
+
+
 
 
 
@@ -213,7 +235,6 @@ end
 
 
 M.stage_hunk = mk_repeatable(void(function(range)
-   range = range or M.user_range
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -253,6 +274,10 @@ M.stage_hunk = mk_repeatable(void(function(range)
    update(bufnr)
 end))
 
+C.stage_hunk = function(_pos_args, _named_args, params)
+   M.stage_hunk(get_range(params))
+end
+
 
 
 
@@ -263,7 +288,6 @@ end))
 
 
 M.reset_hunk = mk_repeatable(function(range)
-   range = range or M.user_range
    local bufnr = current_buf()
    local bcache = cache[bufnr]
    if not bcache then
@@ -300,6 +324,10 @@ M.reset_hunk = mk_repeatable(function(range)
    end
    util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
 end)
+
+C.reset_hunk = function(_pos_args, _named_args, params)
+   M.reset_hunk(get_range(params))
+end
 
 
 M.reset_buffer = function()
@@ -845,10 +873,51 @@ end
 
 
 
-M.diffthis = function(base)
+
+
+
+
+
+
+
+
+
+
+
+
+
+M.diffthis = function(base, opts)
+   opts = opts or {}
    local diffthis = require('gitsigns.diffthis')
-   diffthis.diffthis(base, config.diff_opts.vertical)
+   if not opts.vertical then
+      opts.vertical = config.diff_opts.vertical
+   end
+   diffthis.diffthis(base, opts)
 end
+
+C.diffthis = function(pos_args, named_args, params)
+   local opts = {
+      vertical = named_args.vertical,
+      split = named_args.split,
+   }
+
+   if params.mods then
+      if opts.split == nil then
+         opts.split = params.smods.split
+      end
+      if opts.vertical == nil then
+         opts.vertical = params.smods.vertical
+      end
+   end
+
+   M.diffthis(pos_args[1], opts)
+end
+
+
+
+
+
+
 
 
 
@@ -1063,5 +1132,9 @@ M.refresh = void(function()
       manager.update(k, v)
    end
 end)
+
+function M.get_cmd_func(name)
+   return C[name]
+end
 
 return M
