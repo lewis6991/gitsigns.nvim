@@ -901,7 +901,7 @@ C.diffthis = function(pos_args: {any}, named_args: {string:any}, params: api.Use
     split    = named_args.split as string
   }
 
-  if params.mods then
+  if params.smods then
     if opts.split == nil then
       opts.split = params.smods.split
     end

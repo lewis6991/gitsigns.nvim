@@ -901,7 +901,7 @@ C.diffthis = function(pos_args, named_args, params)
       split = named_args.split,
    }
 
-   if params.mods then
+   if params.smods then
       if opts.split == nil then
          opts.split = params.smods.split
       end
