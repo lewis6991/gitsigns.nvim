@@ -41,6 +41,12 @@ local hls = {
    { GitSignsDeleteVirtLnInLine = { 'GitSignsDeleteLnInline' } },
 }
 
+local culhls = {
+   GitSignsAddCul = { 'GitSignsAdd' },
+   GitSignsChangeCul = { 'GitSignsChange' },
+   GitSignsDeleteCul = { 'GitSignsDelete' },
+}
+
 local function is_hl_set(hl_name)
 
    local exists, hl = pcall(api.nvim_get_hl_by_name, hl_name, true)
@@ -63,6 +69,22 @@ M.setup_highlights = function()
                   nvim.highlight(hl, { default = true, link = d })
                   break
                end
+            end
+         end
+      end
+   end
+   local cursorline_background = vim.api.nvim_get_hl_by_name("CursorLine", true).background
+   for hl, candidates in ipairs(culhls) do
+      if is_hl_set(hl) then
+
+         dprintf('Highlight %s is already defined', hl)
+      else
+         for _, d in ipairs(candidates) do
+            if is_hl_set(d) then
+               dprintf('Deriving %s from %s', hl, d)
+               d.background = cursorline_background
+               nvim.highlight(hl, d)
+               break
             end
          end
       end

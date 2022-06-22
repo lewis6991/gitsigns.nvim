@@ -61,6 +61,7 @@ local function define_signs(obj, redefine)
          text = config.signcolumn and cs.text or nil,
          numhl = config.numhl and cs.numhl,
          linehl = config.linehl and cs.linehl,
+         culhl = config.culhl and cs.culhl,
       }, redefine)
    end
 end
@@ -119,6 +120,7 @@ function M:add(bufnr, signs)
             text = config.signcolumn and cs.text .. count_char or '',
             numhl = config.numhl and cs.numhl,
             linehl = config.linehl and cs.linehl,
+            culhl = config.culhl and cs.culhl,
          })
       end
 
