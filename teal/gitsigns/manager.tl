@@ -424,12 +424,13 @@ M.setup = function()
   -- Calling this before any await calls will stop nvim's intro messages being
   -- displayed
   api.nvim_set_decoration_provider(ns, {
-    on_win = function(_, _, bufnr: integer, top: integer, bot: integer): boolean
+    on_win = function(_, _, bufnr: integer, topline: integer, botline_guess: integer): boolean
       local bcache = cache[bufnr]
       if not bcache or not bcache.hunks then
         return false
       end
-      apply_win_signs(bufnr, bcache.hunks, top+1, bot+1)
+      local botline = math.min(botline_guess, api.nvim_buf_line_count(bufnr))
+      apply_win_signs(bufnr, bcache.hunks, topline+1, botline+1)
 
       if not (config.word_diff and config.diff_opts.internal) then
         return false

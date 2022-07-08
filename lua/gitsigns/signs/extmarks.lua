@@ -52,7 +52,7 @@ function M:add(bufnr, signs)
             text = cs.text .. count_char
          end
 
-         api.nvim_buf_set_extmark(bufnr, self.ns, s.lnum - 1, -1, {
+         local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, self.ns, s.lnum - 1, -1, {
             id = s.lnum,
             sign_text = config.signcolumn and text or '',
             priority = config.sign_priority,
@@ -60,6 +60,15 @@ function M:add(bufnr, signs)
             number_hl_group = config.numhl and cs.numhl or nil,
             line_hl_group = config.linehl and cs.linehl or nil,
          })
+
+         if not ok and config.debug_mode then
+            vim.schedule(function()
+               error(table.concat({
+                  string.format('Error placing extmark on line %d', s.lnum),
+                  err,
+               }, '\n'))
+            end)
+         end
       end
    end
 end

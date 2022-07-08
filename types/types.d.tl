@@ -108,7 +108,7 @@ local record api
   nvim_buf_get_virtual_text: function(number, number): any
   nvim_buf_is_loaded: function(number): boolean
   nvim_buf_is_valid: function(number): boolean
-  nvim_buf_line_count: function(number): number
+  nvim_buf_line_count: function(number): integer
   nvim_buf_set_extmark: function(integer, integer, integer, integer, {string:any}): integer
   nvim_buf_set_keymap: function(number, string, string, string, {string:any})
   nvim_buf_set_lines: function(number, number, number, boolean, {string})
