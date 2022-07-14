@@ -634,7 +634,7 @@ M.preview_hunk = noautocmd(function()
 
   local lines_fmt = {
     {{'Hunk <hunk_no> of <num_hunks>', 'Title'}},
-    {{'<hunk>', 'Normal' }}
+    {{'<hunk>', 'NormalFloat' }}
   }
 
   insert_hunk_hlmarks(lines_fmt, hunk)
@@ -715,21 +715,21 @@ local function create_blame_fmt(is_committed: boolean, full: boolean): popup.Lin
     {'<abbrev_sha> ', 'Directory'},
     {'<author> ', 'MoreMsg'},
     {'(<author_time:%Y-%m-%d %H:%M>)', 'Label'},
-    {':', 'Normal'}
+    {':', 'NormalFloat'}
   }
 
   if full then
     return {
       header,
-      {{'<body>', 'Normal'}},
+      {{'<body>', 'NormalFloat'}},
       {{'Hunk <hunk_no> of <num_hunks>', 'Title'}, {' <hunk_head>', 'LineNr'}},
-      {{'<hunk>', 'Normal'}}
+      {{'<hunk>', 'NormalFloat'}}
     }
   end
 
   return {
     header,
-    {{'<summary>', 'Normal'}}
+    {{'<summary>', 'NormalFloat'}}
   }
 end
 
