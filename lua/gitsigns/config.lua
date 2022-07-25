@@ -388,7 +388,7 @@ M.schema = {
       type = 'number',
       default = 40000,
       description = [[
-      Max file length to attach to.
+      Max file length (in lines) to attach to.
     ]],
    },
 
