@@ -61,7 +61,7 @@ of the default settings:
       sign_priority = 6,
       update_debounce = 100,
       status_formatter = nil, -- Use default
-      max_file_length = 40000,
+      max_file_length = 40000, -- Disable if file is longer than this (in lines)
       preview_config = {
         -- Options passed to nvim_open_win
         border = 'single',
@@ -668,7 +668,7 @@ status_formatter                            *gitsigns-config-status_formatter*
 max_file_length                              *gitsigns-config-max_file_length*
       Type: `number`, Default: `40000`
 
-      Max file length to attach to.
+      Max file length (in lines) to attach to.
 
 preview_config                                *gitsigns-config-preview_config*
       Type: `table[extended]`
