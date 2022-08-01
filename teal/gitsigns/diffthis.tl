@@ -135,7 +135,23 @@ M.diffthis = void(function(base: string, opts: M.DiffthisOpts)
   if vim.wo.diff then
     return
   end
-  run(base, true, opts)
+
+  local bufnr = vim.api.nvim_get_current_buf()
+  local bcache = cache[bufnr]
+  if not bcache then
+    return
+  end
+
+  if not base and bcache.git_obj.has_conflicts then
+    local cwin = api.nvim_get_current_win()
+    run(':2', true, opts)
+    api.nvim_set_current_win(cwin)
+    opts.split = 'belowright'
+    run(':3', true, opts)
+    api.nvim_set_current_win(cwin)
+  else
+    run(base, true, opts)
+  end
 end)
 
 M.show = void(function(base: string)
