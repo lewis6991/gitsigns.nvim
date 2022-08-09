@@ -57,13 +57,23 @@ local record M
   enable_yadm: boolean
 
   set_version: function(string)
-  get_repo_info: function(path: string, cmd: string): string,string,string
+
+  record RepoInfo
+    gitdir: string
+    toplevel: string
+    detached: boolean
+    abbrev_head: string
+  end
+
+  get_repo_info: function(path: string, cmd: string, gitdir: string, toplevel: string): RepoInfo
+
   command    : function(args: {string}, spec: GJobSpec): {string}, string
   diff       : function(file_cmp: string, file_buf: string, indent_heuristic: boolean, diff_algo: string): {string}, string
 
   record Repo
     toplevel   : string
     gitdir     : string
+    detached   : boolean
     abbrev_head: string
     username   : string
 
@@ -71,7 +81,7 @@ local record M
     files_changed      : function(Repo): {string}
     get_show_text      : function(Repo, string, string): {string}, string
     update_abbrev_head : function(Repo)
-    new                : function(string): Repo
+    new                : function(dir: string, gitdir: string, toplevel: string): Repo
   end
 
   record FileProps
@@ -97,16 +107,16 @@ local record M
     encoding      : string
 
     command              : function(Obj, {string}, GJobSpec): {string}, string
-    update_file_info     : function(Obj, boolean): boolean
+    update_file_info     : function(Obj, boolean, silent: boolean): boolean
     unstage_file         : function(Obj, string, string)
     run_blame            : function(Obj, {string}, number, boolean): BlameInfo
-    file_info            : function(Obj, string): FileProps
+    file_info            : function(Obj, string, silent: boolean): FileProps
     get_show_text        : function(Obj, string): {string}, string
     ensure_file_in_index : function(Obj)
     stage_hunks          : function(Obj, {Hunk}, boolean)
     stage_lines          : function(Obj, {string})
     has_moved            : function(Obj): string
-    new                  : function(string, string): Obj
+    new                  : function(path: string, enc: string, gitdir: string, toplevel: string): Obj
   end
 
 end
@@ -242,7 +252,7 @@ local function normalize_path(path: string): string
   return path
 end
 
-M.get_repo_info = function(path: string, cmd: string): string,string,string
+M.get_repo_info = function(path: string, cmd: string, gitdir: string, toplevel: string): M.RepoInfo
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --   https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
   local has_abs_gd = check_version{2,13}
@@ -252,21 +262,36 @@ M.get_repo_info = function(path: string, cmd: string): string,string,string
   --   https://github.com/lewis6991/gitsigns.nvim/pull/215
   scheduler()
 
-  local results = M.command({
+  local args = {}
+
+  if gitdir then
+    vim.list_extend(args, {'--git-dir', gitdir})
+  end
+
+  if toplevel then
+    vim.list_extend(args, {'--work-tree', toplevel})
+  end
+
+  vim.list_extend(args, {
     'rev-parse', '--show-toplevel', git_dir_opt, '--abbrev-ref', 'HEAD',
-  }, {
+  })
+
+  local results = M.command(args, {
     command = cmd or 'git',
     supress_stderr = true,
     cwd = path
   })
 
-  local toplevel = normalize_path(results[1])
-  local gitdir = normalize_path(results[2])
-  if gitdir and not has_abs_gd then
-    gitdir = uv.fs_realpath(gitdir)
+  local ret: M.RepoInfo = {
+    toplevel = normalize_path(results[1]),
+    gitdir = normalize_path(results[2]),
+  }
+  ret.abbrev_head = process_abbrev_head(ret.gitdir, results[3], path, cmd)
+  if ret.gitdir and not has_abs_gd then
+    ret.gitdir = uv.fs_realpath(ret.gitdir)
   end
-  local abbrev_head = process_abbrev_head(gitdir, results[3], path, cmd)
-  return toplevel, gitdir, abbrev_head
+  ret.detached = ret.toplevel and ret.gitdir ~= ret.toplevel..'/.git'
+  return ret
 end
 
 M.set_version = function(version: string)
@@ -289,7 +314,18 @@ end
 Repo.command = function(self: Repo, args: {string}, spec: GJobSpec): {string}, string
   spec = spec or {}
   spec.cwd = self.toplevel
-  return M.command({'--git-dir='..self.gitdir, unpack(args)}, spec)
+
+  local args1 = {
+    '--git-dir', self.gitdir,
+  }
+
+  if self.detached then
+    vim.list_extend(args1, {'--work-tree', self.toplevel})
+  end
+
+  vim.list_extend(args1, args)
+
+  return M.command(args1, spec)
 end
 
 Repo.files_changed = function(self: Repo): {string}
@@ -322,21 +358,27 @@ Repo.get_show_text = function(self: Repo, object: string, encoding: string): {st
 end
 
 Repo.update_abbrev_head = function(self: Repo)
-  _, _, self.abbrev_head = M.get_repo_info(self.toplevel)
+  self.abbrev_head = M.get_repo_info(self.toplevel).abbrev_head
 end
 
-Repo.new = function(dir: string): Repo
+Repo.new = function(dir: string, gitdir: string, toplevel: string): Repo
   local self = setmetatable({} as Repo, {__index = Repo})
 
   self.username = M.command({'config', 'user.name'})[1]
-  self.toplevel, self.gitdir, self.abbrev_head = M.get_repo_info(dir)
+  local info = M.get_repo_info(dir, nil, gitdir, toplevel)
+  for k, v in pairs(info as {string:any}) do
+    (self as table)[k] = v
+  end
 
   -- Try yadm
   if M.enable_yadm and not self.gitdir then
     if vim.startswith(dir, os.getenv('HOME'))
       and #M.command({'ls-files', dir}, {command = 'yadm'}) ~= 0 then
-      self.toplevel, self.gitdir, self.abbrev_head =
-        M.get_repo_info(dir, 'yadm')
+      M.get_repo_info(dir, 'yadm', gitdir, toplevel)
+      local yadm_info = M.get_repo_info(dir, 'yadm', gitdir, toplevel)
+      for k, v in pairs(yadm_info as {string:any}) do
+        (self as table)[k] = v
+      end
     end
   end
 
@@ -352,9 +394,9 @@ Obj.command = function(self: Obj, args: {string}, spec: GJobSpec): {string}, str
   return self.repo:command(args, spec)
 end
 
-Obj.update_file_info = function(self: Obj, update_relpath: boolean): boolean
+Obj.update_file_info = function(self: Obj, update_relpath: boolean, silent: boolean): boolean
   local old_object_name = self.object_name
-  local props = self:file_info()
+  local props = self:file_info(self.file, silent)
 
   if update_relpath then
     self.relpath = props.relpath
@@ -368,7 +410,7 @@ Obj.update_file_info = function(self: Obj, update_relpath: boolean): boolean
   return old_object_name ~= self.object_name
 end
 
-Obj.file_info = function(self: Obj, file: string): M.FileProps
+Obj.file_info = function(self: Obj, file: string, silent: boolean): M.FileProps
   local results, stderr = self:command({
     '-c', 'core.quotepath=off',
     'ls-files',
@@ -379,7 +421,7 @@ Obj.file_info = function(self: Obj, file: string): M.FileProps
     file or self.file
   }, {supress_stderr = true})
 
-  if stderr then
+  if stderr and not silent then
     -- Supress_stderr for the cases when we run:
     --   git ls-files --others exists/nonexist
     if not stderr:match('^warning: could not open directory .*: No such file or directory') then
@@ -540,7 +582,7 @@ Obj.has_moved = function(self: Obj): string
   end
 end
 
-Obj.new = function(file: string, encoding: string): Obj
+Obj.new = function(file: string, encoding: string, gitdir: string, toplevel: string): Obj
   if in_git_dir(file) then
       dprint('In git dir')
       return nil
@@ -549,14 +591,17 @@ Obj.new = function(file: string, encoding: string): Obj
 
   self.file = file
   self.encoding = encoding
-  self.repo = Repo.new(util.dirname(file))
+  self.repo = Repo.new(util.dirname(file), gitdir, toplevel)
 
   if not self.repo.gitdir then
     dprint('Not in git repo')
     return nil
   end
 
-  self:update_file_info(true)
+  -- When passing gitdir and toplevel, suppress stderr when resolving the file
+  local silent = gitdir ~= nil and toplevel ~= nil
+
+  self:update_file_info(true, silent)
 
   return self
 end

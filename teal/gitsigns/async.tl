@@ -92,6 +92,7 @@ end
 ---@param argc number: The number of arguments of func. Must be included.
 ---@return function: Returns an async function
 function M.wrap(func: function, argc: integer): function
+  assert(argc)
   return function(...): any...
     if not async_thread.running() then
       -- print(debug.traceback('Warning: calling async function in non-async context', 2))

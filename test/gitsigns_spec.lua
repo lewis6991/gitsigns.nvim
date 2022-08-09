@@ -292,6 +292,11 @@ describe('gitsigns', function()
     end
 
     it('doesn\'t error on untracked files', function()
+      local nvim_ver = exec_lua('return vim.version().minor')
+      if nvim_ver >= 8 then
+        pending()
+      end
+
       setup_test_repo{no_add=true}
       edit(newfile)
       insert("line")
@@ -341,7 +346,7 @@ describe('gitsigns', function()
         p'run_job: git .* config user.name',
         p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
         p'run_job: git .* rev%-parse %-%-short HEAD',
-        p'run_job: git .* %-%-git%-dir=.* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*',
+        p'run_job: git .* %-%-git%-dir .* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*',
         'attach(1): User on_attach() returned false',
       }
     end)
