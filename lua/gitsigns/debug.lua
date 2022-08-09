@@ -45,6 +45,7 @@ local function get_context(lvl)
       ret.name = name0:gsub('(.*)%d+$', '%1')
    end
    ret.bufnr = getvarvalue('bufnr', lvl) or
+   getvarvalue('_bufnr', lvl) or
    getvarvalue('cbuf', lvl) or
    getvarvalue('buf', lvl)
 

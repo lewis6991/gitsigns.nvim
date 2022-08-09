@@ -1,3 +1,4 @@
+local async = require('gitsigns.async')
 local void = require('gitsigns.async').void
 local scheduler = require('gitsigns.async').scheduler
 
@@ -153,6 +154,37 @@ local function on_detach(_, bufnr: integer)
   M.detach(bufnr, true)
 end
 
+local function on_attach_pre(bufnr: integer): string, string
+  local gitdir, toplevel: string, string
+  if config._on_attach_pre then
+    local res: any = async.wrap(config._on_attach_pre, 2)(bufnr)
+    dprintf('ran on_attach_pre with result %s', vim.inspect(res))
+    if res is table then
+      if type(res.gitdir) == 'string' then
+        gitdir = res.gitdir as string
+      end
+      if type(res.toplevel) == 'string' then
+        toplevel = res.toplevel as string
+      end
+    end
+  end
+  return gitdir, toplevel
+end
+
+local function try_worktrees(_bufnr: integer, file: string, encoding: string): git.Obj
+  if not config.worktrees then
+    return
+  end
+
+  for _, wt in ipairs(config.worktrees) do
+    local git_obj = git.Obj.new(file, encoding, wt.gitdir, wt.toplevel)
+    if git_obj and git_obj.object_name then
+      dprintf('Using worktree %s', vim.inspect(wt))
+      return git_obj
+    end
+  end
+end
+
 -- Ensure attaches cannot be interleaved.
 -- Since attaches are asynchronous we need to make sure an attach isn't
 -- performed whilst another one is in progress.
@@ -190,6 +222,7 @@ local attach_throttled = throttle_by_id(function(cbuf: integer, aucmd: string)
   end
 
   local file, commit = get_buf_path(cbuf)
+  local encoding = vim.bo[cbuf].fileencoding
 
   local file_dir = util.dirname(file)
 
@@ -198,7 +231,14 @@ local attach_throttled = throttle_by_id(function(cbuf: integer, aucmd: string)
     return
   end
 
-  local git_obj = git.Obj.new(file, vim.bo[cbuf].fileencoding)
+  local gitdir_oap, toplevel_oap = on_attach_pre(cbuf)
+  local git_obj = git.Obj.new(file, encoding, gitdir_oap, toplevel_oap)
+
+  if not git_obj then
+    git_obj = try_worktrees(cbuf, file, encoding)
+    scheduler()
+  end
+
   if not git_obj then
     dprint('Empty git obj')
     return

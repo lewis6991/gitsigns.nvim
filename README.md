@@ -28,6 +28,7 @@ Super fast git decorations implemented purely in lua/teal.
 - Live intra-line word diff
 - Ability to display deleted/changed lines via virtual lines.
 - Support for [yadm](https://yadm.io/)
+- Support for detached working trees.
 
 ## Requirements
 

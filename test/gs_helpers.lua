@@ -142,11 +142,11 @@ function M.match_lines(lines, spec)
     end
   end
   if i < #spec + 1 then
-    -- print('Lines:')
-    -- for _, l in ipairs(lines) do
-    --   print(string.format(   '"%s"', l))
-    -- end
-    error(('Did not match pattern \'%s\''):format(spec[i]))
+    local msg = {'lines:'}
+    for _, l in ipairs(lines) do
+      msg[#msg+1] = string.format(   '"%s"', l)
+    end
+    error(('Did not match pattern \'%s\' with %s'):format(spec[i], table.concat(msg, '\n')))
   end
 end
 
@@ -173,11 +173,18 @@ local function match_lines2(lines, spec)
   end
 
   if i < #spec + 1 then
-    local unmatched = {}
-    for j = i, #spec do
-      table.insert(unmatched, spec[j].text or spec[j])
-    end
-    error(('Did not match patterns:\n    - %s'):format(table.concat(unmatched, '\n    - ')))
+    local unmatched_msg = table.concat(helpers.tbl_map(function(v)
+      return string.format('    - %s', v.text or v)
+    end, spec), '\n')
+
+    local lines_msg = table.concat(helpers.tbl_map(function(v)
+      return string.format('    - %s', v)
+    end, lines), '\n')
+
+    error(('Did not match patterns:\n%s\nwith:\n%s'):format(
+      unmatched_msg,
+      lines_msg
+    ))
   end
 end
 

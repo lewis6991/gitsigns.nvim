@@ -58,6 +58,7 @@ local record M
     show_deleted: boolean
     sign_priority: integer
     keymaps: {string:any}
+    _on_attach_pre: function(bufnr: integer, callback: function(table))
     on_attach: function(bufnr: integer)
     record watch_gitdir
       interval: integer
@@ -99,6 +100,12 @@ local record M
     end
 
     trouble: boolean
+
+    record Worktree
+      toplevel: string
+      gitdir: string
+    end
+    worktrees: {Worktree}
 
     -- Undocumented
     word_diff: boolean
@@ -172,6 +179,49 @@ M.schema = {
       mappings defined in this field can be disabled by setting the whole field
       to `{}`, and |gitsigns-config-on_attach| can instead be used to define
       mappings.
+    ]]
+  },
+
+  worktrees = {
+    type = 'table',
+    default = nil,
+    description = [[
+      Detached working trees.
+
+      Array of tables with the keys `gitdir` and `toplevel`.
+
+      If normal attaching fails, then each entry in the table is attempted
+      with the work tree details set.
+
+      Example: >
+        worktrees = {
+          {
+            toplevel = vim.env.HOME,
+            gitdir = vim.env.HOME .. '/projects/dotfiles/.git'
+          }
+        }
+    ]]
+  },
+
+  _on_attach_pre = {
+    type = 'function',
+    default = nil,
+    description = [[
+      Asynchronous hook called before attaching to a buffer. Mainly used to
+      configure detached worktrees.
+
+      This callback must call its callback argument. The callback argument can
+      accept an optional table argument with the keys: 'gitdir' and 'toplevel'.
+
+      Example: >
+        on_attach_pre = function(bufnr, callback)
+          ...
+          callback {
+            gitdir = ...,
+            toplevel = ...
+          }
+        end
+<
     ]]
   },
 

@@ -92,6 +92,7 @@ local M = {}
 
 
 function M.wrap(func, argc)
+   assert(argc)
    return function(...)
       if not async_thread.running() then
 
