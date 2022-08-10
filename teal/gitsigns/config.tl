@@ -61,6 +61,7 @@ local record M
     _on_attach_pre: function(bufnr: integer, callback: function(table))
     on_attach: function(bufnr: integer)
     record watch_gitdir
+      enable: boolean
       interval: integer
       follow_files: boolean
     end
@@ -253,6 +254,7 @@ M.schema = {
   watch_gitdir = {
     type = 'table',
     default = {
+      enable = true,
       interval = 1000,
       follow_files = true
     },
@@ -262,6 +264,9 @@ M.schema = {
       update signs.
 
       Fields: ~
+        • `enable`:
+            Whether the watcher is enabled.
+
         • `interval`:
             Interval the watcher waits between polls of the gitdir in milliseconds.
 

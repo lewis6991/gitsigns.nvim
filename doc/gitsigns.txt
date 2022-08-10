@@ -562,6 +562,7 @@ watch_gitdir                                    *gitsigns-config-watch_gitdir*
       Type: `table`
       Default: >
         {
+          enable = true,
           interval = 1000,
           follow_files = true
         }
@@ -571,6 +572,9 @@ watch_gitdir                                    *gitsigns-config-watch_gitdir*
       update signs.
 
       Fields: ~
+        • `enable`:
+            Whether the watcher is enabled.
+
         • `interval`:
             Interval the watcher waits between polls of the gitdir in milliseconds.
 

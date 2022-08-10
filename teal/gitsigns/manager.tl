@@ -305,6 +305,10 @@ end
 
 
 M.watch_gitdir = function(bufnr: integer, gitdir: string): uv.FSPollObj
+  if not config.watch_gitdir.enable then
+    return
+  end
+
   dprintf('Watching git dir')
   local w = uv.new_fs_poll()
   w:start(gitdir, config.watch_gitdir.interval, void(function(err: string)

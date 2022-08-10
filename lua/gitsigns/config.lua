@@ -122,6 +122,7 @@ local M = {Config = {DiffOpts = {}, SignConfig = {}, watch_gitdir = {}, current_
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -253,6 +254,7 @@ M.schema = {
    watch_gitdir = {
       type = 'table',
       default = {
+         enable = true,
          interval = 1000,
          follow_files = true,
       },
@@ -262,6 +264,9 @@ M.schema = {
       update signs.
 
       Fields: ~
+        • `enable`:
+            Whether the watcher is enabled.
+
         • `interval`:
             Interval the watcher waits between polls of the gitdir in milliseconds.
 
