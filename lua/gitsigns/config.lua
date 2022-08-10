@@ -130,11 +130,11 @@ M.schema = {
       type = 'table',
       deep_extend = true,
       default = {
-         add = { hl = 'GitSignsAdd', text = '┃', numhl = 'GitSignsAddNr', linehl = 'GitSignsAddLn' },
-         change = { hl = 'GitSignsChange', text = '┃', numhl = 'GitSignsChangeNr', linehl = 'GitSignsChangeLn' },
-         delete = { hl = 'GitSignsDelete', text = '▁', numhl = 'GitSignsDeleteNr', linehl = 'GitSignsDeleteLn' },
-         topdelete = { hl = 'GitSignsDelete', text = '▔', numhl = 'GitSignsDeleteNr', linehl = 'GitSignsDeleteLn' },
-         changedelete = { hl = 'GitSignsChange', text = '~', numhl = 'GitSignsChangeNr', linehl = 'GitSignsChangeLn' },
+         add = { hl = 'GitSignsAdd', text = '┃', numhl = 'GitSignsAddNr', linehl = 'GitSignsAddLn', culhl = 'GitSignsAddCul' },
+         change = { hl = 'GitSignsChange', text = '┃', numhl = 'GitSignsChangeNr', linehl = 'GitSignsChangeLn', culhl = 'GitSignsChangeCul' },
+         delete = { hl = 'GitSignsDelete', text = '▁', numhl = 'GitSignsDeleteNr', linehl = 'GitSignsDeleteLn', culhl = 'GitSignsDeleteCul' },
+         topdelete = { hl = 'GitSignsDelete', text = '▔', numhl = 'GitSignsDeleteNr', linehl = 'GitSignsDeleteLn', culhl = 'GitSignsDeleteCul' },
+         changedelete = { hl = 'GitSignsChange', text = '~', numhl = 'GitSignsChangeNr', linehl = 'GitSignsChangeLn', culhl = 'GitSignsChangeCul' },
       },
       description = [[
       Configuration for signs:
@@ -143,6 +143,8 @@ M.schema = {
         • `numhl` specifies the highlight group to use for the number column
           (see |gitsigns-config.numhl|).
         • `linehl` specifies the highlight group to use for the line
+          (see |gitsigns-config.linehl|).
+        • `culhl` specifies the highlight group to use for the signs on the cursor line
           (see |gitsigns-config.linehl|).
         • `show_count` to enable showing count of hunk, e.g. number of deleted
           lines.
@@ -314,6 +316,18 @@ M.schema = {
       Enable/disable line highlights.
 
       When enabled the highlights defined in `signs.*.linehl` are used. If
+      the highlight group does not exist, then it is automatically defined
+      and linked to the corresponding highlight group in `signs.*.hl`.
+    ]],
+   },
+
+   culhl = {
+      type = 'boolean',
+      default = false,
+      description = [[
+      Enable/disable cursor line symbol highlights.
+
+      When enabled the highlights defined in `signs.*.culhl` are used. If
       the highlight group does not exist, then it is automatically defined
       and linked to the corresponding highlight group in `signs.*.hl`.
     ]],
