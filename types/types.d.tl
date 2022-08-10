@@ -578,6 +578,12 @@ global record vim
 
   record ui
     input: function({string:any}, function(string))
+    record SelectOpts<T>
+      prompt: string
+      format_item: function(T): string
+      kind: string
+    end
+    select: function<T>({T}, SelectOpts<T>, on_choice: function(T, idx: integer))
   end
 
   record VersionDetails

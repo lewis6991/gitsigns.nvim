@@ -355,10 +355,15 @@ local function parse_to_lua(a)
    return a
 end
 
-local function run_cmd_func(params)
+local run_cmd_func = void(function(params)
    local pos_args_raw, named_args_raw = require('gitsigns.argparse').parse_args(params.args)
 
    local func = pos_args_raw[1]
+
+   if not func then
+      func = async.wrap(vim.ui.select, 3)(complete('', 'Gitsigns '), {})
+   end
+
    local pos_args = vim.tbl_map(parse_to_lua, vim.list_slice(pos_args_raw, 2))
    local named_args = vim.tbl_map(parse_to_lua, named_args_raw)
 
@@ -385,11 +390,11 @@ local function run_cmd_func(params)
    end
 
    error(string.format('%s is not a valid function or action', func))
-end
+end)
 
 local function setup_command()
    nvim.command('Gitsigns', run_cmd_func,
-   { force = true, nargs = '+', range = true, complete = complete })
+   { force = true, nargs = '*', range = true, complete = complete })
 end
 
 local function wrap_func(fn, ...)
