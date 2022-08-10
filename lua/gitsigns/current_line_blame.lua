@@ -191,7 +191,9 @@ M.setup = function()
       { group = 'gitsigns_blame', callback = function() reset() end })
 
 
-      update()
+
+
+      vim.schedule(update)
    end
 end
 

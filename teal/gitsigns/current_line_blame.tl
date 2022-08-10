@@ -191,7 +191,9 @@ M.setup = function()
       { group = 'gitsigns_blame', callback = function() reset() end }
     )
 
-    update()
+    -- Call via vim.schedule to avoid the debounce timer killing the async
+    -- coroutine
+    vim.schedule(update)
   end
 end
 
