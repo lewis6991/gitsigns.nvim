@@ -559,7 +559,7 @@ on_attach                                          *gitsigns-config-on_attach*
 <
 
 watch_gitdir                                    *gitsigns-config-watch_gitdir*
-      Type: `table`
+      Type: `table[extended]`
       Default: >
         {
           enable = true,

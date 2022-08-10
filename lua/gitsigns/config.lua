@@ -253,6 +253,7 @@ M.schema = {
 
    watch_gitdir = {
       type = 'table',
+      deep_extend = true,
       default = {
          enable = true,
          interval = 1000,
