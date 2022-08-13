@@ -59,8 +59,8 @@ local function define_signs(obj: B, redefine: boolean)
     define_sign(get_sign_name(stype), {
       texthl = cs.hl,
       text   = config.signcolumn and cs.text or nil,
-      numhl  = config.numhl      and cs.numhl,
-      linehl = config.linehl     and cs.linehl
+      numhl  = config.numhl      and cs.numhl or nil,
+      linehl = config.linehl     and cs.linehl or nil
     }, redefine)
   end
 end
