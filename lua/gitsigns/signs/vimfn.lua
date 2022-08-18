@@ -117,8 +117,8 @@ function M:add(bufnr, signs)
          define_sign(sign_name, {
             texthl = cs.hl,
             text = config.signcolumn and cs.text .. count_char or '',
-            numhl = config.numhl and cs.numhl,
-            linehl = config.linehl and cs.linehl,
+            numhl = config.numhl and cs.numhl or nil,
+            linehl = config.linehl and cs.linehl or nil,
          })
       end
 
