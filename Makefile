@@ -3,23 +3,43 @@ export PJ_ROOT=$(PWD)
 
 FILTER ?= .*
 
-INIT_LUAROCKS := eval $$(luarocks --lua-version=5.1 path) &&
+LUA_VERSION   := 5.1
+TL_VERSION    := 0.13.2
+NEOVIM_BRANCH := master
+
+LUAROCKS       := luarocks --lua-version=$(LUA_VERSION)
+LUAROCKS_TREE  := $(PWD)/deps/luarocks/usr
+LUAROCKS_LPATH := $(LUAROCKS_TREE)/share/lua/$(LUA_VERSION)
+LUAROCKS_INIT  := eval $$($(LUAROCKS) --tree $(LUAROCKS_TREE) path) &&
 
 .DEFAULT_GOAL := build
-
-NEOVIM_BRANCH := master
 
 deps/neovim:
 	@mkdir -p deps
 	git clone --depth 1 https://github.com/neovim/neovim --branch $(NEOVIM_BRANCH) $@
-	make -C $@
+	make -C $@ DEPS_BUILD_DIR=$(dir $(LUAROCKS_TREE))
+
+TL := $(LUAROCKS_TREE)/bin/tl
+
+$(TL):
+	@mkdir -p $@
+	$(LUAROCKS) --tree $(LUAROCKS_TREE) install tl $(TL_VERSION)
+
+INSPECT := $(LUAROCKS_LPATH)/inspect.lua
+
+$(INSPECT):
+	@mkdir -p $@
+	$(LUAROCKS) --tree $(LUAROCKS_TREE) install inspect
+
+.PHONY: lua_deps
+lua_deps: $(TL) $(INSPECT)
 
 export VIMRUNTIME=$(PWD)/deps/neovim/runtime
 export TEST_COLORS=1
 
 .PHONY: test
 test: deps/neovim
-	$(INIT_LUAROCKS) deps/neovim/.deps/usr/bin/busted \
+	$(LUAROCKS_INIT) busted \
 		-v \
 		--lazy \
 		--helper=$(PWD)/test/preload.lua \
@@ -35,17 +55,17 @@ test: deps/neovim
 	-@stty sane
 
 .PHONY: tl-check
-tl-check:
-	$(INIT_LUAROCKS) tl check teal/*.tl teal/**/*.tl
+tl-check: $(TL)
+	$(TL) check teal/*.tl teal/**/*.tl
 
 .PHONY: tl-build
-tl-build: tlconfig.lua
-	@$(INIT_LUAROCKS) tl build
+tl-build: tlconfig.lua $(TL)
+	@$(TL) build
 	@echo Updated lua files
 
 .PHONY: gen_help
-gen_help:
-	@$(INIT_LUAROCKS) ./gen_help.lua
+gen_help: $(INSPECT)
+	@$(LUAROCKS_INIT) ./gen_help.lua
 	@echo Updated help
 
 .PHONY: build

@@ -32,9 +32,7 @@ jobs:
     env:
       NEOVIM_BRANCH: ${{ matrix.neovim_branch }}
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
       - name: Setup build dependencies
@@ -47,45 +45,38 @@ jobs:
             g++ \
             gettext \
             gperf \
-            libjemalloc-dev \
-            libluajit-5.1-dev \
-            libmsgpack-dev \
-            libtermkey-dev \
             libtool \
             libtool-bin \
-            libunibilium-dev \
-            libvterm-dev \
             lua-bitop \
-            lua-lpeg \
-            lua-mpack \
             ninja-build \
             pkg-config \
             unzip
 
-      - uses: leafo/gh-actions-lua@v8
+      - name: Install LuaJIT
+        uses: leafo/gh-actions-lua@v9
         with:
           luaVersion: "luajit-2.1.0-beta3"
-      - uses: leafo/gh-actions-luarocks@v4
 
-      - name: Install teal
-        run: luarocks install tl 0.13.2
+      - name: Install Luarocks
+        uses: leafo/gh-actions-luarocks@v4
+
+      - name: Cache Deps
+        id: cache-deps
+        uses: actions/cache@v2
+        run: |
+          echo "::set-output name=sha::$(git ls-remote https://github.com/neovim/neovim ${{env.NEOVIM_BRANCH}} | cut -f1)"
+        with:
+          path: deps
+          key: build-6-${{ steps.cache-deps.outputs.sha }}
+
+      - name: Install Lua Deps
+        run: make lua_deps
 
       - name: Check lua files are built from latest teal
         run: make tl-ensure
 
-      - name: Get Neovim SHA
-        id: get-nvim-sha
-        run: |
-          echo "::set-output name=sha::$(git ls-remote https://github.com/neovim/neovim ${{env.NEOVIM_BRANCH}} | cut -f1)"
-        shell: bash
-
-      - name: Cache neovim
-        uses: actions/cache@v2
-        with:
-          path: deps/neovim
-          key: build-${{ steps.get-nvim-sha.outputs.sha }}
-
       - name: Build Neovim
+        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: make deps/neovim NEOVIM_BRANCH=$NEOVIM_BRANCH
 
       - name: Run Test

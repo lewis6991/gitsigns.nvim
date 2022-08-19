@@ -1,12 +1,7 @@
 ## Requirements
 
-- [Neovim](https://github.com/neovim/neovim)
 - [Luarocks](https://luarocks.org/)
     - `brew install luarocks`
-- [Teal](https://github.com/teal-language/tl)
-    - `luarocks --lua-version=5.1 install tl`
-- [Inspect](https://github.com/kikito/inspect.lua)
-    - `luarocks --lua-version=5.1 install inspect`
 
 ## Writing Teal
 
