@@ -60,14 +60,17 @@ jobs:
       - name: Install Luarocks
         uses: leafo/gh-actions-luarocks@v4
 
+      - name: Get Neovim SHA
+        id: get-nvim-sha
+        run: |
+          echo "::set-output name=sha::$(git ls-remote https://github.com/neovim/neovim ${{env.NEOVIM_BRANCH}} | cut -f1)"
+
       - name: Cache Deps
         id: cache-deps
         uses: actions/cache@v2
-        run: |
-          echo "::set-output name=sha::$(git ls-remote https://github.com/neovim/neovim ${{env.NEOVIM_BRANCH}} | cut -f1)"
         with:
           path: deps
-          key: build-6-${{ steps.cache-deps.outputs.sha }}
+          key: build-5-${{ steps.get-nvim-sha.outputs.sha }}
 
       - name: Install Lua Deps
         run: make lua_deps
