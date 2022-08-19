@@ -33,24 +33,8 @@ jobs:
       NEOVIM_BRANCH: ${{ matrix.neovim_branch }}
 
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Setup build dependencies
-        run: |
-          sudo apt update &&
-          sudo apt install -y \
-            autoconf \
-            automake \
-            cmake \
-            g++ \
-            gettext \
-            gperf \
-            libtool \
-            libtool-bin \
-            lua-bitop \
-            ninja-build \
-            pkg-config \
-            unzip
+      - name: Checkout
+        uses: actions/checkout@v2
 
       - name: Install LuaJIT
         uses: leafo/gh-actions-lua@v9
@@ -77,6 +61,24 @@ jobs:
 
       - name: Check lua files are built from latest teal
         run: make tl-ensure
+
+      - name: Install Neovim build dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          sudo apt update &&
+          sudo apt install -y \
+            autoconf \
+            automake \
+            cmake \
+            g++ \
+            gettext \
+            gperf \
+            libtool \
+            libtool-bin \
+            lua-bitop \
+            ninja-build \
+            pkg-config \
+            unzip
 
       - name: Build Neovim
         if: steps.cache-deps.outputs.cache-hit != 'true'
