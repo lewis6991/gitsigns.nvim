@@ -645,7 +645,8 @@ M.preview_hunk = noautocmd(function()
     hunk = gs_hunks.patch_lines(hunk, vim.bo[bufnr].fileformat),
   })
 
-  popup.create(lines_spec, config.preview_config)
+  _, bufnr = popup.create(lines_spec, config.preview_config)
+  api.nvim_buf_set_option(bufnr, 'ft', 'gitsigns_diff')
 end)
 
 --- Select the hunk under the cursor.
@@ -786,7 +787,8 @@ M.blame_line = void(function(opts: BlameOpts)
 
   scheduler()
 
-  popup.create(lines_format(blame_fmt, info), config.preview_config)
+  _, bufnr = popup.create(lines_format(blame_fmt, info), config.preview_config)
+  api.nvim_buf_set_option(bufnr, 'ft', 'gitsigns_blame')
 end)
 
 local function update_buf_base(buf: integer, bcache: CacheEntry, base: string)
