@@ -1,7 +1,5 @@
 local M = {}
 
-local hlval = {}
-
 local function parse_expr(x)
    if not x then
       return 'NONE'

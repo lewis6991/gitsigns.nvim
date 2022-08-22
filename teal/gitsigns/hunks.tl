@@ -153,7 +153,7 @@ function M.calc_signs(hunk: Hunk, min_lnum: integer, max_lnum: integer): {Sign}
     end
   end
 
-  local signs = {}
+  local signs: {Sign} = {}
 
   local cend = change_end(hunk)
 

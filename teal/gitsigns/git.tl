@@ -480,9 +480,9 @@ Obj.run_blame = function(self: Obj, lines: {string}, lnum: number, ignore_whites
     -- If abbrev_head is empty, then assume the repo has no commits
     return {
       author             = 'Not Committed Yet',
-      ['author-mail']    = '<not.committed.yet>',
+      ['author_mail']    = '<not.committed.yet>',
       committer          = 'Not Committed Yet',
-      ['committer-mail'] = '<not.committed.yet>',
+      ['committer_mail'] = '<not.committed.yet>',
     }
   end
 

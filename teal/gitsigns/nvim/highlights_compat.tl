@@ -1,8 +1,6 @@
 local M = {}
 
-local type hlval = string|boolean|integer
-
-local function parse_expr(x: hlval): string
+local function parse_expr(x: any): string
   if not x then
     return 'NONE'
   end
@@ -14,7 +12,7 @@ local function parse_expr(x: hlval): string
   end
 end
 
-local function parse_attrs(x: {string:hlval}): string
+local function parse_attrs(x: {string:any}): string
   local r: {string} = {}
 
   for k, a in pairs(x) do
@@ -29,7 +27,7 @@ local function parse_attrs(x: {string:hlval}): string
   return 'NONE'
 end
 
-function M.highlight(group: string, opts: {string:hlval})
+function M.highlight(group: string, opts: {string:any})
   local default = opts.default and 'default' or ''
   if opts.link then
     vim.cmd(table.concat({
