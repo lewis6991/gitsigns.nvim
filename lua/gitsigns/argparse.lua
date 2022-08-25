@@ -6,7 +6,7 @@ local function is_char(x)
    return x:match('[^=\'"%s]') ~= nil
 end
 
-local ArgState = {}
+
 
 
 

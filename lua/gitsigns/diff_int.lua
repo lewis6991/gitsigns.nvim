@@ -8,8 +8,8 @@ local M = {}
 
 
 
-local DiffFun = {}
-local DiffResult = {}
+
+
 
 local run_diff_xdl = function(
    fa, fb,
@@ -87,7 +87,7 @@ M.run_diff = async.void(function(
    return hunks
 end)
 
-local Region = {}
+
 
 local gaps_between_regions = 5
 

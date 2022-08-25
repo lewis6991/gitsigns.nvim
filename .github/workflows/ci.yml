@@ -54,7 +54,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: deps
-          key: build-5-${{ steps.get-nvim-sha.outputs.sha }}
+          key: build-6-${{ steps.get-nvim-sha.outputs.sha }}
 
       - name: Install Lua Deps
         run: make lua_deps

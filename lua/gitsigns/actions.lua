@@ -20,12 +20,6 @@ local Hunk_Public = gs_hunks.Hunk_Public
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
-local DiffthisOpts = {}
-
-
-
-
-local NavHunkOpts = {}
 
 
 
@@ -33,7 +27,13 @@ local NavHunkOpts = {}
 
 
 
-local BlameOpts = {}
+
+
+
+
+
+
+
 
 
 
@@ -83,7 +83,7 @@ local M = {QFListOpts = {}, }
 
 
 
-local CmdFunc = {}
+
 
 
 local C = {}
