@@ -4,7 +4,7 @@ export PJ_ROOT=$(PWD)
 FILTER ?= .*
 
 LUA_VERSION   := 5.1
-TL_VERSION    := 0.13.2
+TL_VERSION    := 0.14.1
 NEOVIM_BRANCH := master
 
 LUAROCKS       := luarocks --lua-version=$(LUA_VERSION)

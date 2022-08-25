@@ -47,7 +47,7 @@ ffi.cdef([[
   );
 ]])
 
-local MMBuffer = {}
+
 
 
 
@@ -58,7 +58,7 @@ local function setup_mmbuffer(lines)
    return text, #text
 end
 
-local XPParam = {}
+
 
 
 
@@ -77,11 +77,6 @@ local function get_xpparam_flag(diff_algo)
    return daflag
 end
 
-local Long = {}
-
-
-
-local XDEmitConf = {}
 
 
 
@@ -99,7 +94,12 @@ local XDEmitConf = {}
 
 
 
-local DiffResult = {}
+
+
+
+
+
+
 
 local mmba = ffi.new('mmbuffer_t')
 local mmbb = ffi.new('mmbuffer_t')
