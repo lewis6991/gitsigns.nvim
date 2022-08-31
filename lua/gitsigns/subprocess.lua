@@ -1,4 +1,5 @@
 local gsd = require("gitsigns.debug")
+local guv = require("gitsigns.uv")
 local uv = vim.loop
 
 local M = {JobSpec = {State = {}, }, }
@@ -38,18 +39,19 @@ function M.run_job(obj, callback)
    s.stdout_data = {}
    s.stderr_data = {}
 
-   s.stdout = uv.new_pipe(false)
-   s.stderr = uv.new_pipe(false)
+   s.stdout = guv.new_pipe(false)
+   s.stderr = guv.new_pipe(false)
    if obj.writer then
-      s.stdin = uv.new_pipe(false)
+      s.stdin = guv.new_pipe(false)
    end
 
-   s.handle, s.pid = uv.spawn(obj.command, {
+   s.handle, s.pid = guv.spawn(obj.command, {
       args = obj.args,
       stdio = { s.stdin, s.stdout, s.stderr },
       cwd = obj.cwd,
    },
    function(code, signal)
+      s.handle:close()
       s.code = code
       s.signal = signal
 
@@ -68,6 +70,9 @@ function M.run_job(obj, callback)
 
 
    if not s.handle then
+      if s.stdin and not s.stdin:is_closing() then s.stdin:close() end
+      if s.stdout and not s.stdout:is_closing() then s.stdout:close() end
+      if s.stderr and not s.stderr:is_closing() then s.stderr:close() end
       error(debug.traceback("Failed to spawn process: " .. vim.inspect(obj)))
    end
 

@@ -8,6 +8,7 @@ local config = require('gitsigns.config').config
 local BlameInfo = require('gitsigns.git').BlameInfo
 local util = require('gitsigns.util')
 local nvim = require('gitsigns.nvim')
+local uv = require('gitsigns.uv')
 
 local api = vim.api
 
@@ -15,7 +16,7 @@ local current_buf = api.nvim_get_current_buf
 
 local namespace = api.nvim_create_namespace('gitsigns_blame')
 
-local timer = vim.loop.new_timer()
+local timer = uv.new_timer(true)
 
 local M = {}
 

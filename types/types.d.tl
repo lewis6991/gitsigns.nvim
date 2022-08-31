@@ -398,6 +398,8 @@ global record vim
   record loop
     cwd: function(): string
     record Timer
+      userdata
+
       start: function(Timer, number, number, function): number
       stop: function(Timer): number
       close: function(Timer): number
@@ -407,18 +409,19 @@ global record vim
       get_due_in: function(Timer): number
     end
     hrtime: function(): number
-    new_timer: function(): Timer
+    new_timer: function(): Timer | string
     timer_start: function(Timer, integer, integer, function()): integer | string
 
     new_fs_event: function()
 
     record FSPollObj
       userdata
+      close: function(FSPollObj)
       start: function(FSPollObj, string, integer, function)
       stop: function(FSPollObj)
       getpath: function(FSPollObj): string
     end
-    new_fs_poll: function(): FSPollObj
+    new_fs_poll: function(): FSPollObj | string
 
     record FsStatRet
       dev : number
@@ -460,7 +463,16 @@ global record vim
 
     sleep: function(integer)
 
+    record Handle
+      userdata
+
+      close: function(Handle)
+      is_closing: function(Handle): boolean | string
+    end
+
     record Pipe
+      userdata
+
       close: function(Pipe)
       is_closing: function(Pipe): boolean | string
       read_start: function(Pipe, err: any, data: string)
@@ -472,6 +484,8 @@ global record vim
 
     record Process
       userdata
+
+      close: function(Process)
     end
 
     record SpawnOpts
@@ -484,7 +498,7 @@ global record vim
     spawn: function(string, SpawnOpts, function(integer, integer)): Process, integer
 
     read_start: function(Pipe, function)
-    new_pipe: function(boolean): Pipe
+    new_pipe: function(boolean): Pipe | string
     shutdown: function(any, function)
     close: function(any, function)
 

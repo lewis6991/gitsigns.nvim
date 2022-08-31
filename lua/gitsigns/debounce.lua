@@ -1,3 +1,5 @@
+local uv = require('gitsigns.uv')
+
 local M = {}
 
 
@@ -11,7 +13,7 @@ local M = {}
 
 
 function M.debounce_trailing(ms, fn)
-   local timer = vim.loop.new_timer()
+   local timer = uv.new_timer(true)
    return function(...)
       local argv = { ... }
       timer:start(ms, 0, function()
@@ -28,7 +30,7 @@ end
 
 
 function M.throttle_leading(ms, fn)
-   local timer = vim.loop.new_timer()
+   local timer = uv.new_timer(true)
    local running = false
    return function(...)
       if not running then
