@@ -22,6 +22,9 @@ local hls: {{string:{string}}} = {
   -- Don't set GitSignsDeleteLn by default
   -- {GitSignsDeleteLn           = {}},
 
+  {GitSignsAddPreview         = {'GitGutterAddLine'   , 'SignifyLineAdd'   , 'DiffAdd'   }},
+  {GitSignsDeletePreview      = {'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete'}},
+
   {GitSignsCurrentLineBlame   = {'NonText'}},
 
   {GitSignsAddInline          = {'TermCursor'}},

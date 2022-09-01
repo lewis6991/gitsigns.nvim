@@ -22,6 +22,9 @@ local hls = {
 
 
 
+   { GitSignsAddPreview = { 'GitGutterAddLine', 'SignifyLineAdd', 'DiffAdd' } },
+   { GitSignsDeletePreview = { 'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete' } },
+
    { GitSignsCurrentLineBlame = { 'NonText' } },
 
    { GitSignsAddInline = { 'TermCursor' } },
