@@ -61,10 +61,12 @@ local function apply_win_signs(bufnr, hunks, top, bot, clear)
 
 
 
+   if clear and hunks[1] then
+      signs:add(bufnr, gs_hunks.calc_signs(hunks[1], hunks[1].added.start, hunks[1].added.start))
+   end
 
-   for i, hunk in ipairs(hunks or {}) do
-      if clear and i == 1 or
-         top <= hunk.vend and bot >= hunk.added.start then
+   for _, hunk in ipairs(hunks or {}) do
+      if top <= hunk.vend and bot >= hunk.added.start then
          signs:add(bufnr, gs_hunks.calc_signs(hunk, top, bot))
       end
       if hunk.added.start > bot then
