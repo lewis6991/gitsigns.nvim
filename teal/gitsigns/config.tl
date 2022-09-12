@@ -731,12 +731,6 @@ M.schema = {
     ]]
   },
 
-  watch_index                 = { deprecated = {hard = true, new_field = 'watch_gitdir' } },
-  current_line_blame_delay    = { deprecated = {hard = true, new_field = 'current_line_blame_opts.delay'} },
-  current_line_blame_position = { deprecated = {hard = true, new_field = 'current_line_blame_opts.virt_text_pos'} },
-  diff_algorithm              = { deprecated = {hard = true, new_field = 'diff_opts.algorithm'} },
-  use_decoration_api          = { deprecated = {hard = true}},
-  use_internal_diff           = { deprecated = {hard = true, new_field = 'diff_opts.internal'} },
 }
 
 warn = function(s: string, ...: any)
