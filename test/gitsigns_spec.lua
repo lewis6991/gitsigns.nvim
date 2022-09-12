@@ -321,9 +321,11 @@ describe('gitsigns', function()
 
   describe('configuration', function()
     it('handled deprecated fields', function()
-      config.current_line_blame_delay = 100
-      setup_gitsigns(config)
-      eq(100, exec_lua([[return package.loaded['gitsigns.config'].config.current_line_blame_opts.delay]]))
+      --  TODO(lewis6991): All deprecated fields removed. Re-add when we have another deprecated field
+      pending()
+      -- config.current_line_blame_delay = 100
+      -- setup_gitsigns(config)
+      -- eq(100, exec_lua([[return package.loaded['gitsigns.config'].config.current_line_blame_opts.delay]]))
     end)
   end)
 
