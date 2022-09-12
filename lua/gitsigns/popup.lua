@@ -189,14 +189,27 @@ function popup.create(lines_spec, opts)
    return winnr, bufnr
 end
 
-function popup.is_open()
+local function is_open(var)
    for _, winid in ipairs(api.nvim_list_wins()) do
-      local exists = pcall(api.nvim_win_get_var, winid, 'gitsigns_preview')
+      local exists = pcall(api.nvim_win_get_var, winid, var)
       if exists then
-         return true
+         return true, winid
       end
    end
+   return false, -1
+end
+
+function popup.try_attach(var)
+   local open, winid = is_open(var)
+   if open then
+      api.nvim_set_current_win(winid)
+      return true
+   end
    return false
+end
+
+function popup.is_open()
+   return is_open('gitsigns_preview')
 end
 
 return popup

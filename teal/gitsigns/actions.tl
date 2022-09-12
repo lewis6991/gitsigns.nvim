@@ -621,6 +621,10 @@ end
 --- Preview the hunk at the cursor position in a floating
 --- window.
 M.preview_hunk = noautocmd(function()
+  local diff_popup_var = 'gitsigns_preview_diff'
+  if popup.try_attach(diff_popup_var) then
+    return
+  end
   -- Wrap in noautocmd so vim-repeat continues to work
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -645,7 +649,9 @@ M.preview_hunk = noautocmd(function()
     hunk = gs_hunks.patch_lines(hunk, vim.bo[bufnr].fileformat),
   })
 
-  popup.create(lines_spec, config.preview_config)
+  local winid = popup.create(lines_spec, config.preview_config)
+
+  api.nvim_win_set_var(winid, diff_popup_var, true)
 end)
 
 --- Select the hunk under the cursor.
@@ -747,6 +753,11 @@ end
 --- Attributes: ~
 ---     {async}
 M.blame_line = void(function(opts: BlameOpts)
+  local blame_popup_var = 'gitsigns_preview_blame'
+  if popup.try_attach(blame_popup_var) then
+    return
+  end
+
   opts = opts or {}
 
   local bufnr = current_buf()
@@ -786,7 +797,9 @@ M.blame_line = void(function(opts: BlameOpts)
 
   scheduler()
 
-  popup.create(lines_format(blame_fmt, info), config.preview_config)
+  local winid = popup.create(lines_format(blame_fmt, info), config.preview_config)
+
+  api.nvim_win_set_var(winid, blame_popup_var, true)
 end)
 
 local function update_buf_base(buf: integer, bcache: CacheEntry, base: string)
