@@ -14,22 +14,40 @@
 
 
 
+
+
+
+
+
+
 local M = {}
 
 
+
+local function wrap(func, argc, protected)
+   assert(argc)
+   return function(...)
+      if not coroutine.running() then
+         return func(...)
+      end
+      return coroutine.yield(func, argc, protected, ...)
+   end
+end
 
 
 
 
 
 function M.wrap(func, argc)
-   assert(argc)
-   return function(...)
-      if not coroutine.running() then
-         return func(...)
-      end
-      return coroutine.yield(func, argc, ...)
-   end
+   return wrap(func, argc, false)
+end
+
+
+
+
+
+function M.pwrap(func, argc)
+   return wrap(func, argc, true)
 end
 
 
@@ -46,7 +64,7 @@ function M.void(func)
 
       local function step(...)
          local ret = { coroutine.resume(co, ...) }
-         local stat, err_or_fn, nargs = unpack(ret)
+         local stat, err_or_fn, nargs, protected = unpack(ret)
 
          if not stat then
             error(string.format("The coroutine failed with this message: %s\n%s",
@@ -59,9 +77,20 @@ function M.void(func)
 
          assert(type(err_or_fn) == "function", "type error :: expected func")
 
-         local args = { select(4, unpack(ret)) }
-         args[nargs] = step
-         err_or_fn(unpack(args, 1, nargs))
+         local args = { select(5, unpack(ret)) }
+         if protected then
+            args[nargs] = function(...)
+               (step)(true, ...)
+            end
+            local ok, err = pcall(err_or_fn, unpack(args, 1, nargs))
+
+            if not ok then
+               (step)(ok, err)
+            end
+         else
+            args[nargs] = step
+            err_or_fn(unpack(args, 1, nargs))
+         end
       end
 
       step(...)

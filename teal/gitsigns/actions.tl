@@ -6,6 +6,7 @@ local mk_repeatable = require('gitsigns.repeat').mk_repeatable
 local popup         = require('gitsigns.popup')
 local util          = require('gitsigns.util')
 local manager       = require('gitsigns.manager')
+local gh            = require('gitsigns.gh')
 local git           = require('gitsigns.git')
 local run_diff      = require('gitsigns.diff')
 
@@ -549,18 +550,21 @@ local function lines_format(fmt: {{{string,string|{HlMark}}}},
   return ret
 end
 
-local function hlmarks_for_hunk(hunk: Hunk, hl: string): {HlMark}
+local function insert_hlmarks(key: string, fmt: popup.LinesSpec, info: util.FmtInfo, fn: function(): {HlMark}, {string})
+  for _, line in ipairs(fmt) do
+    for _, s in ipairs(line) do
+      local hl = s[2]
+      if s[1] == '<'..key..'>' and hl is string then
+        s[2], info[key] = fn()
+      end
+    end
+  end
+end
+
+local function hlmarks_for_hunk(hunk: Hunk, fileformat: string): {HlMark}, {string}
   local hls: {HlMark} = {}
 
   local removed, added = hunk.removed, hunk.added
-
-  if hl then
-    hls[#hls+1] = {
-      hl_group  = hl,
-      start_row = 0,
-      end_row   = removed.count + added.count,
-    }
-  end
 
   hls[#hls+1] = {
     hl_group  = 'GitSignsDeletePreview',
@@ -595,18 +599,61 @@ local function hlmarks_for_hunk(hunk: Hunk, hl: string): {HlMark}
     end
   end
 
-  return hls
+  return hls, gs_hunks.patch_lines(hunk, fileformat)
 end
 
-local function insert_hunk_hlmarks(fmt: popup.LinesSpec, hunk: Hunk)
-  for _, line in ipairs(fmt) do
-    for _, s in ipairs(line) do
-      local hl = s[2]
-      if s[1] == '<hunk>' and hl is string then
-        s[2] = hlmarks_for_hunk(hunk, hl)
-      end
-    end
+local function hlmarks_for_prs(prs: {gh.PrInfo}): {HlMark}, {string}
+  local info = {'Associated PRs:'}
+
+  local hls: {HlMark} = {
+    {
+      hl_group = 'Title',
+      start_row = 0,
+      start_col = 0,
+      end_col = info[1]:len()
+    }
+  }
+
+  for i, pr in ipairs(prs) do
+    local line_parts = {
+      string.format('\t- %s ', pr.title),
+      string.format('#%d ', pr.number),
+      string.format('(%s)', pr.author.login)
+    }
+
+    info[#info+1] = table.concat(line_parts)
+
+    -- append a non-breaking space so blend doesn't corrupt the URL
+    -- so it remains clickable
+    info[#info+1] = '\t\t'..pr.url..' '
+
+    local offset = line_parts[1]:len()
+    hls[#hls+1] = {
+      hl_group = 'Number',
+      start_row = i*2-1,
+      start_col = offset,
+      end_col = offset + line_parts[2]:len(),
+    }
+
+    offset = offset + line_parts[2]:len()
+
+    hls[#hls+1] = {
+      hl_group = 'MoreMsg',
+      start_row = i*2-1,
+      start_col = offset,
+      end_col = offset + line_parts[3]:len(),
+    }
+
+    hls[#hls+1] = {
+      hl_group = 'Comment',
+      start_row = i*2,
+      end_row = i*2+1
+    }
   end
+
+  info[#info+1] = ''
+
+  return hls, info
 end
 
 local function noautocmd(f: function()): function()
@@ -637,15 +684,16 @@ M.preview_hunk = noautocmd(function()
     {{'<hunk>', 'NormalFloat' }}
   }
 
-  insert_hunk_hlmarks(lines_fmt, hunk)
-
-  local lines_spec = lines_format(lines_fmt, {
+  local info: util.FmtInfo = {
     hunk_no = index,
     num_hunks = #bcache.hunks,
-    hunk = gs_hunks.patch_lines(hunk, vim.bo[bufnr].fileformat),
-  })
+  }
 
-  popup.create(lines_spec, config.preview_config)
+  insert_hlmarks('hunk', lines_fmt, info, function(): {HlMark}, {string}
+    return hlmarks_for_hunk(hunk, vim.bo[bufnr].fileformat)
+  end)
+
+  popup.create(lines_format(lines_fmt, info), config.preview_config)
 end)
 
 --- Select the hunk under the cursor.
@@ -722,6 +770,7 @@ local function create_blame_fmt(is_committed: boolean, full: boolean): popup.Lin
     return {
       header,
       {{'<body>', 'NormalFloat'}},
+      {{'<prs>', 'NormalFloat'}},
       {{'Hunk <hunk_no> of <num_hunks>', 'Title'}, {' <hunk_head>', 'LineNr'}},
       {{'<hunk>', 'NormalFloat'}}
     }
@@ -779,10 +828,20 @@ M.blame_line = void(function(opts: BlameOpts)
 
     hunk, info.hunk_no, info.num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
 
-    info.hunk = gs_hunks.patch_lines(hunk, fileformat)
     info.hunk_head = hunk.head
-    insert_hunk_hlmarks(blame_fmt, hunk)
+
+    insert_hlmarks('hunk', blame_fmt, info, function(): {HlMark}, {string}
+      return hlmarks_for_hunk(hunk, fileformat)
+    end)
   end
+
+  insert_hlmarks('prs', blame_fmt, info, function(): {HlMark}, {string}
+    local prs = gh.associated_prs(bcache.git_obj.repo.toplevel, result.sha)
+    if #prs == 0 then
+      return {}, {}
+    end
+    return hlmarks_for_prs(prs)
+  end)
 
   scheduler()
 

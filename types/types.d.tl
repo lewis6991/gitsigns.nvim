@@ -389,6 +389,10 @@ global record vim
     wrapscan: Opt<boolean>
   end
 
+  record json
+    decode: function(string): any
+  end
+
   record lsp
     record util
       close_preview_autocmd: function ({string}, number)
