@@ -22,10 +22,20 @@ local M = {}
 
 
 
+
+
+
+
+local main_co_or_nil = coroutine.running()
+
+
+
+
+
 function M.wrap(func, argc)
    assert(argc)
    return function(...)
-      if not coroutine.running() then
+      if coroutine.running() == main_co_or_nil then
          return func(...)
       end
       return coroutine.yield(func, argc, ...)
@@ -38,7 +48,7 @@ end
 
 function M.void(func)
    return function(...)
-      if coroutine.running() then
+      if coroutine.running() ~= main_co_or_nil then
          return func(...)
       end
 
