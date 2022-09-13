@@ -7,9 +7,15 @@ local record Async
   void: function<A1,A2,A3,A4,R1>(function(A1,A2,A3,A4): R1): function(A1,A2,A3,A4): R1
   void: function<A1,A2,A3,A4>(function(A1,A2,A3,A4)): function(A1,A2,A3,A4)
 
+  wrap: function<A1,R1,R2,R3,R4>(function(A1,         function(R1,R2,R3,R4)), integer): function(A1): R1,R2,R3,R4
   wrap: function<A1,A2,R1,R2>   (function(A1,A2,      function(R1,R2)), integer): function(A1,A2): R1,R2
   wrap: function<A1,A2,A3,A4,R1>(function(A1,A2,A3,A4,function(R1)   ), integer): function(A1,A2,A3,A4): R1
   wrap: function<A1,A2,A3>      (function(A1,A2,A3,   function())     , integer): function(A1,A2,A3)
+
+  pwrap: function<A1,R1,R2,R3,R4>(function(A1,         function(R1,R2,R3,R4)), integer): function(A1): R1,R2,R3,R4
+  pwrap: function<A1,A2,R1,R2>   (function(A1,A2,      function(R1,R2)), integer): function(A1,A2): R1,R2
+  pwrap: function<A1,A2,A3,A4,R1>(function(A1,A2,A3,A4,function(R1)   ), integer): function(A1,A2,A3,A4): R1
+  pwrap: function<A1,A2,A3>      (function(A1,A2,A3,   function())     , integer): function(A1,A2,A3)
 
   scheduler: function()
 end
@@ -18,18 +24,30 @@ local record M
   scheduler: function()
 end
 
----Creates an async function with a callback style function.
----@param func function: A callback style function to be converted. The last argument must be the callback.
----@param argc number: The number of arguments of func. Must be included.
----@return function: Returns an async function
-function M.wrap(func: function, argc: integer): function
+local function wrap(func: function, argc: integer, protected: boolean): function
   assert(argc)
   return function(...): any...
     if not coroutine.running() then
       return func(...)
     end
-    return coroutine.yield(func, argc, ...)
+    return coroutine.yield(func, argc, protected, ...)
   end
+end
+
+---Creates an async function with a callback style function.
+---@param func function: A callback style function to be converted. The last argument must be the callback.
+---@param argc number: The number of arguments of func. Must be included.
+---@return function: Returns an async function
+function M.wrap(func: function, argc: integer): function
+  return wrap(func, argc, false)
+end
+
+---Creates a protected async function with a callback style function.
+---@param func function: A callback style function to be converted. The last argument must be the callback.
+---@param argc number: The number of arguments of func. Must be included.
+---@return function: Returns a protected async function
+function M.pwrap(func: function, argc: integer): function
+  return wrap(func, argc, true)
 end
 
 ---Use this to create a function which executes in an async context but
@@ -46,7 +64,7 @@ function M.void(func: function): function
 
     local function step(...)
       local ret = {coroutine.resume(co, ...)} as {any}
-      local stat, err_or_fn, nargs = unpack(ret) as (boolean, function, integer)
+      local stat, err_or_fn, nargs, protected = unpack(ret) as (boolean, function, integer, boolean)
 
       if not stat then
         error(string.format("The coroutine failed with this message: %s\n%s",
@@ -59,9 +77,20 @@ function M.void(func: function): function
 
       assert(err_or_fn is function, "type error :: expected func")
 
-      local args = {select(4, unpack(ret))}
-      args[nargs] = step
-      err_or_fn(unpack(args, 1, nargs))
+      local args = {select(5, unpack(ret))}
+      if protected then
+        args[nargs] = function(...)
+          (step as function(boolean, any))(true, ...)
+        end
+        local ok, err = pcall(err_or_fn, unpack(args, 1, nargs))
+        -- If we error, then assume the callback isn't called
+        if not ok then
+          (step as function(boolean, any))(ok, err)
+        end
+      else
+        args[nargs] = step
+        err_or_fn(unpack(args, 1, nargs))
+      end
     end
 
     step(...)
