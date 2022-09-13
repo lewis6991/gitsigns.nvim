@@ -18,6 +18,16 @@ local record M
   scheduler: function()
 end
 
+-- Coroutine.running() was changed between Lua 5.1 and 5.2:
+-- - 5.1: Returns the running coroutine, or nil when called by the main thread.
+-- - 5.2: Returns the running coroutine plus a boolean, true when the running
+--   coroutine is the main one.
+--
+-- For LuaJIT, 5.2 behaviour is enabled with LUAJIT_ENABLE_LUA52COMPAT
+--
+-- We need to handle both.
+local main_co_or_nil = coroutine.running()
+
 ---Creates an async function with a callback style function.
 ---@param func function: A callback style function to be converted. The last argument must be the callback.
 ---@param argc number: The number of arguments of func. Must be included.
@@ -25,7 +35,7 @@ end
 function M.wrap(func: function, argc: integer): function
   assert(argc)
   return function(...): any...
-    if not coroutine.running() then
+    if coroutine.running() == main_co_or_nil then
       return func(...)
     end
     return coroutine.yield(func, argc, ...)
@@ -38,7 +48,7 @@ end
 ---@param func function
 function M.void(func: function): function
   return function(...): any
-    if coroutine.running() then
+    if coroutine.running() ~= main_co_or_nil then
       return func(...)
     end
 
