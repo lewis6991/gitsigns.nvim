@@ -170,9 +170,9 @@ end
 
 local ns = api.nvim_create_namespace('gitsigns_popup')
 
-function popup.create(lines_spec: popup.LinesSpec, opts: {string:any}): integer, integer
+function popup.create(lines_spec: popup.LinesSpec, opts: {string:any}, id: string): integer, integer
   local lines, highlights = process_linesspec(lines_spec)
-  local winnr, bufnr = popup.create0(lines, opts)
+  local winid, bufnr = popup.create0(lines, opts)
 
   for _, hl in ipairs(highlights) do
     local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, ns, hl.start_row, hl.start_col or 0, {
@@ -186,30 +186,26 @@ function popup.create(lines_spec: popup.LinesSpec, opts: {string:any}): integer,
     end
   end
 
-  return winnr, bufnr
+  vim.w[winid].gitsigns_preview = id or true
+
+  return winid, bufnr
 end
 
-local function is_open(var: string): boolean, integer
+function popup.is_open(id: string): integer
   for _, winid in ipairs(api.nvim_list_wins()) do
-    local exists = pcall(api.nvim_win_get_var, winid, var)
-    if exists then
-      return true, winid
+    if vim.w[winid].gitsigns_preview == id then
+      return winid
     end
   end
-  return false, -1
+  return nil
 end
 
-function popup.try_attach(var: string): boolean
-  local open, winid = is_open(var)
-  if open then
+function popup.focus_open(var: string): integer
+  local winid = popup.is_open(var)
+  if winid then
     api.nvim_set_current_win(winid)
-    return true
   end
-  return false
-end
-
-function popup.is_open(): boolean, integer
-  return is_open('gitsigns_preview')
+  return winid
 end
 
 return popup

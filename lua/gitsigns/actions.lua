@@ -487,7 +487,7 @@ local function nav_hunk(opts)
       if opts.foldopen then
          vim.cmd('silent! foldopen!')
       end
-      if opts.preview or popup.is_open() then
+      if opts.preview or popup.is_open('hunk') ~= nil then
 
 
          defer(M.preview_hunk)
@@ -621,8 +621,7 @@ end
 
 
 M.preview_hunk = noautocmd(function()
-   local diff_popup_var = 'gitsigns_preview_diff'
-   if popup.try_attach(diff_popup_var) then
+   if popup.focus_open('hunk') then
       return
    end
 
@@ -649,9 +648,7 @@ M.preview_hunk = noautocmd(function()
       hunk = gs_hunks.patch_lines(hunk, vim.bo[bufnr].fileformat),
    })
 
-   local winid = popup.create(lines_spec, config.preview_config)
-
-   api.nvim_win_set_var(winid, diff_popup_var, true)
+   popup.create(lines_spec, config.preview_config, 'hunk')
 end)
 
 
@@ -753,8 +750,7 @@ end
 
 
 M.blame_line = void(function(opts)
-   local blame_popup_var = 'gitsigns_preview_blame'
-   if popup.try_attach(blame_popup_var) then
+   if popup.focus_open('blame') then
       return
    end
 
@@ -797,9 +793,7 @@ M.blame_line = void(function(opts)
 
    scheduler()
 
-   local winid = popup.create(lines_format(blame_fmt, info), config.preview_config)
-
-   api.nvim_win_set_var(winid, blame_popup_var, true)
+   popup.create(lines_format(blame_fmt, info), config.preview_config, 'blame')
 end)
 
 local function update_buf_base(buf, bcache, base)

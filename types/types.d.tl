@@ -372,6 +372,8 @@ global record vim
 
   b: BufVar
 
+  w: {integer:{string:any}}
+
   record v
     vim_did_enter: integer
     t_string: integer
