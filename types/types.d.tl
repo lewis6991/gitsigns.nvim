@@ -339,6 +339,7 @@ global record vim
   record WinOption
     {WinOption}
     diff: boolean
+    signcolumn: string
   end
 
   wo: WinOption
@@ -350,6 +351,7 @@ global record vim
     filetype: string
     modifiable: boolean
     modified: boolean
+    tabstop: integer
 
     enum BufHidden
       '' 'hide' 'unload' 'delete' 'wipe'

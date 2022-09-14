@@ -109,21 +109,30 @@ local function process_linesspec(fmt: popup.LinesSpec): {string}, {HlMark}
   return lines, hls
 end
 
-function popup.create0(lines: {string}, opts: {string:any}): integer, integer
-  local ts = api.nvim_buf_get_option(0, 'tabstop')
+local function close_all_but(id: string)
+  for _, winid in ipairs(api.nvim_list_wins()) do
+    if vim.w[winid].gitsigns_preview ~= id then
+      pcall(api.nvim_win_close, winid, true)
+    end
+  end
+end
+
+function popup.create0(lines: {string}, opts: {string:any}, id: string): integer, integer
+  -- Close any popups not matching id
+  close_all_but(id)
+
+  local ts = vim.bo.tabstop
   local bufnr = api.nvim_create_buf(false, true)
   assert(bufnr, "Failed to create buffer")
 
   -- In case nvim was opened with '-M'
-  api.nvim_buf_set_option(bufnr, 'modifiable', true)
-
+  vim.bo[bufnr].modifiable = true
   api.nvim_buf_set_lines(bufnr, 0, -1, true, lines)
-
-  api.nvim_buf_set_option(bufnr, 'modifiable', false)
+  vim.bo[bufnr].modifiable = false
 
   -- Set tabstop before calculating the buffer width so that the correct width
   -- is calculated
-  api.nvim_buf_set_option(bufnr, 'tabstop', ts)
+  vim.bo[bufnr].tabstop = ts
 
   local opts1 = vim.deepcopy(opts or {})
   opts1.height = opts1.height or #lines -- Guess, adjust later
@@ -131,7 +140,7 @@ function popup.create0(lines: {string}, opts: {string:any}): integer, integer
 
   local winid = api.nvim_open_win(bufnr, false, opts1)
 
-  api.nvim_win_set_var(winid, 'gitsigns_preview', true)
+  vim.w[winid].gitsigns_preview = id or true
 
   if not opts.height then
     expand_height(winid, #lines)
@@ -140,12 +149,12 @@ function popup.create0(lines: {string}, opts: {string:any}): integer, integer
   if opts1.style == 'minimal' then
     -- If 'signcolumn' = auto:1-2, then a empty signcolumn will appear and cause
     -- line wrapping.
-    api.nvim_win_set_option(winid, 'signcolumn', 'no')
+    vim.wo[winid].signcolumn = 'no'
   end
 
   -- Close the popup when navigating to any window which is not the preview
   -- itself.
-  local group = 'gitsigns_popup'..winid
+  local group = 'gitsigns_popup'
   nvim.augroup(group)
   local old_cursor = api.nvim_win_get_cursor(0)
 
@@ -172,7 +181,7 @@ local ns = api.nvim_create_namespace('gitsigns_popup')
 
 function popup.create(lines_spec: popup.LinesSpec, opts: {string:any}, id: string): integer, integer
   local lines, highlights = process_linesspec(lines_spec)
-  local winid, bufnr = popup.create0(lines, opts)
+  local winid, bufnr = popup.create0(lines, opts, id)
 
   for _, hl in ipairs(highlights) do
     local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, ns, hl.start_row, hl.start_col or 0, {
@@ -186,8 +195,6 @@ function popup.create(lines_spec: popup.LinesSpec, opts: {string:any}, id: strin
     end
   end
 
-  vim.w[winid].gitsigns_preview = id or true
-
   return winid, bufnr
 end
 
@@ -200,8 +207,8 @@ function popup.is_open(id: string): integer
   return nil
 end
 
-function popup.focus_open(var: string): integer
-  local winid = popup.is_open(var)
+function popup.focus_open(id: string): integer
+  local winid = popup.is_open(id)
   if winid then
     api.nvim_set_current_win(winid)
   end
