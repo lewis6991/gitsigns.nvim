@@ -40,7 +40,7 @@ end
 local reset = function(bufnr)
    bufnr = bufnr or current_buf()
    api.nvim_buf_del_extmark(bufnr, namespace, 1)
-   pcall(api.nvim_buf_del_var, bufnr, 'gitsigns_blame_line_dict')
+   vim.b[bufnr].gitsigns_blame_line_dict = nil
 end
 
 
@@ -145,7 +145,8 @@ local update = void(function()
       return
    end
 
-   api.nvim_buf_set_var(bufnr, 'gitsigns_blame_line_dict', result)
+   vim.b[bufnr].gitsigns_blame_line_dict = result
+
    if opts.virt_text and result then
       local virt_text
       local clb_formatter = result.author == 'Not Committed Yet' and
