@@ -276,7 +276,8 @@ change_base({base}, {global})                         *gitsigns.change_base()*
 
 blame_line({opts})                                     *gitsigns.blame_line()*
                 Run git blame on the current line and show the results in a
-                floating window.
+                floating window. If already open, calling this will cause the
+                window to get focus.
 
                 Parameters: ~
                     {opts}   (table|nil):
@@ -316,7 +317,8 @@ select_hunk()                                         *gitsigns.select_hunk()*
 
 preview_hunk()                                       *gitsigns.preview_hunk()*
                 Preview the hunk at the cursor position in a floating
-                window.
+                window. If the preview is already open, calling this
+                will cause the window to get focus.
 
 prev_hunk({opts})                                       *gitsigns.prev_hunk()*
                 Jump to the previous hunk in the current buffer.

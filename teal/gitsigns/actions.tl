@@ -619,7 +619,8 @@ local function noautocmd(f: function()): function()
 end
 
 --- Preview the hunk at the cursor position in a floating
---- window.
+--- window. If the preview is already open, calling this
+--- will cause the window to get focus.
 M.preview_hunk = noautocmd(function()
   if popup.focus_open('hunk') then
     return
@@ -737,7 +738,8 @@ local function create_blame_fmt(is_committed: boolean, full: boolean): popup.Lin
 end
 
 --- Run git blame on the current line and show the results in a
---- floating window.
+--- floating window. If already open, calling this will cause the
+--- window to get focus.
 ---
 --- Parameters: ~
 ---     {opts}   (table|nil):

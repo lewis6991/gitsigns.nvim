@@ -620,6 +620,7 @@ end
 
 
 
+
 M.preview_hunk = noautocmd(function()
    if popup.focus_open('hunk') then
       return
@@ -735,6 +736,7 @@ local function create_blame_fmt(is_committed, full)
       { { '<summary>', 'NormalFloat' } },
    }
 end
+
 
 
 
