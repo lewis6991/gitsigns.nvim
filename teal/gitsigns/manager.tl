@@ -135,16 +135,13 @@ local function apply_word_diff(bufnr: integer, row: integer)
   local cols = #line
 
   for _, region in ipairs(added_regions) do
-    local rtype, scol, ecol = region[2], region[3], region[4]
-    if scol <= cols then
+    local rtype, scol, ecol = region[2], region[3] - 1, region[4] - 1
+    if scol < cols then
       if ecol > cols then
         ecol = cols
-      elseif ecol == scol then
-        -- Make sure region is at least 1 column width
-        ecol = scol + 1
       end
-      api.nvim_buf_set_extmark(bufnr, ns, row, scol-1, {
-        end_col = ecol-1,
+      api.nvim_buf_set_extmark(bufnr, ns, row, scol, {
+        end_col = ecol,
         hl_group = rtype == 'add'    and 'GitSignsAddLnInline'
                 or rtype == 'change' and 'GitSignsChangeLnInline'
                 or                       'GitSignsDeleteLnInline',
