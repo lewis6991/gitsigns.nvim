@@ -215,7 +215,7 @@ local attach_throttled = throttle_by_id(function(cbuf: integer, aucmd: string)
     return
   end
 
-  if api.nvim_buf_get_option(cbuf, 'buftype') ~= '' then
+  if vim.bo[cbuf].buftype ~= '' then
     dprint('Non-normal buffer')
     return
   end

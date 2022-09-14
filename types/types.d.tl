@@ -71,19 +71,12 @@ local record api
     force: boolean
     complete: string|function(arglead: string, line: string): {string}
   end
-  nvim_create_user_command: function(string, function(UserCmdParams), UserCmdOpts)
-  nvim_buf_add_highlight: function(number, number, string, number, number, number): number
-  nvim_buf_attach: function(number, boolean, {string:any}): boolean
-  nvim_buf_call: function(number, function)
-  nvim_buf_clear_highlight: function(number, number, number, number)
-  nvim_buf_clear_namespace: function(number, number, number, number)
-  nvim_buf_del_extmark: function(number, number, number): boolean
-  nvim_buf_del_keymap: function(number, string, string)
-  nvim_buf_del_var: function(number, string)
-  nvim_buf_detach: function(number): boolean
-  nvim_buf_get_changedtick: function(number): number
-  nvim_buf_get_commands: function(number, {string:any}): {string:any}
-  nvim_buf_get_extmark_by_id: function(number, number, number, table): {number}
+  nvim_create_user_command   : function(string, function(UserCmdParams), UserCmdOpts)
+  nvim_buf_attach            : function(integer, boolean, {string:any}): boolean
+  nvim_buf_call              : function(integer, function)
+  nvim_buf_clear_namespace   : function(integer, number, number, number)
+  nvim_buf_del_extmark       : function(integer, number, number): boolean
+  nvim_buf_get_extmark_by_id : function(integer, number, number, table): {number}
 
   record GetExtmarOpts
     limit: integer
@@ -98,34 +91,23 @@ local record api
     GetExtmarOpts
   ): {{integer, integer, integer}}
 
-  nvim_buf_get_keymap: function(number, string): {{string:any}}
-  nvim_buf_get_lines: function(number, number, number, boolean): {string}
-  nvim_buf_get_mark: function(number, string): {number}
-  nvim_buf_get_name: function(number): string
-  nvim_buf_get_offset: function(number, number): number
-  nvim_buf_get_option: function(number, string): any
-  nvim_buf_get_var: function(number, string): any
-  nvim_buf_get_virtual_text: function(number, number): any
-  nvim_buf_is_loaded: function(number): boolean
-  nvim_buf_is_valid: function(number): boolean
-  nvim_buf_line_count: function(number): integer
-  nvim_buf_set_extmark: function(integer, integer, integer, integer, {string:any}): integer
-  nvim_buf_set_keymap: function(number, string, string, string, {string:any})
-  nvim_buf_set_lines: function(number, number, number, boolean, {string})
-  nvim_buf_set_name: function(number, string)
-  nvim_buf_set_option: function(number, string, any)
-  nvim_buf_set_var: function(number, string, any)
-  nvim_buf_set_virtual_text: function(number, number, number, any, {string:any}): number
-  nvim_call_atomic: function(any): any
-  nvim_call_dict_function: function(any, string, any): any
-  nvim_call_function: function(string, any): any
-  nvim_command: function(string)
-  nvim_create_buf: function(boolean, boolean): integer
-  nvim_create_namespace: function(string): integer
+  nvim_buf_get_lines    : function(integer, number, number, boolean): {string}
+  nvim_buf_get_name     : function(integer): string
+  nvim_buf_is_loaded    : function(integer): boolean
+  nvim_buf_is_valid     : function(integer): boolean
+  nvim_buf_line_count   : function(integer): integer
+  nvim_buf_set_extmark  : function(integer, integer, integer, integer, {string:any}): integer
+  nvim_buf_set_keymap   : function(integer, string, string, string, {string:any})
+  nvim_buf_set_lines    : function(integer, number, number, boolean, {string})
+  nvim_buf_set_name     : function(integer, string)
+  nvim_create_buf       : function(boolean, boolean): integer
+  nvim_create_namespace : function(string): integer
 
   record AugroupOpts
     clear: boolean
   end
+
+  nvim__buf_redraw_range       : function(integer, number, number)
 
   nvim_create_augroup: function(string, AugroupOpts): integer
 
@@ -251,6 +233,39 @@ local record api
   nvim_win_set_width: function(number, number)
 
   nvim__buf_redraw_range: function(number, number, number)
+  nvim_create_autocmd          : function(string|{string}, AutoCmdOpts): integer
+  nvim_echo                    : function({{string}}, boolean, {string:any})
+  nvim_get_color_by_name       : function(string): number
+  nvim_get_current_buf         : function(): integer
+  nvim_get_current_line        : function(): string
+  nvim_get_current_tabpage     : function(): any
+  nvim_get_current_win         : function(): integer
+  nvim_get_hl_by_name          : function(string, boolean): {string:any}
+  nvim_get_mode                : function(): {string:any}
+  nvim_list_bufs               : function(): {integer}
+  nvim_list_wins               : function(): {integer}
+  nvim_open_win                : function(integer, boolean, {string:any}): integer
+  nvim_replace_termcodes       : function(string, boolean, boolean, boolean): string
+  nvim_set_current_buf         : function(integer)
+  nvim_set_current_line        : function(string)
+  nvim_set_current_win         : function(integer)
+  nvim_set_decoration_provider : function(integer, {string:function})
+  nvim_set_hl                  : function(integer, string, {string:any})
+  nvim_set_keymap              : function(string, string, string, {string:any})
+  nvim_strwidth                : function(string): number
+  nvim_win_call                : function<T>(integer, (function(): T)): T
+  nvim_win_close               : function(integer, boolean)
+  nvim_win_get_buf             : function(integer): integer
+  nvim_win_get_config          : function(integer): {string:any}
+  nvim_win_get_cursor          : function(integer): {integer}
+  nvim_win_get_height          : function(integer): integer
+  nvim_win_get_width           : function(integer): integer
+  nvim_win_is_valid            : function(integer): boolean
+  nvim_win_set_buf             : function(integer, number)
+  nvim_win_set_config          : function(integer, {string:any})
+  nvim_win_set_cursor          : function(integer, {number})
+  nvim_win_set_height          : function(integer, number)
+  nvim_win_set_width           : function(integer, number)
 end
 
 global record vim
@@ -340,6 +355,7 @@ global record vim
 
   record o
     diffopt: string
+    eventignore: string
     shortmess: string
     splitright: boolean
     updatetime: number
@@ -380,17 +396,31 @@ global record vim
   record BufVar
     {BufVar}
     changedtick: integer
+
+    gitsigns_head: string
+    gitsigns_status_dict: {string:any}
+    gitsigns_status: string
+    gitsigns_blame_line_dict: {string:any}
   end
 
   b: BufVar
 
-  w: {integer:{string:any}}
+  record WinVar
+    {WinVar}
+
+    gitsigns_preview: string|boolean
+  end
+
+  w: WinVar
+
+  record g
+    gitsigns_head: string
+  end
 
   record v
     vim_did_enter: integer
     t_string: integer
   end
-
 
   record opt
     record Opt<T>
@@ -571,23 +601,15 @@ global record vim
   end
 
   tbl_add_reverse_lookup: function<K,I>({K:I}): {I:K}
-  tbl_deep_extend: function(ExtendBehavior, table, table, ...: table): table
-
-  tbl_extend: function(ExtendBehavior, table, table, ...: table): table
-
-  tbl_map: function(function, table): table
-
-  tbl_keys: function(table): table
-
-  tbl_filter: function((function(any): boolean), table): table
-
-  tbl_count: function(table): integer
-
-  tbl_isempty: function(table): boolean
-
-  tbl_islist: function(table): boolean
-
   tbl_contains: function(table, any): boolean
+  tbl_count: function(table): integer
+  tbl_deep_extend: function(ExtendBehavior, table, table, ...: table): table
+  tbl_extend: function(ExtendBehavior, table, table, ...: table): table
+  tbl_filter: function((function(any): boolean), table): table
+  tbl_isempty: function(table): boolean
+  tbl_islist: function(table): boolean
+  tbl_keys: function(table): table
+  tbl_map: function(function, table): table
 
   record InspectOptions
     depth: number

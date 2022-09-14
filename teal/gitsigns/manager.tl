@@ -378,14 +378,6 @@ end
 
 local cwd_watcher: vim.loop.FSPollObj
 
-local function update_cwd_head_var(head: string)
-  if head then
-    api.nvim_set_var('gitsigns_head', head)
-  else
-    pcall(api.nvim_del_var, 'gitsigns_head')
-  end
-end
-
 M.update_cwd_head = void(function()
   if cwd_watcher then
     cwd_watcher:stop()
@@ -413,7 +405,7 @@ M.update_cwd_head = void(function()
   end
 
   scheduler()
-  update_cwd_head_var(head)
+  vim.g.gitsigns_head = head
 
   if not gitdir then
     return
@@ -440,7 +432,7 @@ M.update_cwd_head = void(function()
 
       local new_head = git.get_repo_info(cwd).abbrev_head
       scheduler()
-      update_cwd_head_var(new_head)
+      vim.g.gitsigns_head = new_head
     end)
   )
 end)

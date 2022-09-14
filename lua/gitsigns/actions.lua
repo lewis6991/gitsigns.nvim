@@ -611,10 +611,10 @@ end
 
 local function noautocmd(f)
    return function()
-      local ei = api.nvim_get_option('eventignore')
-      api.nvim_set_option('eventignore', 'all')
+      local ei = vim.o.eventignore
+      vim.o.eventignore = 'all'
       f()
-      api.nvim_set_option('eventignore', ei)
+      vim.o.eventignore = ei
    end
 end
 
