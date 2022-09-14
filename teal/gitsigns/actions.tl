@@ -487,7 +487,7 @@ local function nav_hunk(opts: NavHunkOpts)
     if opts.foldopen then
       vim.cmd('silent! foldopen!')
     end
-    if opts.preview or popup.is_open() then
+    if opts.preview or popup.is_open('hunk') ~= nil then
       -- Use defer so the cursor change can settle, otherwise the popup might
       -- appear in the old position
       defer(M.preview_hunk)
@@ -619,8 +619,12 @@ local function noautocmd(f: function()): function()
 end
 
 --- Preview the hunk at the cursor position in a floating
---- window.
+--- window. If the preview is already open, calling this
+--- will cause the window to get focus.
 M.preview_hunk = noautocmd(function()
+  if popup.focus_open('hunk') then
+    return
+  end
   -- Wrap in noautocmd so vim-repeat continues to work
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -645,7 +649,7 @@ M.preview_hunk = noautocmd(function()
     hunk = gs_hunks.patch_lines(hunk, vim.bo[bufnr].fileformat),
   })
 
-  popup.create(lines_spec, config.preview_config)
+  popup.create(lines_spec, config.preview_config, 'hunk')
 end)
 
 --- Select the hunk under the cursor.
@@ -734,7 +738,8 @@ local function create_blame_fmt(is_committed: boolean, full: boolean): popup.Lin
 end
 
 --- Run git blame on the current line and show the results in a
---- floating window.
+--- floating window. If already open, calling this will cause the
+--- window to get focus.
 ---
 --- Parameters: ~
 ---     {opts}   (table|nil):
@@ -747,6 +752,10 @@ end
 --- Attributes: ~
 ---     {async}
 M.blame_line = void(function(opts: BlameOpts)
+  if popup.focus_open('blame') then
+    return
+  end
+
   opts = opts or {}
 
   local bufnr = current_buf()
@@ -786,7 +795,7 @@ M.blame_line = void(function(opts: BlameOpts)
 
   scheduler()
 
-  popup.create(lines_format(blame_fmt, info), config.preview_config)
+  popup.create(lines_format(blame_fmt, info), config.preview_config, 'blame')
 end)
 
 local function update_buf_base(buf: integer, bcache: CacheEntry, base: string)

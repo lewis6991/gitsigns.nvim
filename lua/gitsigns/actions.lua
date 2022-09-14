@@ -487,7 +487,7 @@ local function nav_hunk(opts)
       if opts.foldopen then
          vim.cmd('silent! foldopen!')
       end
-      if opts.preview or popup.is_open() then
+      if opts.preview or popup.is_open('hunk') ~= nil then
 
 
          defer(M.preview_hunk)
@@ -620,7 +620,11 @@ end
 
 
 
+
 M.preview_hunk = noautocmd(function()
+   if popup.focus_open('hunk') then
+      return
+   end
 
    local bufnr = current_buf()
    local bcache = cache[bufnr]
@@ -645,7 +649,7 @@ M.preview_hunk = noautocmd(function()
       hunk = gs_hunks.patch_lines(hunk, vim.bo[bufnr].fileformat),
    })
 
-   popup.create(lines_spec, config.preview_config)
+   popup.create(lines_spec, config.preview_config, 'hunk')
 end)
 
 
@@ -746,7 +750,12 @@ end
 
 
 
+
 M.blame_line = void(function(opts)
+   if popup.focus_open('blame') then
+      return
+   end
+
    opts = opts or {}
 
    local bufnr = current_buf()
@@ -786,7 +795,7 @@ M.blame_line = void(function(opts)
 
    scheduler()
 
-   popup.create(lines_format(blame_fmt, info), config.preview_config)
+   popup.create(lines_format(blame_fmt, info), config.preview_config, 'blame')
 end)
 
 local function update_buf_base(buf, bcache, base)
