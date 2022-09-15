@@ -282,10 +282,6 @@ As of 2022-09-01
 
 ## Integrations
 
-### [vim-repeat]
-
-If installed, `stage_hunk()` and `reset_hunk()` are repeatable with the `.` (dot) operator.
-
 ### [vim-fugitive]
 
 When viewing revisions of a file (via `:0Gclog` for example), Gitsigns will attach to the fugitive buffer with the base set to the commit immediately before the commit of that revision.
@@ -329,6 +325,5 @@ If installed and enabled (via `config.trouble`; defaults to true if installed), 
 [vim-fugitive]: https://github.com/tpope/vim-fugitive
 [vim-gitgutter]: https://github.com/airblade/vim-gitgutter
 [vim-plug]: https://github.com/junegunn/vim-plug
-[vim-repeat]: https://github.com/tpope/vim-repeat
 [vim-signify]: https://github.com/mhinz/vim-signify
 [yadm]: https://yadm.io
