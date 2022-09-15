@@ -276,11 +276,14 @@ global record vim
     join: function({any}, string): string
     getpos: function(string): {integer}
     executable: function(string): integer
+    exists: function(string): integer
     expand: function(string): string
     foldclosed: function(integer): integer
     foldclosedend: function(integer): integer
     getcwd: function(): string
     input: function(string, string): string
+
+    ['repeat#set']: function(string, integer)
 
     record QFItem
       bufnr: integer
@@ -352,6 +355,10 @@ global record vim
 
   -- Assume result_type == 'indices'
   diff: function(string|{string}, string|{string}, table): {DiffResult}
+
+  record go
+    operatorfunc: string
+  end
 
   record o
     diffopt: string
