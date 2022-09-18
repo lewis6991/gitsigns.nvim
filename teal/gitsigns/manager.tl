@@ -57,6 +57,9 @@ local function apply_win_signs(bufnr: integer, hunks: {Hunk}, top: integer, bot:
     signs:remove(bufnr)  -- Remove all signs
   end
 
+  -- hunks can be nil
+  hunks = hunks or {}
+
   -- To stop the sign column width changing too much, if there are signs to be
   -- added but none of them are visible in the window, then make sure to add at
   -- least one sign. Only do this on the first call after an update when we all
@@ -65,7 +68,7 @@ local function apply_win_signs(bufnr: integer, hunks: {Hunk}, top: integer, bot:
     signs:add(bufnr, gs_hunks.calc_signs(hunks[1], hunks[1].added.start, hunks[1].added.start))
   end
 
-  for _, hunk in ipairs(hunks or {}) do
+  for _, hunk in ipairs(hunks) do
     if top <= hunk.vend and bot >= hunk.added.start then
       signs:add(bufnr, gs_hunks.calc_signs(hunk, top, bot))
     end
