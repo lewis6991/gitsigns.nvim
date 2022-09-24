@@ -73,7 +73,7 @@ jobs:
 
       - name: Build Neovim
         if: steps.cache-deps.outputs.cache-hit != 'true'
-        run: make test_deps NEOVIM_BRANCH=$NEOVIM_BRANCH
+        run: make test_deps
 
       - name: Run Test
         run: make test

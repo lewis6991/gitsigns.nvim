@@ -178,57 +178,84 @@ local function clear_deleted(bufnr)
    end
 end
 
-local function show_deleted(bufnr)
+function M.show_deleted(bufnr, nsd, hunk)
+   local virt_lines = {}
+
+   for i, line in ipairs(hunk.removed.lines) do
+      local vline = {}
+      local last_ecol = 1
+
+      if config.word_diff then
+         local regions = require('gitsigns.diff_int').run_word_diff(
+         { hunk.removed.lines[i] }, { hunk.added.lines[i] })
+
+         for _, region in ipairs(regions) do
+            local rline, scol, ecol = region[1], region[3], region[4]
+            if rline > 1 then
+               break
+            end
+            vline[#vline + 1] = { line:sub(last_ecol, scol - 1), 'GitSignsDeleteVirtLn' }
+            vline[#vline + 1] = { line:sub(scol, ecol - 1), 'GitSignsDeleteVirtLnInline' }
+            last_ecol = ecol
+         end
+      end
+
+      if #line > 0 then
+         vline[#vline + 1] = { line:sub(last_ecol, -1), 'GitSignsDeleteVirtLn' }
+      end
+
+
+      local padding = string.rep(' ', VIRT_LINE_LEN - #line)
+      vline[#vline + 1] = { padding, 'GitSignsDeleteVirtLn' }
+
+      virt_lines[i] = vline
+   end
+
+   local topdelete = hunk.added.start == 0 and hunk.type == 'delete'
+
+   local row = topdelete and 0 or hunk.added.start - 1
+   api.nvim_buf_set_extmark(bufnr, nsd, row, -1, {
+      virt_lines = virt_lines,
+
+      virt_lines_above = hunk.type ~= 'delete' or topdelete,
+   })
+end
+
+function M.show_added(bufnr, nsw, hunk)
+   local start_row = hunk.added.start - 1
+
+   for offset = 0, hunk.added.count - 1 do
+      local row = start_row + offset
+      api.nvim_buf_set_extmark(bufnr, nsw, row, 0, {
+         end_row = row + 1,
+         hl_group = 'GitSignsAddPreview',
+         hl_eol = true,
+         priority = 1000,
+      })
+   end
+
+   local _, added_regions = require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
+
+   for _, region in ipairs(added_regions) do
+      local offset, rtype, scol, ecol = region[1] - 1, region[2], region[3] - 1, region[4] - 1
+      api.nvim_buf_set_extmark(bufnr, nsw, start_row + offset, scol, {
+         end_col = ecol,
+         hl_group = rtype == 'add' and 'GitSignsAddInline' or
+         rtype == 'change' and 'GitSignsChangeInline' or
+         'GitSignsDeleteInline',
+         priority = 1001,
+      })
+   end
+end
+
+local function update_show_deleted(bufnr)
    local bcache = cache[bufnr]
 
    clear_deleted(bufnr)
-
-   if not config.show_deleted then
-      return
-   end
-
-   for _, hunk in ipairs(bcache.hunks) do
-      local virt_lines = {}
-      local do_word_diff = config.word_diff and #hunk.removed.lines == #hunk.added.lines
-
-      for i, line in ipairs(hunk.removed.lines) do
-         local vline = {}
-         local last_ecol = 1
-
-         if do_word_diff then
-            local regions = require('gitsigns.diff_int').run_word_diff(
-            { hunk.removed.lines[i] }, { hunk.added.lines[i] })
-
-            for _, region in ipairs(regions) do
-               local rline, scol, ecol = region[1], region[3], region[4]
-               if rline > 1 then
-                  break
-               end
-               vline[#vline + 1] = { line:sub(last_ecol, scol - 1), 'GitSignsDeleteVirtLn' }
-               vline[#vline + 1] = { line:sub(scol, ecol - 1), 'GitSignsDeleteVirtLnInline' }
-               last_ecol = ecol
-            end
-         end
-
-         if #line > 0 then
-            vline[#vline + 1] = { line:sub(last_ecol, -1), 'GitSignsDeleteVirtLn' }
-         end
-
-
-         local padding = string.rep(' ', VIRT_LINE_LEN - #line)
-         vline[#vline + 1] = { padding, 'GitSignsDeleteVirtLn' }
-
-         virt_lines[i] = vline
+   if config.show_deleted then
+      for _, hunk in ipairs(bcache.hunks) do
+         M.show_deleted(bufnr, ns_rm, hunk)
       end
-
-      local topdelete = hunk.added.start == 0 and hunk.type == 'delete'
-
-      local row = topdelete and 0 or hunk.added.start - 1
-      api.nvim_buf_set_extmark(bufnr, ns_rm, row, -1, {
-         virt_lines = virt_lines,
-
-         virt_lines_above = hunk.type ~= 'delete' or topdelete,
-      })
    end
 end
 
@@ -265,7 +292,7 @@ M.update = throttle_by_id(function(bufnr, bcache)
 
       apply_win_signs(bufnr, bcache.hunks, vim.fn.line('w0'), vim.fn.line('w$'), true)
 
-      show_deleted(bufnr)
+      update_show_deleted(bufnr)
       bcache.force_next_update = false
 
       api.nvim_exec_autocmds('User', {

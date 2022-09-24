@@ -315,6 +315,9 @@ get_hunks({bufnr})                                      *gitsigns.get_hunks()*
 select_hunk()                                         *gitsigns.select_hunk()*
                 Select the hunk under the cursor.
 
+preview_hunk_inline()                         *gitsigns.preview_hunk_inline()*
+                Preview the hunk at the cursor position inline in the buffer.
+
 preview_hunk()                                       *gitsigns.preview_hunk()*
                 Preview the hunk at the cursor position in a floating
                 window. If the preview is already open, calling this

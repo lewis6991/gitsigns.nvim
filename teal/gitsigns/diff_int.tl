@@ -137,8 +137,8 @@ function M.run_word_diff(removed: {string}, added: {string}): {Region}, {Region}
     hunks = denoise_hunks(hunks)
 
     for _, h in ipairs(hunks) do
-      adds[#adds+1] = {i+#removed, h.type, h.added.start  , h.added.start   + h.added.count}
-      rems[#rems+1] = {i         , h.type, h.removed.start, h.removed.start + h.removed.count}
+      adds[#adds+1] = {i, h.type, h.added.start  , h.added.start   + h.added.count}
+      rems[#rems+1] = {i, h.type, h.removed.start, h.removed.start + h.removed.count}
     end
   end
   return rems, adds
