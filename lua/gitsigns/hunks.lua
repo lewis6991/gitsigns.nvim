@@ -142,6 +142,8 @@ end
 
 
 function M.calc_signs(hunk, min_lnum, max_lnum)
+   min_lnum = min_lnum or 1
+   max_lnum = max_lnum or math.huge
    local start, added, removed = hunk.added.start, hunk.added.count, hunk.removed.count
 
    if hunk.type == 'delete' and start == 0 then

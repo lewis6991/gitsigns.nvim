@@ -5,7 +5,7 @@ FILTER ?= .*
 
 LUA_VERSION   := 5.1
 TL_VERSION    := 0.14.1
-NEOVIM_BRANCH := master
+NEOVIM_BRANCH ?= master
 
 DEPS_DIR := $(PWD)/deps/nvim-$(NEOVIM_BRANCH)
 

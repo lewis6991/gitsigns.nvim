@@ -142,6 +142,8 @@ end
 
 -- Calculate signs needed to be applied from a hunk for a specified line range.
 function M.calc_signs(hunk: Hunk, min_lnum: integer, max_lnum: integer): {Sign}
+  min_lnum = min_lnum or 1
+  max_lnum = max_lnum or math.huge as integer
   local start, added, removed = hunk.added.start, hunk.added.count, hunk.removed.count
 
   if hunk.type == 'delete' and start == 0 then

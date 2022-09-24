@@ -86,6 +86,7 @@ local M = {QFListOpts = {}, }
 
 
 
+
 local C = {}
 
 
@@ -588,7 +589,7 @@ local function hlmarks_for_hunk(hunk, hl)
       for _, region in ipairs(added_regions) do
          hls[#hls + 1] = {
             hl_group = 'GitSignsAddInline',
-            start_row = region[1] - 1,
+            start_row = region[1] + removed.count - 1,
             start_col = region[3],
             end_col = region[4],
          }
@@ -651,6 +652,30 @@ M.preview_hunk = noautocmd(function()
 
    popup.create(lines_spec, config.preview_config, 'hunk')
 end)
+
+
+M.preview_hunk_inline = function()
+   local bufnr = current_buf()
+
+   local hunk = get_cursor_hunk(bufnr)
+
+   if not hunk then
+      return
+   end
+
+   local nsp = api.nvim_create_namespace('gitsigns_preview_inline')
+
+   manager.show_added(bufnr, nsp, hunk)
+   manager.show_deleted(bufnr, nsp, hunk)
+
+   api.nvim_create_autocmd({ 'CursorMoved', 'InsertEnter' }, {
+      callback = function()
+         api.nvim_buf_clear_namespace(bufnr, nsp, 0, -1)
+      end,
+      once = true,
+   })
+
+end
 
 
 M.select_hunk = function()
