@@ -289,6 +289,11 @@ local attach_throttled = throttle_by_id(function(cbuf: integer, aucmd: string)
     git_obj        = git_obj
   }
 
+  if not api.nvim_buf_is_loaded(cbuf) then
+    dprint('Un-loaded buffer')
+    return
+  end
+
   -- Make sure to attach before the first update (which is async) so we pick up
   -- changes from BufReadCmd.
   api.nvim_buf_attach(cbuf, false, {

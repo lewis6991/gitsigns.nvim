@@ -289,6 +289,11 @@ local attach_throttled = throttle_by_id(function(cbuf, aucmd)
       git_obj = git_obj,
    })
 
+   if not api.nvim_buf_is_loaded(cbuf) then
+      dprint('Un-loaded buffer')
+      return
+   end
+
 
 
    api.nvim_buf_attach(cbuf, false, {
