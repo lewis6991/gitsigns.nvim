@@ -3,11 +3,13 @@ local api = vim.api
 local lookups = {
    autocmd = "autocmds",
    augroup = "autocmds",
+   doautocmd = "autocmds",
    highlight = "highlights",
    command = "command",
 }
 
 local NvimModule = {}
+
 
 
 

@@ -1,3 +1,5 @@
+local nvim = require('gitsigns.nvim')
+
 local record M
   type FmtInfo = {string:string|integer|{string}}
 
@@ -183,7 +185,7 @@ function M.expand_format(fmt: string, info: M.FmtInfo, reltime: boolean): string
 end
 
 function M.issue_event()
-  vim.api.nvim_exec_autocmds('User', {
+  nvim.doautocmd('User', {
     pattern = 'GitsignsUpdate',
     modeline = false,
   })

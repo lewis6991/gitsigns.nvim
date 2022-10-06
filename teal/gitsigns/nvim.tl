@@ -3,6 +3,7 @@ local api = vim.api
 local lookups: {string:string} = {
   autocmd = "autocmds",
   augroup = "autocmds",
+  doautocmd = "autocmds",
   highlight = "highlights",
   command = "command",
 }
@@ -10,6 +11,7 @@ local lookups: {string:string} = {
 local record NvimModule
   augroup: function(string, api.AugroupOpts)
   autocmd: function(string|{string}, api.AutoCmdOpts)
+  doautocmd: function(string|{string}, api.ExecAutoCmdOpts)
   highlight: function(string, {string:any})
   command: function(name: string, fn: function(api.UserCmdParams), opts: api.UserCmdOpts)
 end
