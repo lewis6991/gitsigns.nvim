@@ -149,6 +149,16 @@ local record api
   nvim_err_writeln: function(string)
   nvim_eval: function(string): any
   nvim_exec: function(string, boolean): string
+
+  record ExecAutoCmdOpts
+    group: string|integer
+    pattern: string|{string}
+    buffer: integer
+    modeline: boolean
+    data: any
+  end
+
+  nvim_exec_autocmds: function(string|{string}, ExecAutoCmdOpts): any
   nvim_exec_lua: function(string, any): any
   nvim_feedkeys: function(string, string, boolean)
   nvim_get_api_info: function(): any

@@ -183,7 +183,10 @@ function M.expand_format(fmt: string, info: M.FmtInfo, reltime: boolean): string
 end
 
 function M.issue_event()
-   vim.cmd([[doautocmd <nomodeline> User FugitiveChanged]])
+  vim.api.nvim_exec_autocmds('User', {
+    pattern = 'GitsignsUpdate',
+    modeline = false,
+  })
 end
 
 return M
