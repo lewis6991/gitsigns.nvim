@@ -182,4 +182,8 @@ function M.expand_format(fmt: string, info: M.FmtInfo, reltime: boolean): string
   return table.concat(ret, '')
 end
 
+function M.issue_event()
+   vim.cmd([[doautocmd <nomodeline> User FugitiveChanged]])
+end
+
 return M
