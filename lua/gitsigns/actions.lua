@@ -896,6 +896,8 @@ end
 
 
 M.diffthis = function(base, opts)
+
+   base = tostring(base)
    opts = opts or {}
    local diffthis = require('gitsigns.diffthis')
    if not opts.vertical then

@@ -896,6 +896,8 @@ end
 --- Attributes: ~
 ---     {async}
 M.diffthis = function(base: string, opts: DiffthisOpts)
+  -- TODO(lewis6991): can't pass numbers as strings from the command line
+  base = tostring(base)
   opts = opts or {}
   local diffthis = require('gitsigns.diffthis')
   if not opts.vertical then

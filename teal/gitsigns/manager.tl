@@ -139,20 +139,31 @@ local function apply_word_diff(bufnr: integer, row: integer)
 
   for _, region in ipairs(added_regions) do
     local rtype, scol, ecol = region[2], region[3] - 1, region[4] - 1
-    if scol < cols then
-      if ecol > cols then
-        ecol = cols
-      end
-      api.nvim_buf_set_extmark(bufnr, ns, row, scol, {
-        end_col = ecol,
-        hl_group = rtype == 'add'    and 'GitSignsAddLnInline'
-                or rtype == 'change' and 'GitSignsChangeLnInline'
-                or                       'GitSignsDeleteLnInline',
-        ephemeral = true,
-        priority = 1000
-      })
-      api.nvim__buf_redraw_range(bufnr, row, row+1)
+    if ecol == scol then
+      -- Make sure region is at least 1 column wide so deletes can be shown
+      ecol = scol + 1
     end
+
+    local hl_group = rtype == 'add'    and 'GitSignsAddLnInline'
+                  or rtype == 'change' and 'GitSignsChangeLnInline'
+                  or                       'GitSignsDeleteLnInline'
+
+    local opts: {string:any} = {
+      ephemeral = true,
+      priority = 1000
+    }
+
+    if ecol > cols and ecol == scol + 1 then
+      -- delete on last column, use virtual text instead
+      opts.virt_text = {{' ', hl_group}}
+      opts.virt_text_pos = 'overlay'
+    else
+      opts.end_col = ecol
+      opts.hl_group = hl_group
+    end
+
+    api.nvim_buf_set_extmark(bufnr, ns, row, scol, opts)
+    api.nvim__buf_redraw_range(bufnr, row, row+1)
   end
 end
 
