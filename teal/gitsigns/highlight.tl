@@ -1,6 +1,5 @@
 local api = vim.api
 
-local nvim = require('gitsigns.nvim')
 local dprintf = require("gitsigns.debug").dprintf
 
 local record M
@@ -63,7 +62,7 @@ M.setup_highlights = function()
         for _, d in ipairs(candidates) do
           if is_hl_set(d) then
             dprintf('Deriving %s from %s', hl, d)
-            nvim.highlight(hl, {default = true, link = d })
+            api.nvim_set_hl(0, hl, {default = true, link = d })
             break
           end
         end
