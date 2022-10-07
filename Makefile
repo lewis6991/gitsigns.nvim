@@ -17,7 +17,11 @@ LUAROCKS_INIT  := eval $$($(LUAROCKS) --tree $(LUAROCKS_TREE) path) &&
 deps/neovim:
 	@mkdir -p deps
 	git clone --depth 1 https://github.com/neovim/neovim --branch $(NEOVIM_BRANCH) $@
-	make -C $@ DEPS_BUILD_DIR=$(dir $(LUAROCKS_TREE))
+	@# disable LTO to reduce compile time
+	make -C $@ \
+		DEPS_BUILD_DIR=$(dir $(LUAROCKS_TREE)) \
+		CMAKE_BUILD_TYPE=RelWithDebInfo \
+		CMAKE_EXTRA_FLAGS=-DENABLE_LTO=OFF
 
 TL := $(LUAROCKS_TREE)/bin/tl
 
