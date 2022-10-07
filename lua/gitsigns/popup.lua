@@ -165,7 +165,7 @@ function popup.create0(lines, opts, id)
          if (old_cursor[1] ~= cursor[1] or old_cursor[2] ~= cursor[2]) and
             api.nvim_get_current_win() ~= winid then
 
-            api.nvim_create_augroup(group)
+            api.nvim_create_augroup(group, {})
             pcall(api.nvim_win_close, winid, true)
             return
          end
