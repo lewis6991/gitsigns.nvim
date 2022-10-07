@@ -34,4 +34,15 @@ function M.augroup(name: string, opts: vim.api.AugroupOpts)
   cmd "augroup END"
 end
 
+function M.doautocmd(event: string|{string}, opts: vim.api.ExecAutoCmdOpts)
+  opts = opts or {}
+
+  cmd(table.concat({
+    "doautocmd",
+    not opts.modeline and "<nomodeline>" or "",
+    flatten(event),
+    flatten(opts.pattern)
+  }, " "))
+end
+
 return M

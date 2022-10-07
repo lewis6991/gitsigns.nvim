@@ -34,4 +34,15 @@ function M.augroup(name, opts)
    cmd("augroup END")
 end
 
+function M.doautocmd(event, opts)
+   opts = opts or {}
+
+   cmd(table.concat({
+      "doautocmd",
+      not opts.modeline and "<nomodeline>" or "",
+      flatten(event),
+      flatten(opts.pattern),
+   }, " "))
+end
+
 return M

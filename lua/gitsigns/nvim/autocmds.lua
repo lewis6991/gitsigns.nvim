@@ -12,4 +12,8 @@ function M.augroup(name, opts)
    vim.api.nvim_create_augroup(name, opts or {})
 end
 
+function M.doautocmd(event, opts)
+   vim.api.nvim_exec_autocmds(event, opts or {})
+end
+
 return M

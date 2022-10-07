@@ -975,5 +975,19 @@ Since text objects are defined via keymaps, these are exposed and configurable
 via the config, see |gitsigns-config-keymaps|. The lua implementation is
 exposed through |gitsigns.select_hunk()|.
 
+==============================================================================
+EVENT                                                         *gitsigns-event*
+
+Every time Gitsigns updates its knowledge about hunks, it issues a custom
+|User| event named `GitSignsUpdate`. You can use it via usual autocommands,
+like so: >
+
+    vim.api.nvim_create_autocmd('User', {
+      pattern = 'GitSignsUpdate',
+      callback = function()
+        print(os.time() .. ' Gitsigns made an update')
+      end
+    })
+
 ------------------------------------------------------------------------------
 vim:tw=78:ts=8:ft=help:norl:

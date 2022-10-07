@@ -10,6 +10,8 @@ local Signs             = require('gitsigns.signs')
 
 local Status            = require("gitsigns.status")
 
+local nvim = require('gitsigns.nvim')
+
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local throttle_by_id    = require('gitsigns.debounce').throttle_by_id
 local gs_debug          = require("gitsigns.debug")
@@ -267,6 +269,11 @@ M.update = throttle_by_id(function(bufnr: integer, bcache: CacheEntry)
 
     show_deleted(bufnr)
     bcache.force_next_update = false
+
+    nvim.doautocmd('User', {
+      pattern = 'GitSignsUpdate',
+      modeline = false,
+    })
   end
   local summary = gs_hunks.get_summary(bcache.hunks)
   summary.head = git_obj.repo.abbrev_head
