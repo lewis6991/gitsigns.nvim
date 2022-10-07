@@ -210,7 +210,6 @@ local function update(bufnr: integer)
   if vim.wo.diff then
     require('gitsigns.diffthis').update(bufnr)
   end
-  util.issue_event()
 end
 
 local function get_range(params: api.UserCmdParams): {integer, integer}
@@ -324,8 +323,6 @@ M.reset_hunk = mk_repeatable(function(range: {integer, integer})
     lend = hunk.added.start - 1 + hunk.added.count
   end
   util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
-
-  util.issue_event()
 end)
 
 C.reset_hunk = function(_pos_args: {any}, _named_args: {string:any}, params: api.UserCmdParams)
@@ -341,8 +338,6 @@ M.reset_buffer = function()
   end
 
   util.set_lines(bufnr, 0, -1, bcache.compare_text)
-
-  util.issue_event()
 end
 
 --- Undo the last call of stage_hunk().
@@ -858,8 +853,6 @@ M.change_base = void(function(base: string, global: boolean)
 
     update_buf_base(bufnr, bcache, base)
   end
-
-  util.issue_event()
 end)
 
 --- Reset the base revision to diff against back to the

@@ -256,6 +256,8 @@ M.update = throttle_by_id(function(bufnr, bcache)
 
       show_deleted(bufnr)
       bcache.force_next_update = false
+
+      util.issue_event()
    end
    local summary = gs_hunks.get_summary(bcache.hunks)
    summary.head = git_obj.repo.abbrev_head

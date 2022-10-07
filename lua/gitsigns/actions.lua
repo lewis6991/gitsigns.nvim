@@ -210,7 +210,6 @@ local function update(bufnr)
    if vim.wo.diff then
       require('gitsigns.diffthis').update(bufnr)
    end
-   util.issue_event()
 end
 
 local function get_range(params)
@@ -324,8 +323,6 @@ M.reset_hunk = mk_repeatable(function(range)
       lend = hunk.added.start - 1 + hunk.added.count
    end
    util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
-
-   util.issue_event()
 end)
 
 C.reset_hunk = function(_pos_args, _named_args, params)
@@ -341,8 +338,6 @@ M.reset_buffer = function()
    end
 
    util.set_lines(bufnr, 0, -1, bcache.compare_text)
-
-   util.issue_event()
 end
 
 
@@ -858,8 +853,6 @@ M.change_base = void(function(base, global)
 
       update_buf_base(bufnr, bcache, base)
    end
-
-   util.issue_event()
 end)
 
 

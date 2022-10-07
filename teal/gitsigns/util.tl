@@ -186,7 +186,7 @@ end
 
 function M.issue_event()
   nvim.doautocmd('User', {
-    pattern = 'GitsignsUpdate',
+    pattern = 'GitSignsUpdate',
     modeline = false,
   })
 end
