@@ -7,7 +7,6 @@ local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local BlameInfo = require('gitsigns.git').BlameInfo
 local util = require('gitsigns.util')
-local nvim = require('gitsigns.nvim')
 local uv = require('gitsigns.uv')
 
 local api = vim.api
@@ -175,19 +174,19 @@ local update = void(function()
 end)
 
 M.setup = function()
-   nvim.augroup('gitsigns_blame')
+   api.nvim_create_augroup('gitsigns_blame', {})
 
    for k, _ in pairs(cache) do
       reset(k)
    end
 
    if config.current_line_blame then
-      nvim.autocmd(
+      api.nvim_create_autocmd(
       { 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' },
       { group = 'gitsigns_blame', callback = function() update() end })
 
 
-      nvim.autocmd(
+      api.nvim_create_autocmd(
       { 'InsertEnter', 'FocusLost', 'BufLeave' },
       { group = 'gitsigns_blame', callback = function() reset() end })
 

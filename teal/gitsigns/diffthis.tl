@@ -8,7 +8,6 @@ local gs_cache   = require('gitsigns.cache')
 local cache      = gs_cache.cache
 local CacheEntry = gs_cache.CacheEntry
 
-local nvim    = require('gitsigns.nvim')
 local util    = require('gitsigns.util')
 local manager = require('gitsigns.manager')
 local message = require('gitsigns.message')
@@ -97,7 +96,7 @@ local function run(base: string, diffthis: boolean, opts: M.DiffthisOpts)
   if comp_rev == ':0' then
     vim.bo[dbuf].buftype = 'acwrite'
 
-    nvim.autocmd('BufReadCmd', {
+    api.nvim_create_autocmd('BufReadCmd', {
       group = 'gitsigns',
       buffer = dbuf,
       callback = function()
@@ -108,7 +107,7 @@ local function run(base: string, diffthis: boolean, opts: M.DiffthisOpts)
       end
     })
 
-    nvim.autocmd('BufWriteCmd', {
+    api.nvim_create_autocmd('BufWriteCmd', {
       group = 'gitsigns',
       buffer = dbuf,
       callback = function()

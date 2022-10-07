@@ -5,7 +5,6 @@ local scheduler = require('gitsigns.async').scheduler
 local Status = require("gitsigns.status")
 local git = require('gitsigns.git')
 local manager = require('gitsigns.manager')
-local nvim = require('gitsigns.nvim')
 local util = require('gitsigns.util')
 local hl = require('gitsigns.highlight')
 
@@ -398,7 +397,7 @@ local run_cmd_func = void(function(params)
 end)
 
 local function setup_command()
-   nvim.command('Gitsigns', run_cmd_func,
+   api.nvim_create_user_command('Gitsigns', run_cmd_func,
    { force = true, nargs = '*', range = true, complete = complete })
 end
 
@@ -418,14 +417,14 @@ local function autocmd(event, opts)
       opts0 = opts
    end
    opts0.group = 'gitsigns'
-   nvim.autocmd(event, opts0)
+   api.nvim_create_autocmd(event, opts0)
 end
 
 local function on_or_after_vimenter(fn)
    if vim.v.vim_did_enter == 1 then
       fn()
    else
-      nvim.autocmd('VimEnter', {
+      api.nvim_create_autocmd('VimEnter', {
          callback = wrap_func(fn),
          once = true,
       })
@@ -486,7 +485,7 @@ M.setup = void(function(cfg)
       end
    end
 
-   nvim.augroup('gitsigns')
+   api.nvim_create_augroup('gitsigns', {})
 
    autocmd('VimLeavePre', M.detach_all)
    autocmd('ColorScheme', hl.setup_highlights)

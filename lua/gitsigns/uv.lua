@@ -1,5 +1,3 @@
-local nvim = require('gitsigns.nvim')
-
 local uv = vim.loop
 
 local M = {}
@@ -25,7 +23,7 @@ function M.print_handles()
    end
 end
 
-nvim.autocmd('VimLeavePre', {
+vim.api.nvim_create_autocmd('VimLeavePre', {
    callback = function()
       for _, e in pairs(handles) do
          local handle = e[1]
