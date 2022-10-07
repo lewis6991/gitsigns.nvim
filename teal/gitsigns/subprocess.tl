@@ -28,11 +28,9 @@ end
 
 M.job_cnt = 0
 
-local function try_close(...: uv.Pipe)
-  for _, pipe in ipairs{...} do
-    if pipe and not pipe:is_closing() then
-      pipe:close()
-    end
+local function try_close(pipe: uv.Pipe)
+  if pipe and not pipe:is_closing() then
+    pipe:close()
   end
 end
 
@@ -66,7 +64,9 @@ function M.run_job(obj: M.JobSpec, callback: function(integer, integer, string, 
       if s.stdout then s.stdout:read_stop() end
       if s.stderr then s.stderr:read_stop() end
 
-      try_close(s.stdin, s.stdout, s.stderr)
+      try_close(s.stdin)
+      try_close(s.stdout)
+      try_close(s.stderr)
 
       local stdout_result = #s.stdout_data > 0 and table.concat(s.stdout_data) or nil
       local stderr_result = #s.stderr_data > 0 and table.concat(s.stderr_data) or nil
@@ -76,7 +76,9 @@ function M.run_job(obj: M.JobSpec, callback: function(integer, integer, string, 
   )
 
   if not s.handle then
-    try_close(s.stdin, s.stdout, s.stderr)
+    try_close(s.stdin)
+    try_close(s.stdout)
+    try_close(s.stderr)
     error(debug.traceback("Failed to spawn process: " .. vim.inspect(obj)))
   end
 
