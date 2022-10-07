@@ -54,7 +54,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: deps
-          key: build-6-${{ steps.get-nvim-sha.outputs.sha }}
+          key: build-1-${{ steps.get-nvim-sha.outputs.sha }}
 
       - name: Install Lua Deps
         run: make lua_deps
@@ -82,7 +82,7 @@ jobs:
 
       - name: Build Neovim
         if: steps.cache-deps.outputs.cache-hit != 'true'
-        run: make deps/neovim NEOVIM_BRANCH=$NEOVIM_BRANCH
+        run: make test_deps NEOVIM_BRANCH=$NEOVIM_BRANCH
 
       - name: Run Test
         run: make test
