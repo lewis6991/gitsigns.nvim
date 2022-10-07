@@ -70,6 +70,8 @@ function M.setup_git()
   M.git{'config', 'color.decorate'   , 'always'}
   M.git{'config', 'color.showbranch' , 'always'}
 
+  M.git{'config', 'merge.conflictStyle', 'merge'}
+
   M.git{'config', 'user.email', 'tester@com.com'}
   M.git{'config', 'user.name' , 'tester'}
 
