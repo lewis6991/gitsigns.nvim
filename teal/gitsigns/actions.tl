@@ -83,10 +83,34 @@ local record M
   arg_spec: {string:{integer,boolean,boolean}}
 end
 
-local type CmdFunc = function(pos_args: {any}, named_args: {string:any}, params: api.UserCmdParams)
+local type CmdFunc = function(pos_args: {string}, named_args: {string:string}, params: api.UserCmdParams)
 
 -- Variations of functions from M which are used for the Gitsigns command
 local C: {string:CmdFunc} = {}
+
+local function toboolean(x: any): boolean
+  if x == nil then
+    return nil
+  end
+
+  if x == false or x == 0 then
+    return false
+  end
+
+  return true
+end
+
+local function arg_bool(x: function(boolean)): function({string})
+  return function(pos_args: {string})
+    x(toboolean(pos_args[1]))
+  end
+end
+
+local function no_arg<T>(x: function): function()
+  return function()
+    x()
+  end
+end
 
 --- Toggle |gitsigns-config-signbooleancolumn|
 ---
@@ -106,6 +130,8 @@ M.toggle_signs = function(value: boolean): boolean
   return config.signcolumn
 end
 
+C.toggle_signs = arg_bool(M.toggle_signs)
+
 --- Toggle |gitsigns-config-numhl|
 ---
 --- Parameters:~
@@ -123,6 +149,8 @@ M.toggle_numhl = function(value: boolean): boolean
   M.refresh()
   return config.numhl
 end
+
+C.toggle_numhl = arg_bool(M.toggle_numhl)
 
 --- Toggle |gitsigns-config-linehl|
 ---
@@ -142,6 +170,8 @@ M.toggle_linehl = function(value: boolean): boolean
   return config.linehl
 end
 
+C.toggle_linehl = arg_bool(M.toggle_linehl)
+
 --- Toggle |gitsigns-config-word_diff|
 ---
 --- Parameters:~
@@ -159,6 +189,8 @@ M.toggle_word_diff = function(value: boolean): boolean
   M.refresh()
   return config.word_diff
 end
+
+C.toggle_word_diff = arg_bool(M.toggle_word_diff)
 
 --- Toggle |gitsigns-config-current_line_blame|
 ---
@@ -178,6 +210,8 @@ M.toggle_current_line_blame = function(value: boolean): boolean
   return config.current_line_blame
 end
 
+C.toggle_current_line_blame = arg_bool(M.toggle_current_line_blame)
+
 --- Toggle |gitsigns-config-show_deleted|
 ---
 --- Parameters:~
@@ -195,6 +229,8 @@ M.toggle_deleted = function(value: boolean): boolean
   M.refresh()
   return config.show_deleted
 end
+
+C.toggle_deleted = arg_bool(M.toggle_deleted)
 
 local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk, integer
   bufnr = bufnr or current_buf()
@@ -274,7 +310,7 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer})
   update(bufnr)
 end))
 
-C.stage_hunk = function(_pos_args: {any}, _named_args: {string:any}, params: api.UserCmdParams)
+C.stage_hunk = function(_pos_args: {string}, _named_args: {string:string}, params: api.UserCmdParams)
   M.stage_hunk(get_range(params))
 end
 
@@ -325,7 +361,7 @@ M.reset_hunk = mk_repeatable(function(range: {integer, integer})
   util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
 end)
 
-C.reset_hunk = function(_pos_args: {any}, _named_args: {string:any}, params: api.UserCmdParams)
+C.reset_hunk = function(_pos_args: {string}, _named_args: {string:string}, params: api.UserCmdParams)
   M.reset_hunk(get_range(params))
 end
 
@@ -339,6 +375,8 @@ M.reset_buffer = function()
 
   util.set_lines(bufnr, 0, -1, bcache.compare_text)
 end
+
+C.reset_buffer = no_arg(M.reset_buffer)
 
 --- Undo the last call of stage_hunk().
 ---
@@ -364,6 +402,8 @@ M.undo_stage_hunk = void(function()
   bcache:invalidate()
   update(bufnr)
 end)
+
+C.undo_stage_hunk = no_arg(M.undo_stage_hunk)
 
 --- Stage all hunks in current buffer.
 ---
@@ -399,6 +439,8 @@ M.stage_buffer = void(function()
   update(bufnr)
 end)
 
+C.stage_buffer = no_arg(M.stage_buffer)
+
 --- Unstage all hunks for current buffer in the index. Note:
 --- Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
 --- stages, this runs an `git reset` on current buffers file.
@@ -425,6 +467,8 @@ M.reset_buffer_index = void(function()
   bcache:invalidate()
   update(bufnr)
 end)
+
+C.reset_buffer_index = no_arg(M.reset_buffer_index)
 
 local function process_nav_opts(opts: NavHunkOpts)
   -- show navigation message
@@ -652,6 +696,8 @@ M.preview_hunk = noautocmd(function()
   popup.create(lines_spec, config.preview_config, 'hunk')
 end)
 
+C.preview_hunk = no_arg(M.preview_hunk)
+
 --- Select the hunk under the cursor.
 M.select_hunk = function()
   local hunk = get_cursor_hunk()
@@ -659,6 +705,8 @@ M.select_hunk = function()
 
   vim.cmd('normal! '..hunk.added.start..'GV'..hunk.vend..'G')
 end
+
+C.select_hunk = no_arg(M.select_hunk)
 
 --- Get hunk array for specified buffer.
 ---
@@ -694,6 +742,10 @@ M.get_hunks = function(bufnr: integer): {Hunk_Public}
     }
   end
   return ret
+end
+
+C.get_hunks = function(pos_args: {string})
+  print(vim.inspect(M.get_hunks(tonumber(pos_args[1]) as integer)))
 end
 
 local function get_blame_hunk(repo: git.Repo, info: git.BlameInfo): Hunk, integer, integer
@@ -855,12 +907,20 @@ M.change_base = void(function(base: string, global: boolean)
   end
 end)
 
+C.change_base = function(pos_args: {string})
+  M.change_base(pos_args[1], toboolean(pos_args[2]))
+end
+
 --- Reset the base revision to diff against back to the
 --- index.
 ---
 --- Alias for `change_base(nil, {global})` .
 M.reset_base = function(global: boolean)
   M.change_base(nil, global)
+end
+
+C.reset_base = function(pos_args: {string})
+  M.reset_base(toboolean(pos_args[1]))
 end
 
 --- Perform a |vimdiff| on the given file with {base} if it is
@@ -906,10 +966,10 @@ M.diffthis = function(base: string, opts: DiffthisOpts)
   diffthis.diffthis(base, opts as diffthis.DiffthisOpts)
 end
 
-C.diffthis = function(pos_args: {any}, named_args: {string:any}, params: api.UserCmdParams)
+C.diffthis = function(pos_args: {string}, named_args: {string:string}, params: api.UserCmdParams)
   local opts: DiffthisOpts = {
-    vertical = named_args.vertical as boolean,
-    split    = named_args.split as string
+    vertical = toboolean(named_args.vertical),
+    split    = named_args.split
   }
 
   if params.smods then
@@ -921,10 +981,10 @@ C.diffthis = function(pos_args: {any}, named_args: {string:any}, params: api.Use
     end
   end
 
-  M.diffthis(pos_args[1] as string, opts)
+  M.diffthis(pos_args[1], opts)
 end
 
--- C.test = function(pos_args: {any}, named_args: {string:any}, params: api.UserCmdParams)
+-- C.test = function(pos_args: {string}, named_args: {string:string}, params: api.UserCmdParams)
 --   print('POS ARGS:', vim.inspect(pos_args))
 --   print('NAMED ARGS:', vim.inspect(named_args))
 --   print('PARAMS:', vim.inspect(params))
@@ -952,6 +1012,10 @@ end
 M.show = function(revision: string)
   local diffthis = require('gitsigns.diffthis')
   diffthis.show(revision)
+end
+
+C.show = function(pos_args: {string})
+  M.show(pos_args[1])
 end
 
 local function hunks_to_qflist(buf_or_filename: number|string, hunks: {Hunk}, qflist: {vim.fn.QFItem})
@@ -1130,6 +1194,8 @@ M.get_actions = function(): {string:function}
   return actions
 end
 
+C.get_actions = no_arg(M.get_actions)
+
 --- Refresh all buffers.
 ---
 --- Attributes: ~
@@ -1143,6 +1209,8 @@ M.refresh = void(function()
     manager.update(k, v)
   end
 end)
+
+C.refresh = no_arg(M.refresh)
 
 function M.get_cmd_func(name: string): CmdFunc
   return C[name]

@@ -341,26 +341,8 @@ local function complete(arglead: string, line: string): {string}
   return matches
 end
 
--- try to parse each argument as a lua boolean, nil or number, if fails then
--- keep argument as a string:
---
---   'false'    -> false
---   'nil'      -> nil
---   '100'      -> 100
---   'HEAD~300' -> 'HEAD~300'
-local function parse_to_lua(a: string): any
-  if tonumber(a) then
-    return tonumber(a)
-  elseif a == 'false' or a == 'true' then
-    return a == 'true'
-  elseif a == 'nil' then
-    return nil
-  end
-  return a
-end
-
 local run_cmd_func = void(function(params: api.UserCmdParams)
-  local pos_args_raw, named_args_raw = require('gitsigns.argparse').parse_args(params.args)
+  local pos_args_raw, named_args = require('gitsigns.argparse').parse_args(params.args)
 
   local func = pos_args_raw[1]
 
@@ -368,8 +350,7 @@ local run_cmd_func = void(function(params: api.UserCmdParams)
     func = async.wrap(vim.ui.select, 3)(complete('', 'Gitsigns '), {})
   end
 
-  local pos_args = vim.tbl_map(parse_to_lua, vim.list_slice(pos_args_raw, 2)) as {any}
-  local named_args = vim.tbl_map(parse_to_lua, named_args_raw) as {string:any}
+  local pos_args = vim.list_slice(pos_args_raw, 2)
 
   local actions = require('gitsigns.actions')
   local actions0 = actions as {string:function}

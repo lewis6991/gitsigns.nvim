@@ -88,6 +88,30 @@ local M = {QFListOpts = {}, }
 
 local C = {}
 
+local function toboolean(x)
+   if x == nil then
+      return nil
+   end
+
+   if x == false or x == 0 then
+      return false
+   end
+
+   return true
+end
+
+local function arg_bool(x)
+   return function(pos_args)
+      x(toboolean(pos_args[1]))
+   end
+end
+
+local function no_arg(x)
+   return function()
+      x()
+   end
+end
+
 
 
 
@@ -105,6 +129,8 @@ M.toggle_signs = function(value)
    M.refresh()
    return config.signcolumn
 end
+
+C.toggle_signs = arg_bool(M.toggle_signs)
 
 
 
@@ -124,6 +150,8 @@ M.toggle_numhl = function(value)
    return config.numhl
 end
 
+C.toggle_numhl = arg_bool(M.toggle_numhl)
+
 
 
 
@@ -141,6 +169,8 @@ M.toggle_linehl = function(value)
    M.refresh()
    return config.linehl
 end
+
+C.toggle_linehl = arg_bool(M.toggle_linehl)
 
 
 
@@ -160,6 +190,8 @@ M.toggle_word_diff = function(value)
    return config.word_diff
 end
 
+C.toggle_word_diff = arg_bool(M.toggle_word_diff)
+
 
 
 
@@ -178,6 +210,8 @@ M.toggle_current_line_blame = function(value)
    return config.current_line_blame
 end
 
+C.toggle_current_line_blame = arg_bool(M.toggle_current_line_blame)
+
 
 
 
@@ -195,6 +229,8 @@ M.toggle_deleted = function(value)
    M.refresh()
    return config.show_deleted
 end
+
+C.toggle_deleted = arg_bool(M.toggle_deleted)
 
 local function get_cursor_hunk(bufnr, hunks)
    bufnr = bufnr or current_buf()
@@ -340,6 +376,8 @@ M.reset_buffer = function()
    util.set_lines(bufnr, 0, -1, bcache.compare_text)
 end
 
+C.reset_buffer = no_arg(M.reset_buffer)
+
 
 
 
@@ -364,6 +402,8 @@ M.undo_stage_hunk = void(function()
    bcache:invalidate()
    update(bufnr)
 end)
+
+C.undo_stage_hunk = no_arg(M.undo_stage_hunk)
 
 
 
@@ -399,6 +439,8 @@ M.stage_buffer = void(function()
    update(bufnr)
 end)
 
+C.stage_buffer = no_arg(M.stage_buffer)
+
 
 
 
@@ -425,6 +467,8 @@ M.reset_buffer_index = void(function()
    bcache:invalidate()
    update(bufnr)
 end)
+
+C.reset_buffer_index = no_arg(M.reset_buffer_index)
 
 local function process_nav_opts(opts)
 
@@ -652,6 +696,8 @@ M.preview_hunk = noautocmd(function()
    popup.create(lines_spec, config.preview_config, 'hunk')
 end)
 
+C.preview_hunk = no_arg(M.preview_hunk)
+
 
 M.select_hunk = function()
    local hunk = get_cursor_hunk()
@@ -659,6 +705,8 @@ M.select_hunk = function()
 
    vim.cmd('normal! ' .. hunk.added.start .. 'GV' .. hunk.vend .. 'G')
 end
+
+C.select_hunk = no_arg(M.select_hunk)
 
 
 
@@ -694,6 +742,10 @@ M.get_hunks = function(bufnr)
       }
    end
    return ret
+end
+
+C.get_hunks = function(pos_args)
+   print(vim.inspect(M.get_hunks(tonumber(pos_args[1]))))
 end
 
 local function get_blame_hunk(repo, info)
@@ -855,12 +907,20 @@ M.change_base = void(function(base, global)
    end
 end)
 
+C.change_base = function(pos_args)
+   M.change_base(pos_args[1], toboolean(pos_args[2]))
+end
+
 
 
 
 
 M.reset_base = function(global)
    M.change_base(nil, global)
+end
+
+C.reset_base = function(pos_args)
+   M.reset_base(toboolean(pos_args[1]))
 end
 
 
@@ -908,7 +968,7 @@ end
 
 C.diffthis = function(pos_args, named_args, params)
    local opts = {
-      vertical = named_args.vertical,
+      vertical = toboolean(named_args.vertical),
       split = named_args.split,
    }
 
@@ -952,6 +1012,10 @@ end
 M.show = function(revision)
    local diffthis = require('gitsigns.diffthis')
    diffthis.show(revision)
+end
+
+C.show = function(pos_args)
+   M.show(pos_args[1])
 end
 
 local function hunks_to_qflist(buf_or_filename, hunks, qflist)
@@ -1130,6 +1194,8 @@ M.get_actions = function()
    return actions
 end
 
+C.get_actions = no_arg(M.get_actions)
+
 
 
 
@@ -1143,6 +1209,8 @@ M.refresh = void(function()
       manager.update(k, v)
    end
 end)
+
+C.refresh = no_arg(M.refresh)
 
 function M.get_cmd_func(name)
    return C[name]
