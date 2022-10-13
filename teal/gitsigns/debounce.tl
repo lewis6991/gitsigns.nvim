@@ -17,9 +17,7 @@ function M.debounce_trailing(ms: number, fn: function): function
   return function(...)
     local argv = {...}
     timer:start(ms, 0, function()
-      if not timer:is_closing() then
-        timer:close()
-      end
+      timer:stop()
       fn(unpack(argv))
     end)
   end
@@ -38,9 +36,7 @@ function M.throttle_leading(ms: number, fn: function): function
     if not running then
       timer:start(ms, 0, function()
         running = false
-        if not timer:is_closing() then
-          timer:close()
-        end
+        timer:stop()
       end)
       running = true
       fn(...)
