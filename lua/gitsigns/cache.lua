@@ -62,15 +62,14 @@ CacheEntry.invalidate = function(self)
 end
 
 CacheEntry.new = function(o)
-   o.hunks = o.hunks
    o.staged_diffs = o.staged_diffs or {}
    return setmetatable(o, { __index = CacheEntry })
 end
 
 CacheEntry.destroy = function(self)
    local w = self.gitdir_watcher
-   if w then
-      w:stop()
+   if w and not w:is_closing() then
+      w:close()
    end
 end
 

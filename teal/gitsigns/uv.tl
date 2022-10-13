@@ -34,27 +34,21 @@ vim.api.nvim_create_autocmd('VimLeavePre', {
   end
 })
 
-function M.new_timer(longlived: boolean): uv.Timer | string
+function M.new_timer(longlived: boolean): uv.Timer
   local r = uv.new_timer()
-  if r is uv.Timer then
-    handles[#handles+1] = {r as uv.Handle, longlived, debug.traceback()}
-  end
+  handles[#handles+1] = {r as uv.Handle, longlived, debug.traceback()}
   return r
 end
 
-function M.new_fs_poll(longlived: boolean): uv.FSPollObj | string
+function M.new_fs_poll(longlived: boolean): uv.FSPollObj
   local r = uv.new_fs_poll()
-  if r is uv.FSPollObj then
-    handles[#handles+1] = {r as uv.Handle, longlived, debug.traceback()}
-  end
+  handles[#handles+1] = {r as uv.Handle, longlived, debug.traceback()}
   return r
 end
 
-function M.new_pipe(ipc: boolean): uv.Pipe | string
+function M.new_pipe(ipc: boolean): uv.Pipe
   local r = uv.new_pipe(ipc)
-  if r is uv.Pipe then
-    handles[#handles+1] = {r as uv.Handle, false, debug.traceback()}
-  end
+  handles[#handles+1] = {r as uv.Handle, false, debug.traceback()}
   return r
 end
 

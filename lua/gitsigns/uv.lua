@@ -36,25 +36,19 @@ vim.api.nvim_create_autocmd('VimLeavePre', {
 
 function M.new_timer(longlived)
    local r = uv.new_timer()
-   if type(r) == "userdata" then
-      handles[#handles + 1] = { r, longlived, debug.traceback() }
-   end
+   handles[#handles + 1] = { r, longlived, debug.traceback() }
    return r
 end
 
 function M.new_fs_poll(longlived)
    local r = uv.new_fs_poll()
-   if type(r) == "userdata" then
-      handles[#handles + 1] = { r, longlived, debug.traceback() }
-   end
+   handles[#handles + 1] = { r, longlived, debug.traceback() }
    return r
 end
 
 function M.new_pipe(ipc)
    local r = uv.new_pipe(ipc)
-   if type(r) == "userdata" then
-      handles[#handles + 1] = { r, false, debug.traceback() }
-   end
+   handles[#handles + 1] = { r, false, debug.traceback() }
    return r
 end
 

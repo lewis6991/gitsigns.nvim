@@ -328,7 +328,7 @@ M.watch_gitdir = function(bufnr: integer, gitdir: string): vim.loop.FSPollObj
   end
 
   dprintf('Watching git dir')
-  local w = uv.new_fs_poll(true) as vim.loop.FSPollObj
+  local w = uv.new_fs_poll(true)
   w:start(gitdir, config.watch_gitdir.interval, void(function(err: string)
     local __FUNC__ = 'watcher_cb'
     if err then
@@ -382,7 +382,7 @@ M.update_cwd_head = void(function()
   if cwd_watcher then
     cwd_watcher:stop()
   else
-    cwd_watcher = uv.new_fs_poll(true) as vim.loop.FSPollObj
+    cwd_watcher = uv.new_fs_poll(true)
   end
 
   local cwd = vim.loop.cwd()

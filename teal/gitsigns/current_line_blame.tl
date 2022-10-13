@@ -15,7 +15,7 @@ local current_buf = api.nvim_get_current_buf
 
 local namespace = api.nvim_create_namespace('gitsigns_blame')
 
-local timer = uv.new_timer(true) as vim.loop.Timer
+local timer = uv.new_timer(true)
 
 local record M
   setup: function()

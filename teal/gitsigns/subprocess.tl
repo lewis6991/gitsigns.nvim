@@ -45,10 +45,10 @@ function M.run_job(obj: M.JobSpec, callback: function(integer, integer, string, 
   s.stdout_data = {}
   s.stderr_data = {}
 
-  s.stdout = guv.new_pipe(false) as uv.Pipe
-  s.stderr = guv.new_pipe(false) as uv.Pipe
+  s.stdout = guv.new_pipe(false)
+  s.stderr = guv.new_pipe(false)
   if obj.writer then
-    s.stdin = guv.new_pipe(false) as uv.Pipe
+    s.stdin = guv.new_pipe(false)
   end
 
   s.handle, s.pid = guv.spawn(obj.command, {

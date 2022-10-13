@@ -454,25 +454,27 @@ global record vim
       start: function(Timer, number, number, function): number
       stop: function(Timer): number
       close: function(Timer): number
+      is_closing: function(Timer): boolean
       again: function(Timer): number
       set_repeat: function(Timer, number): number
       get_repeat: function(Timer): number
       get_due_in: function(Timer): number
     end
     hrtime: function(): number
-    new_timer: function(): Timer | string
+    new_timer: function(): Timer
     timer_start: function(Timer, integer, integer, function()): integer | string
 
     new_fs_event: function()
 
     record FSPollObj
       userdata
+      is_closing: function(FSPollObj): boolean | string
       close: function(FSPollObj)
       start: function(FSPollObj, string, integer, function)
       stop: function(FSPollObj)
       getpath: function(FSPollObj): string
     end
-    new_fs_poll: function(): FSPollObj | string
+    new_fs_poll: function(): FSPollObj
 
     record FsStatRet
       dev : number
@@ -549,7 +551,7 @@ global record vim
     spawn: function(string, SpawnOpts, function(integer, integer)): Process, integer
 
     read_start: function(Pipe, function)
-    new_pipe: function(boolean): Pipe | string
+    new_pipe: function(boolean): Pipe
     shutdown: function(any, function)
     close: function(any, function)
 
