@@ -22,7 +22,7 @@ function M.mk_repeatable(fn)
          end
       end
 
-      vim.cmd('normal g@l')
+      vim.cmd('normal! g@l')
    end
 end
 
