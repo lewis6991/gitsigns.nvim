@@ -301,6 +301,8 @@ M.set_version = function(version: string)
   end
   local results = M.command{'--version'}
   local line = results[1]
+  assert(line)
+  assert(type(line) == 'string', 'Unexpected output: '..line)
   assert(startswith(line, 'git version'), 'Unexpected output: '..line)
   local parts = vim.split(line, '%s+')
   M.version = parse_version(parts[3])
