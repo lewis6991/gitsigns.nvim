@@ -171,7 +171,7 @@ M.command = wrap(function(args, spec, callback)
    spec.args = spec.command == 'git' and
    { '--no-pager', '--literal-pathspecs', unpack(args) } or args
    subprocess.run_job(spec, function(_, _, stdout, stderr)
-      if not spec.supress_stderr then
+      if not spec.suppress_stderr then
          if stderr then
             gsd.eprint(stderr)
          end
@@ -218,7 +218,7 @@ local function process_abbrev_head(gitdir, head_str, path, cmd)
    if head_str == 'HEAD' then
       local short_sha = M.command({ 'rev-parse', '--short', 'HEAD' }, {
          command = cmd or 'git',
-         supress_stderr = true,
+         suppress_stderr = true,
          cwd = path,
       })[1] or ''
       if gsd.debug_mode and short_sha ~= '' then
@@ -278,7 +278,7 @@ M.get_repo_info = function(path, cmd, gitdir, toplevel)
 
    local results = M.command(args, {
       command = cmd or 'git',
-      supress_stderr = true,
+      suppress_stderr = true,
       cwd = path,
    })
 
@@ -344,7 +344,7 @@ end
 
 
 Repo.get_show_text = function(self, object, encoding)
-   local stdout, stderr = self:command({ 'show', object }, { supress_stderr = true })
+   local stdout, stderr = self:command({ 'show', object }, { suppress_stderr = true })
 
    if encoding ~= 'utf-8' then
       scheduler()
@@ -421,7 +421,7 @@ Obj.file_info = function(self, file, silent)
       '--exclude-standard',
       '--eol',
       file or self.file,
-   }, { supress_stderr = true })
+   }, { suppress_stderr = true })
 
    if stderr and not silent then
 

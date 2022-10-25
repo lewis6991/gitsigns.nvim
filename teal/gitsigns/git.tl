@@ -20,7 +20,7 @@ local record GJobSpec
   writer: {string}
 
   -- local extensions
-  supress_stderr: boolean
+  suppress_stderr: boolean
 end
 
 local record M
@@ -171,7 +171,7 @@ M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({st
   spec.args = spec.command == 'git' and
     { '--no-pager', '--literal-pathspecs', unpack(args) } or args
   subprocess.run_job(spec as JobSpec, function(_: integer, _: integer, stdout: string, stderr: string)
-    if not spec.supress_stderr then
+    if not spec.suppress_stderr then
       if stderr then
         gsd.eprint(stderr)
       end
@@ -218,7 +218,7 @@ local function process_abbrev_head(gitdir: string, head_str: string, path: strin
   if head_str == 'HEAD' then
     local short_sha = M.command({'rev-parse', '--short', 'HEAD'}, {
         command = cmd or 'git',
-        supress_stderr = true,
+        suppress_stderr = true,
         cwd = path,
       })[1] or ''
     if gsd.debug_mode and short_sha ~= '' then
@@ -278,7 +278,7 @@ M.get_repo_info = function(path: string, cmd: string, gitdir: string, toplevel: 
 
   local results = M.command(args, {
     command = cmd or 'git',
-    supress_stderr = true,
+    suppress_stderr = true,
     cwd = path
   })
 
@@ -344,7 +344,7 @@ end
 
 --- Get version of file in the index, return array lines
 Repo.get_show_text = function(self: Repo, object: string, encoding: string): {string}, string
-  local stdout, stderr = self:command({'show', object}, {supress_stderr = true})
+  local stdout, stderr = self:command({'show', object}, {suppress_stderr = true})
 
   if encoding ~= 'utf-8' then
     scheduler()
@@ -421,10 +421,10 @@ Obj.file_info = function(self: Obj, file: string, silent: boolean): M.FileProps
     '--exclude-standard',
     '--eol',
     file or self.file
-  }, {supress_stderr = true})
+  }, {suppress_stderr = true})
 
   if stderr and not silent then
-    -- Supress_stderr for the cases when we run:
+    -- Suppress_stderr for the cases when we run:
     --   git ls-files --others exists/nonexist
     if not stderr:match('^warning: could not open directory .*: No such file or directory') then
       gsd.eprint(stderr)

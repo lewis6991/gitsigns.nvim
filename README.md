@@ -20,7 +20,7 @@ Super fast git decorations implemented purely in lua/teal.
 - Navigation between hunks
 - Stage hunks (with undo)
 - Preview diffs of hunks (with word diff)
-- Customisable (signs, highlights, mappings, etc)
+- Customizable (signs, highlights, mappings, etc)
 - Status bar integration
 - Git blame a specific line using virtual text.
 - Hunk text object
