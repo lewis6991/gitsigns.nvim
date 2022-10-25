@@ -417,7 +417,7 @@ M.reset_buffer_index = void(function()
   -- however be fixed by gitdir watcher and properly updated We should implement
   -- some sort of initial population from git diff, after that this function can
   -- be improved to check if any staged hunks exists and it can undo changes
-  -- using git apply line by line instead of reseting whole file
+  -- using git apply line by line instead of resetting whole file
   bcache.staged_diffs = {}
 
   bcache.git_obj:unstage_file()
