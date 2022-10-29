@@ -9,5 +9,5 @@ return function(a, b)
    else
       f = require('gitsigns.diff_ext').run_diff
    end
-   return f(a, b, diff_opts.algorithm, diff_opts.indent_heuristic)
+   return f(a, b, diff_opts.algorithm, diff_opts.indent_heuristic, diff_opts.linematch)
 end

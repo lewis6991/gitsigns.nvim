@@ -13,7 +13,8 @@ local M = {}
 
 local run_diff_xdl = function(
    fa, fb,
-   algorithm, indent_heuristic)
+   algorithm, indent_heuristic,
+   linematch)
 
 
    local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n') .. '\n'
@@ -23,12 +24,14 @@ local run_diff_xdl = function(
       result_type = 'indices',
       algorithm = algorithm,
       indent_heuristic = indent_heuristic,
+      linematch = linematch,
    })
 end
 
 local run_diff_xdl_async = async.wrap(function(
    fa, fb,
    algorithm, indent_heuristic,
+   linematch,
    callback)
 
 
@@ -37,17 +40,19 @@ local run_diff_xdl_async = async.wrap(function(
 
    vim.loop.new_work(function(
       a0, b0,
-      algorithm0, indent_heuristic0)
+      algorithm0, indent_heuristic0,
+      linematch0)
 
       return vim.mpack.encode(vim.diff(a0, b0, {
          result_type = 'indices',
          algorithm = algorithm0,
          indent_heuristic = indent_heuristic0,
+         linematch = linematch0,
       }))
    end, function(r)
       callback(vim.mpack.decode(r))
-   end):queue(a, b, algorithm, indent_heuristic)
-end, 5)
+   end):queue(a, b, algorithm, indent_heuristic, linematch)
+end, 6)
 
 if not vim.diff then
    run_diff_xdl = require('gitsigns.diff_int.xdl_diff_ffi')
@@ -55,7 +60,8 @@ end
 
 M.run_diff = async.void(function(
    fa, fb,
-   diff_algo, indent_heuristic)
+   diff_algo, indent_heuristic,
+   linematch)
 
    local run_diff0
    if config._threaded_diff and vim.is_thread then
@@ -64,7 +70,7 @@ M.run_diff = async.void(function(
       run_diff0 = run_diff_xdl
    end
 
-   local results = run_diff0(fa, fb, diff_algo, indent_heuristic)
+   local results = run_diff0(fa, fb, diff_algo, indent_heuristic, linematch)
 
    local hunks = {}
 
