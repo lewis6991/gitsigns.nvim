@@ -33,6 +33,7 @@ local record M
       internal: boolean
       indent_heuristic: boolean
       vertical: boolean
+      linematch: integer
     end
 
     diff_opts: DiffOpts
@@ -333,11 +334,12 @@ M.schema = {
     type = 'table',
     deep_extend = true,
     default = function(): {string:any}
-      local r = {
+      local r: M.Config.DiffOpts = {
         algorithm = 'myers',
         internal = false,
         indent_heuristic = false,
-        vertical = true
+        vertical = true,
+        linematch = nil
       }
       for _, o in ipairs(vim.opt.diffopt:get()) do
         if o == 'indent-heuristic' then
@@ -352,7 +354,9 @@ M.schema = {
         elseif o == 'horizontal' then
           r.vertical = false
         elseif vim.startswith(o, 'algorithm:') then
-          r.algorithm = string.sub(o, 11)
+          r.algorithm = string.sub(o, ('algorithm:'):len() + 1)
+        elseif vim.startswith(o, 'linematch:') then
+          r.linematch = tonumber(string.sub(o, ('linematch:'):len() + 1)) as integer
         end
       end
       return r
@@ -379,6 +383,9 @@ M.schema = {
             diff library.
         • vertical: boolean
             Start diff mode with vertical splits.
+        • linematch: integer
+            Enable second-stage diff on hunks to align lines.
+            Requires `internel=true`.
     ]]
   },
 
