@@ -324,13 +324,17 @@ preview_hunk()                                       *gitsigns.preview_hunk()*
                 will cause the window to get focus.
 
 prev_hunk({opts})                                       *gitsigns.prev_hunk()*
-                Jump to the previous hunk in the current buffer.
+                Jump to the previous hunk in the current buffer. If a hunk preview
+                (popup or inline) was previously opened, it will be re-opened
+                at the previous hunk.
 
                 Parameters: ~
                     See |gitsigns.next_hunk()|.
 
 next_hunk({opts})                                       *gitsigns.next_hunk()*
-                Jump to the next hunk in the current buffer.
+                Jump to the next hunk in the current buffer. If a hunk preview
+                (popup or inline) was previously opened, it will be re-opened
+                at the next hunk.
 
                 Parameters: ~
                     {opts}  table|nil Configuration table. Keys:
