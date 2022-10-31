@@ -89,6 +89,8 @@ local M = {QFListOpts = {}, }
 
 local C = {}
 
+local ns_inline = api.nvim_create_namespace('gitsigns_preview_inline')
+
 
 
 
@@ -452,9 +454,14 @@ local function defer(fn)
    end
 end
 
+local function has_preview_inline(bufnr)
+   return #api.nvim_buf_get_extmarks(bufnr, ns_inline, 0, -1, { limit = 1 }) > 0
+end
+
 local function nav_hunk(opts)
    process_nav_opts(opts)
-   local bcache = cache[current_buf()]
+   local bufnr = current_buf()
+   local bcache = cache[bufnr]
    if not bcache then
       return
    end
@@ -462,7 +469,7 @@ local function nav_hunk(opts)
    local hunks = bcache.hunks
    if not hunks or vim.tbl_isempty(hunks) then
       if opts.navigation_message then
-         vim.api.nvim_echo({ { 'No hunks', 'WarningMsg' } }, false, {})
+         api.nvim_echo({ { 'No hunks', 'WarningMsg' } }, false, {})
       end
       return
    end
@@ -472,7 +479,7 @@ local function nav_hunk(opts)
 
    if hunk == nil then
       if opts.navigation_message then
-         vim.api.nvim_echo({ { 'No more hunks', 'WarningMsg' } }, false, {})
+         api.nvim_echo({ { 'No more hunks', 'WarningMsg' } }, false, {})
       end
       return
    end
@@ -492,14 +499,18 @@ local function nav_hunk(opts)
 
 
          defer(M.preview_hunk)
+      elseif has_preview_inline(bufnr) then
+         defer(M.preview_hunk_inline)
       end
 
       if index ~= nil and opts.navigation_message then
-         vim.api.nvim_echo({ { string.format('Hunk %d of %d', index, #hunks), 'None' } }, false, {})
+         api.nvim_echo({ { string.format('Hunk %d of %d', index, #hunks), 'None' } }, false, {})
       end
 
    end
 end
+
+
 
 
 
@@ -523,6 +534,8 @@ M.next_hunk = function(opts)
    opts.forwards = true
    nav_hunk(opts)
 end
+
+
 
 
 
@@ -663,14 +676,12 @@ M.preview_hunk_inline = function()
       return
    end
 
-   local nsp = api.nvim_create_namespace('gitsigns_preview_inline')
-
-   manager.show_added(bufnr, nsp, hunk)
-   manager.show_deleted(bufnr, nsp, hunk)
+   manager.show_added(bufnr, ns_inline, hunk)
+   manager.show_deleted(bufnr, ns_inline, hunk)
 
    api.nvim_create_autocmd({ 'CursorMoved', 'InsertEnter' }, {
       callback = function()
-         api.nvim_buf_clear_namespace(bufnr, nsp, 0, -1)
+         api.nvim_buf_clear_namespace(bufnr, ns_inline, 0, -1)
       end,
       once = true,
    })

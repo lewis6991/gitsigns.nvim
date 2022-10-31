@@ -89,6 +89,8 @@ local type CmdFunc = function(pos_args: {any}, named_args: {string:any}, params:
 -- Variations of functions from M which are used for the Gitsigns command
 local C: {string:CmdFunc} = {}
 
+local ns_inline = api.nvim_create_namespace('gitsigns_preview_inline')
+
 --- Toggle |gitsigns-config-signbooleancolumn|
 ---
 --- Parameters:~
@@ -452,9 +454,14 @@ local function defer(fn: function)
   end
 end
 
+local function has_preview_inline(bufnr: integer): boolean
+  return #api.nvim_buf_get_extmarks(bufnr, ns_inline, 0, -1, {limit=1}) > 0
+end
+
 local function nav_hunk(opts: NavHunkOpts)
   process_nav_opts(opts)
-  local bcache = cache[current_buf()]
+  local bufnr = current_buf()
+  local bcache = cache[bufnr]
   if not bcache then
     return
   end
@@ -462,7 +469,7 @@ local function nav_hunk(opts: NavHunkOpts)
   local hunks = bcache.hunks
   if not hunks or vim.tbl_isempty(hunks) then
     if opts.navigation_message then
-      vim.api.nvim_echo({{'No hunks', 'WarningMsg'}}, false, {})
+      api.nvim_echo({{'No hunks', 'WarningMsg'}}, false, {})
     end
     return
   end
@@ -472,7 +479,7 @@ local function nav_hunk(opts: NavHunkOpts)
 
   if hunk == nil then
     if opts.navigation_message then
-        vim.api.nvim_echo({{'No more hunks', 'WarningMsg'}}, false, {})
+        api.nvim_echo({{'No more hunks', 'WarningMsg'}}, false, {})
     end
     return
   end
@@ -492,16 +499,20 @@ local function nav_hunk(opts: NavHunkOpts)
       -- Use defer so the cursor change can settle, otherwise the popup might
       -- appear in the old position
       defer(M.preview_hunk)
+    elseif has_preview_inline(bufnr) then
+      defer(M.preview_hunk_inline)
     end
 
     if index ~= nil and opts.navigation_message then
-        vim.api.nvim_echo({{string.format('Hunk %d of %d', index, #hunks), 'None'}}, false, {})
+        api.nvim_echo({{string.format('Hunk %d of %d', index, #hunks), 'None'}}, false, {})
     end
 
   end
 end
 
---- Jump to the next hunk in the current buffer.
+--- Jump to the next hunk in the current buffer. If a hunk preview
+--- (popup or inline) was previously opened, it will be re-opened
+--- at the next hunk.
 ---
 --- Parameters: ~
 ---     {opts}  table|nil Configuration table. Keys:
@@ -524,7 +535,9 @@ M.next_hunk = function(opts: NavHunkOpts)
   nav_hunk(opts)
 end
 
---- Jump to the previous hunk in the current buffer.
+--- Jump to the previous hunk in the current buffer. If a hunk preview
+--- (popup or inline) was previously opened, it will be re-opened
+--- at the previous hunk.
 ---
 --- Parameters: ~
 ---     See |gitsigns.next_hunk()|.
@@ -663,14 +676,12 @@ M.preview_hunk_inline = function()
     return
   end
 
-  local nsp = api.nvim_create_namespace('gitsigns_preview_inline')
-
-  manager.show_added(bufnr, nsp, hunk)
-  manager.show_deleted(bufnr, nsp, hunk)
+  manager.show_added(bufnr, ns_inline, hunk)
+  manager.show_deleted(bufnr, ns_inline, hunk)
 
   api.nvim_create_autocmd({ 'CursorMoved', 'InsertEnter' }, {
     callback = function()
-      api.nvim_buf_clear_namespace(bufnr, nsp, 0, -1)
+      api.nvim_buf_clear_namespace(bufnr, ns_inline, 0, -1)
     end,
     once = true
   })
