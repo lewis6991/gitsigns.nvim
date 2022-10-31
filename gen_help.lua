@@ -293,7 +293,7 @@ end
 
 local function get_marker_text(marker)
   return ({
-    VERSION   = '0.3-dev',
+    VERSION   = '0.6-dev',
     CONFIG    = gen_config_doc,
     FUNCTIONS = gen_functions_doc{
       'teal/gitsigns.tl',
