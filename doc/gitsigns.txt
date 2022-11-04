@@ -653,7 +653,7 @@ diff_opts                                          *gitsigns-config-diff_opts*
             Start diff mode with vertical splits.
         • linematch: integer
             Enable second-stage diff on hunks to align lines.
-            Requires `internel=true`.
+            Requires `internal=true`.
 
 base                                                    *gitsigns-config-base*
       Type: `string`, Default: index

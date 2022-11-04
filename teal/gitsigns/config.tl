@@ -385,7 +385,7 @@ M.schema = {
             Start diff mode with vertical splits.
         • linematch: integer
             Enable second-stage diff on hunks to align lines.
-            Requires `internel=true`.
+            Requires `internal=true`.
     ]]
   },
 
