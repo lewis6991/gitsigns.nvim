@@ -246,19 +246,20 @@ Feature                                                  | gitsigns.nvim        
 Shows signs for added, modified, and removed lines       | :white_check_mark:   | :white_check_mark:                            |
 Asynchronous                                             | :white_check_mark:   | :white_check_mark:                            |
 Runs diffs in-process (no IO or pipes)                   | :white_check_mark: * |                                               | * Via [lua](https://github.com/neovim/neovim/pull/14536) or FFI.
-Supports Nvim's diff-linematch                           | :white_check_mark:   |                                               | * Via [diff-linematch](https://github.com/neovim/neovim/pull/14537)
+Supports Nvim's diff-linematch                           | :white_check_mark: * |                                               | * Via [diff-linematch]
 Only adds signs for drawn lines                          | :white_check_mark: * |                                               | * Via Neovims decoration API
 Updates immediately                                      | :white_check_mark:   | *                                             | * Triggered on CursorHold
 Ensures signs are always up to date                      | :white_check_mark: * |                                               | * Watches the git dir to do so
 Never saves the buffer                                   | :white_check_mark:   | :white_check_mark: :heavy_exclamation_mark: * | * Writes [buffer](https://github.com/airblade/vim-gitgutter/blob/0f98634b92da9a35580b618c11a6d2adc42d9f90/autoload/gitgutter/diff.vim#L106) (and index) to short lived temp files
 Quick jumping between hunks                              | :white_check_mark:   | :white_check_mark:                            |
 Stage/reset/preview individual hunks                     | :white_check_mark:   | :white_check_mark:                            |
+Preview hunks directly in the buffer (inline)            | :white_check_mark: * |                                               | * Via `preview_hunk_inline`
 Stage/reset hunks in range/selection                     | :white_check_mark:   | :white_check_mark: :heavy_exclamation_mark: * | * Only stage
 Stage/reset all hunks in buffer                          | :white_check_mark:   |                                               |
 Undo staged hunks                                        | :white_check_mark:   |                                               |
 Word diff in buffer                                      | :white_check_mark:   |                                               |
 Word diff in hunk preview                                | :white_check_mark:   | :white_check_mark:                            |
-Show deleted/changes lines directly in buffer            | :white_check_mark: * |                                               | * Via [virtual lines](https://github.com/neovim/neovim/pull/15351)
+Show deleted/changes lines directly in buffer            | :white_check_mark: * |                                               | * Via [virtual lines]
 Stage partial hunks                                      | :white_check_mark:   |                                               |
 Hunk text object                                         | :white_check_mark:   | :white_check_mark:                            |
 Diff against index or any commit                         | :white_check_mark:   | :white_check_mark:                            |
@@ -272,7 +273,7 @@ Customizable signs and mappings                          | :white_check_mark:   
 Customizable extra diff arguments                        | :white_check_mark:   | :white_check_mark:                            |
 Can be toggled globally or per buffer                    | :white_check_mark: * | :white_check_mark:                            | * Through the detach/attach functions
 Statusline integration                                   | :white_check_mark:   | :white_check_mark:                            |
-Works with [yadm](https://yadm.io/)                      | :white_check_mark:   |                                               |
+Works with [yadm]                                        | :white_check_mark:   |                                               |
 Live blame in buffer (using virtual text)                | :white_check_mark:   |                                               |
 Blame preview                                            | :white_check_mark:   |                                               |
 Automatically follows open files moved with `git mv`     | :white_check_mark:   |                                               |
@@ -317,6 +318,7 @@ If installed and enabled (via `config.trouble`; defaults to true if installed), 
 
 <!-- links -->
 [coc-git]: https://github.com/neoclide/coc-git
+[diff-linematch]: https://github.com/neovim/neovim/pull/14537
 [luv]: https://github.com/luvit/luv/blob/master/docs.md
 [null-ls]: https://github.com/jose-elias-alvarez/null-ls.nvim
 [nvim-lua-guide]: https://github.com/nanotee/nvim-lua-guide
@@ -327,4 +329,5 @@ If installed and enabled (via `config.trouble`; defaults to true if installed), 
 [vim-gitgutter]: https://github.com/airblade/vim-gitgutter
 [vim-plug]: https://github.com/junegunn/vim-plug
 [vim-signify]: https://github.com/mhinz/vim-signify
+[virtual lines]: https://github.com/neovim/neovim/pull/15351
 [yadm]: https://yadm.io
