@@ -77,6 +77,11 @@ local record M
 
   FugitiveReal: function(...: any): string
   FugitiveParse: function(...: any): {string, string}
+
+  record WinInfo
+    textoff: integer
+  end
+  getwininfo: function(integer): {WinInfo}
 end
 
 return M

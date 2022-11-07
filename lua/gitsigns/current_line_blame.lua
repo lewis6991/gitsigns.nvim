@@ -39,6 +39,9 @@ end
 
 local function reset(bufnr)
    bufnr = bufnr or current_buf()
+   if not api.nvim_buf_is_valid(bufnr) then
+      return
+   end
    api.nvim_buf_del_extmark(bufnr, namespace, 1)
    vim.b[bufnr].gitsigns_blame_line_dict = nil
 end

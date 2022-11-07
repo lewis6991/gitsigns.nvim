@@ -222,7 +222,27 @@ local record M
   nvim_win_get_width: function(integer): integer
   nvim_win_is_valid: function(number): boolean
   nvim_win_set_buf: function(number, number)
-  nvim_win_set_config: function(number, {string:any})
+
+  record WinConfig
+    bufpos: {integer, integer}
+    virt_lines_above: boolean
+    width: integer
+    height: integer
+    relative: string
+    row: integer
+    col: integer
+    win: integer
+    enum Anchor
+      'NW'
+      'NE'
+      'SW'
+      'SE'
+    end
+    anchor: Anchor
+  end
+
+  nvim_win_set_config: function(number, WinConfig)
+
   nvim_win_set_cursor: function(number, {number})
   nvim_win_set_height: function(number, number)
   nvim_win_set_option: function(number, string, any)

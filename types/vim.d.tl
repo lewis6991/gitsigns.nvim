@@ -41,6 +41,8 @@ local record M
     {WinOption}
     diff: boolean
     signcolumn: string
+    scrolloff: integer
+    relativenumber: boolean
   end
 
   wo: WinOption
