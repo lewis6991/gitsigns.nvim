@@ -763,13 +763,23 @@ M.preview_hunk_inline = function()
 
    clear_preview_inline(bufnr)
 
+   local winid
    manager.show_added(bufnr, ns_inline, hunk)
-   manager.show_deleted(bufnr, ns_inline, hunk)
+   if config._inline2 then
+      if hunk.removed.count > 0 then
+         winid = manager.show_deleted_in_float(bufnr, ns_inline, hunk)
+      end
+   else
+      manager.show_deleted(bufnr, ns_inline, hunk)
+   end
 
    api.nvim_create_autocmd({ 'CursorMoved', 'InsertEnter' }, {
       buffer = bufnr,
       desc = 'Clear gitsigns inline preview',
       callback = function()
+         if winid then
+            pcall(api.nvim_win_close, winid, true)
+         end
          clear_preview_inline(bufnr)
       end,
       once = true,

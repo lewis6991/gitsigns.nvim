@@ -239,6 +239,97 @@ function M.show_deleted(bufnr, nsd, hunk)
    })
 end
 
+function M.show_deleted_in_float(bufnr, nsd, hunk)
+   local virt_lines = {}
+   for i = 1, hunk.removed.count do
+      virt_lines[i] = { { '', 'Normal' } }
+   end
+
+   local topdelete = hunk.added.start == 0 and hunk.type == 'delete'
+   local virt_lines_above = hunk.type ~= 'delete' or topdelete
+
+   local row = topdelete and 0 or hunk.added.start - 1
+   api.nvim_buf_set_extmark(bufnr, nsd, row, -1, {
+      virt_lines = virt_lines,
+      -- TODO(lewis6991): Note virt_lines_above doesn't work on row 0 neovim/neovim#16166
+      virt_lines_above = virt_lines_above,
+   })
+
+   local bcache = cache[bufnr]
+   local pbufnr = api.nvim_create_buf(false, true)
+   api.nvim_buf_set_lines(pbufnr, 0, -1, false, bcache.compare_text)
+
+   local cwin = api.nvim_get_current_win()
+   local width = api.nvim_win_get_width(0)
+
+   local opts = {
+      relative = 'win',
+      win = cwin,
+      width = width,
+      height = hunk.removed.count,
+      anchor = 'SW',
+      bufpos = { hunk.added.start, 0 },
+   }
+
+   local bufpos_offset = virt_lines_above and not topdelete and 1 or 0
+   opts.bufpos[1] = opts.bufpos[1] - bufpos_offset
+
+   local winid = api.nvim_open_win(pbufnr, false, opts)
+
+   -- Align buffer text by accounting for differences in the statuscolumn
+   local textoff = vim.fn.getwininfo(cwin)[1].textoff
+   local ptextoff = vim.fn.getwininfo(winid)[1].textoff
+   local col_offset = textoff - ptextoff
+
+   if col_offset ~= 0 then
+      opts.width = opts.width - col_offset
+      opts.bufpos[2] = opts.bufpos[2] + col_offset
+      api.nvim_win_set_config(winid, opts)
+   end
+
+   vim.bo[pbufnr].filetype = vim.bo[bufnr].filetype
+   vim.bo[pbufnr].bufhidden = 'wipe'
+   vim.wo[winid].scrolloff = 0
+   vim.wo[winid].relativenumber = false
+
+   api.nvim_win_call(winid, function()
+      -- Expand folds
+      vim.cmd('normal ' .. 'zR')
+
+      -- Navigate to hunk
+      vim.cmd('normal ' .. tostring(hunk.removed.start) .. 'gg')
+      vim.cmd('normal ' .. vim.api.nvim_replace_termcodes('z<CR>', true, false, true))
+   end)
+
+   -- Apply highlights
+
+   for i = hunk.removed.start, hunk.removed.start + hunk.removed.count do
+      api.nvim_buf_set_extmark(pbufnr, nsd, i - 1, 0, {
+         hl_group = 'GitSignsDeleteVirtLn',
+         hl_eol = true,
+         end_row = i,
+         priority = 1000,
+      })
+   end
+
+   local removed_regions = 
+   require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
+
+   for _, region in ipairs(removed_regions) do
+      local start_row = (hunk.removed.start - 1) + (region[1] - 1)
+      local start_col = region[3] - 1
+      local end_col = region[4] - 1
+      api.nvim_buf_set_extmark(pbufnr, nsd, start_row, start_col, {
+         hl_group = 'GitSignsDeleteVirtLnInline',
+         end_col = end_col,
+         end_row = start_row,
+         priority = 1001,
+      })
+   end
+
+   return winid
+end
+
 function M.show_added(bufnr, nsw, hunk)
    local start_row = hunk.added.start - 1
 

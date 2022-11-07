@@ -136,6 +136,7 @@ local M = {Config = {DiffOpts = {}, SignConfig = {}, watch_gitdir = {}, current_
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -764,6 +765,14 @@ M.schema = {
       default = false,
       description = [[
       Run diffs on a separate thread
+    ]],
+   },
+
+   _inline2 = {
+      type = 'boolean',
+      default = false,
+      description = [[
+      Enable enhanced version of preview_hunk_inline()
     ]],
    },
 

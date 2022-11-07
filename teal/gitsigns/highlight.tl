@@ -147,6 +147,10 @@ M.hls = {
     desc = "Used for word diff regions in lines shown by inline `preview_hunk_inline()` or `show_deleted()`."
   }},
 
+  {GitSignsVirtLnum = {'GitSignsDeleteVirtLn',
+    desc = 'Used for line numbers in inline hunks previews.'
+  }},
+
 }
 
 local function is_hl_set(hl_name: string): boolean
