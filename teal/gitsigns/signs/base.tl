@@ -7,6 +7,7 @@ local record M
     "change"
     "topdelete"
     "changedelete"
+    "untracked"
   end
 
   record Sign
