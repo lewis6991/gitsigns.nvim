@@ -47,6 +47,20 @@ function M.buf_lines(bufnr: integer): {string}
   return buftext
 end
 
+local function delete_alt(buf: integer)
+  local alt = vim.api.nvim_buf_call(buf, function(): integer
+    return vim.fn.bufnr('#')
+  end) as integer
+  if alt ~= buf and alt ~= -1 then
+    pcall(vim.api.nvim_buf_delete, alt, {force=true})
+  end
+end
+
+function M.buf_rename(bufnr: integer, name: string)
+  vim.api.nvim_buf_set_name(bufnr, name)
+  delete_alt(bufnr)
+end
+
 function M.set_lines(bufnr: integer, start_row: integer, end_row: integer, lines: {string})
   if vim.bo[bufnr].fileformat == 'dos' then
     for i = 1, #lines do

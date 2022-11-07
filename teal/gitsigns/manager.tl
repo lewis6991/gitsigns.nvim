@@ -344,7 +344,16 @@ local function handle_moved(bufnr: integer, bcache: CacheEntry, old_relpath: str
     bcache.file = git_obj.file
     git_obj:update_file_info()
     scheduler()
-    api.nvim_buf_set_name(bufnr, bcache.file)
+
+    local bufexists = vim.fn.bufexists(bcache.file) == 1
+    local old_name = api.nvim_buf_get_name(bufnr)
+
+    if not bufexists then
+      util.buf_rename(bufnr, bcache.file)
+    end
+
+    local msg = bufexists and 'Cannot rename' or 'Renamed'
+    dprintf('%s buffer %d from %s to %s', msg, bufnr, old_name, bcache.file)
   end
 end
 
