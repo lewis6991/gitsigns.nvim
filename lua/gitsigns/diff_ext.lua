@@ -35,8 +35,8 @@ M.run_diff = function(
       scheduler()
    end
 
-   local file_buf = util.tmpname() .. '_buf'
-   local file_cmp = util.tmpname() .. '_cmp'
+   local file_buf = util.tmpname()
+   local file_cmp = util.tmpname()
 
    write_to_file(file_buf, text_buf)
    write_to_file(file_cmp, text_cmp)
