@@ -141,7 +141,8 @@ local function change_end(hunk: Hunk): integer
 end
 
 -- Calculate signs needed to be applied from a hunk for a specified line range.
-function M.calc_signs(hunk: Hunk, min_lnum: integer, max_lnum: integer): {Sign}
+function M.calc_signs(hunk: Hunk, min_lnum: integer, max_lnum: integer, untracked: boolean): {Sign}
+  assert(not untracked or hunk.type == 'add')
   min_lnum = min_lnum or 1
   max_lnum = max_lnum or math.huge as integer
   local start, added, removed = hunk.added.start, hunk.added.count, hunk.removed.count
@@ -163,7 +164,8 @@ function M.calc_signs(hunk: Hunk, min_lnum: integer, max_lnum: integer): {Sign}
     local changedelete = hunk.type == 'change' and removed > added and lnum == cend
 
     signs[#signs+1] = {
-      type = changedelete and 'changedelete' or hunk.type,
+      type = changedelete and 'changedelete' or
+             untracked    and 'untracked'    or hunk.type,
       count = lnum == start and (hunk.type == 'add' and added or removed),
       lnum = lnum
     }

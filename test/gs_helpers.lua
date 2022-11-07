@@ -27,6 +27,7 @@ M.test_config = {
     change       = {hl = 'DiffChange', text = '~'},
     topdelete    = {hl = 'DiffDelete', text = '^'},
     changedelete = {hl = 'DiffChange', text = '%'},
+    untracked    = {hl = 'DiffChange', text = '#'},
   },
   keymaps = {
     noremap = true,
@@ -273,6 +274,7 @@ function M.check(attrs, interval)
         delete       = 0,
         changedelete = 0,
         topdelete    = 0,
+        untracked    = 0,
       }
 
       for k, _ in pairs(act) do
@@ -287,6 +289,7 @@ function M.check(attrs, interval)
         elseif s.name == "GitSignsDelete"       then act.delete       = act.delete + 1
         elseif s.name == "GitSignsChangedelete" then act.changedelete = act.changedelete + 1
         elseif s.name == "GitSignsTopdelete"    then act.topdelete    = act.topdelete + 1
+        elseif s.name == "GitSignsUntracked"    then act.untracked    = act.untracked + 1
         end
       end
 

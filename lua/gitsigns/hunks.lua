@@ -141,7 +141,8 @@ local function change_end(hunk)
 end
 
 
-function M.calc_signs(hunk, min_lnum, max_lnum)
+function M.calc_signs(hunk, min_lnum, max_lnum, untracked)
+   assert(not untracked or hunk.type == 'add')
    min_lnum = min_lnum or 1
    max_lnum = max_lnum or math.huge
    local start, added, removed = hunk.added.start, hunk.added.count, hunk.removed.count
@@ -163,7 +164,8 @@ function M.calc_signs(hunk, min_lnum, max_lnum)
       local changedelete = hunk.type == 'change' and removed > added and lnum == cend
 
       signs[#signs + 1] = {
-         type = changedelete and 'changedelete' or hunk.type,
+         type = changedelete and 'changedelete' or
+         untracked and 'untracked' or hunk.type,
          count = lnum == start and (hunk.type == 'add' and added or removed),
          lnum = lnum,
       }

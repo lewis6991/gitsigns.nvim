@@ -52,7 +52,7 @@ end
 
 local scheduler_if_buf_valid = awrap(schedule_if_buf_valid, 2)
 
-local function apply_win_signs(bufnr: integer, hunks: {Hunk}, top: integer, bot: integer, clear: boolean)
+local function apply_win_signs(bufnr: integer, hunks: {Hunk}, top: integer, bot: integer, clear: boolean, untracked: boolean)
   if clear then
     signs:remove(bufnr)  -- Remove all signs
   end
@@ -65,12 +65,12 @@ local function apply_win_signs(bufnr: integer, hunks: {Hunk}, top: integer, bot:
   -- least one sign. Only do this on the first call after an update when we all
   -- the signs have been cleared.
   if clear and hunks[1] then
-    signs:add(bufnr, gs_hunks.calc_signs(hunks[1], hunks[1].added.start, hunks[1].added.start))
+    signs:add(bufnr, gs_hunks.calc_signs(hunks[1], hunks[1].added.start, hunks[1].added.start, untracked))
   end
 
   for _, hunk in ipairs(hunks) do
     if top <= hunk.vend and bot >= hunk.added.start then
-      signs:add(bufnr, gs_hunks.calc_signs(hunk, top, bot))
+      signs:add(bufnr, gs_hunks.calc_signs(hunk, top, bot, untracked))
     end
     if hunk.added.start > bot then
       break
@@ -290,7 +290,7 @@ M.update = throttle_by_id(function(bufnr: integer, bcache: CacheEntry)
   if bcache.force_next_update or gs_hunks.compare_heads(bcache.hunks, old_hunks) then
     -- Apply signs to the window. Other signs will be added by the decoration
     -- provider as they are drawn.
-    apply_win_signs(bufnr, bcache.hunks, vim.fn.line('w0'), vim.fn.line('w$'), true)
+    apply_win_signs(bufnr, bcache.hunks, vim.fn.line('w0'), vim.fn.line('w$'), true, git_obj.object_name == nil)
 
     update_show_deleted(bufnr)
     bcache.force_next_update = false
@@ -478,7 +478,10 @@ M.setup = function()
         return false
       end
       local botline = math.min(botline_guess, api.nvim_buf_line_count(bufnr))
-      apply_win_signs(bufnr, bcache.hunks, topline+1, botline+1)
+
+      local untracked = bcache.git_obj.object_name == nil
+
+      apply_win_signs(bufnr, bcache.hunks, topline+1, botline+1, false, untracked)
 
       if not (config.word_diff and config.diff_opts.internal) then
         return false

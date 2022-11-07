@@ -48,7 +48,16 @@ local record M
       keymaps: {string:string}
     end
 
-    type SignsConfig = {string: SignConfig}
+    enum SignType
+      'add'
+      'change'
+      'delete'
+      'topdelete'
+      'changedelete'
+      'untracked'
+    end
+
+    type SignsConfig = {SignType: SignConfig}
 
     signs: SignsConfig
 
@@ -136,6 +145,7 @@ M.schema = {
       delete       = {hl = 'GitSignsDelete', text = '▁', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
       topdelete    = {hl = 'GitSignsDelete', text = '▔', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
       changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
+      untracked    = {hl = 'GitSignsAdd'   , text = '┆', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
     },
     description = [[
       Configuration for signs:

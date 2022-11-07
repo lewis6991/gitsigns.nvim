@@ -100,7 +100,7 @@ describe('gitsigns', function()
 
     check {
       status = {head='', added=18, changed=0, removed=0},
-      signs = {added=8}
+      signs = {untracked=8}
     }
 
     git{"add", test_file}
@@ -491,7 +491,7 @@ describe('gitsigns', function()
 
         check {
           status = {head='master', added=1, changed=0, removed=0},
-          signs  = {added=1}
+          signs  = {untracked=1}
         }
 
       end)
@@ -507,7 +507,7 @@ describe('gitsigns', function()
 
         check {
           status = {head='master', added=1, changed=0, removed=0},
-          signs  = {added=1}
+          signs  = {untracked=1}
         }
 
         feed('mhs') -- Stage the file (add file to index)
@@ -529,7 +529,7 @@ describe('gitsigns', function()
 
         check {
           status = {head='master', added=1, changed=0, removed=0},
-          signs  = {added=1}
+          signs  = {untracked=1}
         }
 
         git{"add", newfile}
@@ -543,7 +543,7 @@ describe('gitsigns', function()
 
         check {
           status = {head='master', added=1, changed=0, removed=0},
-          signs  = {added=1}
+          signs  = {untracked=1}
         }
 
       end)
@@ -628,7 +628,7 @@ describe('gitsigns', function()
 
         check {
           status = {head='master', added=3, removed=0, changed=0},
-          signs = {added=3}
+          signs = {untracked=3}
         }
 
         git{'add', spacefile}
