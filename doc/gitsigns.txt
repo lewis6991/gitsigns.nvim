@@ -975,10 +975,13 @@ a short commit hash. `g:gitsigns_head` returns the current HEAD for the
 current working directory, whereas `b:gitsigns_head` returns the current HEAD
 for each buffer.
 
-                                                  *b:gitsigns_blame_line_dict*
-If |gitsigns-config-current_line_blame| is enabled, then contains dictionary
-of the blame object for current line. For complete list of keys, see the
-{blame_info} argument from |gitsigns-config-current_line_blame_formatter|.
+                            *b:gitsigns_blame_line* *b:gitsigns_blame_line_dict*
+Provided if |gitsigns-config-current_line_blame| is enabled.
+`b:gitsigns_blame_line` if formatted using
+`config.current_line_blame_formatter`. `b:gitsigns_blame_line_dict` is a
+dictionary containing of the blame object for the current line. For complete
+list of keys, see the {blame_info} argument from
+|gitsigns-config-current_line_blame_formatter|.
 
 ==============================================================================
 TEXT OBJECTS                                             *gitsigns-textobject*

@@ -37,7 +37,7 @@ local function get_extmark(bufnr)
    return
 end
 
-local reset = function(bufnr)
+local function reset(bufnr)
    bufnr = bufnr or current_buf()
    api.nvim_buf_del_extmark(bufnr, namespace, 1)
    vim.b[bufnr].gitsigns_blame_line_dict = nil
@@ -83,6 +83,14 @@ local function expand_blame_format(fmt, name, info)
       info.author = 'You'
    end
    return util.expand_format(fmt, info, config.current_line_blame_formatter_opts.relative_time)
+end
+
+local function flatten_virt_text(virt_text)
+   local res = {}
+   for _, part in ipairs(virt_text) do
+      res[#res + 1] = part[1]
+   end
+   return table.concat(res)
 end
 
 
@@ -147,7 +155,7 @@ local update = void(function()
 
    vim.b[bufnr].gitsigns_blame_line_dict = result
 
-   if opts.virt_text and result then
+   if result then
       local virt_text
       local clb_formatter = result.author == 'Not Committed Yet' and
       config.current_line_blame_formatter_nc or
@@ -165,12 +173,16 @@ local update = void(function()
 
       end
 
-      set_extmark(bufnr, lnum, {
-         virt_text = virt_text,
-         virt_text_pos = opts.virt_text_pos,
-         priority = opts.virt_text_priority,
-         hl_mode = 'combine',
-      })
+      vim.b[bufnr].gitsigns_blame_line = flatten_virt_text(virt_text)
+
+      if opts.virt_text then
+         set_extmark(bufnr, lnum, {
+            virt_text = virt_text,
+            virt_text_pos = opts.virt_text_pos,
+            priority = opts.virt_text_priority,
+            hl_mode = 'combine',
+         })
+      end
    end
 end)
 
