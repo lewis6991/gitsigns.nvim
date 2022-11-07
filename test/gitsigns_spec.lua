@@ -738,15 +738,11 @@ describe('gitsigns', function()
     edit(test_file)
     feed('dd')
 
-    local function check_screen()
-      screen:expect{grid=[[
-        {4:^ }^is                |
-        {1:  }a                 |
-        {1:  }file              |
-      ]]}
-    end
-
-    check_screen()
+    screen:expect{grid=[[
+      {4:^ }^is                |
+      {1:  }a                 |
+      {1:  }file              |
+    ]]}
 
     -- Write over the text with itself. This will remove all the signs but the
     -- calculated hunks won't change.
@@ -755,7 +751,19 @@ describe('gitsigns', function()
       vim.api.nvim_buf_set_lines(0, 0, -1, true, text)
     ]]
 
-    check_screen()
+    screen:expect{grid=[[
+      ^is                  |
+      a                   |
+      file                |
+    ]]}
+
+    screen:expect{grid=[[
+      {4:^ }^is                |
+      {1:  }a                 |
+      {1:  }file              |
+    ]]}
+
+    screen:redraw_debug()
 
   end)
 
