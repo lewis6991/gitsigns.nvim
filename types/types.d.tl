@@ -341,10 +341,12 @@ global record vim
     strdisplaywidth: function(string, integer): integer
     stridx: function(haystack: string, needle: string, start: integer): integer
     string: function(any): string
+    systemlist: function({string}): {string}
     tempname: function(): string
     type: function(any): integer
   end
 
+  call: function(string, ...:any)
   cmd: function(string): any
 
   deepcopy: function<T>(T): T
