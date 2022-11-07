@@ -73,9 +73,10 @@ local record api
   end
   nvim_create_user_command   : function(string, function(UserCmdParams), UserCmdOpts)
   nvim_buf_attach            : function(integer, boolean, {string:any}): boolean
-  nvim_buf_call              : function(integer, function)
+  nvim_buf_call              : function<T>(integer, function(): T): T
   nvim_buf_clear_namespace   : function(integer, number, number, number)
   nvim_buf_del_extmark       : function(integer, number, number): boolean
+  nvim_buf_delete            : function(integer, {string:boolean})
   nvim_buf_get_extmark_by_id : function(integer, number, number, table): {number}
 
   record GetExtmarOpts
@@ -271,6 +272,8 @@ end
 global record vim
   api: api
   record fn
+    bufexists: function(string): integer
+    bufnr: function(string): integer
     iconv: function(string, string, string): string
     line: function(string): integer
     join: function({any}, string): string
