@@ -12,6 +12,8 @@ local uv = vim.loop
 local startswith = vim.startswith
 
 local dprint = require("gitsigns.debug").dprint
+local eprint = require("gitsigns.debug").eprint
+local err = require('gitsigns.message').error
 
 local record GJobSpec
   command: string
@@ -151,6 +153,9 @@ end
 
 -- Usage: check_version{2,3}
 local function check_version(version: {number,number,number}): boolean
+  if not M.version then
+    return false
+  end
   if M.version.major < version[1] then
     return false
   end
@@ -299,9 +304,13 @@ M.set_version = function(version: string)
     M.version = parse_version(version)
     return
   end
-  local results = M.command{'--version'}
+  local results, stderr = M.command{'--version'}
   local line = results[1]
-  assert(line)
+  if not line then
+    err("Unable to detect git version as 'git --version' failed to return anything")
+    eprint(stderr)
+    return
+  end
   assert(type(line) == 'string', 'Unexpected output: '..line)
   assert(startswith(line, 'git version'), 'Unexpected output: '..line)
   local parts = vim.split(line, '%s+')
