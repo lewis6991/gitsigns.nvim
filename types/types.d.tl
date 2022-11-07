@@ -410,6 +410,7 @@ global record vim
     gitsigns_status_dict: {string:any}
     gitsigns_status: string
     gitsigns_blame_line_dict: {string:any}
+    gitsigns_blame_line: string
   end
 
   b: BufVar
