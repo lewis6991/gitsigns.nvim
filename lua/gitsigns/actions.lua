@@ -168,7 +168,8 @@ M.toggle_word_diff = function(value)
    else
       config.word_diff = not config.word_diff
    end
-   M.refresh()
+
+   api.nvim__buf_redraw_range(0, vim.fn.line('w0') - 1, vim.fn.line('w$'))
    return config.word_diff
 end
 
