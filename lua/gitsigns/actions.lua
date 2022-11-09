@@ -309,7 +309,7 @@ M.stage_hunk = mk_repeatable(void(function(range, opts)
    update(bufnr)
 end))
 
-C.stage_hunk = function(_pos_args, _named_args, params)
+C.stage_hunk = function(_, params)
    M.stage_hunk(get_range(params))
 end
 
@@ -369,7 +369,7 @@ M.reset_hunk = mk_repeatable(void(function(range, opts)
    util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
 end))
 
-C.reset_hunk = function(_pos_args, _named_args, params)
+C.reset_hunk = function(_, params)
    M.reset_hunk(get_range(params))
 end
 
@@ -941,12 +941,20 @@ M.change_base = void(function(base, global)
    end
 end)
 
+C.change_base = function(args, _)
+   M.change_base(args[1], (args[2] or args.global))
+end
+
 
 
 
 
 M.reset_base = function(global)
    M.change_base(nil, global)
+end
+
+C.reset_base = function(args, _)
+   M.change_base(nil, (args[1] or args.global))
 end
 
 
@@ -994,10 +1002,11 @@ M.diffthis = function(base, opts)
    diffthis.diffthis(base, opts)
 end
 
-C.diffthis = function(pos_args, named_args, params)
+C.diffthis = function(args, params)
+
    local opts = {
-      vertical = named_args.vertical,
-      split = named_args.split,
+      vertical = args.vertical,
+      split = args.split,
    }
 
    if params.smods then
@@ -1009,7 +1018,7 @@ C.diffthis = function(pos_args, named_args, params)
       end
    end
 
-   M.diffthis(pos_args[1], opts)
+   M.diffthis(args[1], opts)
 end
 
 
@@ -1232,7 +1241,7 @@ M.refresh = void(function()
    end
 end)
 
-function M.get_cmd_func(name)
+function M._get_cmd_func(name)
    return C[name]
 end
 
