@@ -98,7 +98,18 @@ local type CmdFunc = function(args: table, params: api.UserCmdParams)
 -- Variations of functions from M which are used for the Gitsigns command
 local C: {string:CmdFunc} = {}
 
+local type CmpFunc = function(arglead: string): {string}
+
+local CP: {string:CmpFunc} = {}
+
 local ns_inline = api.nvim_create_namespace('gitsigns_preview_inline')
+
+local function complete_heads(arglead: string): {string}
+  local all = vim.fn.systemlist{'git', 'rev-parse', '--symbolic', '--branches', '--tags', '--remotes'}
+  return vim.tbl_filter(function(x: string): boolean
+    return vim.startswith(x, arglead)
+  end, all)
+end
 
 --- Toggle |gitsigns-config-signbooleancolumn|
 ---
@@ -945,6 +956,8 @@ C.change_base = function(args: table, _: api.UserCmdParams)
   M.change_base(args[1] as string, (args[2] or args.global) as boolean)
 end
 
+CP.change_base = complete_heads
+
 --- Reset the base revision to diff against back to the
 --- index.
 ---
@@ -1021,6 +1034,8 @@ C.diffthis = function(args: table, params: api.UserCmdParams)
   M.diffthis(args[1] as string, opts)
 end
 
+CP.diffthis = complete_heads
+
 -- C.test = function(pos_args: {any}, named_args: {string:any}, params: api.UserCmdParams)
 --   print('POS ARGS:', vim.inspect(pos_args))
 --   print('NAMED ARGS:', vim.inspect(named_args))
@@ -1050,6 +1065,8 @@ M.show = function(revision: string)
   local diffthis = require('gitsigns.diffthis')
   diffthis.show(revision)
 end
+
+CP.show = complete_heads
 
 local function hunks_to_qflist(buf_or_filename: number|string, hunks: {Hunk}, qflist: {vim.fn.QFItem})
   for i, hunk in ipairs(hunks) do
@@ -1243,6 +1260,10 @@ end)
 
 function M._get_cmd_func(name: string): CmdFunc
   return C[name]
+end
+
+function M._get_cmp_func(name: string): CmpFunc
+  return CP[name]
 end
 
 return M
