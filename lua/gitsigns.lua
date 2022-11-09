@@ -330,7 +330,7 @@ local function complete(arglead, line)
       local actions = require('gitsigns.actions')
       for _, m in ipairs({ actions, M0 }) do
          for func, _ in pairs(m) do
-            if func:match('^[a-z]') then
+            if not func:match('^[a-z]') then
 
             elseif vim.startswith(func, arglead) then
                table.insert(matches, func)
