@@ -14,6 +14,7 @@ end
 
 
 
+
 function M.parse_args(x)
    local pos_args, named_args = {}, {}
 
@@ -33,7 +34,13 @@ function M.parse_args(x)
 
       if state == 'in_arg' then
          if is_char(ch) then
-            cur_arg = cur_arg .. ch
+            if ch == '-' and peek(i) == '-' then
+               state = 'in_flag'
+               cur_arg = ''
+               i = i + 1
+            else
+               cur_arg = cur_arg .. ch
+            end
          elseif ch:match('%s') then
             pos_args[#pos_args + 1] = cur_arg
             state = 'in_ws'
@@ -48,10 +55,23 @@ function M.parse_args(x)
                state = 'in_value'
             end
          end
+      elseif state == 'in_flag' then
+         if ch:match('%s') then
+            named_args[cur_arg] = true
+            state = 'in_ws'
+         else
+            cur_arg = cur_arg .. ch
+         end
       elseif state == 'in_ws' then
          if is_char(ch) then
-            cur_arg = ch
-            state = 'in_arg'
+            if ch == '-' and peek(i) == '-' then
+               state = 'in_flag'
+               cur_arg = ''
+               i = i + 1
+            else
+               state = 'in_arg'
+               cur_arg = ch
+            end
          end
       elseif state == 'in_value' then
          if is_char(ch) then
@@ -79,10 +99,14 @@ function M.parse_args(x)
       i = i + 1
    end
 
-   if state == 'in_arg' and #cur_arg > 0 then
-      pos_args[#pos_args + 1] = cur_arg
-   elseif state == 'in_value' and #cur_arg > 0 then
-      named_args[cur_arg] = cur_val
+   if #cur_arg > 0 then
+      if state == 'in_arg' then
+         pos_args[#pos_args + 1] = cur_arg
+      elseif state == 'in_flag' then
+         named_args[cur_arg] = true
+      elseif state == 'in_value' then
+         named_args[cur_arg] = cur_val
+      end
    end
 
    return pos_args, named_args
