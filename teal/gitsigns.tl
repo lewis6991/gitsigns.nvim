@@ -330,7 +330,7 @@ local function complete(arglead: string, line: string): {string}
     local actions = require('gitsigns.actions') as {string:function}
     for _, m in ipairs{actions, M0} do
       for func, _ in pairs(m) do
-        if vim.startswith(func, '_') then
+        if func:match('^[a-z]') then
           -- exclude
         elseif vim.startswith(func, arglead) then
           table.insert(matches, func)
@@ -370,15 +370,18 @@ local run_cmd_func = void(function(params: api.UserCmdParams)
 
   local pos_args = vim.tbl_map(parse_to_lua, vim.list_slice(pos_args_raw, 2)) as {any}
   local named_args = vim.tbl_map(parse_to_lua, named_args_raw) as {string:any}
+  local args = vim.tbl_extend('error', pos_args, named_args)
 
   local actions = require('gitsigns.actions')
   local actions0 = actions as {string:function}
 
-  local cmd_func = actions.get_cmd_func(func)
+  dprintf("Running action '%s' with arguments %s", func, vim.inspect(args, {newline=' ', indent=''}))
+
+  local cmd_func = actions._get_cmd_func(func)
   if cmd_func then
     -- Action has a specialised mapping function from command form to lua
     -- function
-    cmd_func(pos_args, named_args, params)
+    cmd_func(args, params)
     return
   end
 

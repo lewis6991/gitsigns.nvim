@@ -93,7 +93,7 @@ local record M
   arg_spec: {string:{integer,boolean,boolean}}
 end
 
-local type CmdFunc = function(pos_args: {any}, named_args: {string:any}, params: api.UserCmdParams)
+local type CmdFunc = function(args: table, params: api.UserCmdParams)
 
 -- Variations of functions from M which are used for the Gitsigns command
 local C: {string:CmdFunc} = {}
@@ -309,7 +309,7 @@ M.stage_hunk = mk_repeatable(void(function(range: {integer, integer}, opts: Stag
   update(bufnr)
 end))
 
-C.stage_hunk = function(_pos_args: {any}, _named_args: {string:any}, params: api.UserCmdParams)
+C.stage_hunk = function(_: table, params: api.UserCmdParams)
   M.stage_hunk(get_range(params))
 end
 
@@ -369,7 +369,7 @@ M.reset_hunk = mk_repeatable(void(function(range: {integer, integer}, opts: Rese
   util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
 end))
 
-C.reset_hunk = function(_pos_args: {any}, _named_args: {string:any}, params: api.UserCmdParams)
+C.reset_hunk = function(_: table, params: api.UserCmdParams)
   M.reset_hunk(get_range(params))
 end
 
@@ -941,12 +941,20 @@ M.change_base = void(function(base: string, global: boolean)
   end
 end)
 
+C.change_base = function(args: table, _: api.UserCmdParams)
+  M.change_base(args[1] as string, (args[2] or args.global) as boolean)
+end
+
 --- Reset the base revision to diff against back to the
 --- index.
 ---
 --- Alias for `change_base(nil, {global})` .
 M.reset_base = function(global: boolean)
   M.change_base(nil, global)
+end
+
+C.reset_base = function(args: table, _: api.UserCmdParams)
+  M.change_base(nil, (args[1] or args.global) as boolean)
 end
 
 --- Perform a |vimdiff| on the given file with {base} if it is
@@ -994,10 +1002,11 @@ M.diffthis = function(base: string, opts: DiffthisOpts)
   diffthis.diffthis(base, opts as diffthis.DiffthisOpts)
 end
 
-C.diffthis = function(pos_args: {any}, named_args: {string:any}, params: api.UserCmdParams)
+C.diffthis = function(args: table, params: api.UserCmdParams)
+  -- TODO(lewis6991): validate these
   local opts: DiffthisOpts = {
-    vertical = named_args.vertical as boolean,
-    split    = named_args.split as string
+    vertical = args.vertical as boolean,
+    split    = args.split as string
   }
 
   if params.smods then
@@ -1009,7 +1018,7 @@ C.diffthis = function(pos_args: {any}, named_args: {string:any}, params: api.Use
     end
   end
 
-  M.diffthis(pos_args[1] as string, opts)
+  M.diffthis(args[1] as string, opts)
 end
 
 -- C.test = function(pos_args: {any}, named_args: {string:any}, params: api.UserCmdParams)
@@ -1232,7 +1241,7 @@ M.refresh = void(function()
   end
 end)
 
-function M.get_cmd_func(name: string): CmdFunc
+function M._get_cmd_func(name: string): CmdFunc
   return C[name]
 end
 
