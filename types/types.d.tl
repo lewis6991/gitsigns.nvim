@@ -620,7 +620,7 @@ global record vim
   tbl_count: function(table): integer
   tbl_deep_extend: function(ExtendBehavior, table, table, ...: table): table
   tbl_extend: function(ExtendBehavior, table, table, ...: table): table
-  tbl_filter: function((function(any): boolean), table): table
+  tbl_filter: function<T>((function(any): boolean), {T}): {T}
   tbl_isempty: function(table): boolean
   tbl_islist: function(table): boolean
   tbl_keys: function(table): table

@@ -98,7 +98,18 @@ local M = {QFListOpts = {}, }
 
 local C = {}
 
+
+
+local CP = {}
+
 local ns_inline = api.nvim_create_namespace('gitsigns_preview_inline')
+
+local function complete_heads(arglead)
+   local all = vim.fn.systemlist({ 'git', 'rev-parse', '--symbolic', '--branches', '--tags', '--remotes' })
+   return vim.tbl_filter(function(x)
+      return vim.startswith(x, arglead)
+   end, all)
+end
 
 
 
@@ -945,6 +956,8 @@ C.change_base = function(args, _)
    M.change_base(args[1], (args[2] or args.global))
 end
 
+CP.change_base = complete_heads
+
 
 
 
@@ -1021,6 +1034,8 @@ C.diffthis = function(args, params)
    M.diffthis(args[1], opts)
 end
 
+CP.diffthis = complete_heads
+
 
 
 
@@ -1050,6 +1065,8 @@ M.show = function(revision)
    local diffthis = require('gitsigns.diffthis')
    diffthis.show(revision)
 end
+
+CP.show = complete_heads
 
 local function hunks_to_qflist(buf_or_filename, hunks, qflist)
    for i, hunk in ipairs(hunks) do
@@ -1243,6 +1260,10 @@ end)
 
 function M._get_cmd_func(name)
    return C[name]
+end
+
+function M._get_cmp_func(name)
+   return CP[name]
 end
 
 return M

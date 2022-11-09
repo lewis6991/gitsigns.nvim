@@ -323,11 +323,12 @@ end)
 local M0 = M
 
 local function complete(arglead, line)
-   local n = #vim.split(line, '%s+')
+   local words = vim.split(line, '%s+')
+   local n = #words
 
+   local actions = require('gitsigns.actions')
    local matches = {}
    if n == 2 then
-      local actions = require('gitsigns.actions')
       for _, m in ipairs({ actions, M0 }) do
          for func, _ in pairs(m) do
             if not func:match('^[a-z]') then
@@ -336,6 +337,12 @@ local function complete(arglead, line)
                table.insert(matches, func)
             end
          end
+      end
+   elseif n > 2 then
+
+      local cmp_func = actions._get_cmp_func(words[2])
+      if cmp_func then
+         return cmp_func(arglead)
       end
    end
    return matches
