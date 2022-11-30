@@ -41,22 +41,14 @@ local record M
     blocks : number
     flags : number
     gen : number
-    record atime
+    record Time
       sec : number
       nsec : number
     end
-    record mtime
-      sec : number
-      nsec : number
-    end
-    record ctime
-      sec : number
-      nsec : number
-    end
-    record birthtime
-      sec : number
-      nsec : number
-    end
+    atime: Time
+    mtime: Time
+    ctime: Time
+    birthtime: Time
     type : string
   end
 
