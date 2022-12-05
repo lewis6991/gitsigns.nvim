@@ -290,7 +290,7 @@ function M.get_repo_info(path: string, cmd: string, gitdir: string, toplevel: st
   local results = git_command(args, {
     command = cmd or 'git',
     suppress_stderr = true,
-    cwd = path
+    cwd = toplevel or path,
   })
 
   local ret: M.RepoInfo = {
