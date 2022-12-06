@@ -47,6 +47,15 @@ local test_file_text = {
   'content', 'doesn\'t', 'matter,', 'it', 'just', 'needs', 'to', 'be', 'static.'
 }
 
+--- Escapes magic chars in |lua-patterns|.
+---
+---@see https://github.com/rxi/lume
+---@param s string String to escape
+---@return string %-escaped pattern string
+function M.pesc(s)
+  return (s:gsub('[%(%)%.%%%+%-%*%?%[%]%^%$]', '%%%1'))
+end
+
 function M.git(args)
   system{"git", "-C", M.scratch, unpack(args)}
 end

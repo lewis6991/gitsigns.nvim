@@ -91,7 +91,7 @@ describe('gitsigns', function()
         'attach(1): Attaching (trigger=BufRead)',
         p'run_job: git .* config user.name',
         p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
-        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..test_file),
+        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..helpers.pesc(test_file)),
         'watch_gitdir(1): Watching git dir',
         p'run_job: git .* show :0:dummy.txt',
         'update(1): updates: 1, jobs: 7'
@@ -201,7 +201,7 @@ describe('gitsigns', function()
         'attach(1): Attaching (trigger=BufNewFile)',
         p'run_job: git .* config user.name',
         p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
-        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..newfile),
+        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..helpers.pesc(newfile)),
         'attach(1): Not a file',
       }
 
