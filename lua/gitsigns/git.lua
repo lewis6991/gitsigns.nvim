@@ -170,8 +170,12 @@ end
 local git_command = async.create(function(args, spec)
    spec = spec or {}
    spec.command = spec.command or 'git'
-   spec.args = spec.command == 'git' and
-   { '--no-pager', '--literal-pathspecs', unpack(args) } or args
+   spec.args = spec.command == 'git' and {
+      '--no-pager',
+      '--literal-pathspecs',
+      '-c', 'gc.auto=0',
+      unpack(args),
+   } or args
 
    if not spec.cwd and not uv.cwd() then
       spec.cwd = vim.env.HOME
@@ -181,7 +185,8 @@ local git_command = async.create(function(args, spec)
 
    if not spec.suppress_stderr then
       if stderr then
-         gsd.eprint(stderr)
+         local cmd_str = table.concat({ spec.command, unpack(args) }, ' ')
+         gsd.eprintf("Recieved stderr when running command\n'%s':\n%s", cmd_str, stderr)
       end
    end
 
