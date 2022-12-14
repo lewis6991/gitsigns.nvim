@@ -33,9 +33,6 @@ local record M
   detach     : function(bufnr: integer, _keep_signs: boolean)
   detach_all : function()
   attach     : function(cbuf: integer, trigger: string)
-
-  -- Exposed for tests
-  parse_fugitive_uri: function(name: string): string, string
 end
 
 --- Detach Gitsigns from all buffers it is attached to.
@@ -73,18 +70,20 @@ function M.detach(bufnr: integer, _keep_signs: boolean)
   cache:destroy(bufnr)
 end
 
+-- @return (string, string) Tuple of buffer name and commit
 local function parse_fugitive_uri(name: string): string, string
-  local _, _, root_path, sub_module_path, commit, real_path =
-    name:find([[^fugitive://(.*)/%.git(.*/)/(%x-)/(.*)]])
+  if vim.g.loaded_fugitive == 0 then
+    dprint("Fugitive not installed")
+    return
+  end
+
+  local path = vim.fn.FugitiveReal(name)
+  local commit = vim.fn.FugitiveParse(name)[1]:match('([^:]+):.*')
   if commit == '0' then
-    -- '0' means the index so cleat commit so we attach normally
+    -- '0' means the index so clear commit so we attach normally
     commit = nil
   end
-  if root_path then
-    sub_module_path = sub_module_path:gsub("^/modules", "")
-    name = root_path .. sub_module_path .. real_path
-  end
-  return name, commit
+  return path, commit
 end
 
 local function parse_gitsigns_uri(name: string): string, string
@@ -459,10 +458,6 @@ M.setup = void(function(cfg: Config)
   -- (like vim-grepper)
   autocmd('DirChanged', debounce_trailing(100, manager.update_cwd_head))
 end)
-
-if _TEST then
-  M.parse_fugitive_uri = parse_fugitive_uri
-end
 
 return setmetatable(M, {
   __index = function(_, f: string): any

@@ -36,9 +36,6 @@ local M = {}
 
 
 
-
-
-
 function M.detach_all()
    for k, _ in pairs(cache) do
       M.detach(k)
@@ -73,18 +70,20 @@ function M.detach(bufnr, _keep_signs)
    cache:destroy(bufnr)
 end
 
+
 local function parse_fugitive_uri(name)
-   local _, _, root_path, sub_module_path, commit, real_path = 
-   name:find([[^fugitive://(.*)/%.git(.*/)/(%x-)/(.*)]])
+   if vim.g.loaded_fugitive == 0 then
+      dprint("Fugitive not installed")
+      return
+   end
+
+   local path = vim.fn.FugitiveReal(name)
+   local commit = vim.fn.FugitiveParse(name)[1]:match('([^:]+):.*')
    if commit == '0' then
 
       commit = nil
    end
-   if root_path then
-      sub_module_path = sub_module_path:gsub("^/modules", "")
-      name = root_path .. sub_module_path .. real_path
-   end
-   return name, commit
+   return path, commit
 end
 
 local function parse_gitsigns_uri(name)
@@ -459,10 +458,6 @@ M.setup = void(function(cfg)
 
    autocmd('DirChanged', debounce_trailing(100, manager.update_cwd_head))
 end)
-
-if _TEST then
-   M.parse_fugitive_uri = parse_fugitive_uri
-end
 
 return setmetatable(M, {
    __index = function(_, f)

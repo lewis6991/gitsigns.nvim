@@ -74,6 +74,9 @@ local record M
   systemlist: function({string}): {string}
   tempname: function(): string
   type: function(any): integer
+
+  FugitiveReal: function(...: any): string
+  FugitiveParse: function(...: any): {string, string}
 end
 
 return M
