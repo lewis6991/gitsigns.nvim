@@ -28,6 +28,19 @@ local run_diff_xdl = function(
   })
 end
 
+local function diff_work_task(
+  a0: string, b0: string,
+  algorithm0: string, indent_heuristic0: boolean,
+  linematch0: integer
+): string
+  return vim.mpack.encode(vim.diff(a0, b0, {
+    result_type      = 'indices',
+    algorithm        = algorithm0,
+    indent_heuristic = indent_heuristic0,
+    linematch        = linematch0
+  }))
+end
+
 local run_diff_xdl_async = async.wrap(function(
     fa: {string}, fb: {string},
     algorithm: string, indent_heuristic: boolean,
@@ -38,18 +51,7 @@ local run_diff_xdl_async = async.wrap(function(
  local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n')..'\n'
  local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n')..'\n'
 
-  vim.loop.new_work(function(
-    a0: string, b0: string,
-    algorithm0: string, indent_heuristic0: boolean,
-    linematch0: integer
-  ): string
-    return vim.mpack.encode(vim.diff(a0, b0, {
-      result_type      = 'indices',
-      algorithm        = algorithm0,
-      indent_heuristic = indent_heuristic0,
-      linematch        = linematch0
-    }))
-  end, function(r: string)
+  vim.loop.new_work(diff_work_task, function(r: string)
     callback(vim.mpack.decode(r) as {DiffResult})
   end):queue(a, b, algorithm, indent_heuristic, linematch)
 end, 6)
