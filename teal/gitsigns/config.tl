@@ -762,7 +762,7 @@ M.schema = {
 
   _extmark_signs = {
     type = 'boolean',
-    default = false,
+    default = true,
     description = [[
       Use extmarks for placing signs.
     ]]
