@@ -256,7 +256,9 @@ local function get_hunks(bufnr: integer, bcache: CacheEntry, greedy: boolean, st
     else
       text = bcache.compare_text
     end
-    hunks = run_diff(text, buftext, false)
+    if text then
+      hunks = run_diff(text, buftext, false)
+    end
     scheduler()
   else
     if staged then
