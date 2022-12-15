@@ -175,6 +175,11 @@ M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({st
   spec.command = spec.command or 'git'
   spec.args = spec.command == 'git' and
     { '--no-pager', '--literal-pathspecs', unpack(args) } or args
+
+  if not spec.cwd and not uv.cwd() then
+    spec.cwd = vim.env.HOME
+  end
+
   subprocess.run_job(spec as JobSpec, function(_: integer, _: integer, stdout: string, stderr: string)
     if not spec.suppress_stderr then
       if stderr then

@@ -18,6 +18,8 @@ local record M
   -- Assume result_type == 'indices'
   diff: function(string|{string}, string|{string}, table): {DiffResult}
 
+  env: {string:string}
+
   record go
     operatorfunc: string
   end
