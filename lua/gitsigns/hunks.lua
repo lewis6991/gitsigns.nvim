@@ -263,22 +263,25 @@ end
 function M.find_nearest_hunk(lnum, hunks, forwards, wrap)
    local ret
    local index
+   local distance = math.huge
    if forwards then
       for i = 1, #hunks do
          local hunk = hunks[i]
-         if hunk.added.start > lnum then
+         local dist = hunk.added.start - lnum
+         if dist > 0 and dist < distance then
+            distance = dist
             ret = hunk
             index = i
-            break
          end
       end
    else
       for i = #hunks, 1, -1 do
          local hunk = hunks[i]
-         if hunk.vend < lnum then
+         local dist = lnum - hunk.vend
+         if dist > 0 and dist < distance then
+            distance = dist
             ret = hunk
             index = i
-            break
          end
       end
    end

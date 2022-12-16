@@ -248,7 +248,7 @@ function M.get_summary(hunks: {Hunk}): StatusObj
   return status
 end
 
-function M.find_hunk(lnum: number, hunks: {Hunk}): Hunk, integer
+function M.find_hunk(lnum: integer, hunks: {Hunk}): Hunk, integer
   for i, hunk in ipairs(hunks or {}) do
     if lnum == 1 and hunk.added.start == 0 and hunk.vend == 0 then
       return hunk, i
@@ -260,25 +260,28 @@ function M.find_hunk(lnum: number, hunks: {Hunk}): Hunk, integer
   end
 end
 
-function M.find_nearest_hunk(lnum: number, hunks: {Hunk}, forwards: boolean, wrap: boolean): Hunk, integer
+function M.find_nearest_hunk(lnum: integer, hunks: {Hunk}, forwards: boolean, wrap: boolean): Hunk, integer
   local ret: Hunk
   local index: integer
+  local distance: integer = math.huge as integer
   if forwards then
     for i = 1, #hunks do
       local hunk = hunks[i]
-      if hunk.added.start > lnum then
+      local dist = hunk.added.start - lnum
+      if dist > 0 and dist < distance then
+        distance = dist
         ret = hunk
         index = i
-        break
       end
     end
   else
     for i = #hunks, 1, -1 do
       local hunk = hunks[i]
-      if hunk.vend < lnum then
+      local dist = lnum - hunk.vend
+      if dist > 0 and dist < distance then
+        distance = dist
         ret = hunk
         index = i
-        break
       end
     end
   end
