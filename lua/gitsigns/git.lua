@@ -359,11 +359,17 @@ function Repo:get_show_text(object, encoding)
    local stdout, stderr = self:command({ 'show', object }, { suppress_stderr = true })
 
    if encoding ~= 'utf-8' then
-      scheduler()
-      for i, l in ipairs(stdout) do
+      if vim.iconv then
+         for i, l in ipairs(stdout) do
+            stdout[i] = vim.iconv(l, encoding, 'utf-8')
+         end
+      else
+         scheduler()
+         for i, l in ipairs(stdout) do
 
-         if vim.fn.type(l) == vim.v.t_string then
-            stdout[i] = vim.fn.iconv(l, encoding, 'utf-8')
+            if vim.fn.type(l) == vim.v.t_string then
+               stdout[i] = vim.fn.iconv(l, encoding, 'utf-8')
+            end
          end
       end
    end
