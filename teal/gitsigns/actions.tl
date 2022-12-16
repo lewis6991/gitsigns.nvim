@@ -222,7 +222,12 @@ end
 
 local function get_cursor_hunk(bufnr: integer, hunks: {Hunk}): Hunk, integer
   bufnr = bufnr or current_buf()
-  hunks = hunks or cache[bufnr].hunks
+
+  if not hunks then
+    hunks = {}
+    vim.list_extend(hunks, cache[bufnr].hunks or {})
+    vim.list_extend(hunks, cache[bufnr].hunks_staged or {})
+  end
 
   local lnum = api.nvim_win_get_cursor(0)[1]
   return gs_hunks.find_hunk(lnum, hunks)
@@ -530,7 +535,9 @@ local nav_hunk = void(function(opts: NavHunkOpts)
     return
   end
 
-  local hunks = get_hunks(bufnr, bcache, opts.greedy)
+  local hunks: {Hunk} = {}
+  vim.list_extend(hunks, get_hunks(bufnr, bcache, opts.greedy, false) or {})
+  vim.list_extend(hunks, get_hunks(bufnr, bcache, opts.greedy, true) or {})
 
   if not hunks or vim.tbl_isempty(hunks) then
     if opts.navigation_message then
@@ -714,7 +721,11 @@ M.preview_hunk = noautocmd(function()
     return
   end
 
-  local hunk, index = get_cursor_hunk(bufnr, bcache.hunks)
+  local hunks: {Hunk} = {}
+  vim.list_extend(hunks, bcache.hunks or {})
+  vim.list_extend(hunks, bcache.hunks_staged or {})
+
+  local hunk, index = get_cursor_hunk(bufnr, hunks)
 
   if not hunk then return end
 
@@ -736,14 +747,13 @@ end)
 
 --- Preview the hunk at the cursor position inline in the buffer.
 M.preview_hunk_inline = function()
-  local bufnr = current_buf()
-
-  local hunk = get_cursor_hunk(bufnr)
+  local hunk = get_cursor_hunk()
 
   if not hunk then
     return
   end
 
+  local bufnr = current_buf()
   manager.show_added(bufnr, ns_inline, hunk)
   manager.show_deleted(bufnr, ns_inline, hunk)
 
@@ -1223,7 +1233,7 @@ M.get_actions = function(): {string:function}
   if not bcache then
     return
   end
-  local hunk = get_cursor_hunk(bufnr, bcache.hunks)
+  local hunk = get_cursor_hunk()
 
   local actions_l: {string} = {}
 
