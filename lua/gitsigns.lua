@@ -222,6 +222,9 @@ local attach_throttled = throttle_by_id(function(cbuf, aucmd)
 
    local file, commit = get_buf_path(cbuf)
    local encoding = vim.bo[cbuf].fileencoding
+   if encoding == '' then
+      encoding = 'utf-8'
+   end
 
    local file_dir = util.dirname(file)
 
