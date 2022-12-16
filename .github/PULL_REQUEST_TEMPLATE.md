@@ -1,1 +1,0 @@
-- [ ] Have you read [CONTRIBUTING.md](https://github.com/lewis6991/gitsigns.nvim/blob/HEAD/CONTRIBUTING.md)?
