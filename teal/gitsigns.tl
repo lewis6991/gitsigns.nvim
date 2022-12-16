@@ -39,7 +39,7 @@ local record M
 end
 
 --- Detach Gitsigns from all buffers it is attached to.
-M.detach_all = function()
+function M.detach_all()
   for k, _ in pairs(cache as {integer:CacheEntry}) do
     M.detach(k)
   end
@@ -50,7 +50,7 @@ end
 ---
 --- Parameters: ~
 ---     {bufnr}  (number): Buffer number
-M.detach = function(bufnr: integer, _keep_signs: boolean)
+function M.detach(bufnr: integer, _keep_signs: boolean)
   -- When this is called interactively (with no arguments) we want to remove all
   -- the signs, however if called via a detach event (due to nvim_buf_attach)
   -- then we don't want to clear the signs in case the buffer is just being
@@ -320,95 +320,17 @@ M.attach = void(function(bufnr: integer, _trigger: string)
   attach_throttled(bufnr or current_buf(), _trigger)
 end)
 
-local M0 = M as {string:function}
-
-local function complete(arglead: string, line: string): {string}
-  local words = vim.split(line, '%s+')
-  local n: integer = #words
-
-  local actions = require('gitsigns.actions')
-  local matches: {string} = {}
-  if n == 2 then
-    for _, m in ipairs{actions as {string:function}, M0} do
-      for func, _ in pairs(m) do
-        if not func:match('^[a-z]') then
-          -- exclude
-        elseif vim.startswith(func, arglead) then
-          table.insert(matches, func)
-        end
-      end
-    end
-  elseif n > 2 then
-    -- Subcommand completion
-    local cmp_func = actions._get_cmp_func(words[2])
-    if cmp_func then
-      return cmp_func(arglead)
-    end
-  end
-  return matches
-end
-
--- try to parse each argument as a lua boolean, nil or number, if fails then
--- keep argument as a string:
---
---   'false'    -> false
---   'nil'      -> nil
---   '100'      -> 100
---   'HEAD~300' -> 'HEAD~300'
-local function parse_to_lua(a: string): any
-  if tonumber(a) then
-    return tonumber(a)
-  elseif a == 'false' or a == 'true' then
-    return a == 'true'
-  elseif a == 'nil' then
-    return nil
-  end
-  return a
-end
-
-local run_cmd_func = void(function(params: api.UserCmdParams)
-  local pos_args_raw, named_args_raw = require('gitsigns.argparse').parse_args(params.args)
-
-  local func = pos_args_raw[1]
-
-  if not func then
-    func = async.wrap(vim.ui.select, 3)(complete('', 'Gitsigns '), {})
-  end
-
-  local pos_args = vim.tbl_map(parse_to_lua, vim.list_slice(pos_args_raw, 2)) as {any}
-  local named_args = vim.tbl_map(parse_to_lua, named_args_raw) as {string:any}
-  local args = vim.tbl_extend('error', pos_args, named_args)
-
-  local actions = require('gitsigns.actions')
-  local actions0 = actions as {string:function}
-
-  dprintf("Running action '%s' with arguments %s", func, vim.inspect(args, {newline=' ', indent=''}))
-
-  local cmd_func = actions._get_cmd_func(func)
-  if cmd_func then
-    -- Action has a specialised mapping function from command form to lua
-    -- function
-    cmd_func(args, params)
-    return
-  end
-
-  if type(actions0[func]) == 'function' then
-    actions0[func](unpack(pos_args), named_args)
-    return
-  end
-
-  if type(M0[func]) == 'function' then
-    -- Note functions here do not have named arguments
-    M0[func](unpack(pos_args))
-    return
-  end
-
-  error(string.format('%s is not a valid function or action', func))
-end)
-
-local function setup_command()
-  api.nvim_create_user_command('Gitsigns', run_cmd_func,
-    { force = true, nargs = '*', range = true, complete = complete })
+local function setup_cli()
+  local funcs = M as {string:function}
+  api.nvim_create_user_command('Gitsigns', function(params: api.UserCmdParams)
+    require'gitsigns.cli'.run(funcs, params)
+  end, {
+    force = true,
+    nargs = '*',
+    range = true,
+    complete = function(arglead: string, line: string): {string}
+      return require'gitsigns.cli'.complete(funcs, arglead, line)
+    end})
 end
 
 local function wrap_func(fn: function, ...: any): function()
@@ -467,7 +389,7 @@ M.setup = void(function(cfg: Config)
 
   if config.debug_mode then
     for nm, f in pairs(gs_debug.add_debug_functions(cache)) do
-      M0[nm] = f
+      (M as {string:function})[nm] = f
     end
   end
 
@@ -480,7 +402,7 @@ M.setup = void(function(cfg: Config)
   -- message.
   on_or_after_vimenter(hl.setup_highlights)
 
-  setup_command()
+  setup_cli()
 
   git.enable_yadm = config.yadm.enable
   git.set_version(config._git_version)
