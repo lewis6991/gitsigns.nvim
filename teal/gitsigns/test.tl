@@ -17,7 +17,7 @@ end
 
 
 M._tests.test_args = function()
-  local parse_args = require'gitsigns.argparse'.parse_args
+  local parse_args = require'gitsigns.cli.argparse'.parse_args
 
   local pos_args, named_args = parse_args('hello  there key=value, key1="a b c"')
 
