@@ -88,7 +88,7 @@ end
 local function flatten_virt_text(virt_text: {{string, string}}): string
   local res = {}
   for _, part in ipairs(virt_text) do
-      res[#res+1] = part[1]
+    res[#res+1] = part[1]
   end
   return table.concat(res)
 end
@@ -187,22 +187,20 @@ local update = void(function()
 end)
 
 M.setup = function()
-  api.nvim_create_augroup('gitsigns_blame', {})
+  local group = api.nvim_create_augroup('gitsigns_blame', {})
 
   for k, _ in pairs(cache as {integer:any}) do
     reset(k)
   end
 
   if config.current_line_blame then
-    api.nvim_create_autocmd(
-      {'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI'},
-      { group = 'gitsigns_blame', callback = function() update() end }
-    )
+    api.nvim_create_autocmd({'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI'}, {
+      group = group, callback = function() update() end
+    })
 
-    api.nvim_create_autocmd(
-      {'InsertEnter', 'FocusLost', 'BufLeave'},
-      { group = 'gitsigns_blame', callback = function() reset() end }
-    )
+    api.nvim_create_autocmd({'InsertEnter', 'FocusLost', 'BufLeave'}, {
+      group = group, callback = function() reset() end
+    })
 
     -- Call via vim.schedule to avoid the debounce timer killing the async
     -- coroutine

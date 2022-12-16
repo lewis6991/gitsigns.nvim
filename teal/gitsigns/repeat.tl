@@ -6,7 +6,6 @@ local record M
   repeat_action: function()
 end
 
-
 function M.mk_repeatable(fn: function): function
   return function(...: any)
     local args = {...}

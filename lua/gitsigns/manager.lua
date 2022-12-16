@@ -7,15 +7,16 @@ local CacheEntry = gs_cache.CacheEntry
 local cache = gs_cache.cache
 
 local Signs = require('gitsigns.signs')
-
 local Status = require("gitsigns.status")
 
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
+
 local gs_debug = require("gitsigns.debug")
 local dprint = gs_debug.dprint
 local dprintf = gs_debug.dprintf
 local eprint = gs_debug.eprint
+
 local subprocess = require('gitsigns.subprocess')
 local util = require('gitsigns.util')
 local run_diff = require('gitsigns.diff')
@@ -43,15 +44,13 @@ local M = {}
 
 
 
-local schedule_if_buf_valid = function(buf, cb)
+local scheduler_if_buf_valid = awrap(function(buf, cb)
    vim.schedule(function()
       if vim.api.nvim_buf_is_valid(buf) then
          cb()
       end
    end)
-end
-
-local scheduler_if_buf_valid = awrap(schedule_if_buf_valid, 2)
+end, 2)
 
 local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked)
    if clear then
@@ -82,7 +81,7 @@ local function apply_win_signs(bufnr, top, bot, clear, untracked)
       return
    end
    apply_win_signs0(bufnr, signs_normal, bcache.hunks, top, bot, clear, untracked)
-   if config._signs_staged_enable then
+   if signs_staged then
       apply_win_signs0(bufnr, signs_staged, bcache.hunks_staged, top, bot, clear, false)
    end
 end
@@ -95,7 +94,9 @@ M.on_lines = function(buf, first, last_orig, last_new)
    end
 
    signs_normal:on_lines(buf, first, last_orig, last_new)
-   signs_staged:on_lines(buf, first, last_orig, last_new)
+   if signs_staged then
+      signs_staged:on_lines(buf, first, last_orig, last_new)
+   end
 
 
 
@@ -104,7 +105,7 @@ M.on_lines = function(buf, first, last_orig, last_new)
       bcache.force_next_update = true
    end
 
-   if config._signs_staged_enable then
+   if signs_staged then
       if bcache.hunks_staged and signs_staged:contains(buf, first, last_new) then
 
          bcache.force_next_update = true
@@ -344,7 +345,9 @@ M.detach = function(bufnr, keep_signs)
    if not keep_signs then
 
       signs_normal:remove(bufnr)
-      signs_staged:remove(bufnr)
+      if signs_staged then
+         signs_staged:remove(bufnr)
+      end
    end
 end
 
@@ -391,7 +394,7 @@ local function handle_moved(bufnr, bcache, old_relpath)
 end
 
 
-M.watch_gitdir = function(bufnr, gitdir)
+function M.watch_gitdir(bufnr, gitdir)
    if not config.watch_gitdir.enable then
       return
    end
@@ -502,38 +505,46 @@ M.update_cwd_head = void(function()
 
 end)
 
-M.reset_signs = function()
+function M.reset_signs()
 
    signs_normal:reset()
-   signs_staged:reset()
+   if signs_staged then
+      signs_staged:reset()
+   end
 end
 
-M.setup = function()
+local function on_win(_, _, bufnr, topline, botline_guess)
+   local bcache = cache[bufnr]
+   if not bcache or not bcache.hunks then
+      return false
+   end
+   local botline = math.min(botline_guess, api.nvim_buf_line_count(bufnr))
+
+   local untracked = bcache.git_obj.object_name == nil
+
+   apply_win_signs(bufnr, topline + 1, botline + 1, false, untracked)
+
+   if not (config.word_diff and config.diff_opts.internal) then
+      return false
+   end
+end
+
+local function on_line(_, _, bufnr, row)
+   apply_word_diff(bufnr, row)
+end
+
+function M.setup()
 
 
    api.nvim_set_decoration_provider(ns, {
-      on_win = function(_, _, bufnr, topline, botline_guess)
-         local bcache = cache[bufnr]
-         if not bcache or not bcache.hunks then
-            return false
-         end
-         local botline = math.min(botline_guess, api.nvim_buf_line_count(bufnr))
-
-         local untracked = bcache.git_obj.object_name == nil
-
-         apply_win_signs(bufnr, topline + 1, botline + 1, false, untracked)
-
-         if not (config.word_diff and config.diff_opts.internal) then
-            return false
-         end
-      end,
-      on_line = function(_, _winid, bufnr, row)
-         apply_word_diff(bufnr, row)
-      end,
+      on_win = on_win,
+      on_line = on_line,
    })
 
    signs_normal = Signs.new(config.signs)
-   signs_staged = Signs.new(config._signs_staged, 'staged')
+   if config._signs_staged_enable then
+      signs_staged = Signs.new(config._signs_staged, 'staged')
+   end
 
    M.update_debounced = debounce_trailing(config.update_debounce, void(M.update))
 end

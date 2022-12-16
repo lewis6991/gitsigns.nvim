@@ -20,6 +20,8 @@ local record M
 
   env: {string:string}
 
+  iconv: function(string, string, string): string
+
   record go
     operatorfunc: string
   end

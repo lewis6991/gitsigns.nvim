@@ -69,8 +69,7 @@ local record M
 
   get_repo_info: function(path: string, cmd: string, gitdir: string, toplevel: string): RepoInfo
 
-  command    : function(args: {string}, spec: GJobSpec): {string}, string
-  diff       : function(file_cmp: string, file_buf: string, indent_heuristic: boolean, diff_algo: string): {string}, string
+  diff: function(file_cmp: string, file_buf: string, indent_heuristic: boolean, diff_algo: string): {string}, string
 
   record Repo
     toplevel   : string
@@ -170,7 +169,7 @@ end
 
 local type JobSpec = subprocess.JobSpec
 
-M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({string}, string))
+local git_command = wrap(function(args: {string}, spec: GJobSpec, callback: function({string}, string))
   spec = spec or {}
   spec.command = spec.command or 'git'
   spec.args = spec.command == 'git' and
@@ -206,8 +205,8 @@ M.command = wrap(function(args: {string}, spec: GJobSpec, callback: function({st
   end)
 end, 3)
 
-M.diff = function(file_cmp: string, file_buf: string, indent_heuristic: boolean, diff_algo: string): {string}, string
-  return M.command{
+function M.diff(file_cmp: string, file_buf: string, indent_heuristic: boolean, diff_algo: string): {string}, string
+  return git_command{
     '-c', 'core.safecrlf=false',
     'diff',
     '--color=never',
@@ -218,7 +217,6 @@ M.diff = function(file_cmp: string, file_buf: string, indent_heuristic: boolean,
     file_cmp,
     file_buf,
   }
-
 end
 
 local function process_abbrev_head(gitdir: string, head_str: string, path: string, cmd: string): string
@@ -226,7 +224,7 @@ local function process_abbrev_head(gitdir: string, head_str: string, path: strin
     return head_str
   end
   if head_str == 'HEAD' then
-    local short_sha = M.command({'rev-parse', '--short', 'HEAD'}, {
+    local short_sha = git_command({'rev-parse', '--short', 'HEAD'}, {
         command = cmd or 'git',
         suppress_stderr = true,
         cwd = path,
@@ -249,7 +247,7 @@ local cygpath_convert: function(path: string): string
 
 if has_cygpath then
   cygpath_convert = function(path: string): string
-    return M.command({ '-aw', path }, { command = 'cygpath' })[1]
+    return git_command({ '-aw', path }, { command = 'cygpath' })[1]
   end
 end
 
@@ -262,7 +260,7 @@ local function normalize_path(path: string): string
   return path
 end
 
-M.get_repo_info = function(path: string, cmd: string, gitdir: string, toplevel: string): M.RepoInfo
+function M.get_repo_info(path: string, cmd: string, gitdir: string, toplevel: string): M.RepoInfo
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --   https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
   local has_abs_gd = check_version{2,13}
@@ -286,7 +284,7 @@ M.get_repo_info = function(path: string, cmd: string, gitdir: string, toplevel: 
     'rev-parse', '--show-toplevel', git_dir_opt, '--abbrev-ref', 'HEAD',
   })
 
-  local results = M.command(args, {
+  local results = git_command(args, {
     command = cmd or 'git',
     suppress_stderr = true,
     cwd = path
@@ -304,12 +302,12 @@ M.get_repo_info = function(path: string, cmd: string, gitdir: string, toplevel: 
   return ret
 end
 
-M.set_version = function(version: string)
+function M.set_version(version: string)
   if version ~= 'auto' then
     M.version = parse_version(version)
     return
   end
-  local results, stderr = M.command{'--version'}
+  local results, stderr = git_command{'--version'}
   local line = results[1]
   if not line then
     err("Unable to detect git version as 'git --version' failed to return anything")
@@ -327,7 +325,7 @@ end
 --------------------------------------------------------------------------------
 
 --- Run git command the with the objects gitdir and toplevel
-Repo.command = function(self: Repo, args: {string}, spec: GJobSpec): {string}, string
+function Repo:command(args: {string}, spec: GJobSpec): {string}, string
   spec = spec or {}
   spec.cwd = self.toplevel
 
@@ -341,10 +339,10 @@ Repo.command = function(self: Repo, args: {string}, spec: GJobSpec): {string}, s
 
   vim.list_extend(args1, args)
 
-  return M.command(args1, spec)
+  return git_command(args1, spec)
 end
 
-Repo.files_changed = function(self: Repo): {string}
+function Repo:files_changed(): {string}
   local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
 
   local ret: {string} = {}
@@ -357,7 +355,7 @@ Repo.files_changed = function(self: Repo): {string}
 end
 
 --- Get version of file in the index, return array lines
-Repo.get_show_text = function(self: Repo, object: string, encoding: string): {string}, string
+function Repo:get_show_text(object: string, encoding: string): {string}, string
   local stdout, stderr = self:command({'show', object}, {suppress_stderr = true})
 
   if encoding ~= 'utf-8' then
@@ -373,23 +371,23 @@ Repo.get_show_text = function(self: Repo, object: string, encoding: string): {st
   return stdout, stderr
 end
 
-Repo.update_abbrev_head = function(self: Repo)
+function Repo:update_abbrev_head()
   self.abbrev_head = M.get_repo_info(self.toplevel).abbrev_head
 end
 
-Repo.new = function(dir: string, gitdir: string, toplevel: string): Repo
-  local self = setmetatable({} as Repo, {__index = Repo})
+function Repo.new(dir: string, gitdir: string, toplevel: string): Repo
+  local self: Repo = setmetatable({}, {__index = Repo})
 
-  self.username = M.command({'config', 'user.name'})[1]
+  self.username = git_command({'config', 'user.name'})[1]
   local info = M.get_repo_info(dir, nil, gitdir, toplevel)
-  for k, v in pairs(info as {string:any}) do
+  for k, v in pairs(info as table) do
     (self as table)[k] = v
   end
 
   -- Try yadm
   if M.enable_yadm and not self.gitdir then
     if vim.startswith(dir, os.getenv('HOME'))
-      and #M.command({'ls-files', dir}, {command = 'yadm'}) ~= 0 then
+      and #git_command({'ls-files', dir}, {command = 'yadm'}) ~= 0 then
       M.get_repo_info(dir, 'yadm', gitdir, toplevel)
       local yadm_info = M.get_repo_info(dir, 'yadm', gitdir, toplevel)
       for k, v in pairs(yadm_info as {string:any}) do
@@ -406,11 +404,11 @@ end
 --------------------------------------------------------------------------------
 
 --- Run git command the with the objects gitdir and toplevel
-Obj.command = function(self: Obj, args: {string}, spec: GJobSpec): {string}, string
+function Obj:command(args: {string}, spec: GJobSpec): {string}, string
   return self.repo:command(args, spec)
 end
 
-Obj.update_file_info = function(self: Obj, update_relpath: boolean, silent: boolean): boolean
+function Obj:update_file_info(update_relpath: boolean, silent: boolean): boolean
   local old_object_name = self.object_name
   local props = self:file_info(self.file, silent)
 
@@ -426,7 +424,7 @@ Obj.update_file_info = function(self: Obj, update_relpath: boolean, silent: bool
   return old_object_name ~= self.object_name
 end
 
-Obj.file_info = function(self: Obj, file: string, silent: boolean): M.FileProps
+function Obj:file_info(file: string, silent: boolean): M.FileProps
   local results, stderr = self:command({
     '-c', 'core.quotepath=off',
     'ls-files',
@@ -468,7 +466,7 @@ Obj.file_info = function(self: Obj, file: string, silent: boolean): M.FileProps
   return result
 end
 
-Obj.get_show_text = function(self: Obj, revision: string): {string}, string
+function Obj:get_show_text(revision: string): {string}, string
   if not self.relpath then
     return {}
   end
@@ -489,7 +487,7 @@ Obj.unstage_file = function(self: Obj)
   self:command{'reset', self.file }
 end
 
-Obj.run_blame = function(self: Obj, lines: {string}, lnum: number, ignore_whitespace: boolean): M.BlameInfo
+function Obj:run_blame(lines: {string}, lnum: number, ignore_whitespace: boolean): M.BlameInfo
   if not self.object_name or self.repo.abbrev_head == '' then
     -- As we support attaching to untracked files we need to return something if
     -- the file isn't isn't tracked in git.
@@ -544,23 +542,27 @@ Obj.run_blame = function(self: Obj, lines: {string}, lnum: number, ignore_whites
   return ret as M.BlameInfo
 end
 
-Obj.ensure_file_in_index = function(self: Obj)
-  if not self.object_name or self.has_conflicts then
-    if not self.object_name then
-      -- If there is no object_name then it is not yet in the index so add it
-      self:command{'add', '--intent-to-add', self.file}
-    else
-      -- Update the index with the common ancestor (stage 1) which is what bcache
-      -- stores
-      local info = string.format('%s,%s,%s', self.mode_bits, self.object_name, self.relpath)
-      self:command{'update-index', '--add', '--cacheinfo', info}
-    end
-
-    self:update_file_info()
+local function ensure_file_in_index(obj: Obj)
+  if obj.object_name and not obj.has_conflicts then
+    return
   end
+
+  if not obj.object_name then
+    -- If there is no object_name then it is not yet in the index so add it
+    obj:command{'add', '--intent-to-add', obj.file}
+  else
+    -- Update the index with the common ancestor (stage 1) which is what bcache
+    -- stores
+    local info = string.format('%s,%s,%s', obj.mode_bits, obj.object_name, obj.relpath)
+    obj:command{'update-index', '--add', '--cacheinfo', info}
+  end
+
+  obj:update_file_info()
 end
 
-Obj.stage_lines = function(self: Obj, lines: {string})
+-- Stage 'lines' as the entire contents of the file
+--- @param lines
+function Obj:stage_lines(lines: {string})
   local stdout = self:command({
     'hash-object', '-w', '--path', self.relpath, '--stdin'
   }, { writer = lines })
@@ -573,7 +575,7 @@ Obj.stage_lines = function(self: Obj, lines: {string})
 end
 
 Obj.stage_hunks = function(self: Obj, hunks: {Hunk}, invert: boolean)
-  self:ensure_file_in_index()
+  ensure_file_in_index(self)
   self:command({
     'apply', '--whitespace=nowarn', '--cached', '--unidiff-zero', '-'
   }, {
@@ -581,7 +583,7 @@ Obj.stage_hunks = function(self: Obj, hunks: {Hunk}, invert: boolean)
   })
 end
 
-Obj.has_moved = function(self: Obj): string
+function Obj:has_moved(): string
   local out = self:command{'diff', '--name-status', '-C', '--cached'}
   local orig_relpath = self.orig_relpath or self.relpath
   for _, l in ipairs(out) do
@@ -598,12 +600,12 @@ Obj.has_moved = function(self: Obj): string
   end
 end
 
-Obj.new = function(file: string, encoding: string, gitdir: string, toplevel: string): Obj
+function Obj.new(file: string, encoding: string, gitdir: string, toplevel: string): Obj
   if in_git_dir(file) then
       dprint('In git dir')
       return nil
   end
-  local self = setmetatable({} as Obj, {__index = Obj})
+  local self: Obj = setmetatable({}, {__index = Obj})
 
   self.file = file
   self.encoding = encoding

@@ -94,7 +94,7 @@ local record M
   record AutoCmdOpts
     callback: function()
     command: string
-    group: string
+    group: integer|string
     pattern: string|{string}
     once: boolean
     nested: boolean

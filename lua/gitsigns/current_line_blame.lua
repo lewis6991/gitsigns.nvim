@@ -187,22 +187,20 @@ local update = void(function()
 end)
 
 M.setup = function()
-   api.nvim_create_augroup('gitsigns_blame', {})
+   local group = api.nvim_create_augroup('gitsigns_blame', {})
 
    for k, _ in pairs(cache) do
       reset(k)
    end
 
    if config.current_line_blame then
-      api.nvim_create_autocmd(
-      { 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' },
-      { group = 'gitsigns_blame', callback = function() update() end })
+      api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' }, {
+         group = group, callback = function() update() end,
+      })
 
-
-      api.nvim_create_autocmd(
-      { 'InsertEnter', 'FocusLost', 'BufLeave' },
-      { group = 'gitsigns_blame', callback = function() reset() end })
-
+      api.nvim_create_autocmd({ 'InsertEnter', 'FocusLost', 'BufLeave' }, {
+         group = group, callback = function() reset() end,
+      })
 
 
 
