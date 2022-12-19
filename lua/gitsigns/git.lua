@@ -358,7 +358,7 @@ end
 function Repo:get_show_text(object, encoding)
    local stdout, stderr = self:command({ 'show', object }, { suppress_stderr = true })
 
-   if encoding ~= 'utf-8' then
+   if encoding and encoding ~= 'utf-8' then
       if vim.iconv then
          for i, l in ipairs(stdout) do
             stdout[i] = vim.iconv(l, encoding, 'utf-8')
