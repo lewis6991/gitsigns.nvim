@@ -17,6 +17,8 @@ local namespace = api.nvim_create_namespace('gitsigns_blame')
 
 local timer = uv.new_timer(true)
 
+local visual_active = false
+
 local record M
   setup: function()
 end
@@ -25,7 +27,6 @@ local wait_timer = wrap(vim.loop.timer_start, 4)
 
 local function set_extmark(bufnr: integer, row: integer, opts: {string:any})
   opts = opts or {}
-  opts.id = 1
   api.nvim_buf_set_extmark(bufnr, namespace, row-1, 0, opts)
 end
 
@@ -37,9 +38,39 @@ local function get_extmark(bufnr: integer): integer
   return
 end
 
-local function reset(bufnr: integer)
+local function visual_selection_range(): integer, integer
+  local _, ls, _ = unpack(vim.fn.getpos('v'))
+  local _, le, _ = unpack(vim.fn.getpos('.'))
+
+  if ls > le then
+    return le, ls
+  end
+  return ls, le
+end
+
+local function reset(bufnr: integer, mode: string)
   bufnr = bufnr or current_buf()
-  api.nvim_buf_del_extmark(bufnr, namespace, 1)
+
+  if mode == 'all' then
+    local extmarks = api.nvim_buf_get_extmarks(bufnr, namespace, 0, -1, {})
+    for _, extmark in ipairs(extmarks) do
+      local id = extmark[1]
+      api.nvim_buf_del_extmark(bufnr, namespace, id)
+    end
+  elseif mode == 'partial' then
+    local extmarks = api.nvim_buf_get_extmarks(bufnr, namespace, 0, -1, {})
+    local lmin, lmax = visual_selection_range()
+
+    for _, extmark in ipairs(extmarks) do
+      local id = extmark[1]
+      if lmin > id or lmax < id then
+        api.nvim_buf_del_extmark(bufnr, namespace, id)
+      end
+    end
+
+  else
+    api.nvim_buf_del_extmark(bufnr, namespace, 1)
+  end
   vim.b[bufnr].gitsigns_blame_line_dict = nil
 end
 
@@ -98,14 +129,25 @@ local update = void(function()
   local bufnr = current_buf()
   local lnum = api.nvim_win_get_cursor(0)[1]
 
+  -- span for visual selection
+  local lmin = lnum
+  local lmax = lnum
+
+ if api.nvim_get_mode().mode == 'i' then
+    reset(bufnr, 'single')
+    return
+  elseif api.nvim_get_mode().mode == 'V' then
+    lmin, lmax = visual_selection_range()
+    visual_active = true
+    reset(bufnr, 'partial')
+  elseif api.nvim_get_mode().mode ~= 'V' and visual_active then
+    reset(bufnr, 'all')
+    visual_active = false
+  end
+
   local old_lnum = get_extmark(bufnr)
   if old_lnum and lnum == old_lnum and BlameCache:get(bufnr, lnum) then
     -- Don't update if on the same line and we already have results
-    return
-  end
-
-  if api.nvim_get_mode().mode == 'i' then
-    reset(bufnr)
     return
   end
 
@@ -134,54 +176,64 @@ local update = void(function()
     return
   end
 
-  local result = BlameCache:get(bufnr, lnum)
-  if not result then
-    local buftext = util.buf_lines(bufnr)
-    result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
-    BlameCache:add(bufnr, lnum, result)
-    scheduler()
-  end
-
-  local lnum1 = api.nvim_win_get_cursor(0)[1]
-  if bufnr == current_buf() and lnum ~= lnum1 then
-    -- Cursor has moved during events; abort
-    return
-  end
-
-  if not api.nvim_buf_is_loaded(bufnr) then
-    -- Buffer is no longer loaded; abort
-    return
-  end
-
-  vim.b[bufnr].gitsigns_blame_line_dict = result
-
-  if result then
-    local virt_text: {{string, string}}
-    local clb_formatter = result.author == 'Not Committed Yet' and
-      config.current_line_blame_formatter_nc or
-      config.current_line_blame_formatter
-    if clb_formatter is string then
-      virt_text = {{
-        expand_blame_format(clb_formatter, bcache.git_obj.repo.username, result),
-        'GitSignsCurrentLineBlame'
-      }}
-    else -- function
-      virt_text = clb_formatter(
-        bcache.git_obj.repo.username,
-        result,
-        config.current_line_blame_formatter_opts
-      )
+  for ln = lmin, lmax, 1 do
+    local result = BlameCache:get(bufnr, ln)
+    if not result then
+      local buftext = util.buf_lines(bufnr)
+      result = bcache.git_obj:run_blame(buftext, ln, opts.ignore_whitespace)
+      BlameCache:add(bufnr, ln, result)
+      scheduler()
     end
+ 
 
-    vim.b[bufnr].gitsigns_blame_line = flatten_virt_text(virt_text)
+ ---
+    local lnum1 = api.nvim_win_get_cursor(0)[1]
+    if bufnr == current_buf() and lnum ~= lnum1 then
+      -- Cursor has moved during events; abort
+      return
+    end
+  
+    if not api.nvim_buf_is_loaded(bufnr) then
+      -- Buffer is no longer loaded; abort
+      return
+    end
+  ---
 
-    if opts.virt_text then
-      set_extmark(bufnr, lnum, {
-        virt_text     = virt_text,
-        virt_text_pos = opts.virt_text_pos,
-        priority      = opts.virt_text_priority,
-        hl_mode       = 'combine',
-      })
+    vim.b[bufnr].gitsigns_blame_line_dict = result
+  
+    if result then
+      local virt_text: {{string, string}}
+      local clb_formatter = result.author == 'Not Committed Yet' and
+        config.current_line_blame_formatter_nc or
+        config.current_line_blame_formatter
+      if clb_formatter is string then
+        virt_text = {{
+          expand_blame_format(clb_formatter, bcache.git_obj.repo.username, result),
+          'GitSignsCurrentLineBlame'
+        }}
+      else -- function
+        virt_text = clb_formatter(
+          bcache.git_obj.repo.username,
+          result,
+          config.current_line_blame_formatter_opts
+        )
+      end
+  
+      vim.b[bufnr].gitsigns_blame_line = flatten_virt_text(virt_text)
+  
+      if opts.virt_text then
+        local id: integer = 1
+        if visual_active then
+          id = ln
+        end
+        set_extmark(bufnr, ln, {
+          virt_text     = virt_text,
+          virt_text_pos = opts.virt_text_pos,
+          id = id,
+          priority      = opts.virt_text_priority,
+          hl_mode       = 'combine',
+        })
+      end
     end
   end
 end)
