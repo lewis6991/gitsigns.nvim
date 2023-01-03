@@ -54,10 +54,6 @@ local run_diff_xdl_async = async.wrap(function(
   end):queue(a, b, algorithm, indent_heuristic, linematch)
 end, 6)
 
-if not vim.diff then
-  run_diff_xdl = require('gitsigns.diff_int.xdl_diff_ffi')
-end
-
 M.run_diff = async.void(function(
   fa: {string}, fb: {string},
   diff_algo: string, indent_heuristic: boolean,
