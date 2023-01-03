@@ -386,9 +386,6 @@ M.schema = {
         elseif o == 'internal' then
           if vim.diff then
             r.internal = true
-          elseif jit and jit.os ~= "Windows" then
-            -- Use FFI
-            r.internal = true
           end
         elseif o == 'horizontal' then
           r.vertical = false
@@ -414,9 +411,6 @@ M.schema = {
             • "histogram"  histogram diff algorithm
         • internal: boolean
             Use Neovim's built in xdiff library for running diffs.
-
-            Note Neovim v0.5 uses LuaJIT's FFI interface, whereas v0.5+ uses
-            `vim.diff`.
         • indent_heuristic: boolean
             Use the indent heuristic for the internal
             diff library.

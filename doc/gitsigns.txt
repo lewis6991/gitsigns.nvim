@@ -660,9 +660,6 @@ diff_opts                                          *gitsigns-config-diff_opts*
             • "histogram"  histogram diff algorithm
         • internal: boolean
             Use Neovim's built in xdiff library for running diffs.
-
-            Note Neovim v0.5 uses LuaJIT's FFI interface, whereas v0.5+ uses
-            `vim.diff`.
         • indent_heuristic: boolean
             Use the indent heuristic for the internal
             diff library.
