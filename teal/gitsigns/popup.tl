@@ -116,6 +116,14 @@ local function close_all_but(id: string)
   end
 end
 
+function popup.close(id: string)
+  for _, winid in ipairs(api.nvim_list_wins()) do
+    if vim.w[winid].gitsigns_preview == id then
+      pcall(api.nvim_win_close, winid, true)
+    end
+  end
+end
+
 function popup.create0(lines: {string}, opts: {string:any}, id: string): integer, integer
   -- Close any popups not matching id
   close_all_but(id)
