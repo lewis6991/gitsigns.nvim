@@ -181,6 +181,15 @@ function popup.create0(lines: {string}, opts: {string:any}, id: string): integer
     end
   })
 
+  -- update window position to follow the cursor when scrolling
+  api.nvim_create_autocmd({'WinScrolled'}, {
+    buffer = api.nvim_get_current_buf(),
+    group = group,
+    callback = function()
+      api.nvim_win_set_config(winid, opts1)
+    end
+  })
+
   return winid, bufnr
 end
 
