@@ -116,6 +116,14 @@ local function close_all_but(id)
    end
 end
 
+function popup.close(id)
+   for _, winid in ipairs(api.nvim_list_wins()) do
+      if vim.w[winid].gitsigns_preview == id then
+         pcall(api.nvim_win_close, winid, true)
+      end
+   end
+end
+
 function popup.create0(lines, opts, id)
 
    close_all_but(id)
@@ -170,6 +178,15 @@ function popup.create0(lines, opts, id)
             return
          end
          old_cursor = cursor
+      end,
+   })
+
+
+   api.nvim_create_autocmd({ 'WinScrolled' }, {
+      buffer = api.nvim_get_current_buf(),
+      group = group,
+      callback = function()
+         api.nvim_win_set_config(winid, opts1)
       end,
    })
 

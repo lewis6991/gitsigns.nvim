@@ -537,7 +537,8 @@ local nav_hunk = void(function(opts: NavHunkOpts)
 
   local hunks: {Hunk} = {}
   vim.list_extend(hunks, get_hunks(bufnr, bcache, opts.greedy, false) or {})
-  vim.list_extend(hunks, get_hunks(bufnr, bcache, opts.greedy, true) or {})
+  local hunks_head = get_hunks(bufnr, bcache, opts.greedy, true) or {}
+  vim.list_extend(hunks, gs_hunks.filter_common(hunks_head, bcache.hunks))
 
   if not hunks or vim.tbl_isempty(hunks) then
     if opts.navigation_message then
@@ -570,13 +571,18 @@ local nav_hunk = void(function(opts: NavHunkOpts)
     if opts.preview or popup.is_open('hunk') ~= nil then
       -- Use defer so the cursor change can settle, otherwise the popup might
       -- appear in the old position
-      defer(M.preview_hunk)
+      defer(function()
+        -- Close the popup in case one is open which will cause it to focus the
+        -- popup
+        popup.close('hunk')
+        M.preview_hunk()
+      end)
     elseif has_preview_inline(bufnr) then
       defer(M.preview_hunk_inline)
     end
 
     if index ~= nil and opts.navigation_message then
-        api.nvim_echo({{string.format('Hunk %d of %d', index, #hunks), 'None'}}, false, {})
+      api.nvim_echo({{string.format('Hunk %d of %d', index, #hunks), 'None'}}, false, {})
     end
 
   end

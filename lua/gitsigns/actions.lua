@@ -537,7 +537,8 @@ local nav_hunk = void(function(opts)
 
    local hunks = {}
    vim.list_extend(hunks, get_hunks(bufnr, bcache, opts.greedy, false) or {})
-   vim.list_extend(hunks, get_hunks(bufnr, bcache, opts.greedy, true) or {})
+   local hunks_head = get_hunks(bufnr, bcache, opts.greedy, true) or {}
+   vim.list_extend(hunks, gs_hunks.filter_common(hunks_head, bcache.hunks))
 
    if not hunks or vim.tbl_isempty(hunks) then
       if opts.navigation_message then
@@ -570,7 +571,12 @@ local nav_hunk = void(function(opts)
       if opts.preview or popup.is_open('hunk') ~= nil then
 
 
-         defer(M.preview_hunk)
+         defer(function()
+
+
+            popup.close('hunk')
+            M.preview_hunk()
+         end)
       elseif has_preview_inline(bufnr) then
          defer(M.preview_hunk_inline)
       end
