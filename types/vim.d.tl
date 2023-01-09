@@ -22,6 +22,8 @@ local record M
 
   iconv: function(string, string, string): string
 
+  is_callable: function(any): boolean
+
   record go
     operatorfunc: string
   end
