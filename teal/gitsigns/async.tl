@@ -3,17 +3,24 @@ local record Async
 
   create: function<T>(T, integer): T
 
-  void: function       (function()     ): function()
-  void: function<A1>   (function(A1)   ): function(A1)
-  void: function<A1,A2>(function(A1,A2)): function(A1,A2)
-  void: function<A1,A2,A3,A4,R1>(function(A1,A2,A3,A4): R1): function(A1,A2,A3,A4): R1
+  void: function                   (function()                  ): function()
+  void: function<A1>               (function(A1)                ): function(A1)
+  void: function<A1,A2>            (function(A1,A2)             ): function(A1,A2)
+  void: function<A1,A2,A3,A4,R1>   (function(A1,A2,A3,A4   ): R1): function(A1,A2,A3,A4): R1
   void: function<A1,A2,A3,A4,A5,R1>(function(A1,A2,A3,A4,A5): R1): function(A1,A2,A3,A4,A5): R1
-  void: function<A1,A2,A3,A4>(function(A1,A2,A3,A4)): function(A1,A2,A3,A4)
+  void: function<A1,A2,A3,A4>      (function(A1,A2,A3,A4)       ): function(A1,A2,A3,A4)
 
-  wrap: function<A1,A2,R1,R2>   (function(A1,A2,      function(R1,R2)), integer): function(A1,A2): R1,R2
-  wrap: function<A1,A2,A3,A4,R1>(function(A1,A2,A3,A4,function(R1)   ), integer): function(A1,A2,A3,A4): R1
-  wrap: function<A1,A2,A3,A4,A5,R1>(function(A1,A2,A3,A4,A5,function(R1)), integer): function(A1,A2,A3,A4,A5): R1
-  wrap: function<A1,A2,A3>      (function(A1,A2,A3,   function())     , integer): function(A1,A2,A3)
+  wrap: function<A1,R1,R2,R3,R4>   (function(A1,            function(R1,R2,R3,R4)), integer): function(A1            ): R1,R2,R3,R4
+  wrap: function<A1,A2,R1,R2>      (function(A1,A2,         function(R1,R2)      ), integer): function(A1,A2         ): R1,R2
+  wrap: function<A1,A2,A3,A4,R1>   (function(A1,A2,A3,A4,   function(R1)         ), integer): function(A1,A2,A3,A4   ): R1
+  wrap: function<A1,A2,A3,A4,A5,R1>(function(A1,A2,A3,A4,A5,function(R1)         ), integer): function(A1,A2,A3,A4,A5): R1
+  wrap: function<A1,A2,A3>         (function(A1,A2,A3,      function()           ), integer): function(A1,A2,A3)
+
+  wait: function<A1,R1,R2,R3,R4>   (integer, function(A1,            function(R1,R2,R3,R4)), A1                ): R1,R2,R3,R4
+  wait: function<A1,A2,R1,R2>      (integer, function(A1,A2,         function(R1,R2)      ), A1, A2            ): R1,R2
+  wait: function<A1,A2,A3,A4,R1>   (integer, function(A1,A2,A3,A4,   function(R1)         ), A1, A2, A3, A4    ): R1
+  wait: function<A1,A2,A3,A4,A5,R1>(integer, function(A1,A2,A3,A4,A5,function(R1)         ), A1, A2, A3, A4, A5): R1
+  wait: function<A1,A2,A3>         (integer, function(A1,A2,A3,      function()           ), A1, A2, A3)
 
   scheduler: function()
 end
@@ -125,7 +132,7 @@ local function run(func: function, callback: function, ...: any): Async_T
   return handle
 end
 
-local function wait(argc: integer, func: function, ...): any...
+function M.wait(argc: integer, func: function, ...): any...
   -- Always run the wrapped functions in xpcall and re-raise the error in the
   -- coroutine. This makes pcall work as normal.
   local function pfunc(...: any)
@@ -160,7 +167,7 @@ function M.wrap(func: function, argc: integer): function
     if not M.running() then
       return func(...)
     end
-    return wait(argc, func, ...)
+    return M.wait(argc, func, ...)
   end
 end
 

@@ -35,6 +35,7 @@ local function try_close(pipe)
 end
 
 function M.run_job(obj, callback)
+   local __FUNC__ = 'run_job'
    if gsd.debug_mode then
       local cmd = obj.command .. ' ' .. table.concat(obj.args, ' ')
       gsd.dprint(cmd)

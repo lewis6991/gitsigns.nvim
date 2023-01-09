@@ -1,4 +1,4 @@
-local wrap = require('gitsigns.async').wrap
+local async = require('gitsigns.async')
 local scheduler = require('gitsigns.async').scheduler
 
 local gsd = require("gitsigns.debug")
@@ -167,9 +167,7 @@ local function check_version(version)
    return true
 end
 
-
-
-local git_command = wrap(function(args, spec, callback)
+local git_command = async.create(function(args, spec)
    spec = spec or {}
    spec.command = spec.command or 'git'
    spec.args = spec.command == 'git' and
@@ -179,31 +177,31 @@ local git_command = wrap(function(args, spec, callback)
       spec.cwd = vim.env.HOME
    end
 
-   subprocess.run_job(spec, function(_, _, stdout, stderr)
-      if not spec.suppress_stderr then
-         if stderr then
-            gsd.eprint(stderr)
-         end
+   local _, _, stdout, stderr = async.wait(2, subprocess.run_job, spec)
+
+   if not spec.suppress_stderr then
+      if stderr then
+         gsd.eprint(stderr)
       end
+   end
 
-      local stdout_lines = vim.split(stdout or '', '\n', true)
+   local stdout_lines = vim.split(stdout or '', '\n', true)
 
 
 
-      if stdout_lines[#stdout_lines] == '' then
-         stdout_lines[#stdout_lines] = nil
+   if stdout_lines[#stdout_lines] == '' then
+      stdout_lines[#stdout_lines] = nil
+   end
+
+   if gsd.verbose then
+      gsd.vprintf('%d lines:', #stdout_lines)
+      for i = 1, math.min(10, #stdout_lines) do
+         gsd.vprintf('\t%s', stdout_lines[i])
       end
+   end
 
-      if gsd.verbose then
-         gsd.vprintf('%d lines:', #stdout_lines)
-         for i = 1, math.min(10, #stdout_lines) do
-            gsd.vprintf('\t%s', stdout_lines[i])
-         end
-      end
-
-      callback(stdout_lines, stderr)
-   end)
-end, 3)
+   return stdout_lines, stderr
+end, 2)
 
 function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
    return git_command({

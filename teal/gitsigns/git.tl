@@ -1,4 +1,4 @@
-local wrap = require('gitsigns.async').wrap
+local async = require('gitsigns.async')
 local scheduler = require('gitsigns.async').scheduler
 
 local gsd = require("gitsigns.debug")
@@ -167,9 +167,7 @@ local function check_version(version: {number,number,number}): boolean
   return true
 end
 
-local type JobSpec = subprocess.JobSpec
-
-local git_command = wrap(function(args: {string}, spec: GJobSpec, callback: function({string}, string))
+local git_command = async.create(function(args: {string}, spec: GJobSpec): {string}, string
   spec = spec or {}
   spec.command = spec.command or 'git'
   spec.args = spec.command == 'git' and
@@ -179,31 +177,31 @@ local git_command = wrap(function(args: {string}, spec: GJobSpec, callback: func
     spec.cwd = vim.env.HOME
   end
 
-  subprocess.run_job(spec as JobSpec, function(_: integer, _: integer, stdout: string, stderr: string)
-    if not spec.suppress_stderr then
-      if stderr then
-        gsd.eprint(stderr)
-      end
+  local _, _, stdout, stderr = async.wait(2, subprocess.run_job, spec as subprocess.JobSpec)
+
+  if not spec.suppress_stderr then
+    if stderr then
+      gsd.eprint(stderr)
     end
+  end
 
-    local stdout_lines = vim.split(stdout or '', '\n', true)
+  local stdout_lines = vim.split(stdout or '', '\n', true)
 
-    -- If stdout ends with a newline, then remove the final empty string after
-    -- the split
-    if stdout_lines[#stdout_lines] == '' then
-      stdout_lines[#stdout_lines] = nil
+  -- If stdout ends with a newline, then remove the final empty string after
+  -- the split
+  if stdout_lines[#stdout_lines] == '' then
+    stdout_lines[#stdout_lines] = nil
+  end
+
+  if gsd.verbose then
+    gsd.vprintf('%d lines:', #stdout_lines)
+    for i = 1, math.min(10, #stdout_lines) do
+      gsd.vprintf('\t%s', stdout_lines[i])
     end
+  end
 
-    if gsd.verbose then
-      gsd.vprintf('%d lines:', #stdout_lines)
-      for i = 1, math.min(10, #stdout_lines) do
-        gsd.vprintf('\t%s', stdout_lines[i])
-      end
-    end
-
-    callback(stdout_lines, stderr)
-  end)
-end, 3)
+  return stdout_lines, stderr
+end, 2)
 
 function M.diff(file_cmp: string, file_buf: string, indent_heuristic: boolean, diff_algo: string): {string}, string
   return git_command{
