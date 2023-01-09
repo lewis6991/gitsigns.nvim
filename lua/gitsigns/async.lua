@@ -18,6 +18,13 @@
 
 
 
+
+
+
+
+
+
+
 local M = {}
 
 
@@ -125,7 +132,7 @@ local function run(func, callback, ...)
    return handle
 end
 
-local function wait(argc, func, ...)
+function M.wait(argc, func, ...)
 
 
    local function pfunc(...)
@@ -160,7 +167,7 @@ function M.wrap(func, argc)
       if not M.running() then
          return func(...)
       end
-      return wait(argc, func, ...)
+      return M.wait(argc, func, ...)
    end
 end
 
