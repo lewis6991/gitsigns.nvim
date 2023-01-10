@@ -10,109 +10,100 @@ local record M
     args: {string}
     cwd: string
     writer: {string} | string
-
-    record State
-      handle: uv.Process
-      pid: integer
-      stdout_data: {string}
-      stderr_data: {string}
-      stdin: uv.Pipe
-      stdout: uv.Pipe
-      stderr: uv.Pipe
-      code: integer
-      signal: integer
-    end
-    _state: State
   end
 end
 
 M.job_cnt = 0
 
-local function try_close(pipe: uv.Pipe)
-  if pipe and not pipe:is_closing() then
-    pipe:close()
+local function try_close(...: uv.Pipe)
+  for i = 1, select('#', ...) do
+    local pipe = select(i, ...)
+    if pipe and not pipe:is_closing() then
+      pipe:close()
+    end
   end
 end
 
-function M.run_job(obj: M.JobSpec, callback: function(integer, integer, string, string)): M.JobSpec
+local function handle_writer(pipe: uv.Pipe, x: {string} | string)
+  if x is {string} then
+    for i, v in ipairs(x) do
+      pipe:write(v)
+      if i ~= #x then
+        pipe:write("\n")
+      else
+        pipe:write("\n", function()
+          try_close(pipe)
+        end)
+      end
+    end
+  elseif x then
+    -- write is string
+    pipe:write(x, function()
+      try_close(pipe)
+    end)
+  end
+end
+
+local function handle_reader(pipe: uv.Pipe, output: {string})
+  pipe:read_start(function(err: string, data: string)
+    if err then
+      gsd.eprint(err)
+    end
+    if data then
+      output[#output+1] = data
+    else
+      try_close(pipe)
+    end
+  end)
+end
+
+function M.run_job(obj: M.JobSpec, callback: function(integer, integer, string, string))
   local __FUNC__ = 'run_job'
   if gsd.debug_mode then
     local cmd: string = obj.command..' '..table.concat(obj.args, ' ')
     gsd.dprint(cmd)
   end
 
-  obj._state = {}
-  local s = obj._state
-  s.stdout_data = {}
-  s.stderr_data = {}
+  local stdout_data: {string} = {}
+  local stderr_data: {string} = {}
 
-  s.stdout = guv.new_pipe(false)
-  s.stderr = guv.new_pipe(false)
+  local stdout = guv.new_pipe(false)
+  local stderr = guv.new_pipe(false)
+  local stdin: uv.Pipe
   if obj.writer then
-    s.stdin = guv.new_pipe(false)
+    stdin = guv.new_pipe(false)
   end
 
-  s.handle, s.pid = guv.spawn(obj.command, {
+  local handle, pid: uv.Process, integer
+  handle, pid = guv.spawn(obj.command, {
     args  = obj.args,
-    stdio = { s.stdin, s.stdout, s.stderr },
+    stdio = { stdin, stdout, stderr },
     cwd   = obj.cwd
   },
     function(code: integer, signal: integer)
-      s.handle:close()
-      s.code = code
-      s.signal = signal
+      handle:close()
+      stdout:read_stop()
+      stderr:read_stop()
 
-      if s.stdout then s.stdout:read_stop() end
-      if s.stderr then s.stderr:read_stop() end
+      try_close(stdin, stdout, stderr)
 
-      try_close(s.stdin)
-      try_close(s.stdout)
-      try_close(s.stderr)
-
-      local stdout_result = #s.stdout_data > 0 and table.concat(s.stdout_data) or nil
-      local stderr_result = #s.stderr_data > 0 and table.concat(s.stderr_data) or nil
+      local stdout_result = #stdout_data > 0 and table.concat(stdout_data) or nil
+      local stderr_result = #stderr_data > 0 and table.concat(stderr_data) or nil
 
       callback(code, signal, stdout_result, stderr_result)
     end
   )
 
-  if not s.handle then
-    try_close(s.stdin)
-    try_close(s.stdout)
-    try_close(s.stderr)
+  if not handle then
+    try_close(stdin, stdout, stderr)
     error(debug.traceback("Failed to spawn process: " .. vim.inspect(obj)))
   end
 
-  s.stdout:read_start(function(_, data: string)
-    s.stdout_data[#s.stdout_data+1] = data
-  end)
-
-  s.stderr:read_start(function(_, data: string)
-    s.stderr_data[#s.stderr_data+1] = data
-  end)
-
-  local writer = obj.writer
-  if writer is {string} then
-    local writer_len = #writer
-    for i, v in ipairs(writer) do
-      s.stdin:write(v)
-      if i ~= writer_len then
-        s.stdin:write("\n")
-      else
-        s.stdin:write("\n", function()
-          try_close(s.stdin)
-        end)
-      end
-    end
-  elseif writer then
-    -- write is string
-    s.stdin:write(writer, function()
-      try_close(s.stdin)
-    end)
-  end
+  handle_reader(stdout, stdout_data)
+  handle_reader(stderr, stderr_data)
+  handle_writer(stdin, obj.writer)
 
   M.job_cnt = M.job_cnt + 1
-  return obj
 end
 
 return M
