@@ -103,11 +103,12 @@ local function run(func: function, callback: function, ...: any): Async_T
 
   local function step(...: any)
     local ret = {coroutine.resume(co, ...)}
-    local stat, nargs, err_or_fn = unpack(ret) as (boolean, integer, (function(...:any): Async_T))
+    local stat = ret[1] as boolean
 
     if not stat then
+      local err = ret[2] as string
       error(string.format("The coroutine failed with this message: %s\n%s",
-        err_or_fn, debug.traceback(co)))
+        err, debug.traceback(co)))
     end
 
     if coroutine.status(co) == 'dead' then
@@ -117,12 +118,14 @@ local function run(func: function, callback: function, ...: any): Async_T
       return
     end
 
-    assert(type(err_or_fn) == 'function', "type error :: expected func")
+    local _, nargs, fn = unpack(ret) as (any, integer, function(...:any): Async_T)
+
+    assert(type(fn) == 'function', "type error :: expected func")
 
     local args = {select(4, unpack(ret))}
     args[nargs] = step
 
-    local r = err_or_fn(unpack(args, 1, nargs))
+    local r = fn(unpack(args, 1, nargs))
     if is_Async_T(r) then
       handle._current = r
     end
