@@ -51,11 +51,11 @@ local hls = {
    { GitSignsChangeLnInline = { 'GitSignsChangeInline' } },
    { GitSignsDeleteLnInline = { 'GitSignsDeleteInline' } },
 
-   { GitSignsAddLnVirtLn = { 'GitSignsAddLn' } },
+   { GitSignsAddVirtLn = { 'GitSignsAddLn' } },
    { GitSignsChangeVirtLn = { 'GitSignsChangeLn' } },
    { GitSignsDeleteVirtLn = { 'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete' } },
 
-   { GitSignsAddLnVirtLnInLine = { 'GitSignsAddLnInline' } },
+   { GitSignsAddVirtLnInLine = { 'GitSignsAddLnInline' } },
    { GitSignsChangeVirtLnInLine = { 'GitSignsChangeLnInline' } },
    { GitSignsDeleteVirtLnInLine = { 'GitSignsDeleteLnInline' } },
 }
