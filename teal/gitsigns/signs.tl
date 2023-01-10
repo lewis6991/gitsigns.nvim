@@ -5,26 +5,39 @@ local dprint = require('gitsigns.debug').dprint
 
 local B = require('gitsigns.signs.base')
 
-local M: B = {}
+-- local function capitalise_word(x: string): string
+--   return x:sub(1, 1):upper()..x:sub(2)
+-- end
 
-local function init()
+function B.new(cfg: SignsConfig, name: string): B
   local __FUNC__ = 'signs.init'
+  local C: B
   if config._extmark_signs then
     dprint('Using extmark signs')
-    M = require('gitsigns.signs.extmarks')
+    C = require('gitsigns.signs.extmarks')
   else
     dprint('Using vimfn signs')
-    M = require('gitsigns.signs.vimfn')
+    C = require('gitsigns.signs.vimfn')
   end
+
+  local hls = (name == 'staged' and config._signs_staged or config.signs) as {B.SignType:B.HlDef}
+  -- Add when config.signs.*.[hl,numhl,linehl] are removed
+  -- for _, t in ipairs {
+  --   'add',
+  --   'change',
+  --   'delete',
+  --   'topdelete',
+  --   'changedelete',
+  --   'untracked',
+  -- } do
+  --   local hl = string.format('GitSigns%s%s', name, capitalise_word(t))
+  --   obj.hls[t] = {
+  --     hl     = hl,
+  --     numhl  = hl..'Nr',
+  --     linehl = hl..'Ln',
+  --   }
+  -- end
+  return C._new(cfg, hls, name)
 end
 
-function M.new(cfg: SignsConfig, name: string): B
-  init()
-  return M.new(cfg, name)
-end
-
-return setmetatable(B, {
-  __index = function(_, k: string): any
-    return rawget(M as table, k)
-  end
-})
+return B

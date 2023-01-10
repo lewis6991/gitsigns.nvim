@@ -270,6 +270,42 @@ local function gen_functions_doc(files)
   return res
 end
 
+local function gen_highlights_doc()
+  local res = {}
+  local highlights = require('lua.gitsigns.highlight')
+
+  local name_max = 0
+  for _, hl in ipairs(highlights.hls) do
+    for name, _ in pairs(hl) do
+      if name:len() > name_max then
+        name_max = name:len()
+      end
+    end
+  end
+
+  for _, hl in ipairs(highlights.hls) do
+    for name, spec in pairs(hl) do
+      if not spec.hidden then
+        local fallbacks_tbl = {}
+        for _, f in ipairs(spec) do
+          fallbacks_tbl[#fallbacks_tbl+1] = string.format('`%s`', f)
+        end
+        local fallbacks = table.concat(fallbacks_tbl, ', ')
+        local pad = string.rep(' ', name_max - name:len())
+        res[#res+1] = string.format('%s*hl-%s*', string.rep(' ', 56), name)
+        res[#res+1] = string.format('%s', name)
+        if spec.desc then
+          res[#res+1] = string.format('%s%s', string.rep(' ', 8), spec.desc)
+          res[#res+1] = ''
+        end
+        res[#res+1] = string.format('%sFallbacks: %s', string.rep(' ', 8), fallbacks)
+      end
+    end
+  end
+
+  return table.concat(res, '\n')
+end
+
 local function get_setup_from_readme()
   local i = read_file('README.md'):gmatch("([^\n]*)\n?")
   local res = {}
@@ -301,6 +337,7 @@ local function get_marker_text(marker)
       'teal/gitsigns.tl',
       'teal/gitsigns/actions.tl',
     },
+    HIGHLIGHTS = gen_highlights_doc,
     SETUP     = get_setup_from_readme
   })[marker]
 end

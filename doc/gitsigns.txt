@@ -495,34 +495,26 @@ signs                                                  *gitsigns-config-signs*
       Type: `table[extended]`
       Default: >
         {
-          add          = {hl = 'GitSignsAdd'   , text = '┃', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
-          change       = {hl = 'GitSignsChange', text = '┃', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
-          delete       = {hl = 'GitSignsDelete', text = '▁', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
-          topdelete    = {hl = 'GitSignsDelete', text = '▔', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
-          changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
-          untracked    = {hl = 'GitSignsAdd'   , text = '┆', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
+          add          = { text = '┃' },
+          change       = { text = '┃' },
+          delete       = { text = '▁' },
+          topdelete    = { text = '▔' },
+          changedelete = { text = '~' },
+          untracked    = { text = '┆' },
         }
 <
       Configuration for signs:
-        • `hl` specifies the highlight group to use for the sign.
         • `text` specifies the character to use for the sign.
-        • `numhl` specifies the highlight group to use for the number column
-          (see |gitsigns-config.numhl|).
-        • `linehl` specifies the highlight group to use for the line
-          (see |gitsigns-config.linehl|).
         • `show_count` to enable showing count of hunk, e.g. number of deleted
           lines.
 
-      Note if a highlight is not defined, it will be automatically derived by
-      searching for other defined highlights in the following order:
-        • `GitGutter*`
-        • `Signify*`
-        • `Diff*Gutter`
-        • `diff*`
-        • `Diff*`
+      The highlights `GitSigns[kind][type]` is used for each kind of sign. E.g.
+      'add' signs uses the highlights:
+        • `GitSignsAdd`   (for normal text signs)
+        • `GitSignsAddNr` (for signs when `config.numhl == true`)
+        • `GitSignsAddLn `(for signs when `config.linehl == true`)
 
-      For example if `GitSignsAdd` is not defined but `GitGutterAdd` is defined,
-      then `GitSignsAdd` will be linked to `GitGutterAdd`.
+      See |gitsigns-highlight-groups|.
 
 keymaps                                              *gitsigns-config-keymaps*
    DEPRECATED
@@ -917,6 +909,150 @@ debug_mode                                        *gitsigns-config-debug_mode*
       Enables debug logging and makes the following functions
       available: `dump_cache`, `debug_messages`, `clear_debug`.
 
+
+==============================================================================
+HIGHLIGHT GROUPS                                   *gitsigns-highlight-groups*
+
+These are the highlights groups used by Gitsigns.
+
+Note if a highlight is not defined, it will be automatically derived by
+searching for other defined highlights in order.
+
+                                                        *hl-GitSignsAdd*
+GitSignsAdd
+        Used for the text of 'add' signs.
+
+        Fallbacks: `GitGutterAdd`, `SignifySignAdd`, `DiffAddedGutter`, `diffAdded`, `DiffAdd`
+                                                        *hl-GitSignsChange*
+GitSignsChange
+        Used for the text of 'change' signs.
+
+        Fallbacks: `GitGutterChange`, `SignifySignChange`, `DiffModifiedGutter`, `diffChanged`, `DiffChange`
+                                                        *hl-GitSignsDelete*
+GitSignsDelete
+        Used for the text of 'delete' signs.
+
+        Fallbacks: `GitGutterDelete`, `SignifySignDelete`, `DiffRemovedGutter`, `diffRemoved`, `DiffDelete`
+                                                        *hl-GitSignsChangedelete*
+GitSignsChangedelete
+        Used for the text of 'changedelete' signs.
+
+        Fallbacks: `GitSignsChange`
+                                                        *hl-GitSignsTopdelete*
+GitSignsTopdelete
+        Used for the text of 'topdelete' signs.
+
+        Fallbacks: `GitSignsDelete`
+                                                        *hl-GitSignsUntracked*
+GitSignsUntracked
+        Used for the text of 'untracked' signs.
+
+        Fallbacks: `GitSignsAdd`
+                                                        *hl-GitSignsAddNr*
+GitSignsAddNr
+        Used for number column (when `config.numhl == true`) of 'add' signs.
+
+        Fallbacks: `GitGutterAddLineNr`, `GitSignsAdd`
+                                                        *hl-GitSignsChangeNr*
+GitSignsChangeNr
+        Used for number column (when `config.numhl == true`) of 'change' signs.
+
+        Fallbacks: `GitGutterChangeLineNr`, `GitSignsChange`
+                                                        *hl-GitSignsDeleteNr*
+GitSignsDeleteNr
+        Used for number column (when `config.numhl == true`) of 'delete' signs.
+
+        Fallbacks: `GitGutterDeleteLineNr`, `GitSignsDelete`
+                                                        *hl-GitSignsChangedeleteNr*
+GitSignsChangedeleteNr
+        Used for number column (when `config.numhl == true`) of 'changedelete' signs.
+
+        Fallbacks: `GitSignsChangeNr`
+                                                        *hl-GitSignsTopdeleteNr*
+GitSignsTopdeleteNr
+        Used for number column (when `config.numhl == true`) of 'topdelete' signs.
+
+        Fallbacks: `GitSignsDeleteNr`
+                                                        *hl-GitSignsUntrackedNr*
+GitSignsUntrackedNr
+        Used for number column (when `config.numhl == true`) of 'untracked' signs.
+
+        Fallbacks: `GitSignsAddNr`
+                                                        *hl-GitSignsAddLn*
+GitSignsAddLn
+        Used for buffer line (when `config.linehl == true`) of 'add' signs.
+
+        Fallbacks: `GitGutterAddLine`, `SignifyLineAdd`, `DiffAdd`
+                                                        *hl-GitSignsChangeLn*
+GitSignsChangeLn
+        Used for buffer line (when `config.linehl == true`) of 'change' signs.
+
+        Fallbacks: `GitGutterChangeLine`, `SignifyLineChange`, `DiffChange`
+                                                        *hl-GitSignsChangedeleteLn*
+GitSignsChangedeleteLn
+        Used for buffer line (when `config.linehl == true`) of 'changedelete' signs.
+
+        Fallbacks: `GitSignsChangeLn`
+                                                        *hl-GitSignsUntrackedLn*
+GitSignsUntrackedLn
+        Used for buffer line (when `config.linehl == true`) of 'untracked' signs.
+
+        Fallbacks: `GitSignsAddLn`
+                                                        *hl-GitSignsAddPreview*
+GitSignsAddPreview
+        Used for added lines in previews.
+
+        Fallbacks: `GitGutterAddLine`, `SignifyLineAdd`, `DiffAdd`
+                                                        *hl-GitSignsDeletePreview*
+GitSignsDeletePreview
+        Used for deleted lines in previews.
+
+        Fallbacks: `GitGutterDeleteLine`, `SignifyLineDelete`, `DiffDelete`
+                                                        *hl-GitSignsCurrentLineBlame*
+GitSignsCurrentLineBlame
+        Used for current line blame.
+
+        Fallbacks: `NonText`
+                                                        *hl-GitSignsAddInline*
+GitSignsAddInline
+        Used for added word diff regions in inline previews.
+
+        Fallbacks: `TermCursor`
+                                                        *hl-GitSignsDeleteInline*
+GitSignsDeleteInline
+        Used for deleted word diff regions in inline previews.
+
+        Fallbacks: `TermCursor`
+                                                        *hl-GitSignsChangeInline*
+GitSignsChangeInline
+        Used for changed word diff regions in inline previews.
+
+        Fallbacks: `TermCursor`
+                                                        *hl-GitSignsAddLnInline*
+GitSignsAddLnInline
+        Used for added word diff regions when `config.word_diff == true`.
+
+        Fallbacks: `GitSignsAddInline`
+                                                        *hl-GitSignsChangeLnInline*
+GitSignsChangeLnInline
+        Used for changed word diff regions when `config.word_diff == true`.
+
+        Fallbacks: `GitSignsChangeInline`
+                                                        *hl-GitSignsDeleteLnInline*
+GitSignsDeleteLnInline
+        Used for deleted word diff regions when `config.word_diff == true`.
+
+        Fallbacks: `GitSignsDeleteInline`
+                                                        *hl-GitSignsDeleteVirtLn*
+GitSignsDeleteVirtLn
+        Used for deleted lines shown by inline `preview_hunk_inline()` or `show_deleted()`.
+
+        Fallbacks: `GitGutterDeleteLine`, `SignifyLineDelete`, `DiffDelete`
+                                                        *hl-GitSignsDeleteVirtLnInLine*
+GitSignsDeleteVirtLnInLine
+        Used for word diff regions in lines shown by inline `preview_hunk_inline()` or `show_deleted()`.
+
+        Fallbacks: `GitSignsDeleteLnInline`
 
 ==============================================================================
 COMMAND                                                      *gitsigns-command*

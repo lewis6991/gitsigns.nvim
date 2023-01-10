@@ -5,26 +5,39 @@ local dprint = require('gitsigns.debug').dprint
 
 local B = require('gitsigns.signs.base')
 
-local M = {}
 
-local function init()
+
+
+
+function B.new(cfg, name)
    local __FUNC__ = 'signs.init'
+   local C
    if config._extmark_signs then
       dprint('Using extmark signs')
-      M = require('gitsigns.signs.extmarks')
+      C = require('gitsigns.signs.extmarks')
    else
       dprint('Using vimfn signs')
-      M = require('gitsigns.signs.vimfn')
+      C = require('gitsigns.signs.vimfn')
    end
+
+   local hls = (name == 'staged' and config._signs_staged or config.signs)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   return C._new(cfg, hls, name)
 end
 
-function M.new(cfg, name)
-   init()
-   return M.new(cfg, name)
-end
-
-return setmetatable(B, {
-   __index = function(_, k)
-      return rawget(M, k)
-   end,
-})
+return B
