@@ -16,6 +16,14 @@ local record M
     lnum: integer
   end
 
+  record HlDef
+    hl: string
+    numhl: string
+    linehl: string
+  end
+
+  hls: {SignType:HlDef}
+
   name: string
   group: string
   config: SignsConfig
@@ -27,6 +35,7 @@ local record M
   placed: {integer:{integer:Sign}}
 
   new      : function(cfg: SignsConfig, name: string): M
+  _new     : function(cfg: SignsConfig, hls: {SignType:HlDef}, name: string): M
   remove   : function(M, bufnr: integer, start_lnum: integer, end_lnum: integer)
   add      : function(M, bufnr: integer, signs: {M.Sign})
   contains : function(M, bufnr: integer, start: integer, last: integer): boolean

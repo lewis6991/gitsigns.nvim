@@ -56,22 +56,24 @@ end
 local function define_signs(obj: B, redefine: boolean)
   -- Define signs
   for stype, cs in pairs(obj.config) do
+    local hls = obj.hls[stype]
     define_sign(get_sign_name(stype), {
-      texthl = cs.hl,
+      texthl = hls.hl,
       text   = config.signcolumn and cs.text or nil,
-      numhl  = config.numhl      and cs.numhl or nil,
-      linehl = config.linehl     and cs.linehl or nil
+      numhl  = config.numhl      and hls.numhl or nil,
+      linehl = config.linehl     and hls.linehl or nil
     }, redefine)
   end
 end
 
 local group_base = 'gitsigns_vimfn_signs_'
 
-function M.new(cfg: SignsConfig, name: string): B
+function M._new(cfg: SignsConfig, hls: {M.SignType:M.HlDef}, name: string): B
   local self = setmetatable({} as B, {__index = M})
   self.name = name or ''
   self.group = group_base..(name or '')
   self.config = cfg
+  self.hls = hls
   self.placed = emptytable()
 
   define_signs(self, false)
@@ -113,12 +115,13 @@ function M:add(bufnr: integer, signs: {M.Sign})
       local cc = config.count_chars
       local count_suffix = cc[count] and tostring(count) or (cc['+'] and 'Plus') or ''
       local count_char   = cc[count]                     or  cc['+']             or ''
+      local hls = self.hls[s.type]
       sign_name = sign_name..count_suffix
       define_sign(sign_name, {
-        texthl = cs.hl,
+        texthl = hls.hl,
         text   = config.signcolumn and cs.text..count_char or '',
-        numhl  = config.numhl      and cs.numhl or nil,
-        linehl = config.linehl     and cs.linehl or nil
+        numhl  = config.numhl      and hls.numhl or nil,
+        linehl = config.linehl     and hls.linehl or nil
       })
     end
 

@@ -149,27 +149,27 @@ M.schema = {
          changedelete = { hl = 'GitSignsChange', text = '~', numhl = 'GitSignsChangeNr', linehl = 'GitSignsChangeLn' },
          untracked = { hl = 'GitSignsAdd', text = '┆', numhl = 'GitSignsAddNr', linehl = 'GitSignsAddLn' },
       },
+      default_help = [[{
+      add          = { text = '┃' },
+      change       = { text = '┃' },
+      delete       = { text = '▁' },
+      topdelete    = { text = '▔' },
+      changedelete = { text = '~' },
+      untracked    = { text = '┆' },
+    }]],
       description = [[
       Configuration for signs:
-        • `hl` specifies the highlight group to use for the sign.
         • `text` specifies the character to use for the sign.
-        • `numhl` specifies the highlight group to use for the number column
-          (see |gitsigns-config.numhl|).
-        • `linehl` specifies the highlight group to use for the line
-          (see |gitsigns-config.linehl|).
         • `show_count` to enable showing count of hunk, e.g. number of deleted
           lines.
 
-      Note if a highlight is not defined, it will be automatically derived by
-      searching for other defined highlights in the following order:
-        • `GitGutter*`
-        • `Signify*`
-        • `Diff*Gutter`
-        • `diff*`
-        • `Diff*`
+      The highlights `GitSigns[kind][type]` is used for each kind of sign. E.g.
+      'add' signs uses the highlights:
+        • `GitSignsAdd`   (for normal text signs)
+        • `GitSignsAddNr` (for signs when `config.numhl == true`)
+        • `GitSignsAddLn `(for signs when `config.linehl == true`)
 
-      For example if `GitSignsAdd` is not defined but `GitGutterAdd` is defined,
-      then `GitSignsAdd` will be linked to `GitGutterAdd`.
+      See |gitsigns-highlight-groups|.
     ]],
    },
 
@@ -177,11 +177,11 @@ M.schema = {
       type = 'table',
       deep_extend = true,
       default = {
-         add = { hl = 'GitSignsStagedAdd', text = '┃', numhl = 'GitSignsStagedAddNr', linehl = 'GitSignsStagedAddLn' },
-         change = { hl = 'GitSignsStagedChange', text = '┃', numhl = 'GitSignsStagedChangeNr', linehl = 'GitSignsStagedChangeLn' },
-         delete = { hl = 'GitSignsStagedDelete', text = '▁', numhl = 'GitSignsStagedDeleteNr', linehl = 'GitSignsStagedDeleteLn' },
-         topdelete = { hl = 'GitSignsStagedDelete', text = '▔', numhl = 'GitSignsStagedDeleteNr', linehl = 'GitSignsStagedDeleteLn' },
-         changedelete = { hl = 'GitSignsStagedChange', text = '~', numhl = 'GitSignsStagedChangeNr', linehl = 'GitSignsStagedChangeLn' },
+         add = { text = '┃' },
+         change = { text = '┃' },
+         delete = { text = '▁' },
+         topdelete = { text = '▔' },
+         changedelete = { text = '~' },
       },
       description = [[
       Configuration for signs of staged hunks.

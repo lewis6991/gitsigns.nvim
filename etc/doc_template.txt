@@ -64,6 +64,16 @@ having to redefine the whole field.
 {{CONFIG}}
 
 ==============================================================================
+HIGHLIGHT GROUPS                                   *gitsigns-highlight-groups*
+
+These are the highlights groups used by Gitsigns.
+
+Note if a highlight is not defined, it will be automatically derived by
+searching for other defined highlights in order.
+
+{{HIGHLIGHTS}}
+
+==============================================================================
 COMMAND                                                      *gitsigns-command*
 
                                                                     *:Gitsigns*

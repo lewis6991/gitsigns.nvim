@@ -1,68 +1,152 @@
-local api = vim.api
-
-local dprintf = require("gitsigns.debug").dprintf
-
-local record M
-  setup_highlights: function()
-end
-
 local record Hldef
   {string}
+  desc: string
+  hidden: boolean
   fg_factor: number
   bg_factor: number
 end
 
+local record M
+  setup_highlights: function()
+  hls: {{string:Hldef}}
+end
+
 -- Use array of dict so we can iterate deterministically
-local hls: {{string:Hldef}} = {
-  {GitSignsAdd                = {'GitGutterAdd'   , 'SignifySignAdd'   , 'DiffAddedGutter'   , 'diffAdded'  , 'DiffAdd'   }},
-  {GitSignsChange             = {'GitGutterChange', 'SignifySignChange', 'DiffModifiedGutter', 'diffChanged', 'DiffChange'}},
-  {GitSignsDelete             = {'GitGutterDelete', 'SignifySignDelete', 'DiffRemovedGutter' , 'diffRemoved', 'DiffDelete'}},
+-- Export for docgen
+M.hls = {
+  {GitSignsAdd = { 'GitGutterAdd', 'SignifySignAdd', 'DiffAddedGutter', 'diffAdded', 'DiffAdd',
+    desc = "Used for the text of 'add' signs."
+  }},
 
-  {GitSignsAddNr              = {'GitGutterAddLineNr'   , 'GitSignsAdd'   }},
-  {GitSignsChangeNr           = {'GitGutterChangeLineNr', 'GitSignsChange'}},
-  {GitSignsDeleteNr           = {'GitGutterDeleteLineNr', 'GitSignsDelete'}},
+  {GitSignsChange = { 'GitGutterChange', 'SignifySignChange', 'DiffModifiedGutter', 'diffChanged', 'DiffChange',
+    desc = "Used for the text of 'change' signs."
+  }},
 
-  {GitSignsAddLn              = {'GitGutterAddLine'   , 'SignifyLineAdd'   , 'DiffAdd'   }},
-  {GitSignsChangeLn           = {'GitGutterChangeLine', 'SignifyLineChange', 'DiffChange'}},
+  {GitSignsDelete = { 'GitGutterDelete', 'SignifySignDelete', 'DiffRemovedGutter' , 'diffRemoved', 'DiffDelete',
+    desc = "Used for the text of 'delete' signs."
+  }},
+
+  {GitSignsChangedelete = { 'GitSignsChange',
+    desc = "Used for the text of 'changedelete' signs."
+  }},
+
+  {GitSignsTopdelete = { 'GitSignsDelete',
+    desc = "Used for the text of 'topdelete' signs."
+  }},
+
+  {GitSignsUntracked = { 'GitSignsAdd',
+    desc = "Used for the text of 'untracked' signs."
+  }},
+
+  {GitSignsAddNr = {'GitGutterAddLineNr', 'GitSignsAdd',
+    desc = "Used for number column (when `config.numhl == true`) of 'add' signs."
+  }},
+
+  {GitSignsChangeNr = {'GitGutterChangeLineNr', 'GitSignsChange',
+    desc = "Used for number column (when `config.numhl == true`) of 'change' signs."
+  }},
+
+  {GitSignsDeleteNr = {'GitGutterDeleteLineNr', 'GitSignsDelete',
+    desc = "Used for number column (when `config.numhl == true`) of 'delete' signs."
+  }},
+
+  {GitSignsChangedeleteNr = {'GitSignsChangeNr',
+    desc = "Used for number column (when `config.numhl == true`) of 'changedelete' signs."
+  }},
+
+  {GitSignsTopdeleteNr = {'GitSignsDeleteNr',
+    desc = "Used for number column (when `config.numhl == true`) of 'topdelete' signs."
+  }},
+
+  {GitSignsUntrackedNr = {'GitSignsAddNr',
+    desc = "Used for number column (when `config.numhl == true`) of 'untracked' signs."
+  }},
+
+  {GitSignsAddLn = {'GitGutterAddLine', 'SignifyLineAdd', 'DiffAdd',
+    desc = "Used for buffer line (when `config.linehl == true`) of 'add' signs."
+  }},
+
+  {GitSignsChangeLn = {'GitGutterChangeLine', 'SignifyLineChange', 'DiffChange',
+    desc = "Used for buffer line (when `config.linehl == true`) of 'change' signs."
+  }},
+
+  {GitSignsChangedeleteLn = {'GitSignsChangeLn',
+    desc = "Used for buffer line (when `config.linehl == true`) of 'changedelete' signs."
+  }},
+
+  {GitSignsUntrackedLn = {'GitSignsAddLn',
+    desc = "Used for buffer line (when `config.linehl == true`) of 'untracked' signs."
+  }},
+
   -- Don't set GitSignsDeleteLn by default
-  -- {GitSignsDeleteLn           = {}},
+  -- {GitSignsDeleteLn = {}},
 
-  {GitSignsStagedAdd                = {'GitSignsAdd'     , fg_factor = 0.5}},
-  {GitSignsStagedChange             = {'GitSignsChange'  , fg_factor = 0.5}},
-  {GitSignsStagedDelete             = {'GitSignsDelete'  , fg_factor = 0.5}},
+  {GitSignsStagedAdd         = {'GitSignsAdd'        , fg_factor = 0.5, hidden = true, }},
+  {GitSignsStagedChange      = {'GitSignsChange'     , fg_factor = 0.5, hidden = true, }},
+  {GitSignsStagedDelete      = {'GitSignsDelete'     , fg_factor = 0.5, hidden = true, }},
+  {GitSignsStagedTopdelete   = {'GitSignsTopdelete'  , fg_factor = 0.5, hidden = true, }},
+  {GitSignsStagedAddNr       = {'GitSignsAddNr'      , fg_factor = 0.5, hidden = true, }},
+  {GitSignsStagedChangeNr    = {'GitSignsChangeNr'   , fg_factor = 0.5, hidden = true, }},
+  {GitSignsStagedDeleteNr    = {'GitSignsDeleteNr'   , fg_factor = 0.5, hidden = true, }},
+  {GitSignsStagedTopdeleteNr = {'GitSignsTopdeleteNr', fg_factor = 0.5, hidden = true, }},
+  {GitSignsStagedAddLn       = {'GitSignsAddLn'      , fg_factor = 0.5, hidden = true, }},
+  {GitSignsStagedChangeLn    = {'GitSignsChangeLn'   , fg_factor = 0.5, hidden = true, }},
 
-  {GitSignsStagedAddNr              = {'GitSignsAddNr'   , fg_factor = 0.5}},
-  {GitSignsStagedChangeNr           = {'GitSignsChangeNr', fg_factor = 0.5}},
-  {GitSignsStagedDeleteNr           = {'GitSignsDeleteNr', fg_factor = 0.5}},
+  {GitSignsAddPreview = {'GitGutterAddLine', 'SignifyLineAdd', 'DiffAdd',
+    desc = "Used for added lines in previews."
+  }},
 
-  {GitSignsStagedAddLn              = {'GitSignsAddLn'   , fg_factor = 0.5}},
-  {GitSignsStagedChangeLn           = {'GitSignsChangeLn', fg_factor = 0.5}},
+  {GitSignsDeletePreview = {'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete',
+    desc = "Used for deleted lines in previews."
+  }},
 
-  {GitSignsAddPreview         = {'GitGutterAddLine'   , 'SignifyLineAdd'   , 'DiffAdd'   }},
-  {GitSignsDeletePreview      = {'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete'}},
+  {GitSignsCurrentLineBlame = {'NonText',
+    desc = "Used for current line blame."
+  }},
 
-  {GitSignsCurrentLineBlame   = {'NonText'}},
+  {GitSignsAddInline = {'TermCursor',
+    desc = "Used for added word diff regions in inline previews."
+  }},
 
-  {GitSignsAddInline          = {'TermCursor'}},
-  {GitSignsDeleteInline       = {'TermCursor'}},
-  {GitSignsChangeInline       = {'TermCursor'}},
+  {GitSignsDeleteInline = {'TermCursor',
+    desc = "Used for deleted word diff regions in inline previews."
+  }},
 
-  {GitSignsAddLnInline        = {'GitSignsAddInline'}},
-  {GitSignsChangeLnInline     = {'GitSignsChangeInline'}},
-  {GitSignsDeleteLnInline     = {'GitSignsDeleteInline'}},
+  {GitSignsChangeInline = {'TermCursor',
+    desc = "Used for changed word diff regions in inline previews."
+  }},
 
-  {GitSignsAddLnVirtLn        = {'GitSignsAddLn'   }},
-  {GitSignsChangeVirtLn       = {'GitSignsChangeLn'}},
-  {GitSignsDeleteVirtLn       = {'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete'}},
+  {GitSignsAddLnInline = {'GitSignsAddInline',
+    desc = "Used for added word diff regions when `config.word_diff == true`."
+  }},
 
-  {GitSignsAddLnVirtLnInLine  = {'GitSignsAddLnInline'   }},
-  {GitSignsChangeVirtLnInLine = {'GitSignsChangeLnInline'}},
-  {GitSignsDeleteVirtLnInLine = {'GitSignsDeleteLnInline'}},
+  {GitSignsChangeLnInline = {'GitSignsChangeInline',
+    desc = "Used for changed word diff regions when `config.word_diff == true`."
+  }},
+
+  {GitSignsDeleteLnInline = {'GitSignsDeleteInline',
+    desc = "Used for deleted word diff regions when `config.word_diff == true`."
+  }},
+
+  -- Currently unused
+  -- {GitSignsAddLnVirtLn = {'GitSignsAddLn'}},
+  -- {GitSignsChangeVirtLn = {'GitSignsChangeLn'}},
+  -- {GitSignsAddLnVirtLnInLine = {'GitSignsAddLnInline', }},
+  -- {GitSignsChangeVirtLnInLine = {'GitSignsChangeLnInline', }},
+
+  {GitSignsDeleteVirtLn = {'GitGutterDeleteLine', 'SignifyLineDelete', 'DiffDelete',
+    desc = "Used for deleted lines shown by inline `preview_hunk_inline()` or `show_deleted()`."
+  }},
+
+  {GitSignsDeleteVirtLnInLine = {'GitSignsDeleteLnInline',
+    desc = "Used for word diff regions in lines shown by inline `preview_hunk_inline()` or `show_deleted()`."
+  }},
+
 }
 
 local function is_hl_set(hl_name: string): boolean
    -- TODO: this only works with `set termguicolors`
-  local exists, hl = pcall(api.nvim_get_hl_by_name, hl_name, true)
+  local exists, hl = pcall(vim.api.nvim_get_hl_by_name, hl_name, true)
   local color = hl.foreground or hl.background or hl.reverse
   return exists and color ~= nil
 end
@@ -80,20 +164,21 @@ local function cmul(x: integer, factor: number): integer
 end
 
 local function derive(hl: string, hldef: Hldef)
+  local dprintf = require("gitsigns.debug").dprintf
   for _, d in ipairs(hldef) do
     if is_hl_set(d) then
       dprintf('Deriving %s from %s', hl, d)
       if hldef.fg_factor or hldef.bg_factor then
         hldef.fg_factor = hldef.fg_factor or 1
         hldef.bg_factor = hldef.bg_factor or 1
-        local dh = api.nvim_get_hl_by_name(d, true)
-        api.nvim_set_hl(0, hl, {
+        local dh = vim.api.nvim_get_hl_by_name(d, true)
+        vim.api.nvim_set_hl(0, hl, {
           default = true,
           fg = cmul(dh.foreground, hldef.fg_factor),
           bg = cmul(dh.background, hldef.bg_factor),
         })
       else
-        api.nvim_set_hl(0, hl, {default = true, link = d })
+        vim.api.nvim_set_hl(0, hl, {default = true, link = d })
       end
       break
     end
@@ -103,7 +188,8 @@ end
 -- Setup a GitSign* highlight by deriving it from other potentially present
 -- highlights.
 M.setup_highlights = function()
-  for _, hlg in ipairs(hls) do
+  local dprintf = require("gitsigns.debug").dprintf
+  for _, hlg in ipairs(M.hls) do
     for hl, hldef in pairs(hlg) do
       if is_hl_set(hl) then
         -- Already defined
