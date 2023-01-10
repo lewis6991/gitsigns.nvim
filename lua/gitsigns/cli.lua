@@ -3,6 +3,7 @@ local void = require('gitsigns.async').void
 
 local gs_debug = require("gitsigns.debug")
 local dprintf = gs_debug.dprintf
+local message = require('gitsigns.message')
 
 local parse_args = require('gitsigns.cli.argparse').parse_args
 
@@ -91,7 +92,7 @@ M.run = void(function(funcs, params)
       return
    end
 
-   error(string.format('%s is not a valid function or action', func))
+   message.error('%s is not a valid function or action', func)
 end)
 
 return M
