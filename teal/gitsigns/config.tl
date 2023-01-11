@@ -142,12 +142,12 @@ M.schema = {
     type = 'table',
     deep_extend = true,
     default = {
-      add          = {hl = 'GitSignsAdd'   , text = '┃', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
-      change       = {hl = 'GitSignsChange', text = '┃', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
-      delete       = {hl = 'GitSignsDelete', text = '▁', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
-      topdelete    = {hl = 'GitSignsDelete', text = '▔', numhl='GitSignsDeleteNr', linehl='GitSignsDeleteLn' },
-      changedelete = {hl = 'GitSignsChange', text = '~', numhl='GitSignsChangeNr', linehl='GitSignsChangeLn' },
-      untracked    = {hl = 'GitSignsAdd'   , text = '┆', numhl='GitSignsAddNr'   , linehl='GitSignsAddLn'    },
+      add          = {hl = 'GitSignsAdd',          text = '┃', numhl = 'GitSignsAddNr',          linehl = 'GitSignsAddLn'          },
+      change       = {hl = 'GitSignsChange',       text = '┃', numhl = 'GitSignsChangeNr',       linehl = 'GitSignsChangeLn'       },
+      delete       = {hl = 'GitSignsDelete',       text = '▁', numhl = 'GitSignsDeleteNr',       linehl = 'GitSignsDeleteLn'       },
+      topdelete    = {hl = 'GitSignsTopdelete',    text = '▔', numhl = 'GitSignsTopdeleteNr',    linehl = 'GitSignsTopdeleteLn'    },
+      changedelete = {hl = 'GitSignsChangedelete', text = '~', numhl = 'GitSignsChangedeleteNr', linehl = 'GitSignsChangedeleteLn' },
+      untracked    = {hl = 'GitSignsUntracked',    text = '┆', numhl = 'GitSignsUntrackedNr',    linehl = 'GitSignsUntrackedLn'    },
     },
     default_help = [[{
       add          = { text = '┃' },
@@ -177,12 +177,19 @@ M.schema = {
     type = 'table',
     deep_extend = true,
     default = {
+      add          = {hl = 'GitSignsStagedAdd'         , text = '┃', numhl='GitSignsStagedAddNr'         , linehl='GitSignsStagedAddLn'          },
+      change       = {hl = 'GitSignsStagedChange'      , text = '┃', numhl='GitSignsStagedChangeNr'      , linehl='GitSignsStagedChangeLn'       },
+      delete       = {hl = 'GitSignsStagedDelete'      , text = '▁', numhl='GitSignsStagedDeleteNr'      , linehl='GitSignsStagedDeleteLn'       },
+      topdelete    = {hl = 'GitSignsStagedTopdelete'   , text = '▔', numhl='GitSignsStagedTopdeleteNr'   , linehl='GitSignsStagedTopdeleteLn'    },
+      changedelete = {hl = 'GitSignsStagedChangedelete', text = '~', numhl='GitSignsStagedChangedeleteNr', linehl='GitSignsStagedChangedeleteLn' },
+    },
+    default_help = [[{
       add          = { text = '┃' },
       change       = { text = '┃' },
       delete       = { text = '▁' },
       topdelete    = { text = '▔' },
       changedelete = { text = '~' },
-    },
+    }]],
     description = [[
       Configuration for signs of staged hunks.
 
