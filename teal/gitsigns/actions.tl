@@ -717,23 +717,19 @@ end
 --- window. If the preview is already open, calling this
 --- will cause the window to get focus.
 M.preview_hunk = noautocmd(function()
+  -- Wrap in noautocmd so vim-repeat continues to work
+
   if popup.focus_open('hunk') then
     return
   end
-  -- Wrap in noautocmd so vim-repeat continues to work
+
   local bufnr = current_buf()
-  local bcache = cache[bufnr]
-  if not bcache then
+
+  local hunk, index = get_cursor_hunk(bufnr)
+
+  if not hunk then
     return
   end
-
-  local hunks: {Hunk} = {}
-  vim.list_extend(hunks, bcache.hunks or {})
-  vim.list_extend(hunks, bcache.hunks_staged or {})
-
-  local hunk, index = get_cursor_hunk(bufnr, hunks)
-
-  if not hunk then return end
 
   local lines_fmt = {
     {{'Hunk <hunk_no> of <num_hunks>', 'Title'}},
@@ -744,31 +740,48 @@ M.preview_hunk = noautocmd(function()
 
   local lines_spec = lines_format(lines_fmt, {
     hunk_no = index,
-    num_hunks = #bcache.hunks,
+    num_hunks = #cache[bufnr].hunks,
     hunk = gs_hunks.patch_lines(hunk, vim.bo[bufnr].fileformat),
   })
 
   popup.create(lines_spec, config.preview_config, 'hunk')
 end)
 
+local function clear_preview_inline(bufnr: integer)
+  api.nvim_buf_clear_namespace(bufnr, ns_inline, 0, -1)
+end
+
 --- Preview the hunk at the cursor position inline in the buffer.
 M.preview_hunk_inline = function()
-  local hunk = get_cursor_hunk()
+  local bufnr = current_buf()
+
+  local hunk = get_cursor_hunk(bufnr)
 
   if not hunk then
     return
   end
 
-  local bufnr = current_buf()
+  clear_preview_inline(bufnr)
+
   manager.show_added(bufnr, ns_inline, hunk)
   manager.show_deleted(bufnr, ns_inline, hunk)
 
   api.nvim_create_autocmd({ 'CursorMoved', 'InsertEnter' }, {
+    buffer = bufnr,
+    desc = 'Clear gitsigns inline preview',
     callback = function()
-      api.nvim_buf_clear_namespace(bufnr, ns_inline, 0, -1)
+      clear_preview_inline(bufnr)
     end,
     once = true
   })
+
+  -- Virtual lines will be hidden if cursor is on the top row, so automatically
+  -- scroll the viewport.
+  if api.nvim_win_get_cursor(0)[1] == 1 then
+    local keys = hunk.removed.count..'<C-y>'
+    local cy = api.nvim_replace_termcodes(keys, true, false, true)
+    api.nvim_feedkeys(cy, 'n', false)
+  end
 
 end
 
