@@ -37,7 +37,7 @@ local M = {CacheEntry = {}, CacheObj = {}, }
 
 local CacheEntry = M.CacheEntry
 
-CacheEntry.get_compare_rev = function(self, base)
+function CacheEntry:get_compare_rev(base)
    base = base or self.base
    if base then
       return base
@@ -56,11 +56,11 @@ CacheEntry.get_compare_rev = function(self, base)
    return string.format(':%d', stage)
 end
 
-CacheEntry.get_staged_compare_rev = function(self)
+function CacheEntry:get_staged_compare_rev()
    return self.commit and string.format('%s^', self.commit) or 'HEAD'
 end
 
-CacheEntry.get_rev_bufname = function(self, rev)
+function CacheEntry:get_rev_bufname(rev)
    rev = rev or self:get_compare_rev()
    return string.format(
    'gitsigns://%s/%s:%s',
@@ -70,26 +70,26 @@ CacheEntry.get_rev_bufname = function(self, rev)
 
 end
 
-CacheEntry.invalidate = function(self)
+function CacheEntry:invalidate()
    self.compare_text = nil
    self.compare_text_head = nil
    self.hunks = nil
    self.hunks_staged = nil
 end
 
-CacheEntry.new = function(o)
+function CacheEntry.new(o)
    o.staged_diffs = o.staged_diffs or {}
    return setmetatable(o, { __index = CacheEntry })
 end
 
-CacheEntry.destroy = function(self)
+function CacheEntry:destroy()
    local w = self.gitdir_watcher
    if w and not w:is_closing() then
       w:close()
    end
 end
 
-M.CacheObj.destroy = function(self, bufnr)
+function M.CacheObj:destroy(bufnr)
    self[bufnr]:destroy()
    self[bufnr] = nil
 end

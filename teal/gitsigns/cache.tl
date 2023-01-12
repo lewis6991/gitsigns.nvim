@@ -18,12 +18,12 @@ local record M
     git_obj       : GitObj
     commit        : string
 
-    get_compare_rev: function(CacheEntry, base: string): string
-    get_staged_compare_rev: function(CacheEntry): string
-    get_rev_bufname: function(self: CacheEntry, rev: string): string
-    invalidate: function(CacheEntry)
-    new: function(CacheEntry): CacheEntry
-    destroy: function(CacheEntry)
+    get_compare_rev        : function(CacheEntry, base: string): string
+    get_staged_compare_rev : function(CacheEntry): string
+    get_rev_bufname        : function(CacheEntry, rev: string): string
+    invalidate             : function(CacheEntry)
+    new                    : function(CacheEntry): CacheEntry
+    destroy                : function(CacheEntry)
   end
 
   record CacheObj
@@ -37,7 +37,7 @@ end
 
 local CacheEntry = M.CacheEntry
 
-CacheEntry.get_compare_rev = function(self: CacheEntry, base: string): string
+function CacheEntry:get_compare_rev(base: string): string
   base = base or self.base
   if base then
     return base
@@ -56,11 +56,11 @@ CacheEntry.get_compare_rev = function(self: CacheEntry, base: string): string
   return string.format(':%d', stage)
 end
 
-CacheEntry.get_staged_compare_rev = function(self: CacheEntry): string
+function CacheEntry:get_staged_compare_rev(): string
   return self.commit and string.format('%s^', self.commit) or 'HEAD'
 end
 
-CacheEntry.get_rev_bufname = function(self: CacheEntry, rev: string): string
+function CacheEntry:get_rev_bufname(rev: string): string
   rev = rev or self:get_compare_rev()
   return string.format(
     'gitsigns://%s/%s:%s',
@@ -70,26 +70,26 @@ CacheEntry.get_rev_bufname = function(self: CacheEntry, rev: string): string
   )
 end
 
-CacheEntry.invalidate = function(self: CacheEntry)
+function CacheEntry:invalidate()
   self.compare_text = nil
   self.compare_text_head = nil
   self.hunks = nil
   self.hunks_staged = nil
 end
 
-CacheEntry.new = function(o: CacheEntry): CacheEntry
+function CacheEntry.new(o: CacheEntry): CacheEntry
   o.staged_diffs = o.staged_diffs or {}
   return setmetatable(o, {__index = CacheEntry})
 end
 
-CacheEntry.destroy = function(self: CacheEntry)
+function CacheEntry:destroy()
   local w = self.gitdir_watcher
   if w and not w:is_closing() then
     w:close()
   end
 end
 
-M.CacheObj.destroy = function(self: M.CacheObj, bufnr: integer)
+function M.CacheObj:destroy(bufnr: integer)
   self[bufnr]:destroy()
   self[bufnr] = nil
 end
