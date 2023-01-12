@@ -72,7 +72,7 @@ end
 
 
 local function parse_fugitive_uri(name)
-   if vim.g.loaded_fugitive == 0 then
+   if vim.fn.exists('*FugitiveReal') == 0 then
       dprint("Fugitive not installed")
       return
    end

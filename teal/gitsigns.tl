@@ -72,7 +72,7 @@ end
 
 -- @return (string, string) Tuple of buffer name and commit
 local function parse_fugitive_uri(name: string): string, string
-  if vim.g.loaded_fugitive == 0 then
+  if vim.fn.exists('*FugitiveReal') == 0 then
     dprint("Fugitive not installed")
     return
   end
