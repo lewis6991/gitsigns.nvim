@@ -12,6 +12,7 @@ local uv = vim.loop
 local startswith = vim.startswith
 
 local dprint = require("gitsigns.debug").dprint
+local dprintf = require("gitsigns.debug").dprintf
 local eprint = require("gitsigns.debug").eprint
 local err = require('gitsigns.message').error
 
@@ -181,12 +182,16 @@ local git_command = async.create(function(args: {string}, spec: GJobSpec): {stri
     spec.cwd = vim.env.HOME
   end
 
-  local _, _, stdout, stderr = async.wait(2, subprocess.run_job, spec as subprocess.JobSpec)
+  local code, _, stdout, stderr = async.wait(2, subprocess.run_job, spec as subprocess.JobSpec)
 
   if not spec.suppress_stderr then
     if stderr then
       local cmd_str = table.concat({spec.command, unpack(args)}, ' ')
       gsd.eprintf("Recieved stderr when running command\n'%s':\n%s", cmd_str, stderr)
+    end
+    if code ~= 0 then
+      local cmd_str = table.concat({spec.command, unpack(args)}, ' ')
+      gsd.eprintf("Recieved exit_code %d when running command\n'%s':\n%s", code, cmd_str)
     end
   end
 
@@ -327,8 +332,29 @@ end
 -- Git repo object methods
 --------------------------------------------------------------------------------
 
+--- @async
+local function sleep(ms: integer)
+  local timer = uv.new_timer()
+  async.wait(3, uv.timer_start, timer, ms, 0)
+  async.wait(1, timer.close, timer)
+end
+
+--- @async
+function Repo:wait_lock()
+  while true do
+    local stat = async.wait(2, uv.fs_stat, self.gitdir..'/index.lock')
+    if not stat is table then
+      break
+    end
+    dprintf('Waiting for lock on %s', self.gitdir)
+    print('Waiting for lock on ', self.gitdir)
+    sleep(10)
+  end
+end
+
 --- Run git command the with the objects gitdir and toplevel
 function Repo:command(args: {string}, spec: GJobSpec): {string}, string
+  self:wait_lock()
   spec = spec or {}
   spec.cwd = self.toplevel
 
@@ -359,9 +385,10 @@ end
 
 --- Get version of file in the index, return array lines
 function Repo:get_show_text(object: string, encoding: string): {string}, string
-  local stdout, stderr = self:command({'show', object}, {suppress_stderr = true})
+  local stdout, stderr = self:command({'show', object}, {})
 
-  if  encoding and encoding ~= 'utf-8' then
+  if encoding and encoding ~= 'utf-8' then
+    dprintf('Running text for object %s through iconv', object)
     if vim.iconv then
       for i, l in ipairs(stdout) do
         stdout[i] = vim.iconv(l, encoding, 'utf-8')
@@ -481,6 +508,10 @@ function Obj:get_show_text(revision: string): {string}, string
   end
 
   local stdout, stderr =  self.repo:get_show_text(revision..':'..self.relpath, self.encoding)
+
+  if #stdout == 0 then
+    print('GOT NO TEXT FOR OBJECT ', self.relpath, ':', revision)
+  end
 
   if not self.i_crlf and self.w_crlf then
     -- Add cr
