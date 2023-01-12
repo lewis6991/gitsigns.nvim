@@ -307,7 +307,7 @@ M.update = throttle_by_id(function(bufnr: integer, bcache: CacheEntry)
 
   if config._signs_staged_enable then
     if not bcache.compare_text_head or config._refresh_staged_on_update then
-      bcache.compare_text_head = git_obj:get_show_text('HEAD')
+      bcache.compare_text_head = git_obj:get_show_text(bcache:get_staged_compare_rev())
     end
     local hunks_head = run_diff(bcache.compare_text_head, buftext)
     bcache.hunks_staged = gs_hunks.filter_common(hunks_head, bcache.hunks)

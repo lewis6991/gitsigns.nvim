@@ -1,7 +1,9 @@
 local Hunk = require("gitsigns.hunks").Hunk
 local GitObj = require('gitsigns.git').Obj
+local config = require('gitsigns.config').config
 
 local M = {CacheEntry = {}, CacheObj = {}, }
+
 
 
 
@@ -43,11 +45,19 @@ CacheEntry.get_compare_rev = function(self, base)
 
    if self.commit then
 
-      return string.format('%s^', self.commit)
+      if config._signs_staged_enable then
+         return self.commit
+      else
+         return string.format('%s^', self.commit)
+      end
    end
 
    local stage = self.git_obj.has_conflicts and 1 or 0
    return string.format(':%d', stage)
+end
+
+CacheEntry.get_staged_compare_rev = function(self)
+   return self.commit and string.format('%s^', self.commit) or 'HEAD'
 end
 
 CacheEntry.get_rev_bufname = function(self, rev)
