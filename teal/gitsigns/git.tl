@@ -357,11 +357,50 @@ function Repo:files_changed(): {string}
   return ret
 end
 
+local function make_bom(...: integer): string
+  local r = {}
+  for i, a in ipairs{...} do
+    r[i] = string.char(a)
+  end
+  return table.concat(r)
+end
+
+local BOM_TABLE: {string:string} = {
+  ['utf-8']    = make_bom(0xef, 0xbb, 0xbf),
+  ['utf-16le'] = make_bom(0xff, 0xfe),
+  ['utf-16']   = make_bom(0xfe, 0xff),
+  ['utf-16be'] = make_bom(0xfe, 0xff),
+  ['utf-32le'] = make_bom(0xff, 0xfe, 0x00, 0x00),
+  ['utf-32']   = make_bom(0xff, 0xfe, 0x00, 0x00),
+  ['utf-32be'] = make_bom(0x00, 0x00, 0xfe, 0xff),
+  ['utf-7']    = make_bom(0x2b, 0x2f, 0x76),
+  ['utf-1']    = make_bom(0xf7, 0x54, 0x4c),
+}
+
+local function strip_bom(x: string, encoding: string): string
+ local bom = BOM_TABLE[encoding]
+ if bom and vim.startswith(x, bom) then
+   return x:sub(bom:len() + 1)
+ end
+ return x
+end
+
+local function iconv_supported(encoding: string): boolean
+  -- TODO(lewis6991): needs https://github.com/neovim/neovim/pull/21924
+  if vim.startswith(encoding, 'utf-16') then
+    return false
+  elseif vim.startswith(encoding, 'utf-32') then
+    return false
+  end
+  return true
+end
+
 --- Get version of file in the index, return array lines
 function Repo:get_show_text(object: string, encoding: string): {string}, string
   local stdout, stderr = self:command({'show', object}, {suppress_stderr = true})
 
-  if  encoding and encoding ~= 'utf-8' then
+  if encoding and encoding ~= 'utf-8' and iconv_supported(encoding) then
+    stdout[1] = strip_bom(stdout[1], encoding)
     if vim.iconv then
       for i, l in ipairs(stdout) do
         stdout[i] = vim.iconv(l, encoding, 'utf-8')
