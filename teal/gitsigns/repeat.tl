@@ -1,8 +1,7 @@
 local api = vim.api
 
 local record M
-  mk_repeatable: function<A1,A2>(fn: function(A1, A2)): function(A1, A2)
-  mk_repeatable: function<A1>   (fn: function(A1)    ): function(A1)
+  mk_repeatable: function<F>(fn: F): F
   repeat_action: function()
 end
 

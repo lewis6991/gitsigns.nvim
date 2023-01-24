@@ -36,26 +36,26 @@ vim.api.nvim_create_autocmd('VimLeavePre', {
 
 function M.new_timer(longlived: boolean): uv.Timer
   local r = uv.new_timer()
-  handles[#handles+1] = {r as uv.Handle, longlived, debug.traceback()}
+  table.insert(handles, {r as uv.Handle, longlived, debug.traceback()})
   return r
 end
 
 function M.new_fs_poll(longlived: boolean): uv.FSPollObj
   local r = uv.new_fs_poll()
-  handles[#handles+1] = {r as uv.Handle, longlived, debug.traceback()}
+  table.insert(handles, {r as uv.Handle, longlived, debug.traceback()})
   return r
 end
 
 function M.new_pipe(ipc: boolean): uv.Pipe
   local r = uv.new_pipe(ipc)
-  handles[#handles+1] = {r as uv.Handle, false, debug.traceback()}
+  table.insert(handles, {r as uv.Handle, false, debug.traceback()})
   return r
 end
 
 function M.spawn(cmd: string, opts: uv.SpawnOpts, on_exit: function(integer, integer)): uv.Process, integer
   local handle, pid = uv.spawn(cmd, opts, on_exit)
   if handle then
-    handles[#handles+1] = {handle as uv.Handle, false, cmd..' '..vim.inspect(opts)}
+    table.insert(handles, {handle as uv.Handle, false, cmd..' '..vim.inspect(opts)})
   end
   return handle, pid
 end

@@ -10,8 +10,6 @@ local M = {}
 
 
 
-
-
 function M.debounce_trailing(ms, fn)
    local timer = uv.new_timer(true)
    return function(...)

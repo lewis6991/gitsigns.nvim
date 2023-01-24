@@ -1,5 +1,5 @@
 local record M
-  parse_args: function(x: string): {string}, {string:string}
+  parse_args: function(x: string): {string}, {string:string|boolean}
 end
 
 local function is_char(x: string): boolean

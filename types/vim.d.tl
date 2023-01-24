@@ -181,7 +181,7 @@ local record M
   tbl_filter: function<T>((function(any): boolean), {T}): {T}
   tbl_isempty: function(table): boolean
   tbl_islist: function(table): boolean
-  tbl_keys: function(table): table
+  tbl_keys: function<K,V>({K:V}): {K}
   tbl_map: function(function, table): table
 
   record InspectOptions

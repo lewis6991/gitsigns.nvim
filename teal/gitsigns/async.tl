@@ -3,12 +3,7 @@ local record Async
 
   create: function<T>(T, integer): T
 
-  void: function                   (function()                  ): function()
-  void: function<A1>               (function(A1)                ): function(A1)
-  void: function<A1,A2>            (function(A1,A2)             ): function(A1,A2)
-  void: function<A1,A2,A3,A4,R1>   (function(A1,A2,A3,A4   ): R1): function(A1,A2,A3,A4): R1
-  void: function<A1,A2,A3,A4,A5,R1>(function(A1,A2,A3,A4,A5): R1): function(A1,A2,A3,A4,A5): R1
-  void: function<A1,A2,A3,A4>      (function(A1,A2,A3,A4)       ): function(A1,A2,A3,A4)
+  void: function<F>(F): F
 
   wrap: function<A1,R1,R2,R3,R4>   (function(A1,            function(R1,R2,R3,R4)), integer): function(A1            ): R1,R2,R3,R4
   wrap: function<A1,A2,R1,R2>      (function(A1,A2,         function(R1,R2)      ), integer): function(A1,A2         ): R1,R2
@@ -40,7 +35,7 @@ local record Async_T
   _current: Async_T
 
   cancel: function(Async_T, function)
-  is_cancelled: function(Async_T)
+  is_cancelled: function(Async_T): boolean
 end
 
 -- Coroutine.running() was changed between Lua 5.1 and 5.2:
