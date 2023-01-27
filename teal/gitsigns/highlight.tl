@@ -185,8 +185,16 @@ local function derive(hl: string, hldef: Hldef)
       else
         vim.api.nvim_set_hl(0, hl, {default = true, link = d })
       end
-      break
+      return
     end
+  end
+  if hldef[1] and not hldef.bg_factor and not hldef.fg_factor then
+    -- No fallback found which is set. Just link to the first fallback
+    -- if there are no modifiers
+    dprintf('Deriving %s from %s', hl, hldef[1])
+    vim.api.nvim_set_hl(0, hl, {default = true, link = hldef[1] })
+  else
+    dprintf('Could not derive %s', hl)
   end
 end
 
