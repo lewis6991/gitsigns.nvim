@@ -186,7 +186,7 @@ function popup.create0(lines, opts, id)
       buffer = api.nvim_get_current_buf(),
       group = group,
       callback = function()
-         api.nvim_win_set_config(winid, opts1)
+         pcall(api.nvim_win_set_config, winid, opts1)
       end,
    })
 
