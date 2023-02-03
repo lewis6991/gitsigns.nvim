@@ -102,7 +102,7 @@ setup({cfg})                                                *gitsigns.setup()*
                     {cfg} Table object containing configuration for
                     Gitsigns. See |gitsigns-usage| for more details.
 
-attach({bufnr})                                            *gitsigns.attach()*
+attach({bufnr}, {ctx})                                     *gitsigns.attach()*
                 Attach Gitsigns to the buffer.
 
                 Attributes: ~
@@ -110,6 +110,21 @@ attach({bufnr})                                            *gitsigns.attach()*
 
                 Parameters: ~
                     {bufnr}  (number): Buffer number
+                    {ctx}    (table|nil):
+                             Git context data that may optionally be used to attach to any
+                             buffer that represents a real git object.
+                             • {file}: (string)
+                               Path to the file represented by the buffer, relative to the
+                               top-level.
+                             • {toplevel}: (string)
+                               Path to the top-level of the parent git repository.
+                             • {gitdir}: (string)
+                               Path to the git directory of the parent git repository
+                               (typically the ".git/" directory).
+                             • {commit}: (string)
+                               The git revision that the file belongs to.
+                             • {base}: (string|nil)
+                               The git revision that the file should be compared to.
 
 detach({bufnr})                                            *gitsigns.detach()*
                 Detach Gitsigns from the buffer {bufnr}. If {bufnr} is not

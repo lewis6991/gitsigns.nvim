@@ -32,8 +32,18 @@ local record M
   setup      : function(cfg: Config)
   detach     : function(bufnr: integer, _keep_signs: boolean)
   detach_all : function()
-  attach     : function(cbuf: integer, trigger: string)
+  attach     : function(cbuf: integer, ctx: GitContext, trigger: string)
+
+  record GitContext
+    toplevel: string
+    gitdir: string
+    file: string
+    commit: string
+    base: string
+  end
 end
+
+local GitContext = M.GitContext
 
 --- Detach Gitsigns from all buffers it is attached to.
 function M.detach_all()
@@ -186,7 +196,7 @@ end
 -- Ensure attaches cannot be interleaved.
 -- Since attaches are asynchronous we need to make sure an attach isn't
 -- performed whilst another one is in progress.
-local attach_throttled = throttle_by_id(function(cbuf: integer, aucmd: string)
+local attach_throttled = throttle_by_id(function(cbuf: integer, ctx: GitContext, aucmd: string)
   local __FUNC__ = 'attach'
   if vimgrep_running then
     dprint('attaching is disabled')
@@ -209,33 +219,45 @@ local attach_throttled = throttle_by_id(function(cbuf: integer, aucmd: string)
     return
   end
 
-  if api.nvim_buf_line_count(cbuf) > config.max_file_length then
-    dprint('Exceeds max_file_length')
-    return
-  end
-
-  if vim.bo[cbuf].buftype ~= '' then
-    dprint('Non-normal buffer')
-    return
-  end
-
-  local file, commit = get_buf_path(cbuf)
   local encoding = vim.bo[cbuf].fileencoding
   if encoding == '' then
     encoding = 'utf-8'
   end
+  local file: string
+  local commit: string
+  local gitdir_oap: string
+  local toplevel_oap: string
 
-  local file_dir = util.dirname(file)
+  if ctx then
+    gitdir_oap = ctx.gitdir
+    toplevel_oap = ctx.toplevel
+    file = ctx.toplevel .. util.path_sep .. ctx.file
+    commit = ctx.commit
+  else
+    if api.nvim_buf_line_count(cbuf) > config.max_file_length then
+      dprint('Exceeds max_file_length')
+      return
+    end
 
-  if not file_dir or not util.path_exists(file_dir) then
-    dprint('Not a path')
-    return
+    if vim.bo[cbuf].buftype ~= '' then
+      dprint('Non-normal buffer')
+      return
+    end
+
+    file, commit = get_buf_path(cbuf)
+    local file_dir = util.dirname(file)
+
+    if not file_dir or not util.path_exists(file_dir) then
+      dprint('Not a path')
+      return
+    end
+
+    gitdir_oap, toplevel_oap = on_attach_pre(cbuf)
   end
 
-  local gitdir_oap, toplevel_oap = on_attach_pre(cbuf)
   local git_obj = git.Obj.new(file, encoding, gitdir_oap, toplevel_oap)
 
-  if not git_obj then
+  if not git_obj and not ctx then
     git_obj = try_worktrees(cbuf, file, encoding)
     scheduler()
   end
@@ -258,7 +280,7 @@ local attach_throttled = throttle_by_id(function(cbuf: integer, aucmd: string)
     return
   end
 
-  if not util.path_exists(file) or uv.fs_stat(file).type == 'directory' then
+  if not ctx and (not util.path_exists(file) or uv.fs_stat(file).type == 'directory') then
     dprint('Not a file')
     return
   end
@@ -283,7 +305,7 @@ local attach_throttled = throttle_by_id(function(cbuf: integer, aucmd: string)
   end
 
   cache[cbuf] = CacheEntry.new {
-    base           = config.base,
+    base           = ctx and ctx.base or config.base,
     file           = file,
     commit         = commit,
     gitdir_watcher = manager.watch_gitdir(cbuf, repo.gitdir),
@@ -318,8 +340,23 @@ end)
 ---
 --- Parameters: ~
 ---     {bufnr}  (number): Buffer number
-M.attach = void(function(bufnr: integer, _trigger: string)
-  attach_throttled(bufnr or current_buf(), _trigger)
+---     {ctx}    (table|nil):
+---              Git context data that may optionally be used to attach to any
+---              buffer that represents a real git object.
+---              • {file}: (string)
+---                Path to the file represented by the buffer, relative to the
+---                top-level.
+---              • {toplevel}: (string)
+---                Path to the top-level of the parent git repository.
+---              • {gitdir}: (string)
+---                Path to the git directory of the parent git repository
+---                (typically the ".git/" directory).
+---              • {commit}: (string)
+---                The git revision that the file belongs to.
+---              • {base}: (string|nil)
+---                The git revision that the file should be compared to.
+M.attach = void(function(bufnr: integer, ctx: GitContext, _trigger: string)
+  attach_throttled(bufnr or current_buf(), ctx, _trigger)
 end)
 
 local function setup_cli()
@@ -414,7 +451,7 @@ M.setup = void(function(cfg: Config)
   for _, buf in ipairs(api.nvim_list_bufs()) do
     if    api.nvim_buf_is_loaded(buf)
       and api.nvim_buf_get_name(buf) ~= '' then
-      M.attach(buf, 'setup')
+      M.attach(buf, nil, 'setup')
       scheduler()
     end
   end
@@ -423,9 +460,9 @@ M.setup = void(function(cfg: Config)
 
   autocmd('VimLeavePre' , M.detach_all)
   autocmd('ColorScheme' , hl.setup_highlights)
-  autocmd('BufRead'     , wrap_func(M.attach, nil, 'BufRead'))
-  autocmd('BufNewFile'  , wrap_func(M.attach, nil, 'BufNewFile'))
-  autocmd('BufWritePost', wrap_func(M.attach, nil, 'BufWritePost'))
+  autocmd('BufRead'     , wrap_func(M.attach, nil, nil, 'BufRead'))
+  autocmd('BufNewFile'  , wrap_func(M.attach, nil, nil, 'BufNewFile'))
+  autocmd('BufWritePost', wrap_func(M.attach, nil, nil, 'BufWritePost'))
 
   autocmd('OptionSet', {
     pattern = 'fileformat',
