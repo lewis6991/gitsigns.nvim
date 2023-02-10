@@ -141,16 +141,16 @@ M.diffthis = void(function(base, opts)
       return
    end
 
+   local cwin = api.nvim_get_current_win()
    if not base and bcache.git_obj.has_conflicts then
-      local cwin = api.nvim_get_current_win()
       run(':2', true, opts)
       api.nvim_set_current_win(cwin)
       opts.split = 'belowright'
       run(':3', true, opts)
-      api.nvim_set_current_win(cwin)
    else
       run(base, true, opts)
    end
+   api.nvim_set_current_win(cwin)
 end)
 
 M.show = void(function(base)
