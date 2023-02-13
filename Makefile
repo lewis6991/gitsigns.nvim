@@ -47,11 +47,9 @@ test_deps: $(NVIM_DIR)
 export VIMRUNTIME=$(NVIM_DIR)/runtime
 export TEST_COLORS=1
 
-ifneq ($(filter $(NEOVIM_BRANCH), master nightly),)
-    BUSTED = $(NVIM_DIR)/build/bin/nvim -ll $(NVIM_DIR)/test/busted_runner.lua
-else
-    BUSTED = $(LUAROCKS_INIT) busted
-endif
+BUSTED = $$( [[ -f $(NVIM_DIR)/test/busted_runner.lua ]] \
+        && echo "$(NVIM_DIR)/build/bin/nvim -ll $(NVIM_DIR)/test/busted_runner.lua" \
+        || echo "$(LUAROCKS_INIT) busted" )
 
 .PHONY: test
 test: $(NVIM_DIR)
