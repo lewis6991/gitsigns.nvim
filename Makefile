@@ -8,6 +8,7 @@ TL_VERSION    := 0.14.1
 NEOVIM_BRANCH ?= master
 
 DEPS_DIR := $(PWD)/deps/nvim-$(NEOVIM_BRANCH)
+NVIM_DIR := $(DEPS_DIR)/neovim
 
 LUAROCKS       := luarocks --lua-version=$(LUA_VERSION)
 LUAROCKS_TREE  := $(DEPS_DIR)/luarocks/usr
@@ -16,7 +17,7 @@ LUAROCKS_INIT  := eval $$($(LUAROCKS) --tree $(LUAROCKS_TREE) path) &&
 
 .DEFAULT_GOAL := build
 
-$(DEPS_DIR)/neovim:
+$(NVIM_DIR):
 	@mkdir -p $(DEPS_DIR)
 	git clone --depth 1 https://github.com/neovim/neovim --branch $(NEOVIM_BRANCH) $@
 	@# disable LTO to reduce compile time
@@ -41,21 +42,26 @@ $(INSPECT):
 lua_deps: $(TL) $(INSPECT)
 
 .PHONY: test_deps
-test_deps: $(DEPS_DIR)/neovim
+test_deps: $(NVIM_DIR)
 
-export VIMRUNTIME=$(DEPS_DIR)/neovim/runtime
+export VIMRUNTIME=$(NVIM_DIR)/runtime
 export TEST_COLORS=1
 
+ifneq ($(filter $(NEOVIM_BRANCH), master nightly),)
+    BUSTED = $(NVIM_DIR)/build/bin/nvim -ll $(NVIM_DIR)/test/busted_runner.lua
+else
+    BUSTED = $(LUAROCKS_INIT) busted
+endif
+
 .PHONY: test
-test: $(DEPS_DIR)/neovim
-	$(LUAROCKS_INIT) busted \
-		-v \
+test: $(NVIM_DIR)
+	$(BUSTED) -v \
 		--lazy \
 		--helper=$(PWD)/test/preload.lua \
 		--output test.busted.outputHandlers.nvim \
-		--lpath=$(DEPS_DIR)/neovim/?.lua \
-		--lpath=$(DEPS_DIR)/neovim/build/?.lua \
-		--lpath=$(DEPS_DIR)/neovim/runtime/lua/?.lua \
+		--lpath=$(NVIM_DIR)/?.lua \
+		--lpath=$(NVIM_DIR)/build/?.lua \
+		--lpath=$(NVIM_DIR)/runtime/lua/?.lua \
 		--lpath=$(DEPS_DIR)/?.lua \
 		--lpath=$(PWD)/lua/?.lua \
 		--filter="$(FILTER)" \
