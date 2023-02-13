@@ -47,7 +47,7 @@ test_deps: $(NVIM_DIR)
 export VIMRUNTIME=$(NVIM_DIR)/runtime
 export TEST_COLORS=1
 
-BUSTED = $$( [[ -f $(NVIM_DIR)/test/busted_runner.lua ]] \
+BUSTED = $$( [ -f $(NVIM_DIR)/test/busted_runner.lua ] \
         && echo "$(NVIM_DIR)/build/bin/nvim -ll $(NVIM_DIR)/test/busted_runner.lua" \
         || echo "$(LUAROCKS_INIT) busted" )
 
