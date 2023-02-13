@@ -311,9 +311,9 @@ Will enable `:lua vim.lsp.buf.code_action()` to retrieve code actions from Gitsi
 
 If installed and enabled (via `config.trouble`; defaults to true if installed), `:Gitsigns setqflist` or `:Gitsigns seqloclist` will open Trouble instead of Neovim's built-in quickfix or location list windows.
 
-### [Lspsaga.nvim]
+### [lspsaga.nvim]
 
-if you are using lspsaga.nvim you can config `code_action.extend_gitsigns` (default is true) to show the gitsigns action in lspsaga codeaction.
+If you are using lspsaga.nvim you can config `code_action.extend_gitsigns` (default is true) to show the gitsigns action in lspsaga codeaction.
 
 ## Similar plugins
 
