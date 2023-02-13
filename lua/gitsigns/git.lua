@@ -624,10 +624,20 @@ end
 
 Obj.stage_hunks = function(self, hunks, invert)
    ensure_file_in_index(self)
+
+   local patch = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert)
+
+   if not self.i_crlf and self.w_crlf then
+
+      for i = 1, #patch do
+         patch[i] = patch[i]:gsub('\r$', '')
+      end
+   end
+
    self:command({
       'apply', '--whitespace=nowarn', '--cached', '--unidiff-zero', '-',
    }, {
-      writer = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert),
+      writer = patch,
    })
 end
 
