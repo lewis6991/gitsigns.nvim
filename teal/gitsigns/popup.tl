@@ -162,11 +162,11 @@ function popup.create0(lines: {string}, opts: {string:any}, id: string): integer
   -- Close the popup when navigating to any window which is not the preview
   -- itself.
   local group = 'gitsigns_popup'
-  api.nvim_create_augroup(group, {})
+  local group_id = api.nvim_create_augroup(group, {})
   local old_cursor = api.nvim_win_get_cursor(0)
 
   api.nvim_create_autocmd({'CursorMoved', 'CursorMovedI'}, {
-    group = group,
+    group = group_id,
     callback = function()
       local cursor = api.nvim_win_get_cursor(0)
       -- Did the cursor REALLY change (neovim/neovim#12923)
@@ -181,12 +181,23 @@ function popup.create0(lines: {string}, opts: {string:any}, id: string): integer
     end
   })
 
-  -- update window position to follow the cursor when scrolling
-  api.nvim_create_autocmd({'WinScrolled'}, {
-    buffer = api.nvim_get_current_buf(),
-    group = group,
+  api.nvim_create_autocmd('WinClosed', {
+    pattern = tostring(winid),
+    group = group_id,
     callback = function()
-      api.nvim_win_set_config(winid, opts1)
+      -- Clear the augroup
+      api.nvim_create_augroup(group, {})
+    end
+  })
+
+  -- update window position to follow the cursor when scrolling
+  api.nvim_create_autocmd('WinScrolled', {
+    buffer = api.nvim_get_current_buf(),
+    group = group_id,
+    callback = function()
+      if api.nvim_win_is_valid(winid) then
+        api.nvim_win_set_config(winid, opts1)
+      end
     end
   })
 

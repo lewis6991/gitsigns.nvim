@@ -162,11 +162,11 @@ function popup.create0(lines, opts, id)
 
 
    local group = 'gitsigns_popup'
-   api.nvim_create_augroup(group, {})
+   local group_id = api.nvim_create_augroup(group, {})
    local old_cursor = api.nvim_win_get_cursor(0)
 
    api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
-      group = group,
+      group = group_id,
       callback = function()
          local cursor = api.nvim_win_get_cursor(0)
 
@@ -181,12 +181,23 @@ function popup.create0(lines, opts, id)
       end,
    })
 
-
-   api.nvim_create_autocmd({ 'WinScrolled' }, {
-      buffer = api.nvim_get_current_buf(),
-      group = group,
+   api.nvim_create_autocmd('WinClosed', {
+      pattern = tostring(winid),
+      group = group_id,
       callback = function()
-         api.nvim_win_set_config(winid, opts1)
+
+         api.nvim_create_augroup(group, {})
+      end,
+   })
+
+
+   api.nvim_create_autocmd('WinScrolled', {
+      buffer = api.nvim_get_current_buf(),
+      group = group_id,
+      callback = function()
+         if api.nvim_win_is_valid(winid) then
+            api.nvim_win_set_config(winid, opts1)
+         end
       end,
    })
 
