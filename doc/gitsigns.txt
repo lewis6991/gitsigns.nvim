@@ -802,7 +802,7 @@ current_line_blame_formatter_opts
         • relative_time: boolean
 
 current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
-      Type: `string|function`, Default: `' <author>, <author_time> - <summary>'`
+      Type: `string|function`, Default: `' <author>, <author_time> - <summary> '`
 
       String or function used to format the virtual text of
       |gitsigns-config-current_line_blame|.

@@ -586,7 +586,7 @@ M.schema = {
 
    current_line_blame_formatter = {
       type = { 'string', 'function' },
-      default = ' <author>, <author_time> - <summary>',
+      default = ' <author>, <author_time> - <summary> ',
       description = [[
       String or function used to format the virtual text of
       |gitsigns-config-current_line_blame|.
