@@ -27,7 +27,7 @@ function Status:update(bufnr, status)
    vim.b[bufnr].gitsigns_status = self.formatter(status)
 
    api.nvim_exec_autocmds('User', {
-      pattern = 'GitSignsUpdateDone',
+      pattern = 'GitSignsUpdate',
       modeline = false,
    })
 end
