@@ -140,7 +140,7 @@ local function change_end(hunk)
    end
 end
 
-
+-- Calculate signs needed to be applied from a hunk for a specified line range.
 function M.calc_signs(hunk, min_lnum, max_lnum, untracked)
    assert(not untracked or hunk.type == 'add')
    min_lnum = min_lnum or 1
@@ -324,29 +324,29 @@ local function compare_new(a, b)
    return true
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+-- Return hunks in a using b's hunks as a filter. Only compare the 'new' section
+-- of the hunk.
+--
+-- Eg. Given:
+--
+--       a = {
+--             1 = '@@ -24 +25,1 @@',
+--             2 = '@@ -32 +34,1 @@',
+--             3 = '@@ -37 +40,1 @@'
+--       }
+--
+--       b = {
+--             1 = '@@ -26 +25,1 @@'
+--       }
+--
+-- Since a[1] and b[1] introduce the same changes to the buffer (both have
+-- +25,1), we exclude this hunk in the output so we return:
+--
+--       {
+--             1 = '@@ -32 +34,1 @@',
+--             2 = '@@ -37 +40,1 @@'
+--       }
+--
 function M.filter_common(a, b)
    if not a and not b then
       return

@@ -1,5 +1,5 @@
-
-
+-- Originated from:
+-- https://github.com/norcalli/neovim-plugin/blob/master/lua/neovim-plugin/apply_mappings.lua
 
 local validate = vim.validate
 local api = vim.api

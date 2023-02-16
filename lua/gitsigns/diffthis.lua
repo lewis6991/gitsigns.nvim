@@ -170,7 +170,7 @@ local function should_reload(bufnr)
    return response == 'L'
 end
 
-
+-- This function needs to be throttled as there is a call to vim.ui.input
 M.update = throttle_by_id(void(function(bufnr)
    if not vim.wo.diff then
       return

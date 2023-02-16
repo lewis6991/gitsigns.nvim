@@ -28,7 +28,7 @@ local function bufnr_calc_width(bufnr, lines)
    end)
 end
 
-
+-- Expand height until all lines are visible to account for wrapped lines.
 local function expand_height(winid, nlines)
    local newheight = 0
    for _ = 0, 50 do

@@ -281,10 +281,10 @@ end
 
 local update_cnt = 0
 
-
-
-
-
+-- Ensure updates cannot be interleaved.
+-- Since updates are asynchronous we need to make sure an update isn't performed
+-- whilst another one is in progress. If this happens then schedule another
+-- update after the current one has completed.
 M.update = throttle_by_id(function(bufnr, bcache)
    local __FUNC__ = 'update'
    bcache = bcache or cache[bufnr]

@@ -11,8 +11,8 @@ local M = {}
 
 
 
-
-
+-- Use array of dict so we can iterate deterministically
+-- Export for docgen
 M.hls = {
    { GitSignsAdd = { 'GitGutterAdd', 'SignifySignAdd', 'DiffAddedGutter', 'diffAdded', 'DiffAdd',
 desc = "Used for the text of 'add' signs.",
@@ -198,8 +198,8 @@ local function derive(hl, hldef)
    end
 end
 
-
-
+-- Setup a GitSign* highlight by deriving it from other potentially present
+-- highlights.
 M.setup_highlights = function()
    local dprintf = require("gitsigns.debug").dprintf
    for _, hlg in ipairs(M.hls) do

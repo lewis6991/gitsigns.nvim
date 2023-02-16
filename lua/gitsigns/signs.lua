@@ -5,9 +5,9 @@ local dprint = require('gitsigns.debug').dprint
 
 local B = require('gitsigns.signs.base')
 
-
-
-
+-- local function capitalise_word(x: string): string
+--    return x:sub(1, 1):upper()..x:sub(2)
+-- end
 
 function B.new(cfg, name)
    local __FUNC__ = 'signs.init'

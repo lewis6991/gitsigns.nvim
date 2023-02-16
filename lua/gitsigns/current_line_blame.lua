@@ -43,7 +43,7 @@ local function reset(bufnr)
    vim.b[bufnr].gitsigns_blame_line_dict = nil
 end
 
-
+-- TODO: expose as config
 local max_cache_size = 1000
 
 local BlameCache = {Elem = {}, }
@@ -93,7 +93,7 @@ local function flatten_virt_text(virt_text)
    return table.concat(res)
 end
 
-
+-- Update function, must be called in async context
 local update = void(function()
    local bufnr = current_buf()
    local lnum = api.nvim_win_get_cursor(0)[1]

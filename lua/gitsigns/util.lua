@@ -123,7 +123,7 @@ function M.copy_array(x)
    return r
 end
 
-
+-- Strip '\r' from the EOL of each line only if all lines end with '\r'
 function M.strip_cr(xs0)
    for i = 1, #xs0 do
       if xs0[i]:sub(-1) ~= '\r' then
@@ -162,7 +162,7 @@ local function expand_date(fmt, time)
    return os.date(fmt, time)
 end
 
-
+---@param reltime Use relative time as the default date format
 function M.expand_format(fmt, info, reltime)
    local ret = {}
 

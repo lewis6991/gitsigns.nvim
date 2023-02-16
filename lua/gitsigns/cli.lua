@@ -7,13 +7,13 @@ local message = require('gitsigns.message')
 
 local parse_args = require('gitsigns.cli.argparse').parse_args
 
-
-
-
-
-
-
-
+-- try to parse each argument as a lua boolean, nil or number, if fails then
+-- keep argument as a string:
+--
+--    'false'      -> false
+--    'nil'         -> nil
+--    '100'         -> 100
+--    'HEAD~300' -> 'HEAD~300'
 local function parse_to_lua(a)
    if tonumber(a) then
       return tonumber(a)

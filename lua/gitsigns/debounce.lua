@@ -5,11 +5,11 @@ local M = {}
 
 
 
-
-
-
-
-
+--- Debounces a function on the trailing edge.
+---
+---@param ms (number) Timeout in ms
+---@param fn (function) Function to debounce
+---@returns (function) Debounced function.
 function M.debounce_trailing(ms, fn)
    local timer = uv.new_timer(true)
    return function(...)
@@ -22,11 +22,11 @@ function M.debounce_trailing(ms, fn)
 end
 
 
-
-
-
-
-
+--- Throttles a function on the leading edge.
+---
+--@param ms (number) Timeout in ms
+--@param fn (function) Function to throttle
+--@returns (function) throttled function.
 function M.throttle_leading(ms, fn)
    local timer = uv.new_timer(true)
    local running = false
@@ -42,20 +42,20 @@ function M.throttle_leading(ms, fn)
    end
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+--- Throttles a function using the first argument as an ID
+---
+--- If function is already running then the function will be scheduled to run
+--- again once the running call has finished.
+---
+---   fn#1            _/‾\__/‾\_/‾\_____________________________
+---   throttled#1 _/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\/‾‾‾‾‾‾‾‾‾‾\____________
+--
+---   fn#2            ______/‾\___________/‾\___________________
+---   throttled#2 ______/‾‾‾‾‾‾‾‾‾‾\__/‾‾‾‾‾‾‾‾‾‾\__________
+---
+--
+--@param fn (function) Function to throttle
+--@returns (function) throttled function.
 function M.throttle_by_id(fn, schedule)
    local scheduled = {}
    local running = {}
