@@ -1,6 +1,9 @@
 
 export PJ_ROOT=$(PWD)
 
+# Suppress built in rules. This reduces clutter when running with -d
+MAKEFLAGS += --no-builtin-rules
+
 FILTER ?= .*
 
 LUA_VERSION   := 5.1
@@ -29,14 +32,20 @@ $(NVIM_DIR):
 TL := $(LUAROCKS_TREE)/bin/tl
 
 $(TL):
-	@mkdir -p $@
+	@mkdir -p $$(dirname $@)
 	$(LUAROCKS) --tree $(LUAROCKS_TREE) install tl $(TL_VERSION)
 
 INSPECT := $(LUAROCKS_LPATH)/inspect.lua
 
 $(INSPECT):
-	@mkdir -p $@
+	@mkdir -p $$(dirname $@)
 	$(LUAROCKS) --tree $(LUAROCKS_TREE) install inspect
+
+LUV := $(LUAROCKS_TREE)/lib/lua/$(LUA_VERSION)/luv.so
+
+$(LUV):
+	@mkdir -p $$(dirname $@)
+	$(LUAROCKS) --tree $(LUAROCKS_TREE) install luv
 
 .PHONY: lua_deps
 lua_deps: $(TL) $(INSPECT)
@@ -72,8 +81,9 @@ tl-check: $(TL)
 	$(TL) check teal/*.tl teal/**/*.tl
 
 .PHONY: tl-build
-tl-build: tlconfig.lua $(TL)
+tl-build: tlconfig.lua $(TL) $(LUV)
 	@$(TL) build
+	@$(LUAROCKS_INIT) ./etc/add_comments.lua
 	@echo Updated lua files
 
 .PHONY: gen_help

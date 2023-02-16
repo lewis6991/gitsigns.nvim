@@ -37,7 +37,7 @@ end
 M.path_sep = package.config:sub(1, 1)
 
 function M.buf_lines(bufnr)
-
+   -- nvim_buf_get_lines strips carriage returns if fileformat==dos
    local buftext = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
    if vim.bo[bufnr].fileformat == 'dos' then
       for i = 1, #buftext do
@@ -127,11 +127,11 @@ end
 function M.strip_cr(xs0)
    for i = 1, #xs0 do
       if xs0[i]:sub(-1) ~= '\r' then
-
+         -- don't strip, return early
          return xs0
       end
    end
-
+   -- all lines end with '\r', need to strip
    local xs = vim.deepcopy(xs0)
    for i = 1, #xs do
       xs[i] = xs[i]:sub(1, -2)
@@ -166,8 +166,8 @@ end
 function M.expand_format(fmt, info, reltime)
    local ret = {}
 
-   for _ = 1, 20 do
-
+   for _ = 1, 20 do -- loop protection
+      -- Capture <name> or <name:format>
       local scol, ecol, match, key, time_fmt = fmt:find('(<([^:>]+):?([^>]*)>)')
       if not match then
          break

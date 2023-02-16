@@ -69,7 +69,7 @@ end
 function BlameCache:get(bufnr, lnum)
    if not config._blame_cache then return end
 
-
+   -- init and invalidate
    local tick = vim.b[bufnr].changedtick
    if not self.contents[bufnr] or self.contents[bufnr].tick ~= tick then
       self.contents[bufnr] = { tick = tick, cache = {}, size = 0 }
@@ -100,7 +100,7 @@ local update = void(function()
 
    local old_lnum = get_extmark(bufnr)
    if old_lnum and lnum == old_lnum and BlameCache:get(bufnr, lnum) then
-
+      -- Don't update if on the same line and we already have results
       return
    end
 
@@ -109,23 +109,23 @@ local update = void(function()
       return
    end
 
-
-
-
-
+   -- Set an empty extmark to save the line number.
+   -- This will also clear virt_text.
+   -- Only do this if there was already an extmark to avoid clearing the intro
+   -- text.
    if get_extmark(bufnr) then
       reset(bufnr)
       set_extmark(bufnr, lnum)
    end
 
-
+   -- Can't show extmarks on folded lines so skip
    if vim.fn.foldclosed(lnum) ~= -1 then
       return
    end
 
    local opts = config.current_line_blame_opts
 
-
+   -- Note because the same timer is re-used, this call has a debouncing effect.
    wait_timer(timer, opts.delay, 0)
    scheduler()
 
@@ -144,12 +144,12 @@ local update = void(function()
 
    local lnum1 = api.nvim_win_get_cursor(0)[1]
    if bufnr == current_buf() and lnum ~= lnum1 then
-
+      -- Cursor has moved during events; abort
       return
    end
 
    if not api.nvim_buf_is_loaded(bufnr) then
-
+      -- Buffer is no longer loaded; abort
       return
    end
 
@@ -165,7 +165,7 @@ local update = void(function()
             expand_blame_format(clb_formatter, bcache.git_obj.repo.username, result),
             'GitSignsCurrentLineBlame',
          }, }
-      else
+      else -- function
          virt_text = clb_formatter(
          bcache.git_obj.repo.username,
          result,
@@ -202,8 +202,8 @@ M.setup = function()
          group = group, callback = function() reset() end,
       })
 
-
-
+      -- Call via vim.schedule to avoid the debounce timer killing the async
+      -- coroutine
       vim.schedule(update)
    end
 end

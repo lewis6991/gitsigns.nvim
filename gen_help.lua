@@ -1,6 +1,6 @@
 #!/bin/sh
 _=[[
-exec lua "$0" "$@"
+exec luajit "$0" "$@"
 ]]
 -- Simple script to update the help doc by reading the config schema.
 

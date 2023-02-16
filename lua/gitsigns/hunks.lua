@@ -18,7 +18,7 @@ local M = {Node = {}, Hunk = {}, Hunk_Public = {}, }
 
 
 
-
+   -- For internal use
 
 
 
@@ -60,21 +60,21 @@ function M.create_partial_hunk(hunks, top, bot)
 
       local added_in_range = 0
       if h.added.start >= top and h.vend <= bot then
-
+         -- Range contains hunk
          added_in_range = added_in_hunk
       else
          local added_above_bot = max(0, bot + 1 - (h.added.start + h.removed.count))
          local added_above_top = max(0, top - (h.added.start + h.removed.count))
 
          if h.added.start >= top and h.added.start <= bot then
-
+            -- Range top intersects hunk
             added_in_range = added_above_bot
          elseif h.vend >= top and h.vend <= bot then
-
+            -- Range bottom intersects hunk
             added_in_range = added_in_hunk - added_above_top
             pretop = pretop - added_above_top
          elseif h.added.start <= top and h.vend >= bot then
-
+            -- Range within hunk
             added_in_range = added_above_bot - added_above_top
             pretop = pretop - added_above_top
          end
@@ -112,8 +112,8 @@ end
 function M.parse_diff_line(line)
    local diffkey = vim.trim(vim.split(line, '@@', true)[2])
 
-
-
+   -- diffKey: "-xx,n +yy"
+   -- pre: {xx, n}, now: {yy}
    local pre, now = unpack(vim.tbl_map(function(s)
       return vim.split(string.sub(s, 2), ',')
    end, vim.split(diffkey, ' ')))
@@ -129,13 +129,13 @@ end
 
 local function change_end(hunk)
    if hunk.added.count == 0 then
-
+      -- delete
       return hunk.added.start
    elseif hunk.removed.count == 0 then
-
+      -- add
       return hunk.added.start + hunk.added.count - 1
    else
-
+      -- change
       return hunk.added.start + min(hunk.added.count, hunk.removed.count) - 1
    end
 end
@@ -149,7 +149,7 @@ function M.calc_signs(hunk, min_lnum, max_lnum, untracked)
 
    if hunk.type == 'delete' and start == 0 then
       if min_lnum <= 1 then
-
+         -- topdelete signs get placed one row lower
          return { { type = 'topdelete', count = removed, lnum = 1 } }
       else
          return {}
@@ -364,12 +364,12 @@ function M.filter_common(a, b)
       local a_h, b_h = a[a_i], b[b_i]
 
       if not a_h then
-
+         -- Reached the end of a
          break
       end
 
       if not b_h then
-
+         -- Reached the end of b, add remainder of a
          for i = a_i, #a do
             ret[#ret + 1] = a[i]
          end
@@ -377,17 +377,17 @@ function M.filter_common(a, b)
       end
 
       if a_h.added.start > b_h.added.start then
-
+         -- a pointer is ahead of b; increment b pointer
          b_i = b_i + 1
       elseif a_h.added.start < b_h.added.start then
-
+         -- b pointer is ahead of a; add a_h to ret and increment a pointer
          ret[#ret + 1] = a_h
          a_i = a_i + 1
-      else
-
-
-
-
+      else -- a_h.start == b_h.start
+         -- a_h and b_h start on the same line, if hunks have the same changes then
+         -- skip (filtered) otherwise add a_h to ret. Increment both hunk
+         -- pointers
+         -- TODO(lewis6991): Be smarter; if bh intercepts then break down ah.
          if not compare_new(a_h, b_h) then
             ret[#ret + 1] = a_h
          end

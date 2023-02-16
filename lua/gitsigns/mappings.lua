@@ -6,7 +6,7 @@ local api = vim.api
 
 local valid_modes = {
    n = 'n', v = 'v', x = 'x', i = 'i', o = 'o', t = 't', c = 'c', s = 's',
-
+   -- :map! and :map
    ['!'] = '!', [' '] = '',
 }
 
@@ -38,7 +38,7 @@ local function apply_mappings(mappings, bufnr)
 
    local default_options = {}
    for key, val in pairs(mappings) do
-
+      -- Skip any inline default keywords.
       if valid_options[key] then
          default_options[key] = val
       end
@@ -46,7 +46,7 @@ local function apply_mappings(mappings, bufnr)
 
    for key, opts in pairs(mappings) do
       repeat
-
+         -- Skip any inline default keywords.
          if valid_options[key] then
             break
          end
@@ -76,7 +76,7 @@ local function apply_mappings(mappings, bufnr)
             error("Invalid mode specified for keymapping. mode=" .. mode)
          end
 
-
+         -- In case users haven't updated their config.
          options.buffer = nil
 
          api.nvim_buf_set_keymap(bufnr, mode, mapping, rhs, options)

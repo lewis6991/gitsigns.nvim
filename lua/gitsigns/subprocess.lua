@@ -37,7 +37,7 @@ local function handle_writer(pipe, x)
          end
       end
    elseif x then
-
+      -- write is string
       pipe:write(x, function()
          try_close(pipe)
       end)

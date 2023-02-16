@@ -179,7 +179,7 @@ M.toggle_word_diff = function(value)
    else
       config.word_diff = not config.word_diff
    end
-
+   -- Don't use refresh() to avoid flicker
    api.nvim__buf_redraw_range(0, vim.fn.line('w0') - 1, vim.fn.line('w$'))
    return config.word_diff
 end
@@ -253,7 +253,7 @@ local function get_hunks(bufnr, bcache, greedy, staged)
    local hunks
 
    if greedy then
-
+      -- Re-run the diff without linematch
       local buftext = util.buf_lines(bufnr)
       local text
       if staged then
@@ -445,7 +445,7 @@ M.stage_buffer = void(function()
       return
    end
 
-
+   -- Only process files with existing hunks
    local hunks = bcache.hunks
    if #hunks == 0 then
       print("No unstaged changes in file to stage")
@@ -480,12 +480,12 @@ M.reset_buffer_index = void(function()
       return
    end
 
-
-
-
-
-
-
+   -- `bcache.staged_diffs` won't contain staged changes outside of current
+   -- neovim session so signs added from this unstage won't be complete They will
+   -- however be fixed by gitdir watcher and properly updated We should implement
+   -- some sort of initial population from git diff, after that this function can
+   -- be improved to check if any staged hunks exists and it can undo changes
+   -- using git apply line by line instead of resetting whole file
    bcache.staged_diffs = {}
 
    bcache.git_obj:unstage_file()
@@ -495,12 +495,12 @@ M.reset_buffer_index = void(function()
 end)
 
 local function process_nav_opts(opts)
-
+   -- show navigation message
    if opts.navigation_message == nil then
       opts.navigation_message = not vim.opt.shortmess:get().S
    end
 
-
+   -- wrap around
    if opts.wrap == nil then
       opts.wrap = vim.opt.wrapscan:get()
    end
@@ -559,21 +559,21 @@ local nav_hunk = void(function(opts)
 
    local row = opts.forwards and hunk.added.start or hunk.vend
    if row then
-
+      -- Handle topdelete
       if row == 0 then
          row = 1
       end
-      vim.cmd([[ normal! m' ]])
+      vim.cmd([[ normal! m' ]]) -- add current cursor position to the jump list
       api.nvim_win_set_cursor(0, { row, 0 })
       if opts.foldopen then
          vim.cmd('silent! foldopen!')
       end
       if opts.preview or popup.is_open('hunk') ~= nil then
-
-
+         -- Use defer so the cursor change can settle, otherwise the popup might
+         -- appear in the old position
          defer(function()
-
-
+            -- Close the popup in case one is open which will cause it to focus the
+            -- popup
             popup.close('hunk')
             M.preview_hunk()
          end)
@@ -717,7 +717,7 @@ end
 
 
 M.preview_hunk = noautocmd(function()
-
+   -- Wrap in noautocmd so vim-repeat continues to work
 
    if popup.focus_open('hunk') then
       return
@@ -775,8 +775,8 @@ M.preview_hunk_inline = function()
       once = true,
    })
 
-
-
+   -- Virtual lines will be hidden if cursor is on the top row, so automatically
+   -- scroll the viewport.
    if api.nvim_win_get_cursor(0)[1] == 1 then
       local keys = hunk.removed.count .. '<C-y>'
       local cy = api.nvim_replace_termcodes(keys, true, false, true)
@@ -817,7 +817,7 @@ M.get_hunks = function(bufnr)
    bufnr = bufnr or current_buf()
    if not cache[bufnr] then return end
    local ret = {}
-
+   -- TODO(lewis6991): allow this to accept a greedy option
    for _, h in ipairs(cache[bufnr].hunks or {}) do
       ret[#ret + 1] = {
          head = h.head,
@@ -832,7 +832,7 @@ end
 
 local function get_blame_hunk(repo, info)
    local a = {}
-
+   -- If no previous so sha of blame added the file
    if info.previous then
       a = repo:get_show_text(info.previous_sha .. ':' .. info.previous_filename)
    end
@@ -1040,7 +1040,7 @@ end
 
 
 M.diffthis = function(base, opts)
-
+   -- TODO(lewis6991): can't pass numbers as strings from the command line
    if base ~= nil then
       base = tostring(base)
    end
@@ -1053,7 +1053,7 @@ M.diffthis = function(base, opts)
 end
 
 C.diffthis = function(args, params)
-
+   -- TODO(lewis6991): validate these
    local opts = {
       vertical = args.vertical,
       split = args.split,

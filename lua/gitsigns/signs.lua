@@ -21,22 +21,22 @@ function B.new(cfg, name)
    end
 
    local hls = (name == 'staged' and config._signs_staged or config.signs)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+   -- Add when config.signs.*.[hl,numhl,linehl] are removed
+   -- for _, t in ipairs {
+   --    'add',
+   --    'change',
+   --    'delete',
+   --    'topdelete',
+   --    'changedelete',
+   --    'untracked',
+   -- } do
+   --    local hl = string.format('GitSigns%s%s', name, capitalise_word(t))
+   --    obj.hls[t] = {
+   --       hl       = hl,
+   --       numhl   = hl..'Nr',
+   --       linehl = hl..'Ln',
+   --    }
+   -- end
    return C._new(cfg, hls, name)
 end
 

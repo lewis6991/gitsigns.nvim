@@ -94,7 +94,7 @@ end)
 local gaps_between_regions = 5
 
 local function denoise_hunks(hunks)
-
+   -- Denoise the hunks
    local ret = { hunks[1] }
    for j = 2, #hunks do
       local h, n = ret[#ret], hunks[j]
@@ -122,14 +122,14 @@ function M.run_word_diff(removed, added)
    end
 
    for i = 1, #removed do
-
+      -- pair lines by position
       local a, b = vim.split(removed[i], ''), vim.split(added[i], '')
 
       local hunks = {}
       for _, r in ipairs(run_diff_xdl(a, b)) do
          local rs, rc, as, ac = unpack(r)
 
-
+         -- Balance of the unknown offset done in hunk_func
          if rc == 0 then rs = rs + 1 end
          if ac == 0 then as = as + 1 end
 

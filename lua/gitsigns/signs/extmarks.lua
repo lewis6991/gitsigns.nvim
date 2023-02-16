@@ -19,8 +19,8 @@ function M._new(cfg, hls, name)
 end
 
 function M:on_lines(buf, _, last_orig, last_new)
-
-
+   -- Remove extmarks on line deletions to mimic
+   -- the behaviour of vim signs.
    if last_orig > last_new then
       self:remove(buf, last_new + 1, last_orig)
    end
@@ -36,7 +36,7 @@ end
 
 function M:add(bufnr, signs)
    if not config.signcolumn and not config.numhl and not config.linehl then
-
+      -- Don't place signs if it won't show anything
       return
    end
 

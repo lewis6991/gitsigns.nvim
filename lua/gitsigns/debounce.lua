@@ -61,7 +61,7 @@ function M.throttle_by_id(fn, schedule)
    local running = {}
    return function(id, ...)
       if scheduled[id] then
-
+         -- If fn is already scheduled, then drop
          return
       end
       if not running[id] or schedule then

@@ -6,7 +6,7 @@ local util = require('gitsigns.util')
 local scheduler = require('gitsigns.async').scheduler
 
 local M = {}
-
+   -- Async function
 
 
 
@@ -30,7 +30,7 @@ M.run_diff = function(
 
    local results = {}
 
-
+   -- tmpname must not be called in a callback
    if vim.in_fast_event() then
       scheduler()
    end
@@ -41,21 +41,21 @@ M.run_diff = function(
    write_to_file(file_buf, text_buf)
    write_to_file(file_cmp, text_cmp)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+   -- Taken from gitgutter, diff.vim:
+   --
+   -- If a file has CRLF line endings and git's core.autocrlf is true, the file
+   -- in git's object store will have LF line endings. Writing it out via
+   -- git-show will produce a file with LF line endings.
+   --
+   -- If this last file is one of the files passed to git-diff, git-diff will
+   -- convert its line endings to CRLF before diffing -- which is what we want
+   -- but also by default outputs a warning on stderr.
+   --
+   --    warning: LF will be replace by CRLF in <temp file>.
+   --    The file will have its original line endings in your working directory.
+   --
+   -- We can safely ignore the warning, we turn it off by passing the '-c
+   -- "core.safecrlf=false"' argument to git-diff.
 
    local out = git_diff(file_cmp, file_buf, indent_heuristic, diff_algo)
 

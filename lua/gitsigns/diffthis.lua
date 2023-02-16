@@ -59,8 +59,8 @@ local bufwrite = void(function(bufnr, dbufnr, base, bcache)
    bcache.git_obj:stage_lines(buftext)
    scheduler()
    vim.bo[dbufnr].modified = false
-
-
+   -- If diff buffer base matches the bcache base then also update the
+   -- signs.
    if util.calc_base(base) == util.calc_base(bcache.base) then
       bcache.compare_text = buftext
       manager.update(bufnr, bcache)
@@ -178,8 +178,8 @@ M.update = throttle_by_id(void(function(bufnr)
 
    local bcache = cache[bufnr]
 
-
-
+   -- Note this will be the bufname for the currently set base
+   -- which are the only ones we want to update
    local bufname = bcache:get_rev_bufname()
 
    for _, w in ipairs(api.nvim_list_wins()) do

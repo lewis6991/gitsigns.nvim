@@ -1,6 +1,6 @@
 local warn
 do
-
+   -- this is included in gen_help.lua so don't error if requires fail
    local ok, ret = pcall(require, 'gitsigns.message')
    if ok then
       warn = ret.warn
@@ -120,7 +120,7 @@ local M = {Config = {DiffOpts = {}, SignConfig = {}, watch_gitdir = {}, current_
 
 
 
-
+      -- Undocumented
 
 
 
@@ -442,16 +442,16 @@ M.schema = {
    count_chars = {
       type = 'table',
       default = {
-         [1] = '1',
-         [2] = '2',
-         [3] = '3',
-         [4] = '4',
-         [5] = '5',
-         [6] = '6',
-         [7] = '7',
-         [8] = '8',
-         [9] = '9',
-         ['+'] = '>',
+         [1] = '1', -- '₁',
+         [2] = '2', -- '₂',
+         [3] = '3', -- '₃',
+         [4] = '4', -- '₄',
+         [5] = '5', -- '₅',
+         [6] = '6', -- '₆',
+         [7] = '7', -- '₇',
+         [8] = '8', -- '₈',
+         [9] = '9', -- '₉',
+         ['+'] = '>', -- '₊',
       },
       description = [[
       The count characters used when `signs.*.show_count` is enabled. The
@@ -815,12 +815,12 @@ local function handle_deprecated(cfg)
             if dep.new_field then
                local opts_key, field = dep.new_field:match('(.*)%.(.*)')
                if opts_key and field then
-
+                  -- Field moved to an options table
                   local opts = (cfg[opts_key] or {})
                   opts[field] = cfg[k]
                   cfg[opts_key] = opts
                else
-
+                  -- Field renamed
                   cfg[dep.new_field] = cfg[k]
                end
             end
