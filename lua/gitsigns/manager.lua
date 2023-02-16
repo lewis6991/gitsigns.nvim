@@ -325,6 +325,11 @@ M.update = throttle_by_id(function(bufnr, bcache)
 
       update_show_deleted(bufnr)
       bcache.force_next_update = false
+
+      api.nvim_exec_autocmds('User', {
+         pattern = 'GitSignsUpdate',
+         modeline = false,
+      })
    end
 
    local summary = gs_hunks.get_summary(bcache.hunks)
