@@ -167,6 +167,7 @@ local function check_version(version: {number,number,number}): boolean
   return true
 end
 
+--- @async
 local git_command = async.create(function(args: {string}, spec: GJobSpec): {string}, string
   spec = spec or {}
   spec.command = spec.command or 'git'
@@ -208,6 +209,7 @@ local git_command = async.create(function(args: {string}, spec: GJobSpec): {stri
   return stdout_lines, stderr
 end, 2)
 
+--- @async
 function M.diff(file_cmp: string, file_buf: string, indent_heuristic: boolean, diff_algo: string): {string}, string
   return git_command{
     '-c', 'core.safecrlf=false',
@@ -222,6 +224,7 @@ function M.diff(file_cmp: string, file_buf: string, indent_heuristic: boolean, d
   }
 end
 
+--- @async
 local function process_abbrev_head(gitdir: string, head_str: string, path: string, cmd: string): string
   if not gitdir then
     return head_str
@@ -246,6 +249,7 @@ end
 
 local has_cygpath = jit and jit.os == 'Windows' and vim.fn.executable('cygpath') == 1
 
+--- @async
 local cygpath_convert: function(path: string): string
 
 if has_cygpath then
@@ -263,6 +267,7 @@ local function normalize_path(path: string): string
   return path
 end
 
+--- @async
 function M.get_repo_info(path: string, cmd: string, gitdir: string, toplevel: string): M.RepoInfo
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --   https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
@@ -305,6 +310,7 @@ function M.get_repo_info(path: string, cmd: string, gitdir: string, toplevel: st
   return ret
 end
 
+--- @async
 function M.set_version(version: string)
   if version ~= 'auto' then
     M.version = parse_version(version)
@@ -328,6 +334,7 @@ end
 --------------------------------------------------------------------------------
 
 --- Run git command the with the objects gitdir and toplevel
+--- @async
 function Repo:command(args: {string}, spec: GJobSpec): {string}, string
   spec = spec or {}
   spec.cwd = self.toplevel
@@ -345,6 +352,7 @@ function Repo:command(args: {string}, spec: GJobSpec): {string}, string
   return git_command(args1, spec)
 end
 
+--- @async
 function Repo:files_changed(): {string}
   local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
 
@@ -396,6 +404,7 @@ local function iconv_supported(encoding: string): boolean
 end
 
 --- Get version of file in the index, return array lines
+--- @async
 function Repo:get_show_text(object: string, encoding: string): {string}, string
   local stdout, stderr = self:command({'show', object}, {suppress_stderr = true})
 
@@ -419,10 +428,12 @@ function Repo:get_show_text(object: string, encoding: string): {string}, string
   return stdout, stderr
 end
 
+--- @async
 function Repo:update_abbrev_head()
   self.abbrev_head = M.get_repo_info(self.toplevel).abbrev_head
 end
 
+--- @async
 function Repo.new(dir: string, gitdir: string, toplevel: string): Repo
   local self: Repo = setmetatable({}, {__index = Repo})
 
@@ -452,10 +463,12 @@ end
 --------------------------------------------------------------------------------
 
 --- Run git command the with the objects gitdir and toplevel
+--- @async
 function Obj:command(args: {string}, spec: GJobSpec): {string}, string
   return self.repo:command(args, spec)
 end
 
+--- @async
 function Obj:update_file_info(update_relpath: boolean, silent: boolean): boolean
   local old_object_name = self.object_name
   local props = self:file_info(self.file, silent)
@@ -472,6 +485,7 @@ function Obj:update_file_info(update_relpath: boolean, silent: boolean): boolean
   return old_object_name ~= self.object_name
 end
 
+--- @async
 function Obj:file_info(file: string, silent: boolean): M.FileProps
   local results, stderr = self:command({
     '-c', 'core.quotepath=off',
@@ -514,6 +528,7 @@ function Obj:file_info(file: string, silent: boolean): M.FileProps
   return result
 end
 
+--- @async
 function Obj:get_show_text(revision: string): {string}, string
   if not self.relpath then
     return {}
@@ -531,10 +546,12 @@ function Obj:get_show_text(revision: string): {string}, string
   return stdout, stderr
 end
 
+--- @async
 Obj.unstage_file = function(self: Obj)
   self:command{'reset', self.file }
 end
 
+--- @async
 function Obj:run_blame(lines: {string}, lnum: number, ignore_whitespace: boolean): M.BlameInfo
   if not self.object_name or self.repo.abbrev_head == '' then
     -- As we support attaching to untracked files we need to return something if
@@ -590,6 +607,7 @@ function Obj:run_blame(lines: {string}, lnum: number, ignore_whitespace: boolean
   return ret as M.BlameInfo
 end
 
+--- @async
 local function ensure_file_in_index(obj: Obj)
   if obj.object_name and not obj.has_conflicts then
     return
@@ -609,6 +627,7 @@ local function ensure_file_in_index(obj: Obj)
 end
 
 -- Stage 'lines' as the entire contents of the file
+--- @async
 --- @param lines
 function Obj:stage_lines(lines: {string})
   local stdout = self:command({
@@ -622,6 +641,7 @@ function Obj:stage_lines(lines: {string})
   }
 end
 
+--- @async
 Obj.stage_hunks = function(self: Obj, hunks: {Hunk}, invert: boolean)
   ensure_file_in_index(self)
 
@@ -641,6 +661,7 @@ Obj.stage_hunks = function(self: Obj, hunks: {Hunk}, invert: boolean)
   })
 end
 
+--- @async
 function Obj:has_moved(): string
   local out = self:command{'diff', '--name-status', '-C', '--cached'}
   local orig_relpath = self.orig_relpath or self.relpath
@@ -658,10 +679,11 @@ function Obj:has_moved(): string
   end
 end
 
+--- @async
 function Obj.new(file: string, encoding: string, gitdir: string, toplevel: string): Obj
   if in_git_dir(file) then
-      dprint('In git dir')
-      return nil
+    dprint('In git dir')
+    return nil
   end
   local self: Obj = setmetatable({}, {__index = Obj})
 

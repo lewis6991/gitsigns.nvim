@@ -167,6 +167,7 @@ local function check_version(version)
    return true
 end
 
+
 local git_command = async.create(function(args, spec)
    spec = spec or {}
    spec.command = spec.command or 'git'
@@ -208,6 +209,7 @@ local git_command = async.create(function(args, spec)
    return stdout_lines, stderr
 end, 2)
 
+
 function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
    return git_command({
       '-c', 'core.safecrlf=false',
@@ -221,6 +223,7 @@ function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
       file_buf,
    })
 end
+
 
 local function process_abbrev_head(gitdir, head_str, path, cmd)
    if not gitdir then
@@ -246,6 +249,7 @@ end
 
 local has_cygpath = jit and jit.os == 'Windows' and vim.fn.executable('cygpath') == 1
 
+
 local cygpath_convert
 
 if has_cygpath then
@@ -262,6 +266,7 @@ local function normalize_path(path)
    end
    return path
 end
+
 
 function M.get_repo_info(path, cmd, gitdir, toplevel)
 
@@ -305,6 +310,7 @@ function M.get_repo_info(path, cmd, gitdir, toplevel)
    return ret
 end
 
+
 function M.set_version(version)
    if version ~= 'auto' then
       M.version = parse_version(version)
@@ -328,6 +334,7 @@ end
 
 
 
+
 function Repo:command(args, spec)
    spec = spec or {}
    spec.cwd = self.toplevel
@@ -344,6 +351,7 @@ function Repo:command(args, spec)
 
    return git_command(args1, spec)
 end
+
 
 function Repo:files_changed()
    local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
@@ -396,6 +404,7 @@ local function iconv_supported(encoding)
 end
 
 
+
 function Repo:get_show_text(object, encoding)
    local stdout, stderr = self:command({ 'show', object }, { suppress_stderr = true })
 
@@ -419,9 +428,11 @@ function Repo:get_show_text(object, encoding)
    return stdout, stderr
 end
 
+
 function Repo:update_abbrev_head()
    self.abbrev_head = M.get_repo_info(self.toplevel).abbrev_head
 end
+
 
 function Repo.new(dir, gitdir, toplevel)
    local self = setmetatable({}, { __index = Repo })
@@ -452,9 +463,11 @@ end
 
 
 
+
 function Obj:command(args, spec)
    return self.repo:command(args, spec)
 end
+
 
 function Obj:update_file_info(update_relpath, silent)
    local old_object_name = self.object_name
@@ -471,6 +484,7 @@ function Obj:update_file_info(update_relpath, silent)
 
    return old_object_name ~= self.object_name
 end
+
 
 function Obj:file_info(file, silent)
    local results, stderr = self:command({
@@ -514,6 +528,7 @@ function Obj:file_info(file, silent)
    return result
 end
 
+
 function Obj:get_show_text(revision)
    if not self.relpath then
       return {}
@@ -531,9 +546,11 @@ function Obj:get_show_text(revision)
    return stdout, stderr
 end
 
+
 Obj.unstage_file = function(self)
    self:command({ 'reset', self.file })
 end
+
 
 function Obj:run_blame(lines, lnum, ignore_whitespace)
    if not self.object_name or self.repo.abbrev_head == '' then
@@ -590,6 +607,7 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
    return ret
 end
 
+
 local function ensure_file_in_index(obj)
    if obj.object_name and not obj.has_conflicts then
       return
@@ -610,6 +628,7 @@ end
 
 
 
+
 function Obj:stage_lines(lines)
    local stdout = self:command({
       'hash-object', '-w', '--path', self.relpath, '--stdin',
@@ -621,6 +640,7 @@ function Obj:stage_lines(lines)
       'update-index', '--cacheinfo', string.format('%s,%s,%s', self.mode_bits, new_object, self.relpath),
    })
 end
+
 
 Obj.stage_hunks = function(self, hunks, invert)
    ensure_file_in_index(self)
@@ -641,6 +661,7 @@ Obj.stage_hunks = function(self, hunks, invert)
    })
 end
 
+
 function Obj:has_moved()
    local out = self:command({ 'diff', '--name-status', '-C', '--cached' })
    local orig_relpath = self.orig_relpath or self.relpath
@@ -657,6 +678,7 @@ function Obj:has_moved()
       end
    end
 end
+
 
 function Obj.new(file, encoding, gitdir, toplevel)
    if in_git_dir(file) then
