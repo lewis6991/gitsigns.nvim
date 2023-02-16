@@ -45,18 +45,18 @@ local M = {GitContext = {}, }
 
 local GitContext = M.GitContext
 
-
+--- Detach Gitsigns from all buffers it is attached to.
 function M.detach_all()
    for k, _ in pairs(cache) do
       M.detach(k)
    end
 end
 
-
-
-
-
-
+--- Detach Gitsigns from the buffer {bufnr}. If {bufnr} is not
+--- provided then the current buffer is used.
+---
+--- Parameters: ~
+---       {bufnr}   (number): Buffer number
 function M.detach(bufnr, _keep_signs)
    -- When this is called interactively (with no arguments) we want to remove all
    -- the signs, however if called via a detach event (due to nvim_buf_attach)
@@ -80,7 +80,7 @@ function M.detach(bufnr, _keep_signs)
    cache:destroy(bufnr)
 end
 
-
+-- @return (string, string) Tuple of buffer name and commit
 local function parse_fugitive_uri(name)
    if vim.fn.exists('*FugitiveReal') == 0 then
       dprint("Fugitive not installed")
@@ -193,9 +193,9 @@ local function try_worktrees(_bufnr, file, encoding)
    end
 end
 
-
-
-
+-- Ensure attaches cannot be interleaved.
+-- Since attaches are asynchronous we need to make sure an attach isn't
+-- performed whilst another one is in progress.
 local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
    local __FUNC__ = 'attach'
    if vimgrep_running then
@@ -333,28 +333,28 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
    end
 end)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+--- Attach Gitsigns to the buffer.
+---
+--- Attributes: ~
+---       {async}
+---
+--- Parameters: ~
+---       {bufnr}   (number): Buffer number
+---       {ctx}      (table|nil):
+---                     Git context data that may optionally be used to attach to any
+---                     buffer that represents a real git object.
+---                     • {file}: (string)
+---                        Path to the file represented by the buffer, relative to the
+---                        top-level.
+---                     • {toplevel}: (string)
+---                        Path to the top-level of the parent git repository.
+---                     • {gitdir}: (string)
+---                        Path to the git directory of the parent git repository
+---                        (typically the ".git/" directory).
+---                     • {commit}: (string)
+---                        The git revision that the file belongs to.
+---                     • {base}: (string|nil)
+---                        The git revision that the file should be compared to.
 M.attach = void(function(bufnr, ctx, _trigger)
    attach_throttled(bufnr or current_buf(), ctx, _trigger)
 end)
@@ -402,14 +402,14 @@ local function on_or_after_vimenter(fn)
    end
 end
 
-
-
-
-
-
-
-
-
+--- Setup and start Gitsigns.
+---
+--- Attributes: ~
+---       {async}
+---
+--- Parameters: ~
+---       {cfg} Table object containing configuration for
+---       Gitsigns. See |gitsigns-usage| for more details.
 M.setup = void(function(cfg)
    gs_config.build(cfg)
 

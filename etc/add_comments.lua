@@ -63,7 +63,7 @@ for p in dir('teal') do
 
   local comments = {}
   for i, l in ipairs(lines) do
-    local comment = l:match('%s+%-%-.*')
+    local comment = l:match('%s*%-%-.*')
     if comment then
       comments[i] = comment:gsub('  ', '   ')
     end

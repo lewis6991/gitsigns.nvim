@@ -95,7 +95,7 @@ local M = {QFListOpts = {}, }
 
 
 
-
+-- Variations of functions from M which are used for the Gitsigns command
 local C = {}
 
 
@@ -111,14 +111,14 @@ local function complete_heads(arglead)
    end, all)
 end
 
-
-
-
-
-
-
-
-
+--- Toggle |gitsigns-config-signbooleancolumn|
+---
+--- Parameters:~
+---       {value} boolean|nil Value to set toggle. If `nil`
+---       the toggle value is inverted.
+---
+--- Returns:~
+---       Current value of |gitsigns-config-signcolumn|
 M.toggle_signs = function(value)
    if value ~= nil then
       config.signcolumn = value
@@ -129,14 +129,14 @@ M.toggle_signs = function(value)
    return config.signcolumn
 end
 
-
-
-
-
-
-
-
-
+--- Toggle |gitsigns-config-numhl|
+---
+--- Parameters:~
+---       {value} boolean|nil Value to set toggle. If `nil`
+---       the toggle value is inverted.
+---
+--- Returns:~
+---       Current value of |gitsigns-config-numhl|
 M.toggle_numhl = function(value)
    if value ~= nil then
       config.numhl = value
@@ -147,14 +147,14 @@ M.toggle_numhl = function(value)
    return config.numhl
 end
 
-
-
-
-
-
-
-
-
+--- Toggle |gitsigns-config-linehl|
+---
+--- Parameters:~
+---       {value} boolean|nil Value to set toggle. If `nil`
+---       the toggle value is inverted.
+---
+--- Returns:~
+---       Current value of |gitsigns-config-linehl|
 M.toggle_linehl = function(value)
    if value ~= nil then
       config.linehl = value
@@ -165,14 +165,14 @@ M.toggle_linehl = function(value)
    return config.linehl
 end
 
-
-
-
-
-
-
-
-
+--- Toggle |gitsigns-config-word_diff|
+---
+--- Parameters:~
+---       {value} boolean|nil Value to set toggle. If `nil`
+---       the toggle value is inverted.
+---
+--- Returns:~
+---       Current value of |gitsigns-config-word_diff|
 M.toggle_word_diff = function(value)
    if value ~= nil then
       config.word_diff = value
@@ -184,14 +184,14 @@ M.toggle_word_diff = function(value)
    return config.word_diff
 end
 
-
-
-
-
-
-
-
-
+--- Toggle |gitsigns-config-current_line_blame|
+---
+--- Parameters:~
+---       {value} boolean|nil Value to set toggle. If `nil`
+---       the toggle value is inverted.
+---
+--- Returns:~
+---       Current value of |gitsigns-config-current_line_blame|
 M.toggle_current_line_blame = function(value)
    if value ~= nil then
       config.current_line_blame = value
@@ -202,14 +202,14 @@ M.toggle_current_line_blame = function(value)
    return config.current_line_blame
 end
 
-
-
-
-
-
-
-
-
+--- Toggle |gitsigns-config-show_deleted|
+---
+--- Parameters:~
+---       {value} boolean|nil Value to set toggle. If `nil`
+---       the toggle value is inverted.
+---
+--- Returns:~
+---       Current value of |gitsigns-config-show_deleted|
 M.toggle_deleted = function(value)
    if value ~= nil then
       config.show_deleted = value
@@ -296,25 +296,25 @@ local function get_hunk(bufnr, range, greedy, staged)
    return hunk
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+--- Stage the hunk at the cursor position, or all lines in the
+--- given range. If {range} is provided, all lines in the given
+--- range are staged. This supports partial-hunks, meaning if a
+--- range only includes a portion of a particular hunk, only the
+--- lines within the range will be staged.
+---
+--- Attributes: ~
+---       {async}
+---
+--- Parameters:~
+---       {range} table|nil List-like table of two integers making
+---                   up the line range from which you want to stage the hunks.
+---                   If running via command line, then this is taken from the
+---                   command modifiers.
+---       {opts}   table|nil Additional options:
+---                   • {greedy}: (boolean)
+---                      Stage all contiguous hunks. Only useful if 'diff_opts'
+---                      contains `linematch`. Defaults to `true`.
+---
 M.stage_hunk = mk_repeatable(void(function(range, opts)
    opts = opts or {}
    local bufnr = current_buf()
@@ -352,22 +352,22 @@ C.stage_hunk = function(_, params)
    M.stage_hunk(get_range(params))
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+--- Reset the lines of the hunk at the cursor position, or all
+--- lines in the given range. If {range} is provided, all lines in
+--- the given range are reset. This supports partial-hunks,
+--- meaning if a range only includes a portion of a particular
+--- hunk, only the lines within the range will be reset.
+---
+--- Parameters:~
+---       {range} table|nil List-like table of two integers making
+---                   up the line range from which you want to reset the hunks.
+---                   If running via command line, then this is taken from the
+---                   command modifiers.
+---       {opts}   table|nil Additional options:
+---                   • {greedy}: (boolean)
+---                      Stage all contiguous hunks. Only useful if 'diff_opts'
+---                      contains `linematch`. Defaults to `true`.
+---
 M.reset_hunk = mk_repeatable(void(function(range, opts)
    opts = opts or {}
    local bufnr = current_buf()
@@ -397,7 +397,7 @@ C.reset_hunk = function(_, params)
    M.reset_hunk(get_range(params))
 end
 
-
+--- Reset the lines of all hunks in the buffer.
 M.reset_buffer = function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
@@ -408,13 +408,13 @@ M.reset_buffer = function()
    util.set_lines(bufnr, 0, -1, bcache.compare_text)
 end
 
-
-
-
-
-
-
-
+--- Undo the last call of stage_hunk().
+---
+--- Note: only the calls to stage_hunk() performed in the current
+--- session can be undone.
+---
+--- Attributes: ~
+---       {async}
 M.undo_stage_hunk = void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
@@ -433,10 +433,10 @@ M.undo_stage_hunk = void(function()
    update(bufnr)
 end)
 
-
-
-
-
+--- Stage all hunks in current buffer.
+---
+--- Attributes: ~
+---       {async}
 M.stage_buffer = void(function()
    local bufnr = current_buf()
 
@@ -467,12 +467,12 @@ M.stage_buffer = void(function()
    update(bufnr)
 end)
 
-
-
-
-
-
-
+--- Unstage all hunks for current buffer in the index. Note:
+--- Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
+--- stages, this runs an `git reset` on current buffers file.
+---
+--- Attributes: ~
+---       {async}
 M.reset_buffer_index = void(function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
@@ -514,7 +514,7 @@ local function process_nav_opts(opts)
    end
 end
 
-
+-- Defer function to the next main event
 local function defer(fn)
    if vim.in_fast_event() then
       vim.schedule(fn)
@@ -588,40 +588,40 @@ local nav_hunk = void(function(opts)
    end
 end)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+--- Jump to the next hunk in the current buffer. If a hunk preview
+--- (popup or inline) was previously opened, it will be re-opened
+--- at the next hunk.
+---
+--- Parameters: ~
+---       {opts}   table|nil Configuration table. Keys:
+---                   • {wrap}: (boolean)
+---                      Whether to loop around file or not. Defaults
+---                      to the value 'wrapscan'
+---                   • {navigation_message}: (boolean)
+---                      Whether to show navigation messages or not.
+---                      Looks at 'shortmess' for default behaviour.
+---                   • {foldopen}: (boolean)
+---                      Expand folds when navigating to a hunk which is
+---                      inside a fold. Defaults to `true` if 'foldopen'
+---                      contains `search`.
+---                   • {preview}: (boolean)
+---                      Automatically open preview_hunk() upon navigating
+---                      to a hunk.
+---                   • {greedy}: (boolean)
+---                      Only navigate between non-contiguous hunks. Only useful if
+---                      'diff_opts' contains `linematch`. Defaults to `true`.
 M.next_hunk = function(opts)
    opts = opts or {}
    opts.forwards = true
    nav_hunk(opts)
 end
 
-
-
-
-
-
-
+--- Jump to the previous hunk in the current buffer. If a hunk preview
+--- (popup or inline) was previously opened, it will be re-opened
+--- at the previous hunk.
+---
+--- Parameters: ~
+---       See |gitsigns.next_hunk()|.
 M.prev_hunk = function(opts)
    opts = opts or {}
    opts.forwards = false
@@ -713,9 +713,9 @@ local function noautocmd(f)
    end
 end
 
-
-
-
+--- Preview the hunk at the cursor position in a floating
+--- window. If the preview is already open, calling this
+--- will cause the window to get focus.
 M.preview_hunk = noautocmd(function()
    -- Wrap in noautocmd so vim-repeat continues to work
 
@@ -751,7 +751,7 @@ local function clear_preview_inline(bufnr)
    api.nvim_buf_clear_namespace(bufnr, ns_inline, 0, -1)
 end
 
-
+--- Preview the hunk at the cursor position inline in the buffer.
 M.preview_hunk_inline = function()
    local bufnr = current_buf()
 
@@ -785,7 +785,7 @@ M.preview_hunk_inline = function()
 
 end
 
-
+--- Select the hunk under the cursor.
 M.select_hunk = function()
    local hunk = get_cursor_hunk()
    if not hunk then return end
@@ -793,26 +793,26 @@ M.select_hunk = function()
    vim.cmd('normal! ' .. hunk.added.start .. 'GV' .. hunk.vend .. 'G')
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+--- Get hunk array for specified buffer.
+---
+--- Parameters: ~
+---       {bufnr} integer: Buffer number, if not provided (or 0)
+---                   will use current buffer.
+---
+--- Return: ~
+---      Array of hunk objects. Each hunk object has keys:
+---         • `"type"`: String with possible values: "add", "change",
+---            "delete"
+---         • `"head"`: Header that appears in the unified diff
+---            output.
+---         • `"lines"`: Line contents of the hunks prefixed with
+---            either `"-"` or `"+"`.
+---         • `"removed"`: Sub-table with fields:
+---            • `"start"`: Line number (1-based)
+---            • `"count"`: Line count
+---         • `"added"`: Sub-table with fields:
+---            • `"start"`: Line number (1-based)
+---            • `"count"`: Line count
 M.get_hunks = function(bufnr)
    bufnr = bufnr or current_buf()
    if not cache[bufnr] then return end
@@ -871,20 +871,20 @@ local function create_blame_fmt(is_committed, full)
    }
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+--- Run git blame on the current line and show the results in a
+--- floating window. If already open, calling this will cause the
+--- window to get focus.
+---
+--- Parameters: ~
+---       {opts}    (table|nil):
+---                     Additional options:
+---                     • {full}: (boolean)
+---                        Display full commit message with hunk.
+---                     • {ignore_whitespace}: (boolean)
+---                        Ignore whitespace when running blame.
+---
+--- Attributes: ~
+---       {async}
 M.blame_line = void(function(opts)
    if popup.focus_open('blame') then
       return
@@ -938,39 +938,39 @@ local function update_buf_base(buf, bcache, base)
    update(buf)
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+--- Change the base revision to diff against. If {base} is not
+--- given, then the original base is used. If {global} is given
+--- and true, then change the base revision of all buffers,
+--- including any new buffers.
+---
+--- Attributes: ~
+---       {async}
+---
+--- Parameters:~
+---       {base} string|nil The object/revision to diff against.
+---       {global} boolean|nil Change the base of all buffers.
+---
+--- Examples: >
+---    " Change base to 1 commit behind head
+---    :lua require('gitsigns').change_base('HEAD~1')
+---
+---    " Also works using the Gitsigns command
+---    :Gitsigns change_base HEAD~1
+---
+---    " Other variations
+---    :Gitsigns change_base ~1
+---    :Gitsigns change_base ~
+---    :Gitsigns change_base ^
+---
+---    " Commits work too
+---    :Gitsigns change_base 92eb3dd
+---
+---    " Revert to original base
+---    :Gitsigns change_base
+--- <
+---
+--- For a more complete list of ways to specify bases, see
+--- |gitsigns-revision|.
 M.change_base = void(function(base, global)
    base = util.calc_base(base)
 
@@ -995,10 +995,10 @@ end
 
 CP.change_base = complete_heads
 
-
-
-
-
+--- Reset the base revision to diff against back to the
+--- index.
+---
+--- Alias for `change_base(nil, {global})` .
 M.reset_base = function(global)
    M.change_base(nil, global)
 end
@@ -1007,38 +1007,38 @@ C.reset_base = function(args, _)
    M.change_base(nil, (args[1] or args.global))
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+--- Perform a |vimdiff| on the given file with {base} if it is
+--- given, or with the currently set base (index by default).
+---
+--- If {base} is the index, then the opened buffer is editable and
+--- any written changes will update the index accordingly.
+---
+--- Parameters: ~
+---       {base}    (string|nil): Revision to diff against. Defaults
+---                     to index.
+---       {opts}    (table|nil):
+---                     Additional options:
+---                     • {vertical}: {boolean}. Split window vertically. Defaults to
+---                     config.diff_opts.vertical. If running via command line, then
+---                     this is taken from the command modifiers.
+---                     • {split}: {string}. One of: 'aboveleft', 'belowright',
+---                     'botright', 'rightbelow', 'leftabove', 'topleft'. Defaults to
+---                     'aboveleft'. If running via command line, then this is taken
+---                     from the command modifiers.
+---
+--- Examples: >
+---    " Diff against the index
+---    :Gitsigns diffthis
+---
+---    " Diff against the last commit
+---    :Gitsigns diffthis ~1
+--- <
+---
+--- For a more complete list of ways to specify bases, see
+--- |gitsigns-revision|.
+---
+--- Attributes: ~
+---       {async}
 M.diffthis = function(base, opts)
    -- TODO(lewis6991): can't pass numbers as strings from the command line
    if base ~= nil then
@@ -1073,31 +1073,31 @@ end
 
 CP.diffthis = complete_heads
 
+-- C.test = function(pos_args: {any}, named_args: {string:any}, params: api.UserCmdParams)
+--    print('POS ARGS:', vim.inspect(pos_args))
+--    print('NAMED ARGS:', vim.inspect(named_args))
+--    print('PARAMS:', vim.inspect(params))
+-- end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+--- Show revision {base} of the current file, if it is given, or
+--- with the currently set base (index by default).
+---
+--- If {base} is the index, then the opened buffer is editable and
+--- any written changes will update the index accordingly.
+---
+--- Examples: >
+---    " View the index version of the file
+---    :Gitsigns show
+---
+---    " View revision of file in the last commit
+---    :Gitsigns show ~1
+--- <
+---
+--- For a more complete list of ways to specify bases, see
+--- |gitsigns-revision|.
+---
+--- Attributes: ~
+---       {async}
 M.show = function(revision)
    local diffthis = require('gitsigns.diffthis')
    diffthis.show(revision)
@@ -1161,34 +1161,34 @@ local function buildqflist(target)
    return qflist
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+--- Populate the quickfix list with hunks. Automatically opens the
+--- quickfix window.
+---
+--- Attributes: ~
+---       {async}
+---
+--- Parameters: ~
+---       {target} (integer or string):
+---                     Specifies which files hunks are collected from.
+---                     Possible values.
+---                     • [integer]: The buffer with the matching buffer
+---                        number. `0` for current buffer (default).
+---                     • `"attached"`: All attached buffers.
+---                     • `"all"`: All modified files for each git
+---                        directory of all attached buffers in addition
+---                        to the current working directory.
+---       {opts}    (table|nil):
+---                     Additional options:
+---                     • {use_location_list}: (boolean)
+---                        Populate the location list instead of the
+---                        quickfix list. Default to `false`.
+---                     • {nr}: (integer)
+---                        Window number or ID when using location list.
+---                        Expand folds when navigating to a hunk which is
+---                        inside a fold. Defaults to `0`.
+---                     • {open}: (boolean)
+---                        Open the quickfix/location list viewer.
+---                        Defaults to `true`.
 M.setqflist = void(function(target, opts)
    opts = opts or {}
    if opts.open == nil then
@@ -1221,18 +1221,18 @@ M.setqflist = void(function(target, opts)
    end
 end)
 
-
-
-
-
-
-
-
-
-
-
-
-
+--- Populate the location list with hunks. Automatically opens the
+--- location list window.
+---
+--- Alias for: `setqflist({target}, { use_location_list = true, nr = {nr} }`
+---
+--- Attributes: ~
+---       {async}
+---
+--- Parameters: ~
+---       {nr}       (integer): Window number or the |window-ID|.
+---                     `0` for the current window (default).
+---       {target} (integer or string): See |gitsigns.setqflist()|.
 M.setloclist = function(nr, target)
    M.setqflist(target, {
       nr = nr,
@@ -1240,12 +1240,12 @@ M.setloclist = function(nr, target)
    })
 end
 
-
-
-
-
-
-
+--- Get all the available line specific actions for the current
+--- buffer at the cursor position.
+---
+--- Return: ~
+---       Dictionary of action name to function which when called
+---       performs action.
 M.get_actions = function()
    local bufnr = current_buf()
    local bcache = cache[bufnr]
@@ -1281,10 +1281,10 @@ M.get_actions = function()
    return actions
 end
 
-
-
-
-
+--- Refresh all buffers.
+---
+--- Attributes: ~
+---       {async}
 M.refresh = void(function()
    manager.reset_signs()
    require('gitsigns.highlight').setup_highlights()

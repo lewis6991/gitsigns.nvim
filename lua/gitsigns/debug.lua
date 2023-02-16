@@ -52,8 +52,8 @@ local function get_context(lvl)
    return ret
 end
 
-
-
+-- If called in a callback then make sure the callback defines a __FUNC__
+-- variable which can be used to identify the name of the function.
 local function cprint(obj, lvl)
    lvl = lvl + 1
    local msg = type(obj) == "string" and obj or vim.inspect(obj)
