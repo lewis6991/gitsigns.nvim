@@ -1,5 +1,5 @@
 
-
+   -- Order by highest number of return types
 
 
 
@@ -26,12 +26,12 @@ local M = {}
 
 local Async_T = {}
 
-
-
-
-
-
-
+   -- Handle for an object currently running on the event loop.
+   -- The coroutine is paused while this is active.
+   -- Must provide methods cancel() and is_cancelled()
+   --
+   -- Handle gets updated on each call to a wrapped functions, so provide access
+   -- to it via a proxy
 
 
 
@@ -75,7 +75,7 @@ end
 
 
 function Async_T:cancel(cb)
-
+   -- Cancel anything running on the event loop
    if self._current and not self._current:is_cancelled() then
       self._current:cancel(cb)
    end
@@ -131,8 +131,8 @@ local function run(func, callback, ...)
 end
 
 function M.wait(argc, func, ...)
-
-
+   -- Always run the wrapped functions in xpcall and re-raise the error in the
+   -- coroutine. This makes pcall work as normal.
    local function pfunc(...)
       local args = { ... }
       local cb = args[argc]

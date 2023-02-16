@@ -39,14 +39,14 @@ function M.complete(funcs, arglead, line)
       for _, m in ipairs({ actions, funcs }) do
          for func, _ in pairs(m) do
             if not func:match('^[a-z]') then
-
+               -- exclude
             elseif vim.startswith(func, arglead) then
                table.insert(matches, func)
             end
          end
       end
    elseif n > 2 then
-
+      -- Subcommand completion
       local cmp_func = actions._get_cmp_func(words[2])
       if cmp_func then
          return cmp_func(arglead)
@@ -75,8 +75,8 @@ M.run = void(function(funcs, params)
 
    local cmd_func = actions._get_cmd_func(func)
    if cmd_func then
-
-
+      -- Action has a specialised mapping function from command form to lua
+      -- function
       cmd_func(args, params)
       return
    end
@@ -87,7 +87,7 @@ M.run = void(function(funcs, params)
    end
 
    if type(funcs[func]) == 'function' then
-
+      -- Note functions here do not have named arguments
       funcs[func](unpack(pos_args))
       return
    end

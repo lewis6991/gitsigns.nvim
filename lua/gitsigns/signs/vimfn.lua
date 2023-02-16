@@ -54,7 +54,7 @@ local function define_sign(name, opts, redefine)
 end
 
 local function define_signs(obj, redefine)
-
+   -- Define signs
    for stype, cs in pairs(obj.config) do
       local hls = obj.hls[stype]
       define_sign(get_sign_name(stype), {
@@ -100,7 +100,7 @@ end
 
 function M:add(bufnr, signs)
    if not config.signcolumn and not config.numhl and not config.linehl then
-
+      -- Don't place signs if it won't show anything
       return
    end
 

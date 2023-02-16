@@ -14,7 +14,7 @@ local M = {CacheEntry = {}, CacheObj = {}, }
 
 
 
-
+ -- Timer object watching the gitdir
 
 
 
@@ -44,7 +44,7 @@ function CacheEntry:get_compare_rev(base)
    end
 
    if self.commit then
-
+      -- Buffer is a fugitive commit so compare against the parent of the commit
       if config._signs_staged_enable then
          return self.commit
       else

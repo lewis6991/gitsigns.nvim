@@ -54,14 +54,14 @@ end, 2)
 
 local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked)
    if clear then
-      signs:remove(bufnr)
+      signs:remove(bufnr)   -- Remove all signs
    end
 
    for i, hunk in ipairs(hunks or {}) do
-
-
-
-
+      -- To stop the sign column width changing too much, if there are signs to be
+      -- added but none of them are visible in the window, then make sure to add at
+      -- least one sign. Only do this on the first call after an update when we all
+      -- the signs have been cleared.
       if clear and i == 1 then
          signs:add(bufnr, gs_hunks.calc_signs(hunk, hunk.added.start, hunk.added.start, untracked))
       end
@@ -98,16 +98,16 @@ M.on_lines = function(buf, first, last_orig, last_new)
       signs_staged:on_lines(buf, first, last_orig, last_new)
    end
 
-
-
+   -- Signs in changed regions get invalidated so we need to force a redraw if
+   -- any signs get removed.
    if bcache.hunks and signs_normal:contains(buf, first, last_new) then
-
+      -- Force a sign redraw on the next update (fixes #521)
       bcache.force_next_update = true
    end
 
    if signs_staged then
       if bcache.hunks_staged and signs_staged:contains(buf, first, last_new) then
-
+         -- Force a sign redraw on the next update (fixes #521)
          bcache.force_next_update = true
       end
    end
@@ -118,7 +118,7 @@ end
 local ns = api.nvim_create_namespace('gitsigns')
 
 local function apply_word_diff(bufnr, row)
-
+   -- Don't run on folded lines
    if vim.fn.foldclosed(row + 1) ~= -1 then
       return
    end
@@ -131,7 +131,7 @@ local function apply_word_diff(bufnr, row)
 
    local line = api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1]
    if not line then
-
+      -- Invalid line
       return
    end
 
@@ -139,12 +139,12 @@ local function apply_word_diff(bufnr, row)
 
    local hunk = gs_hunks.find_hunk(lnum, bcache.hunks)
    if not hunk then
-
+      -- No hunk at line
       return
    end
 
    if hunk.added.count ~= hunk.removed.count then
-
+      -- Only word diff if added count == removed
       return
    end
 
@@ -160,7 +160,7 @@ local function apply_word_diff(bufnr, row)
    for _, region in ipairs(added_regions) do
       local rtype, scol, ecol = region[2], region[3] - 1, region[4] - 1
       if ecol == scol then
-
+         -- Make sure region is at least 1 column wide so deletes can be shown
          ecol = scol + 1
       end
 
@@ -174,7 +174,7 @@ local function apply_word_diff(bufnr, row)
       }
 
       if ecol > cols and ecol == scol + 1 then
-
+         -- delete on last column, use virtual text instead
          opts.virt_text = { { ' ', hl_group } }
          opts.virt_text_pos = 'overlay'
       else
@@ -224,7 +224,7 @@ function M.show_deleted(bufnr, nsd, hunk)
          vline[#vline + 1] = { line:sub(last_ecol, -1), 'GitSignsDeleteVirtLn' }
       end
 
-
+      -- Add extra padding so the entire line is highlighted
       local padding = string.rep(' ', VIRT_LINE_LEN - #line)
       vline[#vline + 1] = { padding, 'GitSignsDeleteVirtLn' }
 
@@ -236,7 +236,7 @@ function M.show_deleted(bufnr, nsd, hunk)
    local row = topdelete and 0 or hunk.added.start - 1
    api.nvim_buf_set_extmark(bufnr, nsd, row, -1, {
       virt_lines = virt_lines,
-
+      -- TODO(lewis6991): Note virt_lines_above doesn't work on row 0 neovim/neovim#16166
       virt_lines_above = hunk.type ~= 'delete' or topdelete,
    })
 end
@@ -315,12 +315,12 @@ M.update = throttle_by_id(function(bufnr, bcache)
 
    scheduler_if_buf_valid(bufnr)
 
-
-
+   -- Note the decoration provider may have invalidated bcache.hunks at this
+   -- point
    if bcache.force_next_update or gs_hunks.compare_heads(bcache.hunks, old_hunks) or
       gs_hunks.compare_heads(bcache.hunks_staged, old_hunks_staged) then
-
-
+      -- Apply signs to the window. Other signs will be added by the decoration
+      -- provider as they are drawn.
       apply_win_signs(bufnr, vim.fn.line('w0'), vim.fn.line('w$'), true, git_obj.object_name == nil)
 
       update_show_deleted(bufnr)
@@ -343,7 +343,7 @@ end, true)
 
 M.detach = function(bufnr, keep_signs)
    if not keep_signs then
-
+      -- Remove all signs
       signs_normal:remove(bufnr)
       if signs_staged then
          signs_staged:remove(bufnr)
@@ -372,7 +372,7 @@ local function handle_moved(bufnr, bcache, old_relpath)
          do_update = true
       end
    else
-
+      -- File removed from index, do nothing
    end
 
    if do_update then
@@ -412,9 +412,9 @@ function M.watch_gitdir(bufnr, gitdir)
       local bcache = cache[bufnr]
 
       if not bcache then
-
-
-
+         -- Very occasionally an external git operation may cause the buffer to
+         -- detach and update the git dir simultaneously. When this happens this
+         -- handler will trigger but there will be no cache.
          dprint('Has detached, aborting')
          return
       end
@@ -432,8 +432,8 @@ function M.watch_gitdir(bufnr, gitdir)
       git_obj:update_file_info()
 
       if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
-
-
+         -- File was tracked but is no longer tracked. Must of been removed or
+         -- moved. Check if it was moved and switch to it.
          handle_moved(bufnr, bcache, old_relpath)
       end
 
@@ -456,7 +456,7 @@ M.update_cwd_head = void(function()
    local cwd = vim.loop.cwd()
    local gitdir, head
 
-
+   -- Look in the cache first
    for _, bcache in pairs(cache) do
       local repo = bcache.git_obj.repo
       if repo.toplevel == cwd then
@@ -482,11 +482,11 @@ M.update_cwd_head = void(function()
    local towatch = gitdir .. '/HEAD'
 
    if cwd_watcher:getpath() == towatch then
-
+      -- Already watching
       return
    end
 
-
+   -- Watch .git/HEAD to detect branch changes
    cwd_watcher:start(
    towatch,
    config.watch_gitdir.interval,
@@ -506,7 +506,7 @@ M.update_cwd_head = void(function()
 end)
 
 function M.reset_signs()
-
+   -- Remove all signs
    signs_normal:reset()
    if signs_staged then
       signs_staged:reset()
@@ -534,8 +534,8 @@ local function on_line(_, _, bufnr, row)
 end
 
 function M.setup()
-
-
+   -- Calling this before any await calls will stop nvim's intro messages being
+   -- displayed
    api.nvim_set_decoration_provider(ns, {
       on_win = on_win,
       on_line = on_line,

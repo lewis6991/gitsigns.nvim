@@ -9,7 +9,7 @@ local function getvarvalue(name, lvl)
    local value
    local found
 
-
+   -- try local variables
    local i = 1
    while true do
       local n, v = debug.getlocal(lvl, i)
@@ -22,7 +22,7 @@ local function getvarvalue(name, lvl)
    end
    if found then return value end
 
-
+   -- try upvalues
    local func = debug.getinfo(lvl).func
    i = 1
    while true do
@@ -32,7 +32,7 @@ local function getvarvalue(name, lvl)
       i = i + 1
    end
 
-
+   -- not found; get global
    return getfenv(func)[name]
 end
 
