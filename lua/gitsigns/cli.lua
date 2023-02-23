@@ -1,11 +1,21 @@
 local async = require('gitsigns.async')
 local void = require('gitsigns.async').void
 
-local gs_debug = require("gitsigns.debug")
-local dprintf = gs_debug.dprintf
+local log = require('gitsigns.debug.log')
+local dprintf = log.dprintf
 local message = require('gitsigns.message')
 
 local parse_args = require('gitsigns.cli.argparse').parse_args
+
+local actions = require('gitsigns.actions')
+local attach = require('gitsigns.attach')
+local gs_debug = require('gitsigns.debug')
+
+local sources = {
+   [actions] = true,
+   [attach] = false,
+   [gs_debug] = false,
+}
 
 -- try to parse each argument as a lua boolean, nil or number, if fails then
 -- keep argument as a string:
@@ -29,14 +39,13 @@ local M = {}
 
 
 
-function M.complete(funcs, arglead, line)
+function M.complete(arglead, line)
    local words = vim.split(line, '%s+')
    local n = #words
 
-   local actions = require('gitsigns.actions')
    local matches = {}
    if n == 2 then
-      for _, m in ipairs({ actions, funcs }) do
+      for m, _ in pairs(sources) do
          for func, _ in pairs(m) do
             if not func:match('^[a-z]') then
                -- exclude
@@ -55,21 +64,19 @@ function M.complete(funcs, arglead, line)
    return matches
 end
 
-M.run = void(function(funcs, params)
+M.run = void(function(params)
+   local __FUNC__ = 'cli.run'
    local pos_args_raw, named_args_raw = parse_args(params.args)
 
    local func = pos_args_raw[1]
 
    if not func then
-      func = async.wrap(vim.ui.select, 3)(M.complete(funcs, '', 'Gitsigns '), {})
+      func = async.wrap(vim.ui.select, 3)(M.complete('', 'Gitsigns '), {})
    end
 
    local pos_args = vim.tbl_map(parse_to_lua, vim.list_slice(pos_args_raw, 2))
    local named_args = vim.tbl_map(parse_to_lua, named_args_raw)
    local args = vim.tbl_extend('error', pos_args, named_args)
-
-   local actions = require('gitsigns.actions')
-   local actions0 = actions
 
    dprintf("Running action '%s' with arguments %s", func, vim.inspect(args, { newline = ' ', indent = '' }))
 
@@ -81,15 +88,13 @@ M.run = void(function(funcs, params)
       return
    end
 
-   if type(actions0[func]) == 'function' then
-      actions0[func](unpack(pos_args), named_args)
-      return
-   end
-
-   if type(funcs[func]) == 'function' then
-      -- Note functions here do not have named arguments
-      funcs[func](unpack(pos_args))
-      return
+   for m, has_named in pairs(sources) do
+      local f = (m)[func]
+      if type(f) == "function" then
+         -- Note functions here do not have named arguments
+         f(unpack(pos_args), has_named and named_args or nil)
+         return
+      end
    end
 
    message.error('%s is not a valid function or action', func)

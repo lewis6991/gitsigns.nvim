@@ -135,6 +135,7 @@ local M = {Config = {DiffOpts = {}, SignConfig = {}, watch_gitdir = {}, current_
 
 
 
+
 M.config = {}
 
 M.schema = {
@@ -710,6 +711,11 @@ M.schema = {
       description = [[
       More verbose debug message. Requires debug_mode=true.
     ]],
+   },
+
+   _test_mode = {
+      type = 'boolean',
+      default = false,
    },
 
    word_diff = {

@@ -335,6 +335,7 @@ local function get_marker_text(marker)
     CONFIG    = gen_config_doc,
     FUNCTIONS = gen_functions_doc{
       'teal/gitsigns.tl',
+      'teal/gitsigns/attach.tl',
       'teal/gitsigns/actions.tl',
     },
     HIGHLIGHTS = gen_highlights_doc,

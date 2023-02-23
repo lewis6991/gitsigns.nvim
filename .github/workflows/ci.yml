@@ -7,9 +7,6 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-env:
-  CC: clang
-
 jobs:
   commit_lint:
     runs-on: ubuntu-latest
@@ -21,7 +18,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        neovim_branch: ['v0.7.2', 'v0.8.3', 'nightly']
+        neovim_branch: ['v0.8.3', 'nightly']
     runs-on: ubuntu-latest
     env:
       NEOVIM_BRANCH: ${{ matrix.neovim_branch }}
@@ -29,14 +26,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
-      - name: Install LuaJIT
-        uses: leafo/gh-actions-lua@v9
-        with:
-          luaVersion: "luajit-2.1.0-beta3"
-
-      - name: Install Luarocks
-        uses: leafo/gh-actions-luarocks@v4
 
       - name: Get Neovim SHA
         id: get-nvim-sha
@@ -49,12 +38,6 @@ jobs:
         with:
           path: deps
           key: ${{ steps.get-nvim-sha.outputs.sha }}-${{ hashFiles('.github/workflows/ci.yml, Makefile') }}
-
-      - name: Install Lua Deps
-        run: make lua_deps
-
-      - name: Check lua files are built from latest teal
-        run: make tl-ensure
 
       - name: Install Neovim build dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true'
@@ -77,6 +60,12 @@ jobs:
       - name: Build Neovim
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: make test_deps
+
+      - name: Install Lua Deps
+        run: make lua_deps
+
+      - name: Check lua files are built from latest teal
+        run: make tl-ensure
 
       - name: Run Test
         run: make test

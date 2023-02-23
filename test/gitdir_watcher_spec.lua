@@ -41,30 +41,26 @@ describe('gitdir_watcher', function()
   end)
 
   it('can follow moved files', function()
-    local screen = Screen.new(20, 17)
-    screen:attach({ext_messages=false})
     setup_test_repo()
     setup_gitsigns(test_config)
     command('Gitsigns clear_debug')
     edit(test_file)
 
-    local test_file2 = test_file..'2'
-    local test_file3 = test_file..'3'
-
     match_debug_messages {
-      'attach(1): Attaching (trigger=BufRead)',
+      'attach(1): Attaching (trigger=BufReadPost)',
       p"run_job: git .* config user.name",
       p"run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD",
       p('run_job: git .* ls%-files .* '..helpers.pesc(test_file)),
       'watch_gitdir(1): Watching git dir',
       p'run_job: git .* show :0:dummy.txt',
-      'update(1): updates: 1, jobs: 6',
+      'update(1): updates: 1, jobs: 5',
     }
 
     eq({[1] = test_file}, get_bufs())
 
     command('Gitsigns clear_debug')
 
+    local test_file2 = test_file..'2'
     git{'mv', test_file, test_file2}
 
     match_debug_messages {
@@ -76,13 +72,14 @@ describe('gitdir_watcher', function()
       p('run_job: git .* ls%-files .* '..helpers.pesc(test_file2)),
       p'handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt to .*/dummy.txt2',
       p'run_job: git .* show :0:dummy.txt2',
-      'update(1): updates: 2, jobs: 11'
+      'update(1): updates: 2, jobs: 10'
     }
 
     eq({[1] = test_file2}, get_bufs())
 
     command('Gitsigns clear_debug')
 
+    local test_file3 = test_file..'3'
     git{'mv', test_file2, test_file3}
 
     match_debug_messages {
@@ -94,7 +91,7 @@ describe('gitdir_watcher', function()
       p('run_job: git .* ls%-files .* '..helpers.pesc(test_file3)),
       p'handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt2 to .*/dummy.txt3',
       p'run_job: git .* show :0:dummy.txt3',
-      'update(1): updates: 3, jobs: 16'
+      'update(1): updates: 3, jobs: 15'
     }
 
     eq({[1] = test_file3}, get_bufs())
@@ -113,7 +110,7 @@ describe('gitdir_watcher', function()
       p('run_job: git .* ls%-files .* '..helpers.pesc(test_file)),
       p'handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt3 to .*/dummy.txt',
       p'run_job: git .* show :0:dummy.txt',
-      'update(1): updates: 4, jobs: 22'
+      'update(1): updates: 4, jobs: 21'
     }
 
     eq({[1] = test_file}, get_bufs())

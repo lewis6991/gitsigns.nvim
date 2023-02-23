@@ -226,6 +226,10 @@ local record M
   end
 
   is_thread: function(): boolean
+
+  record fs
+    find: function(string|{string}, table): {string}
+  end
 end
 
 return M

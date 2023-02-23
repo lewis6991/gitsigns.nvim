@@ -83,18 +83,18 @@ describe('gitsigns', function()
     -- Don't set this too low, or else the test will lock up
     config.watch_gitdir = {interval = 100}
     setup_gitsigns(config)
+    command('Gitsigns clear_debug')
     edit(test_file)
 
     expectf(function()
       match_dag(debug_messages(), {
-        p'run_job: git .* %-%-version',
-        'attach(1): Attaching (trigger=BufRead)',
+        'attach(1): Attaching (trigger=BufReadPost)',
         p'run_job: git .* config user.name',
         p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
         p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..helpers.pesc(test_file)),
         'watch_gitdir(1): Watching git dir',
         p'run_job: git .* show :0:dummy.txt',
-        'update(1): updates: 1, jobs: 7'
+        'update(1): updates: 1, jobs: 6'
       })
     end)
 
@@ -118,7 +118,7 @@ describe('gitsigns', function()
     edit(tmpfile)
 
     match_debug_messages {
-      'attach(1): Attaching (trigger=BufRead)',
+      'attach(1): Attaching (trigger=BufReadPost)',
       p'run_job: git .* config user.name',
       p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
       'new: Not in git repo',
@@ -167,7 +167,7 @@ describe('gitsigns', function()
       edit(scratch..'/.git/index')
 
       match_debug_messages {
-        'attach(1): Attaching (trigger=BufRead)',
+        'attach(1): Attaching (trigger=BufReadPost)',
         'new: In git dir',
         'attach(1): Empty git obj'
       }
@@ -183,7 +183,7 @@ describe('gitsigns', function()
       edit(ignored_file)
 
       match_debug_messages {
-        'attach(1): Attaching (trigger=BufRead)',
+        'attach(1): Attaching (trigger=BufReadPost)',
         p'run_job: git .* config user.name',
         p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
         p'run_job: git .* ls%-files .*/dummy_ignored.txt',
@@ -225,7 +225,7 @@ describe('gitsigns', function()
       command("Gitsigns clear_debug")
       command("copen")
       match_debug_messages {
-        'attach(2): Attaching (trigger=BufRead)',
+        'attach(2): Attaching (trigger=BufReadPost)',
         'attach(2): Non-normal buffer',
       }
     end)
@@ -349,7 +349,7 @@ describe('gitsigns', function()
 
       edit(test_file)
       match_debug_messages {
-        'attach(1): Attaching (trigger=BufRead)',
+        'attach(1): Attaching (trigger=BufReadPost)',
         p'run_job: git .* config user.name',
         p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
         p'run_job: git .* rev%-parse %-%-short HEAD',
@@ -484,7 +484,7 @@ describe('gitsigns', function()
           table.insert(messages, p'run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*')
         end
 
-        local jobs = internal_diff and 9 or 10
+        local jobs = internal_diff and 8 or 9
         table.insert(messages, "update(1): updates: 1, jobs: "..jobs)
 
         match_debug_messages(messages)

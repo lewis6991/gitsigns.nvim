@@ -1,7 +1,7 @@
 local config = require('gitsigns.config').config
 local SignsConfig = require('gitsigns.config').Config.SignsConfig
 
-local dprint = require('gitsigns.debug').dprint
+local dprint = require('gitsigns.debug.log').dprint
 
 local B = require('gitsigns.signs.base')
 

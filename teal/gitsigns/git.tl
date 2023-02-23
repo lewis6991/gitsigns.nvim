@@ -1,9 +1,12 @@
 local async = require('gitsigns.async')
 local scheduler = require('gitsigns.async').scheduler
 
-local gsd = require("gitsigns.debug")
+local log = require("gitsigns.debug.log")
 local util = require('gitsigns.util')
 local subprocess = require('gitsigns.subprocess')
+
+local gs_config  = require('gitsigns.config')
+local config     = gs_config.config
 
 local gs_hunks = require("gitsigns.hunks")
 local Hunk = gs_hunks.Hunk
@@ -11,8 +14,8 @@ local Hunk = gs_hunks.Hunk
 local uv = vim.loop
 local startswith = vim.startswith
 
-local dprint = require("gitsigns.debug").dprint
-local eprint = require("gitsigns.debug").eprint
+local dprint = require('gitsigns.debug.log').dprint
+local eprint = require('gitsigns.debug.log').eprint
 local err = require('gitsigns.message').error
 
 local record GJobSpec
@@ -55,10 +58,6 @@ local record M
     patch: integer
   end
   version: Version
-
-  enable_yadm: boolean
-
-  set_version: function(string)
 
   record RepoInfo
     gitdir: string
@@ -168,7 +167,34 @@ local function check_version(version: {number,number,number}): boolean
 end
 
 --- @async
+function M._set_version(version: string)
+  if version ~= 'auto' then
+    M.version = parse_version(version)
+    return
+  end
+
+  local _, _, stdout, stderr = async.wait(2, subprocess.run_job, {
+    command = 'git', args = { '--version' }
+  })
+
+  local line = vim.split(stdout or '', '\n', true)[1]
+  if not line then
+    err("Unable to detect git version as 'git --version' failed to return anything")
+    eprint(stderr)
+    return
+  end
+  assert(type(line) == 'string', 'Unexpected output: '..line)
+  assert(startswith(line, 'git version'), 'Unexpected output: '..line)
+  local parts = vim.split(line, '%s+')
+  M.version = parse_version(parts[3])
+end
+
+
+--- @async
 local git_command = async.create(function(args: {string}, spec: GJobSpec): {string}, string
+  if not M.version then
+    M._set_version(config._git_version)
+  end
   spec = spec or {}
   spec.command = spec.command or 'git'
   spec.args = spec.command == 'git' and {
@@ -187,7 +213,7 @@ local git_command = async.create(function(args: {string}, spec: GJobSpec): {stri
   if not spec.suppress_stderr then
     if stderr then
       local cmd_str = table.concat({spec.command, unpack(args)}, ' ')
-      gsd.eprintf("Recieved stderr when running command\n'%s':\n%s", cmd_str, stderr)
+      log.eprintf("Recieved stderr when running command\n'%s':\n%s", cmd_str, stderr)
     end
   end
 
@@ -199,10 +225,10 @@ local git_command = async.create(function(args: {string}, spec: GJobSpec): {stri
     stdout_lines[#stdout_lines] = nil
   end
 
-  if gsd.verbose then
-    gsd.vprintf('%d lines:', #stdout_lines)
+  if log.verbose then
+    log.vprintf('%d lines:', #stdout_lines)
     for i = 1, math.min(10, #stdout_lines) do
-      gsd.vprintf('\t%s', stdout_lines[i])
+      log.vprintf('\t%s', stdout_lines[i])
     end
   end
 
@@ -235,7 +261,7 @@ local function process_abbrev_head(gitdir: string, head_str: string, path: strin
         suppress_stderr = true,
         cwd = path,
       })[1] or ''
-    if gsd.debug_mode and short_sha ~= '' then
+    if log.debug_mode and short_sha ~= '' then
       short_sha = 'HEAD'
     end
     if util.path_exists(gitdir..'/rebase-merge')
@@ -308,25 +334,6 @@ function M.get_repo_info(path: string, cmd: string, gitdir: string, toplevel: st
   end
   ret.detached = ret.toplevel and ret.gitdir ~= ret.toplevel..'/.git'
   return ret
-end
-
---- @async
-function M.set_version(version: string)
-  if version ~= 'auto' then
-    M.version = parse_version(version)
-    return
-  end
-  local results, stderr = git_command{'--version'}
-  local line = results[1]
-  if not line then
-    err("Unable to detect git version as 'git --version' failed to return anything")
-    eprint(stderr)
-    return
-  end
-  assert(type(line) == 'string', 'Unexpected output: '..line)
-  assert(startswith(line, 'git version'), 'Unexpected output: '..line)
-  local parts = vim.split(line, '%s+')
-  M.version = parse_version(parts[3])
 end
 
 --------------------------------------------------------------------------------
@@ -444,7 +451,7 @@ function Repo.new(dir: string, gitdir: string, toplevel: string): Repo
   end
 
   -- Try yadm
-  if M.enable_yadm and not self.gitdir then
+  if config.yadm.enable and not self.gitdir then
     if vim.startswith(dir, os.getenv('HOME'))
       and #git_command({'ls-files', dir}, {command = 'yadm'}) ~= 0 then
       M.get_repo_info(dir, 'yadm', gitdir, toplevel)
@@ -501,7 +508,7 @@ function Obj:file_info(file: string, silent: boolean): M.FileProps
     -- Suppress_stderr for the cases when we run:
     --   git ls-files --others exists/nonexist
     if not stderr:match('^warning: could not open directory .*: No such file or directory') then
-      gsd.eprint(stderr)
+      log.eprint(stderr)
     end
   end
 

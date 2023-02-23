@@ -168,8 +168,11 @@ local function cmul(x: integer, factor: number): integer
   return math.floor(math.floor(r*factor) * 2^16 + math.floor(g*factor) * 2^8 + math.floor(b*factor))
 end
 
+local function dprintf(fmt: string, ...:any)
+  require('gitsigns.debug.log').dprintf(fmt, ...)
+end
+
 local function derive(hl: string, hldef: Hldef)
-  local dprintf = require("gitsigns.debug").dprintf
   for _, d in ipairs(hldef) do
     if is_hl_set(d) then
       dprintf('Deriving %s from %s', hl, d)
@@ -201,7 +204,6 @@ end
 -- Setup a GitSign* highlight by deriving it from other potentially present
 -- highlights.
 M.setup_highlights = function()
-  local dprintf = require("gitsigns.debug").dprintf
   for _, hlg in ipairs(M.hls) do
     for hl, hldef in pairs(hlg) do
       if is_hl_set(hl) then
