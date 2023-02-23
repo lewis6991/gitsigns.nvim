@@ -1,9 +1,6 @@
 
 export PJ_ROOT=$(PWD)
 
-# Suppress built in rules. This reduces clutter when running with -d
-MAKEFLAGS += --no-builtin-rules
-
 FILTER ?= .*
 
 LUA_VERSION   := 5.1
@@ -13,7 +10,7 @@ NEOVIM_BRANCH ?= master
 DEPS_DIR := $(PWD)/deps/nvim-$(NEOVIM_BRANCH)
 NVIM_DIR := $(DEPS_DIR)/neovim
 
-LUAROCKS       := luarocks --lua-version=$(LUA_VERSION)
+LUAROCKS       := $(DEPS_DIR)/luarocks/usr/bin/luarocks
 LUAROCKS_TREE  := $(DEPS_DIR)/luarocks/usr
 LUAROCKS_LPATH := $(LUAROCKS_TREE)/share/lua/$(LUA_VERSION)
 LUAROCKS_INIT  := eval $$($(LUAROCKS) --tree $(LUAROCKS_TREE) path) &&
@@ -23,25 +20,27 @@ LUAROCKS_INIT  := eval $$($(LUAROCKS) --tree $(LUAROCKS_TREE) path) &&
 $(NVIM_DIR):
 	@mkdir -p $(DEPS_DIR)
 	git clone --depth 1 https://github.com/neovim/neovim --branch $(NEOVIM_BRANCH) $@
+	@# disable LTO to reduce compile time
 	make -C $@ \
 		DEPS_BUILD_DIR=$(dir $(LUAROCKS_TREE)) \
-		CMAKE_BUILD_TYPE=RelWithDebInfo
+		CMAKE_BUILD_TYPE=RelWithDebInfo \
+		CMAKE_EXTRA_FLAGS='-DCI_BUILD=OFF -DENABLE_LTO=OFF'
 
 TL := $(LUAROCKS_TREE)/bin/tl
 
-$(TL):
+$(TL): $(NVIM_DIR)
 	@mkdir -p $$(dirname $@)
 	$(LUAROCKS) --tree $(LUAROCKS_TREE) install tl $(TL_VERSION)
 
 INSPECT := $(LUAROCKS_LPATH)/inspect.lua
 
-$(INSPECT):
+$(INSPECT): $(NVIM_DIR)
 	@mkdir -p $$(dirname $@)
 	$(LUAROCKS) --tree $(LUAROCKS_TREE) install inspect
 
 LUV := $(LUAROCKS_TREE)/lib/lua/$(LUA_VERSION)/luv.so
 
-$(LUV):
+$(LUV): $(NVIM_DIR)
 	@mkdir -p $$(dirname $@)
 	$(LUAROCKS) --tree $(LUAROCKS_TREE) install luv
 

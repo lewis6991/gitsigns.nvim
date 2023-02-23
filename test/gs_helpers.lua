@@ -21,6 +21,7 @@ M.newfile   = M.scratch.."/newfile.txt"
 
 M.test_config = {
   debug_mode = true,
+  _test_mode = true,
   signs = {
     add          = {hl = 'DiffAdd'   , text = '+'},
     delete       = {hl = 'DiffDelete', text = '_'},
@@ -47,15 +48,6 @@ local test_file_text = {
   'content', 'doesn\'t', 'matter,', 'it', 'just', 'needs', 'to', 'be', 'static.'
 }
 
---- Escapes magic chars in |lua-patterns|.
----
----@see https://github.com/rxi/lume
----@param s string String to escape
----@return string %-escaped pattern string
-function M.pesc(s)
-  return (s:gsub('[%(%)%.%%%+%-%*%?%[%]%^%$]', '%%%1'))
-end
-
 function M.git(args)
   system{"git", "-C", M.scratch, unpack(args)}
 end
@@ -63,7 +55,6 @@ end
 function M.cleanup()
   system{"rm", "-rf", M.scratch}
 end
-
 
 function M.setup_git()
   M.git{"init", '-b', 'master'}
@@ -105,7 +96,8 @@ function M.expectf(cond, interval)
   local duration = 0
   interval = interval or 1
   while duration < timeout do
-    if pcall(cond) then
+    local ok, ret = pcall(cond)
+    if ok and (ret == nil or ret == true) then
       return
     end
     duration = duration + interval
@@ -124,12 +116,19 @@ function M.edit(path)
 end
 
 function M.write_to_file(path, text)
-  local f = io.open(path, 'wb')
+  local f = assert(io.open(path, 'wb'))
   for _, l in ipairs(text) do
     f:write(l)
     f:write('\n')
   end
   f:close()
+end
+
+local function spec_text(s)
+  if type(s) == 'table' then
+    return s.text
+  end
+  return s
 end
 
 function M.match_lines(lines, spec)
@@ -153,12 +152,13 @@ function M.match_lines(lines, spec)
       i = i + 1
     end
   end
+
   if i < #spec + 1 then
     local msg = {'lines:'}
     for _, l in ipairs(lines) do
-      msg[#msg+1] = string.format(   '"%s"', l)
+      msg[#msg+1] = string.format('    - "%s"', l)
     end
-    error(('Did not match pattern \'%s\' with %s'):format(spec[i], table.concat(msg, '\n')))
+    error(('Did not match pattern \'%s\' with %s'):format(spec_text(spec[i]), table.concat(msg, '\n')))
   end
 end
 
@@ -209,7 +209,7 @@ function M.n(str)
 end
 
 function M.debug_messages()
-  return exec_lua("return require'gitsigns'.debug_messages(true)")
+  return exec_lua("return require'gitsigns.debug.log'.messages")
 end
 
 function M.match_dag(lines, spec)
@@ -224,6 +224,8 @@ function M.match_debug_messages(spec)
   end)
 end
 
+local git_version
+
 function M.setup_gitsigns(config, extra)
   extra = extra or ''
   exec_lua([[
@@ -232,7 +234,7 @@ function M.setup_gitsigns(config, extra)
       require('gitsigns').setup(...)
     ]], config)
   M.expectf(function()
-    exec_capture('au gitsigns')
+    return exec_lua[[return require'gitsigns'._setup_done == true]]
   end)
 end
 

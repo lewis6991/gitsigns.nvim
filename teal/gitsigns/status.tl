@@ -1,5 +1,6 @@
 local api = vim.api
 
+
 local record StatusObj
   added   : integer
   removed : integer
@@ -11,7 +12,6 @@ end
 
 local Status = {
   StatusObj = StatusObj,
-  formatter: function(StatusObj): string = nil
 }
 
 function Status:update(bufnr: integer, status: StatusObj)
@@ -24,7 +24,10 @@ function Status:update(bufnr: integer, status: StatusObj)
   end
   vim.b[bufnr].gitsigns_head = status.head or ''
   vim.b[bufnr].gitsigns_status_dict = status
-  vim.b[bufnr].gitsigns_status = self.formatter(status)
+
+  local config = require('gitsigns.config').config
+
+  vim.b[bufnr].gitsigns_status = config.status_formatter(status)
 end
 
 function Status:clear(bufnr: integer)

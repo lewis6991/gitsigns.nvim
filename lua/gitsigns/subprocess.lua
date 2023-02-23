@@ -1,4 +1,4 @@
-local gsd = require("gitsigns.debug")
+local log = require("gitsigns.debug.log")
 local guv = require("gitsigns.uv")
 local uv = vim.loop
 
@@ -47,7 +47,7 @@ end
 local function handle_reader(pipe, output)
    pipe:read_start(function(err, data)
       if err then
-         gsd.eprint(err)
+         log.eprint(err)
       end
       if data then
          output[#output + 1] = data
@@ -59,9 +59,9 @@ end
 
 function M.run_job(obj, callback)
    local __FUNC__ = 'run_job'
-   if gsd.debug_mode then
+   if log.debug_mode then
       local cmd = obj.command .. ' ' .. table.concat(obj.args, ' ')
-      gsd.dprint(cmd)
+      log.dprint(cmd)
    end
 
    local stdout_data = {}
@@ -75,7 +75,7 @@ function M.run_job(obj, callback)
    end
 
    local handle, pid
-   handle, pid = guv.spawn(obj.command, {
+   handle, pid = vim.loop.spawn(obj.command, {
       args = obj.args,
       stdio = { stdin, stdout, stderr },
       cwd = obj.cwd,

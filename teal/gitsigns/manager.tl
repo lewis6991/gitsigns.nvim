@@ -12,15 +12,14 @@ local Status            = require("gitsigns.status")
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local throttle_by_id    = require('gitsigns.debounce').throttle_by_id
 
-local gs_debug          = require("gitsigns.debug")
-local dprint            = gs_debug.dprint
-local dprintf           = gs_debug.dprintf
-local eprint            = gs_debug.eprint
+local log               = require('gitsigns.debug.log')
+local dprint            = log.dprint
+local dprintf           = log.dprintf
+local eprint            = log.eprint
 
 local subprocess        = require('gitsigns.subprocess')
 local util              = require('gitsigns.util')
 local run_diff          = require('gitsigns.diff')
-local git               = require('gitsigns.git')
 local uv                = require('gitsigns.uv')
 
 local gs_hunks          = require("gitsigns.hunks")
@@ -38,7 +37,6 @@ local record M
   update_debounced : function(bufnr: integer, CacheEntry)
   on_lines         : function(buf: integer, first: integer, last_orig: integer, last_new: integer): boolean
   watch_gitdir     : function(bufnr: integer, gitdir: string): vim.loop.FSPollObj
-  update_cwd_head  : function()
   detach           : function(bufnr: integer, keep_signs: boolean)
   reset_signs      : function()
   setup            : function()
@@ -443,67 +441,6 @@ function M.watch_gitdir(bufnr: integer, gitdir: string): vim.loop.FSPollObj
   end))
   return w
 end
-
-local cwd_watcher: vim.loop.FSPollObj
-
-M.update_cwd_head = void(function()
-  if cwd_watcher then
-    cwd_watcher:stop()
-  else
-    cwd_watcher = uv.new_fs_poll(true)
-  end
-
-  local cwd = vim.loop.cwd()
-  local gitdir, head: string, string
-
-  -- Look in the cache first
-  for _, bcache in pairs(cache as {number:CacheEntry}) do
-    local repo = bcache.git_obj.repo
-    if repo.toplevel == cwd then
-      head = repo.abbrev_head
-      gitdir = repo.gitdir
-      break
-    end
-  end
-
-  if not head or not gitdir then
-    local info = git.get_repo_info(cwd)
-    gitdir = info.gitdir
-    head = info.abbrev_head
-  end
-
-  scheduler()
-  vim.g.gitsigns_head = head
-
-  if not gitdir then
-    return
-  end
-
-  local towatch = gitdir..'/HEAD'
-
-  if cwd_watcher:getpath() == towatch then
-    -- Already watching
-    return
-  end
-
-  -- Watch .git/HEAD to detect branch changes
-  cwd_watcher:start(
-    towatch,
-    config.watch_gitdir.interval,
-    void(function(err: string)
-      local __FUNC__ = 'cwd_watcher_cb'
-      if err then
-        dprintf('Git dir update error: %s', err)
-        return
-      end
-      dprint('Git cwd dir update')
-
-      local new_head = git.get_repo_info(cwd).abbrev_head
-      scheduler()
-      vim.g.gitsigns_head = new_head
-    end)
-  )
-end)
 
 function M.reset_signs()
   -- Remove all signs

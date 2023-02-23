@@ -129,6 +129,7 @@ local record M
 
     _git_version: string
     _verbose: boolean
+    _test_mode: boolean
   end
 
   schema: {string:SchemaElem}
@@ -710,6 +711,11 @@ M.schema = {
     description = [[
       More verbose debug message. Requires debug_mode=true.
     ]]
+  },
+
+  _test_mode = {
+    type = 'boolean',
+    default = false,
   },
 
   word_diff = {

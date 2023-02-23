@@ -58,6 +58,7 @@ describe('highlights', function()
     config.signs.topdelete.hl = nil
     config.numhl = true
     config.linehl = true
+    config._test_mode = true
 
     exec_lua('gs.setup(...)', config)
 

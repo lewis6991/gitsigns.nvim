@@ -92,7 +92,16 @@ local record M
   nvim_create_augroup: function(string, AugroupOpts): integer
 
   record AutoCmdOpts
-    callback: function()
+    record CallbackData
+      id: integer
+      group: integer
+      event: string
+      match: string
+      buf: integer
+      file: string
+      data: any
+    end
+    callback: function(CallbackData)
     command: string
     group: integer|string
     pattern: string|{string}
