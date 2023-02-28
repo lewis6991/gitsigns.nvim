@@ -1,9 +1,6 @@
 
 export PJ_ROOT=$(PWD)
 
-# Suppress built in rules. This reduces clutter when running with -d
-MAKEFLAGS += --no-builtin-rules
-
 FILTER ?= .*
 
 LUA_VERSION   := 5.1
