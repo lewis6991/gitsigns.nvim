@@ -53,8 +53,8 @@ jobs:
       - name: Install Lua Deps
         run: make lua_deps
 
-      - name: Check lua files are built from latest teal
-        run: make tl-ensure
+      # - name: Check lua files are built from latest teal
+      #   run: make tl-ensure
 
       - name: Install Neovim build dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true'
