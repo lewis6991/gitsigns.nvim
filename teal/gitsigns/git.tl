@@ -213,7 +213,7 @@ local git_command = async.create(function(args: {string}, spec: GJobSpec): {stri
   if not spec.suppress_stderr then
     if stderr then
       local cmd_str = table.concat({spec.command, unpack(args)}, ' ')
-      log.eprintf("Recieved stderr when running command\n'%s':\n%s", cmd_str, stderr)
+      log.eprintf("Received stderr when running command\n'%s':\n%s", cmd_str, stderr)
     end
   end
 
