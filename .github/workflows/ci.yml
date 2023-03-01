@@ -42,19 +42,14 @@ jobs:
       - name: Install Neovim build dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
-          sudo apt update &&
-          sudo apt install -y \
-            autoconf \
-            automake \
+          sudo apt-get update &&
+          sudo apt-get install -y \
             cmake \
             g++ \
             gettext \
-            gperf \
-            libtool \
             libtool-bin \
             lua-bitop \
             ninja-build \
-            pkg-config \
             unzip
 
       - name: Build Neovim
