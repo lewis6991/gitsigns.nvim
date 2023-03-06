@@ -64,6 +64,12 @@ function M.complete(arglead, line)
    return matches
 end
 
+local function print_nonnil(x)
+   if x ~= nil then
+      print(vim.inspect(x))
+   end
+end
+
 M.run = void(function(params)
    local __FUNC__ = 'cli.run'
    local pos_args_raw, named_args_raw = parse_args(params.args)
@@ -84,7 +90,7 @@ M.run = void(function(params)
    if cmd_func then
       -- Action has a specialised mapping function from command form to lua
       -- function
-      cmd_func(args, params)
+      print_nonnil(cmd_func(args, params))
       return
    end
 
@@ -92,7 +98,7 @@ M.run = void(function(params)
       local f = (m)[func]
       if type(f) == "function" then
          -- Note functions here do not have named arguments
-         f(unpack(pos_args), has_named and named_args or nil)
+         print_nonnil(f(unpack(pos_args), has_named and named_args or nil))
          return
       end
    end
