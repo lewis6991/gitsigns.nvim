@@ -28,12 +28,13 @@ function M.dump_cache()
 end
 
 function M.debug_messages(noecho)
-   if not noecho then
+   if noecho then
+      return log.messages
+   else
       for _, m in ipairs(log.messages) do
          vim.api.nvim_echo({ { m } }, false, {})
       end
    end
-   return log.messages
 end
 
 function M.clear_debug()
