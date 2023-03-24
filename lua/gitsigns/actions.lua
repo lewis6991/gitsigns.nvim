@@ -47,6 +47,7 @@ local current_buf = api.nvim_get_current_buf
 
 
 
+
 local M = {QFListOpts = {}, }
 
 
@@ -842,7 +843,7 @@ local function get_blame_hunk(repo, info)
    return hunk, i, #hunks
 end
 
-local function create_blame_fmt(is_committed, full)
+local function create_blame_fmt(is_committed, full, hide_hunks)
    if not is_committed then
       return {
          { { '<author>', 'Label' } },
@@ -856,12 +857,32 @@ local function create_blame_fmt(is_committed, full)
       { ':', 'NormalFloat' },
    }
 
+   local body = {
+      { '<body>', 'NormalFloat' },
+   }
+
+   local hunk_header = {
+      { 'Hunk <hunk_no> of <num_hunks>', 'Title' },
+      { ' <hunk_head>', 'LineNr' },
+   }
+
+   local hunk = {
+      { '<hunk>', 'NormalFloat' },
+   }
+
    if full then
+      if hide_hunks then
+         return {
+            header,
+            body,
+         }
+      end
+
       return {
          header,
-         { { '<body>', 'NormalFloat' } },
-         { { 'Hunk <hunk_no> of <num_hunks>', 'Title' }, { ' <hunk_head>', 'LineNr' } },
-         { { '<hunk>', 'NormalFloat' } },
+         body,
+         hunk_header,
+         hunk,
       }
    end
 
@@ -882,6 +903,8 @@ end
 ---                        Display full commit message with hunk.
 ---                     • {ignore_whitespace}: (boolean)
 ---                        Ignore whitespace when running blame.
+---                     • {hide_hunks}: (boolean)
+---                        Do not show hunks when running with full = true.
 ---
 --- Attributes: ~
 ---       {async}
@@ -911,20 +934,24 @@ M.blame_line = void(function(opts)
 
    local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
 
-   local blame_fmt = create_blame_fmt(is_committed, opts.full)
+   local blame_fmt = create_blame_fmt(is_committed, opts.full, opts.hide_hunks)
 
    local info = result
 
    if is_committed and opts.full then
       info.body = bcache.git_obj:command({ 'show', '-s', '--format=%B', result.sha })
 
-      local hunk
+      if opts.hide_hunks then
+         table.remove(info.body)
+      else
+         local hunk
 
-      hunk, info.hunk_no, info.num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
+         hunk, info.hunk_no, info.num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
 
-      info.hunk = gs_hunks.patch_lines(hunk, fileformat)
-      info.hunk_head = hunk.head
-      insert_hunk_hlmarks(blame_fmt, hunk)
+         info.hunk = gs_hunks.patch_lines(hunk, fileformat)
+         info.hunk_head = hunk.head
+         insert_hunk_hlmarks(blame_fmt, hunk)
+      end
    end
 
    scheduler()

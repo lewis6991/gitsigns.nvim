@@ -302,6 +302,8 @@ blame_line({opts})                                     *gitsigns.blame_line()*
                                Display full commit message with hunk.
                              • {ignore_whitespace}: (boolean)
                                Ignore whitespace when running blame.
+                             • {hide_hunks}: (boolean)
+                               Do not show hunks when running with full = true.
 
                 Attributes: ~
                     {async}
