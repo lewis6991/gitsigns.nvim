@@ -271,7 +271,7 @@ local function update_show_deleted(bufnr: integer)
 
    clear_deleted(bufnr)
    if config.show_deleted then
-     for _, hunk in ipairs(bcache.hunks) do
+     for _, hunk in ipairs(bcache.hunks or {}) do
        M.show_deleted(bufnr, ns_rm, hunk)
      end
    end
