@@ -190,7 +190,7 @@ M.setup = function()
    local group = api.nvim_create_augroup('gitsigns_blame', {})
 
    for k, _ in pairs(cache) do
-      reset(k)
+      pcall(reset, k)
    end
 
    if config.current_line_blame then
