@@ -32,7 +32,7 @@ Super fast git decorations implemented purely in lua/teal.
 
 ## Requirements
 
-- Neovim >= 0.7.0
+- Neovim >= 0.8.0
 
   **Note:** If your version of Neovim is too old, then you can use a past [release].
 
