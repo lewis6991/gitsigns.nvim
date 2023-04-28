@@ -5,6 +5,30 @@ local util = require('gitsigns.util')
 
 local min, max = math.min, math.max
 
+--- @alias Gitsigns.Hunk.Type
+--- | "add"
+--- | "change"
+--- | "delete"
+
+--- @class Gitsigns.Hunk.Node
+--- @field start integer
+--- @field count integer
+--- @field lines string[]
+
+--- @class Gitsigns.Hunk.Hunk
+--- @field type Gitsigns.Hunk.Type
+--- @field head string
+--- @field added Gitsigns.Hunk.Node
+--- @field removed Gitsigns.Hunk.Node
+--- @field vend integer
+
+--- @class Gitsigns.Hunk.Hunk_Public
+--- @field type Gitsigns.Hunk.Type
+--- @field head string
+--- @field lines string[]
+--- @field added Gitsigns.Hunk.Node
+--- @field removed Gitsigns.Hunk.Node
+
 local record M
   enum Type
     "add"
@@ -38,6 +62,11 @@ end
 
 local Hunk = M.Hunk
 
+--- @param old_start integer
+--- @param old_count integer
+--- @param new_start integer
+--- @param new_count integer
+--- @return Gitsigns.Hunk.Hunk
 function M.create_hunk(old_start: integer, old_count: integer, new_start: integer, new_count: integer): Hunk
   return {
     removed = { start = old_start, count = old_count, lines = {} },
@@ -53,6 +82,10 @@ function M.create_hunk(old_start: integer, old_count: integer, new_start: intege
   }
 end
 
+--- @param hunks Gitsigns.Hunk.Hunk[]
+--- @param top integer
+--- @param bot integer
+--- @return Gitsigns.Hunk.Hunk
 function M.create_partial_hunk(hunks: {Hunk}, top: integer, bot: integer): Hunk
   local pretop, precount = top, bot - top + 1
   for _, h in ipairs(hunks) do
@@ -94,8 +127,11 @@ function M.create_partial_hunk(hunks: {Hunk}, top: integer, bot: integer): Hunk
   return M.create_hunk(pretop, precount, top, bot - top + 1)
 end
 
+--- @param hunk Gitsigns.Hunk.Hunk
+--- @param fileformat string
+--- @return string[]
 function M.patch_lines(hunk: Hunk, fileformat: string): {string}
-  local lines: {string} = {}
+  local lines: {string} = {} --- @type string[]
   for _, l in ipairs(hunk.removed.lines) do
     lines[#lines+1] = '-'..l
   end
@@ -109,6 +145,8 @@ function M.patch_lines(hunk: Hunk, fileformat: string): {string}
   return lines
 end
 
+--- @param line string
+--- @return Gitsigns.Hunk.Hunk
 function M.parse_diff_line(line: string): Hunk
   local diffkey = vim.trim(vim.split(line, '@@', true)[2])
 
@@ -127,6 +165,8 @@ function M.parse_diff_line(line: string): Hunk
   return hunk
 end
 
+--- @param hunk Gitsigns.Hunk.Hunk
+--- @return integer
 local function change_end(hunk: Hunk): integer
   if hunk.added.count == 0 then
     -- delete
@@ -140,7 +180,12 @@ local function change_end(hunk: Hunk): integer
   end
 end
 
--- Calculate signs needed to be applied from a hunk for a specified line range.
+--- Calculate signs needed to be applied from a hunk for a specified line range.
+--- @param hunk Gitsigns.Hunk.Hunk
+--- @param min_lnum integer
+--- @param max_lnum integer
+--- @param untracked boolean
+--- @return Gitsigns.Sign[]
 function M.calc_signs(hunk: Hunk, min_lnum: integer, max_lnum: integer, untracked: boolean): {Sign}
   assert(not untracked or hunk.type == 'add')
   min_lnum = min_lnum or 1
@@ -185,6 +230,11 @@ function M.calc_signs(hunk: Hunk, min_lnum: integer, max_lnum: integer, untracke
   return signs
 end
 
+--- @param relpath string
+--- @param hunks Gitsigns.Hunk.Hunk[]
+--- @param mode_bits string
+--- @param invert boolean
+--- @return string[]
 function M.create_patch(relpath: string, hunks: {Hunk}, mode_bits: string, invert: boolean): {string}
   invert = invert or false
 
@@ -228,6 +278,8 @@ function M.create_patch(relpath: string, hunks: {Hunk}, mode_bits: string, inver
   return results
 end
 
+--- @param hunks Gitsigns.Hunk.Hunk[]
+--- @return Gitsigns.StatusObj
 function M.get_summary(hunks: {Hunk}): StatusObj
   local status = { added = 0, changed = 0, removed = 0 }
 
@@ -248,6 +300,9 @@ function M.get_summary(hunks: {Hunk}): StatusObj
   return status
 end
 
+--- @param lnum integer
+--- @param hunks Gitsigns.Hunk.Hunk[]
+--- @return Gitsigns.Hunk.Hunk?, integer?
 function M.find_hunk(lnum: integer, hunks: {Hunk}): Hunk, integer
   for i, hunk in ipairs(hunks or {}) do
     if lnum == 1 and hunk.added.start == 0 and hunk.vend == 0 then
@@ -260,9 +315,14 @@ function M.find_hunk(lnum: integer, hunks: {Hunk}): Hunk, integer
   end
 end
 
+--- @param lnum integer
+--- @param hunks Gitsigns.Hunk.Hunk[]
+--- @param forwards boolean
+--- @param wrap boolean
+--- @return Gitsigns.Hunk.Hunk, integer
 function M.find_nearest_hunk(lnum: integer, hunks: {Hunk}, forwards: boolean, wrap: boolean): Hunk, integer
-  local ret: Hunk
-  local index: integer
+  local ret: Hunk --- @type Gitsigns.Hunk.Hunk
+  local index: integer --- @type integer
   local distance: integer = math.huge as integer
   if forwards then
     for i = 1, #hunks do
@@ -292,6 +352,9 @@ function M.find_nearest_hunk(lnum: integer, hunks: {Hunk}, forwards: boolean, wr
   return ret, index
 end
 
+--- @param a Gitsigns.Hunk.Hunk[]
+--- @param b Gitsigns.Hunk.Hunk[]
+--- @return boolean
 function M.compare_heads(a: {Hunk}, b: {Hunk}): boolean
   if (a == nil) ~= (b == nil) then
     return true
@@ -306,6 +369,9 @@ function M.compare_heads(a: {Hunk}, b: {Hunk}): boolean
   return false
 end
 
+--- @param a Gitsigns.Hunk.Hunk
+--- @param b Gitsigns.Hunk.Hunk
+--- @return boolean
 local function compare_new(a: Hunk, b: Hunk): boolean
   if a.added.start ~= b.added.start then
     return false
@@ -324,29 +390,32 @@ local function compare_new(a: Hunk, b: Hunk): boolean
   return true
 end
 
--- Return hunks in a using b's hunks as a filter. Only compare the 'new' section
--- of the hunk.
---
--- Eg. Given:
---
---     a = {
---         1 = '@@ -24 +25,1 @@',
---         2 = '@@ -32 +34,1 @@',
---         3 = '@@ -37 +40,1 @@'
---     }
---
---     b = {
---         1 = '@@ -26 +25,1 @@'
---     }
---
--- Since a[1] and b[1] introduce the same changes to the buffer (both have
--- +25,1), we exclude this hunk in the output so we return:
---
---     {
---         1 = '@@ -32 +34,1 @@',
---         2 = '@@ -37 +40,1 @@'
---     }
---
+--- Return hunks in a using b's hunks as a filter. Only compare the 'new' section
+--- of the hunk.
+---
+--- Eg. Given:
+---
+---     a = {
+---         1 = '@@ -24 +25,1 @@',
+---         2 = '@@ -32 +34,1 @@',
+---         3 = '@@ -37 +40,1 @@'
+---     }
+---
+---     b = {
+---         1 = '@@ -26 +25,1 @@'
+---     }
+---
+--- Since a[1] and b[1] introduce the same changes to the buffer (both have
+--- +25,1), we exclude this hunk in the output so we return:
+---
+---     {
+---         1 = '@@ -32 +34,1 @@',
+---         2 = '@@ -37 +40,1 @@'
+---     }
+---
+--- @param a Gitsigns.Hunk.Hunk[]
+--- @param b Gitsigns.Hunk.Hunk[]
+--- @return Gitsigns.Hunk.Hunk[]?
 function M.filter_common(a: {Hunk}, b: {Hunk}): {Hunk}
   if not a and not b then
     return
@@ -358,6 +427,7 @@ function M.filter_common(a: {Hunk}, b: {Hunk}): {Hunk}
   local a_i = 1
   local b_i = 1
 
+  --- @type Gitsigns.Hunk.Hunk[]
   local ret: {Hunk} = {}
 
   for _ = 1, max_iter do

@@ -7,6 +7,86 @@ do
    end
 end
 
+--- @class Gitsigns.SchemaElem
+--- @field type string|string[]
+--- @field deep_extend boolean
+--- @field default any
+--- @field deprecated boolean|{new_field:string,message:string,hard:boolean}
+--- @field default_help string
+--- @field description string
+
+--- @class Gitsigns.DiffOpts
+--- @field algorithm string
+--- @field internal boolean
+--- @field indent_heuristic boolean
+--- @field vertical boolean
+--- @field linematch integer
+
+--- @class Gitsign.SignConfig
+--- @field show_count boolean
+--- @field hl string
+--- @field text string
+--- @field numhl string
+--- @field linehl string
+--- @field keymaps table<string,string>
+
+--- @alias Gitsigns.SignType
+--- | 'add'
+--- | 'change'
+--- | 'delete'
+--- | 'topdelete'
+--- | 'changedelete'
+--- | 'untracked'
+
+--- @alias Gitsigns.CurrentLineBlameFmtOpts { relative_time: boolean }
+--- @alias Gitsigns.CurrentLineBlameFmtFun fun(_: string, _: table<string,any>, _: Gitsigns.CurrentLineBlameFmtOpts): {[1]:string,[2]:string}[]
+
+--- @class Gitsigns.CurrentLineBlameOpts
+--- @field virt_text boolean
+--- @field virt_text_pos 'eol'|'overlay'|'right_align'
+--- @field delay integer
+--- @field ignore_whitespace boolean
+--- @field virt_text_priority integer
+
+--- @class Gitsigns.Config
+--- @field debug_mode boolean
+--- @field diff_opts Gitsigns.DiffOpts
+--- @field base string
+--- @field signs table<Gitsigns.SignType,Gitsign.SignConfig>
+--- @field _signs_staged table<Gitsigns.SignType,Gitsign.SignConfig>
+--- @field _signs_staged_enable boolean
+--- @field count_chars table<string|integer,string>
+--- @field signcolumn boolean
+--- @field numhl boolean
+--- @field linehl boolean
+--- @field show_deleted boolean
+--- @field sign_priority integer
+--- @field _on_attach_pre fun(bufnr: integer, callback: fun(_: table))
+--- @field on_attach fun(bufnr: integer)
+--- @field watch_gitdir { enable: boolean, interval: integer, follow_files: boolean }
+--- @field max_file_length integer
+--- @field update_debounce integer
+--- @field status_formatter fun(_: table<string,any>): string
+--- @field current_line_blame boolean
+--- @field current_line_blame_formatter_opts { relative_time: boolean }
+--- @field current_line_blame_formatter string|Gitsigns.CurrentLineBlameFmtFun
+--- @field current_line_blame_formatter_nc string|Gitsigns.CurrentLineBlameFmtFun
+--- @field current_line_blame_opts Gitsigns.CurrentLineBlameOpts
+--- @field preview_config table<string,any>
+--- @field attach_to_untracked boolean
+--- @field yadm { enable: boolean }
+--- @field worktrees {toplevel: string, gitdir: string}[]
+--- @field word_diff boolean
+--- -- Undocumented
+--- @field _refresh_staged_on_update boolean
+--- @field _blame_cache boolean
+--- @field _threaded_diff boolean
+--- @field _inline2 boolean
+--- @field _extmark_signs boolean
+--- @field _git_version string
+--- @field _verbose boolean
+--- @field _test_mode boolean
+
 
 
 
@@ -137,8 +217,10 @@ local M = {Config = {DiffOpts = {}, SignConfig = {}, watch_gitdir = {}, current_
 
 
 
+--- @type Gitsigns.Config
 M.config = {}
 
+--- @type table<string,Gitsigns.SchemaElem>
 M.schema = {
    signs = {
       type = 'table',
@@ -799,6 +881,7 @@ warn = function(s, ...)
    vim.notify(s:format(...), vim.log.levels.WARN, { title = 'gitsigns' })
 end
 
+--- @param config Gitsigns.Config
 local function validate_config(config)
    for k, v in pairs(config) do
       local kschema = M.schema[k]
@@ -854,6 +937,7 @@ local function handle_deprecated(cfg)
    end
 end
 
+--- @param user_config Gitsigns.Config
 function M.build(user_config)
    user_config = user_config or {}
 
