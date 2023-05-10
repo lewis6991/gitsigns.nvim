@@ -15,6 +15,7 @@ end
 
 M.job_cnt = 0
 
+--- @param ... uv_pipe_t
 local function try_close(...: uv.Pipe)
   for i = 1, select('#', ...) do
     local pipe = select(i, ...)
@@ -24,11 +25,13 @@ local function try_close(...: uv.Pipe)
   end
 end
 
+--- @param pipe uv_pipe_t
+--- @param x string[]|string
 local function handle_writer(pipe: uv.Pipe, x: {string} | string)
   if x is {string} then
     for i, v in ipairs(x) do
       pipe:write(v)
-      if i ~= #x then
+      if i ~= #(x as {string}) then
         pipe:write("\n")
       else
         pipe:write("\n", function()
@@ -44,6 +47,8 @@ local function handle_writer(pipe: uv.Pipe, x: {string} | string)
   end
 end
 
+--- @param pipe uv_pipe_t
+--- @param output string[]
 local function handle_reader(pipe: uv.Pipe, output: {string})
   pipe:read_start(function(err: string, data: string)
     if err then
@@ -57,6 +62,8 @@ local function handle_reader(pipe: uv.Pipe, output: {string})
   end)
 end
 
+--- @param obj table
+--- @param callback fun(_: integer, _: integer, _: string?, _: string?)
 function M.run_job(obj: M.JobSpec, callback: function(integer, integer, string, string))
   local __FUNC__ = 'run_job'
   if log.debug_mode then
@@ -74,14 +81,17 @@ function M.run_job(obj: M.JobSpec, callback: function(integer, integer, string, 
     stdin = guv.new_pipe(false)
   end
 
-  local handle, pid: uv.Process, integer
-  handle, pid = vim.loop.spawn(obj.command, {
+  --- @type uv_process_t?, integer|string
+  local handle, _pid: uv.Process, integer
+  handle, _pid = vim.loop.spawn(obj.command, {
     args  = obj.args,
     stdio = { stdin, stdout, stderr },
     cwd   = obj.cwd
   },
     function(code: integer, signal: integer)
-      handle:close()
+      if handle then
+        handle:close()
+      end
       stdout:read_stop()
       stderr:read_stop()
 

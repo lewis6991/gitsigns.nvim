@@ -8,7 +8,7 @@ function M.path_exists(path)
    return vim.loop.fs_stat(path) and true or false
 end
 
-local jit_os
+local jit_os --- @type string
 
 if jit then
    jit_os = jit.os:lower()
@@ -22,12 +22,16 @@ else
    is_unix = binfmt ~= "dll"
 end
 
+--- @param file string
+--- @return string
 function M.dirname(file)
    return file:match(string.format('^(.+)%s[^%s]+', M.path_sep, M.path_sep))
 end
 
+--- @param file string
+--- @return string[]
 function M.file_lines(file)
-   local text = {}
+   local text = {} --- @type string[]
    for line in io.lines(file) do
       text[#text + 1] = line
    end
@@ -36,6 +40,8 @@ end
 
 M.path_sep = package.config:sub(1, 1)
 
+--- @param bufnr integer
+--- @return string[]
 function M.buf_lines(bufnr)
    -- nvim_buf_get_lines strips carriage returns if fileformat==dos
    local buftext = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
@@ -47,6 +53,7 @@ function M.buf_lines(bufnr)
    return buftext
 end
 
+--- @param buf integer
 local function delete_alt(buf)
    local alt = vim.api.nvim_buf_call(buf, function()
       return vim.fn.bufnr('#')
@@ -56,11 +63,17 @@ local function delete_alt(buf)
    end
 end
 
+--- @param bufnr integer
+--- @param name string
 function M.buf_rename(bufnr, name)
    vim.api.nvim_buf_set_name(bufnr, name)
    delete_alt(bufnr)
 end
 
+--- @param bufnr integer
+--- @param start_row integer
+--- @param end_row integer
+--- @param lines string[]
 function M.set_lines(bufnr, start_row, end_row, lines)
    if vim.bo[bufnr].fileformat == 'dos' then
       for i = 1, #lines do
@@ -70,6 +83,7 @@ function M.set_lines(bufnr, start_row, end_row, lines)
    vim.api.nvim_buf_set_lines(bufnr, start_row, end_row, false, lines)
 end
 
+--- @return string
 function M.tmpname()
    if is_unix then
       return os.tmpname()
@@ -77,6 +91,8 @@ function M.tmpname()
    return vim.fn.tempname()
 end
 
+--- @param timestamp number
+--- @return string
 function M.get_relative_time(timestamp)
    local current_timestamp = os.time()
    local elapsed = current_timestamp - timestamp
@@ -115,6 +131,9 @@ function M.get_relative_time(timestamp)
    end
 end
 
+--- @generic T
+--- @param x T[]
+--- @return T[]
 function M.copy_array(x)
    local r = {}
    for i, e in ipairs(x) do
@@ -123,7 +142,9 @@ function M.copy_array(x)
    return r
 end
 
--- Strip '\r' from the EOL of each line only if all lines end with '\r'
+--- Strip '\r' from the EOL of each line only if all lines end with '\r'
+--- @param xs0 string[]
+--- @return string[]
 function M.strip_cr(xs0)
    for i = 1, #xs0 do
       if xs0[i]:sub(-1) ~= '\r' then
@@ -162,9 +183,12 @@ local function expand_date(fmt, time)
    return os.date(fmt, time)
 end
 
----@param reltime Use relative time as the default date format
+---@param fmt string
+---@param info table
+---@param reltime boolean Use relative time as the default date format
+---@return string
 function M.expand_format(fmt, info, reltime)
-   local ret = {}
+   local ret = {} --- @type string[]
 
    for _ = 1, 20 do -- loop protection
       -- Capture <name> or <name:format>
