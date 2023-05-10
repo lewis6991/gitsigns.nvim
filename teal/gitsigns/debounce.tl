@@ -7,9 +7,10 @@ end
 
 --- Debounces a function on the trailing edge.
 ---
----@param ms (number) Timeout in ms
----@param fn (function) Function to debounce
----@returns (function) Debounced function.
+--- @generic F: function
+--- @param ms number Timeout in ms
+--- @param fn F Function to debounce
+--- @return F Debounced function.
 function M.debounce_trailing(ms: number, fn: function): function
   local timer = uv.new_timer(true)
   return function(...)
@@ -24,9 +25,10 @@ end
 
 --- Throttles a function on the leading edge.
 ---
---@param ms (number) Timeout in ms
---@param fn (function) Function to throttle
---@returns (function) throttled function.
+--- @generic F: function
+--- @param ms number Timeout in ms
+--- @param fn F Function to throttle
+--- @return F throttled function.
 function M.throttle_leading(ms: number, fn: function): function
   local timer = uv.new_timer(true)
   local running = false
@@ -53,12 +55,14 @@ end
 ---  fn#2        ______/‾\___________/‾\___________________
 ---  throttled#2 ______/‾‾‾‾‾‾‾‾‾‾\__/‾‾‾‾‾‾‾‾‾‾\__________
 ---
---
---@param fn (function) Function to throttle
---@returns (function) throttled function.
+---
+--- @generic F: function
+--- @param fn F Function to throttle
+--- @param schedule boolean
+--- @return F throttled function.
 function M.throttle_by_id(fn: function, schedule: boolean): function
-  local scheduled: {any:boolean} = {}
-  local running: {any:boolean} = {}
+  local scheduled: {any:boolean} = {} --- @type table<any,boolean>
+  local running: {any:boolean} = {} --- @type table<any,boolean>
   return function(id: any, ...)
     if scheduled[id] then
       -- If fn is already scheduled, then drop

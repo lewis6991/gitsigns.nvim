@@ -2,6 +2,9 @@ local log = require('gitsigns.debug.log')
 
 local M = {}
 
+--- @param raw_item any
+--- @param path string[]
+--- @return any
 local function process(raw_item, path)
    if path[#path] == vim.inspect.METATABLE then
       return nil
@@ -19,14 +22,17 @@ local function process(raw_item, path)
    return raw_item
 end
 
+--- @return any
 function M.dump_cache()
    -- TODO(lewis6991): hack: use package.loaded to avoid circular deps
-   local cache = (package.loaded['gitsigns.cache']).cache
+   local cache = (require('gitsigns.cache')).cache
    local text = vim.inspect(cache, { process = process })
    vim.api.nvim_echo({ { text } }, false, {})
    return cache
 end
 
+--- @param noecho boolean
+--- @return string[]
 function M.debug_messages(noecho)
    if noecho then
       return log.messages
