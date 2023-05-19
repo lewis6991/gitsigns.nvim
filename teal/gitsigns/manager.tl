@@ -535,7 +535,9 @@ end
 
 function M.reset_signs()
   -- Remove all signs
-  signs_normal:reset()
+  if signs_normal then
+    signs_normal:reset()
+  end
   if signs_staged then
     signs_staged:reset()
   end
