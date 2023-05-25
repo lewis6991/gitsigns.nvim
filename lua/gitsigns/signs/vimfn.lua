@@ -24,13 +24,14 @@ end
 local sign_define_cache = {}
 local sign_name_cache = {}
 
-local function get_sign_name(stype)
-   if not sign_name_cache[stype] then
-      sign_name_cache[stype] = string.format(
-      '%s%s', 'GitSigns', capitalise_word(stype))
+local function get_sign_name(name, stype)
+   local key = name .. stype
+   if not sign_name_cache[key] then
+      sign_name_cache[key] = string.format(
+      '%s%s%s', 'GitSigns', capitalise_word(key), capitalise_word(stype))
    end
 
-   return sign_name_cache[stype]
+   return sign_name_cache[key]
 end
 
 local function sign_get(name)
@@ -57,7 +58,7 @@ local function define_signs(obj, redefine)
    -- Define signs
    for stype, cs in pairs(obj.config) do
       local hls = obj.hls[stype]
-      define_sign(get_sign_name(stype), {
+      define_sign(get_sign_name(obj.name, stype), {
          texthl = hls.hl,
          text = config.signcolumn and cs.text or nil,
          numhl = config.numhl and hls.numhl or nil,
@@ -107,7 +108,7 @@ function M:add(bufnr, signs)
    local to_place = {}
 
    for _, s in ipairs(signs) do
-      local sign_name = get_sign_name(s.type)
+      local sign_name = get_sign_name(self.name, s.type)
 
       local cs = self.config[s.type]
       if config.signcolumn and cs.show_count and s.count then
