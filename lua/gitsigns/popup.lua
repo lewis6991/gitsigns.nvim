@@ -165,6 +165,8 @@ function popup.create0(lines, opts, id)
    local group_id = api.nvim_create_augroup(group, {})
    local old_cursor = api.nvim_win_get_cursor(0)
 
+   vim.keymap.set({'n'}, "q", "<cmd>quit!<cr>", {noremap=true,silent=true,buffer=bufnr})
+
    api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
       group = group_id,
       callback = function()
