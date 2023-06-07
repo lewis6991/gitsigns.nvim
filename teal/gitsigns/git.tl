@@ -560,16 +560,18 @@ end
 
 --- @async
 function Obj:run_blame(lines: {string}, lnum: number, ignore_whitespace: boolean): M.BlameInfo
+  local not_committed = {
+    author             = 'Not Committed Yet',
+    ['author_mail']    = '<not.committed.yet>',
+    committer          = 'Not Committed Yet',
+    ['committer_mail'] = '<not.committed.yet>',
+  }
+
   if not self.object_name or self.repo.abbrev_head == '' then
     -- As we support attaching to untracked files we need to return something if
     -- the file isn't isn't tracked in git.
     -- If abbrev_head is empty, then assume the repo has no commits
-    return {
-      author             = 'Not Committed Yet',
-      ['author_mail']    = '<not.committed.yet>',
-      committer          = 'Not Committed Yet',
-      ['committer_mail'] = '<not.committed.yet>',
-    }
+    return not_committed
   end
 
   local args = {
@@ -611,6 +613,15 @@ function Obj:run_blame(lines: {string}, lnum: number, ignore_whitespace: boolean
       end
     end
   end
+
+  -- New in git 2.41:
+  -- The output given by "git blame" that attributes a line to contents
+  -- taken from the file specified by the "--contents" option shows it
+  -- differently from a line attributed to the working tree file.
+  if ret.author_mail == '<external.file>' then
+    ret = vim.tbl_extend('force', ret, not_committed as table) as {string:any}
+  end
+
   return ret as M.BlameInfo
 end
 
