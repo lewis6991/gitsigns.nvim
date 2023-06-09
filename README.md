@@ -42,6 +42,15 @@ Super fast git decorations implemented purely in lua/teal.
 
 ## Installation
 
+[lazy.nvim](https://github.com/folke/lazy.nvim):
+```lua
+return {
+  'lewis6991/gitsigns.nvim',
+  -- version = 'release' -- To use the latest release (do not use this if you run Neovim nightly or dev builds!)
+  opts = {} -- lazy equivalent to setup({}) function
+}
+```
+
 [packer.nvim]:
 ```lua
 use {
