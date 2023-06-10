@@ -7,7 +7,7 @@ version = _MODREV .. _SPECREV
 description = {
   summary = 'Git signs written in pure lua',
   detailed = [[
-    Super fast git decorations implemented purely in lua/teal.
+    Super fast git decorations implemented purely in Lua.
   ]],
   homepage = 'http://github.com/lewis6991/gitsigns.nvim',
   license = 'MIT/X11',

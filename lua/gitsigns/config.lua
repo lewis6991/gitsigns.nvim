@@ -1,10 +1,10 @@
 local warn
 do
-   -- this is included in gen_help.lua so don't error if requires fail
-   local ok, ret = pcall(require, 'gitsigns.message')
-   if ok then
-      warn = ret.warn
-   end
+  -- this is included in gen_help.lua so don't error if requires fail
+  local ok, ret = pcall(require, 'gitsigns.message')
+  if ok then
+    warn = ret.warn
+  end
 end
 
 --- @class Gitsigns.SchemaElem
@@ -87,153 +87,60 @@ end
 --- @field _verbose boolean
 --- @field _test_mode boolean
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-local M = {Config = {DiffOpts = {}, SignConfig = {}, watch_gitdir = {}, current_line_blame_formatter_opts = {}, current_line_blame_opts = {}, yadm = {}, Worktree = {}, }, }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      -- Undocumented
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+local M = {
+  Config = {
+    DiffOpts = {},
+    SignConfig = {},
+    watch_gitdir = {},
+    current_line_blame_formatter_opts = {},
+    current_line_blame_opts = {},
+    yadm = {},
+    Worktree = {},
+  },
+}
 
 --- @type Gitsigns.Config
 M.config = {}
 
 --- @type table<string,Gitsigns.SchemaElem>
 M.schema = {
-   signs = {
-      type = 'table',
-      deep_extend = true,
-      default = {
-         add = { hl = 'GitSignsAdd', text = '┃', numhl = 'GitSignsAddNr', linehl = 'GitSignsAddLn' },
-         change = { hl = 'GitSignsChange', text = '┃', numhl = 'GitSignsChangeNr', linehl = 'GitSignsChangeLn' },
-         delete = { hl = 'GitSignsDelete', text = '▁', numhl = 'GitSignsDeleteNr', linehl = 'GitSignsDeleteLn' },
-         topdelete = { hl = 'GitSignsTopdelete', text = '▔', numhl = 'GitSignsTopdeleteNr', linehl = 'GitSignsTopdeleteLn' },
-         changedelete = { hl = 'GitSignsChangedelete', text = '~', numhl = 'GitSignsChangedeleteNr', linehl = 'GitSignsChangedeleteLn' },
-         untracked = { hl = 'GitSignsUntracked', text = '┆', numhl = 'GitSignsUntrackedNr', linehl = 'GitSignsUntrackedLn' },
+  signs = {
+    type = 'table',
+    deep_extend = true,
+    default = {
+      add = { hl = 'GitSignsAdd', text = '┃', numhl = 'GitSignsAddNr', linehl = 'GitSignsAddLn' },
+      change = {
+        hl = 'GitSignsChange',
+        text = '┃',
+        numhl = 'GitSignsChangeNr',
+        linehl = 'GitSignsChangeLn',
       },
-      default_help = [[{
+      delete = {
+        hl = 'GitSignsDelete',
+        text = '▁',
+        numhl = 'GitSignsDeleteNr',
+        linehl = 'GitSignsDeleteLn',
+      },
+      topdelete = {
+        hl = 'GitSignsTopdelete',
+        text = '▔',
+        numhl = 'GitSignsTopdeleteNr',
+        linehl = 'GitSignsTopdeleteLn',
+      },
+      changedelete = {
+        hl = 'GitSignsChangedelete',
+        text = '~',
+        numhl = 'GitSignsChangedeleteNr',
+        linehl = 'GitSignsChangedeleteLn',
+      },
+      untracked = {
+        hl = 'GitSignsUntracked',
+        text = '┆',
+        numhl = 'GitSignsUntrackedNr',
+        linehl = 'GitSignsUntrackedLn',
+      },
+    },
+    default_help = [[{
       add          = { text = '┃' },
       change       = { text = '┃' },
       delete       = { text = '▁' },
@@ -241,7 +148,7 @@ M.schema = {
       changedelete = { text = '~' },
       untracked    = { text = '┆' },
     }]],
-      description = [[
+    description = [[
       Configuration for signs:
         • `text` specifies the character to use for the sign.
         • `show_count` to enable showing count of hunk, e.g. number of deleted
@@ -255,49 +162,74 @@ M.schema = {
 
       See |gitsigns-highlight-groups|.
     ]],
-   },
+  },
 
-   _signs_staged = {
-      type = 'table',
-      deep_extend = true,
-      default = {
-         add = { hl = 'GitSignsStagedAdd', text = '┃', numhl = 'GitSignsStagedAddNr', linehl = 'GitSignsStagedAddLn' },
-         change = { hl = 'GitSignsStagedChange', text = '┃', numhl = 'GitSignsStagedChangeNr', linehl = 'GitSignsStagedChangeLn' },
-         delete = { hl = 'GitSignsStagedDelete', text = '▁', numhl = 'GitSignsStagedDeleteNr', linehl = 'GitSignsStagedDeleteLn' },
-         topdelete = { hl = 'GitSignsStagedTopdelete', text = '▔', numhl = 'GitSignsStagedTopdeleteNr', linehl = 'GitSignsStagedTopdeleteLn' },
-         changedelete = { hl = 'GitSignsStagedChangedelete', text = '~', numhl = 'GitSignsStagedChangedeleteNr', linehl = 'GitSignsStagedChangedeleteLn' },
+  _signs_staged = {
+    type = 'table',
+    deep_extend = true,
+    default = {
+      add = {
+        hl = 'GitSignsStagedAdd',
+        text = '┃',
+        numhl = 'GitSignsStagedAddNr',
+        linehl = 'GitSignsStagedAddLn',
       },
-      default_help = [[{
+      change = {
+        hl = 'GitSignsStagedChange',
+        text = '┃',
+        numhl = 'GitSignsStagedChangeNr',
+        linehl = 'GitSignsStagedChangeLn',
+      },
+      delete = {
+        hl = 'GitSignsStagedDelete',
+        text = '▁',
+        numhl = 'GitSignsStagedDeleteNr',
+        linehl = 'GitSignsStagedDeleteLn',
+      },
+      topdelete = {
+        hl = 'GitSignsStagedTopdelete',
+        text = '▔',
+        numhl = 'GitSignsStagedTopdeleteNr',
+        linehl = 'GitSignsStagedTopdeleteLn',
+      },
+      changedelete = {
+        hl = 'GitSignsStagedChangedelete',
+        text = '~',
+        numhl = 'GitSignsStagedChangedeleteNr',
+        linehl = 'GitSignsStagedChangedeleteLn',
+      },
+    },
+    default_help = [[{
       add          = { text = '┃' },
       change       = { text = '┃' },
       delete       = { text = '▁' },
       topdelete    = { text = '▔' },
       changedelete = { text = '~' },
     }]],
-      description = [[
-      Configuration for signs of staged hunks.
+    description = [[
+    Configuration for signs of staged hunks.
 
-      See |gitsigns-config-signs|.
+    See |gitsigns-config-signs|.
     ]],
-   },
+  },
 
-   _signs_staged_enable = {
-      type = 'boolean',
-      default = false,
-      description = [[
-      Show signs for staged hunks.
+  _signs_staged_enable = {
+    type = 'boolean',
+    default = false,
+    description = [[
+    Show signs for staged hunks.
 
-      When enabled the signs defined in |git-config-signs_staged|` are used.
+    When enabled the signs defined in |git-config-signs_staged|` are used.
     ]],
-   },
+  },
 
-   keymaps = {
-      deprecated = {
-         message = "config.keymaps is now deprecated. Please define mappings in config.on_attach() instead.",
-      },
-      type = 'table',
-      default = {},
-      description = [[
+  keymaps = {
+    deprecated = {
+      message = 'config.keymaps is now deprecated. Please define mappings in config.on_attach() instead.',
+    },
+    type = 'table',
+    default = {},
+    description = [[
       Keymaps to set up when attaching to a buffer.
 
       Each key in the table defines the mode and key (whitespace delimited)
@@ -311,13 +243,13 @@ M.schema = {
       mappings defined in this field can be disabled by setting the whole field
       to `{}`, and |gitsigns-config-on_attach| can instead be used to define
       mappings.
-    ]],
-   },
+      ]],
+  },
 
-   worktrees = {
-      type = 'table',
-      default = nil,
-      description = [[
+  worktrees = {
+    type = 'table',
+    default = nil,
+    description = [[
       Detached working trees.
 
       Array of tables with the keys `gitdir` and `toplevel`.
@@ -333,12 +265,12 @@ M.schema = {
           }
         }
     ]],
-   },
+  },
 
-   _on_attach_pre = {
-      type = 'function',
-      default = nil,
-      description = [[
+  _on_attach_pre = {
+    type = 'function',
+    default = nil,
+    description = [[
       Asynchronous hook called before attaching to a buffer. Mainly used to
       configure detached worktrees.
 
@@ -346,21 +278,21 @@ M.schema = {
       accept an optional table argument with the keys: 'gitdir' and 'toplevel'.
 
       Example: >
-        on_attach_pre = function(bufnr, callback)
-          ...
-          callback {
-            gitdir = ...,
-            toplevel = ...
-          }
-        end
-<
+      on_attach_pre = function(bufnr, callback)
+        ...
+        callback {
+          gitdir = ...,
+          toplevel = ...
+        }
+      end
+      <
     ]],
-   },
+  },
 
-   on_attach = {
-      type = 'function',
-      default = nil,
-      description = [[
+  on_attach = {
+    type = 'function',
+    default = nil,
+    description = [[
       Callback called when attaching to a buffer. Mainly used to setup keymaps
       when `config.keymaps` is empty. The buffer number is passed as the first
       argument.
@@ -380,17 +312,17 @@ M.schema = {
         end
 <
     ]],
-   },
+  },
 
-   watch_gitdir = {
-      type = 'table',
-      deep_extend = true,
-      default = {
-         enable = true,
-         interval = 1000,
-         follow_files = true,
-      },
-      description = [[
+  watch_gitdir = {
+    type = 'table',
+    deep_extend = true,
+    default = {
+      enable = true,
+      interval = 1000,
+      follow_files = true,
+    },
+    description = [[
       When opening a file, a libuv watcher is placed on the respective
       `.git` directory to detect when changes happen to use as a trigger to
       update signs.
@@ -405,91 +337,91 @@ M.schema = {
         • `follow_files`:
             If a file is moved with `git mv`, switch the buffer to the new location.
     ]],
-   },
+  },
 
-   sign_priority = {
-      type = 'number',
-      default = 6,
-      description = [[
+  sign_priority = {
+    type = 'number',
+    default = 6,
+    description = [[
       Priority to use for signs.
     ]],
-   },
+  },
 
-   signcolumn = {
-      type = 'boolean',
-      default = true,
-      description = [[
+  signcolumn = {
+    type = 'boolean',
+    default = true,
+    description = [[
       Enable/disable symbols in the sign column.
 
       When enabled the highlights defined in `signs.*.hl` and symbols defined
       in `signs.*.text` are used.
     ]],
-   },
+  },
 
-   numhl = {
-      type = 'boolean',
-      default = false,
-      description = [[
+  numhl = {
+    type = 'boolean',
+    default = false,
+    description = [[
       Enable/disable line number highlights.
 
       When enabled the highlights defined in `signs.*.numhl` are used. If
       the highlight group does not exist, then it is automatically defined
       and linked to the corresponding highlight group in `signs.*.hl`.
     ]],
-   },
+  },
 
-   linehl = {
-      type = 'boolean',
-      default = false,
-      description = [[
+  linehl = {
+    type = 'boolean',
+    default = false,
+    description = [[
       Enable/disable line highlights.
 
       When enabled the highlights defined in `signs.*.linehl` are used. If
       the highlight group does not exist, then it is automatically defined
       and linked to the corresponding highlight group in `signs.*.hl`.
     ]],
-   },
+  },
 
-   show_deleted = {
-      type = 'boolean',
-      default = false,
-      description = [[
+  show_deleted = {
+    type = 'boolean',
+    default = false,
+    description = [[
       Show the old version of hunks inline in the buffer (via virtual lines).
 
       Note: Virtual lines currently use the highlight `GitSignsDeleteVirtLn`.
     ]],
-   },
+  },
 
-   diff_opts = {
-      type = 'table',
-      deep_extend = true,
-      default = function()
-         local r = {
-            algorithm = 'myers',
-            internal = false,
-            indent_heuristic = false,
-            vertical = true,
-            linematch = nil,
-         }
-         for _, o in ipairs(vim.opt.diffopt:get()) do
-            if o == 'indent-heuristic' then
-               r.indent_heuristic = true
-            elseif o == 'internal' then
-               if vim.diff then
-                  r.internal = true
-               end
-            elseif o == 'horizontal' then
-               r.vertical = false
-            elseif vim.startswith(o, 'algorithm:') then
-               r.algorithm = string.sub(o, ('algorithm:'):len() + 1)
-            elseif vim.startswith(o, 'linematch:') then
-               r.linematch = tonumber(string.sub(o, ('linematch:'):len() + 1))
-            end
-         end
-         return r
-      end,
-      default_help = "derived from 'diffopt'",
-      description = [[
+  diff_opts = {
+    type = 'table',
+    deep_extend = true,
+    default = function()
+      local r = {
+        algorithm = 'myers',
+        internal = false,
+        indent_heuristic = false,
+        vertical = true,
+        linematch = nil,
+      }
+      for _, o in ipairs(vim.opt.diffopt:get()) do
+        if o == 'indent-heuristic' then
+          r.indent_heuristic = true
+        elseif o == 'internal' then
+          if vim.diff then
+            r.internal = true
+          end
+        elseif o == 'horizontal' then
+          r.vertical = false
+        elseif vim.startswith(o, 'algorithm:') then
+          r.algorithm = string.sub(o, ('algorithm:'):len() + 1)
+        elseif vim.startswith(o, 'linematch:') then
+          r.linematch = tonumber(string.sub(o, ('linematch:'):len() + 1))
+        end
+      end
+      return r
+    end,
+    default_help = "derived from 'diffopt'",
+    description = [[
       Diff options.
 
       Fields: ~
@@ -511,33 +443,33 @@ M.schema = {
             Enable second-stage diff on hunks to align lines.
             Requires `internal=true`.
     ]],
-   },
+  },
 
-   base = {
-      type = 'string',
-      default = nil,
-      default_help = 'index',
-      description = [[
+  base = {
+    type = 'string',
+    default = nil,
+    default_help = 'index',
+    description = [[
       The object/revision to diff against.
       See |gitsigns-revision|.
     ]],
-   },
+  },
 
-   count_chars = {
-      type = 'table',
-      default = {
-         [1] = '1', -- '₁',
-         [2] = '2', -- '₂',
-         [3] = '3', -- '₃',
-         [4] = '4', -- '₄',
-         [5] = '5', -- '₅',
-         [6] = '6', -- '₆',
-         [7] = '7', -- '₇',
-         [8] = '8', -- '₈',
-         [9] = '9', -- '₉',
-         ['+'] = '>', -- '₊',
-      },
-      description = [[
+  count_chars = {
+    type = 'table',
+    default = {
+      [1] = '1', -- '₁',
+      [2] = '2', -- '₂',
+      [3] = '3', -- '₃',
+      [4] = '4', -- '₄',
+      [5] = '5', -- '₅',
+      [6] = '6', -- '₆',
+      [7] = '7', -- '₇',
+      [8] = '8', -- '₈',
+      [9] = '9', -- '₉',
+      ['+'] = '>', -- '₊',
+    },
+    description = [[
       The count characters used when `signs.*.show_count` is enabled. The
       `+` entry is used as a fallback. With the default, any count outside
       of 1-9 uses the `>` character in the sign.
@@ -546,19 +478,25 @@ M.schema = {
         • to specify unicode characters for the counts instead of 1-9.
         • to define characters to be used for counts greater than 9.
     ]],
-   },
+  },
 
-   status_formatter = {
-      type = 'function',
-      default = function(status)
-         local added, changed, removed = status.added, status.changed, status.removed
-         local status_txt = {}
-         if added and added > 0 then table.insert(status_txt, '+' .. added) end
-         if changed and changed > 0 then table.insert(status_txt, '~' .. changed) end
-         if removed and removed > 0 then table.insert(status_txt, '-' .. removed) end
-         return table.concat(status_txt, ' ')
-      end,
-      default_help = [[function(status)
+  status_formatter = {
+    type = 'function',
+    default = function(status)
+      local added, changed, removed = status.added, status.changed, status.removed
+      local status_txt = {}
+      if added and added > 0 then
+        table.insert(status_txt, '+' .. added)
+      end
+      if changed and changed > 0 then
+        table.insert(status_txt, '~' .. changed)
+      end
+      if removed and removed > 0 then
+        table.insert(status_txt, '-' .. removed)
+      end
+      return table.concat(status_txt, ' ')
+    end,
+    default_help = [[function(status)
       local added, changed, removed = status.added, status.changed, status.removed
       local status_txt = {}
       if added   and added   > 0 then table.insert(status_txt, '+'..added  ) end
@@ -566,72 +504,72 @@ M.schema = {
       if removed and removed > 0 then table.insert(status_txt, '-'..removed) end
       return table.concat(status_txt, ' ')
     end]],
-      description = [[
+    description = [[
       Function used to format `b:gitsigns_status`.
     ]],
-   },
+  },
 
-   max_file_length = {
-      type = 'number',
-      default = 40000,
-      description = [[
+  max_file_length = {
+    type = 'number',
+    default = 40000,
+    description = [[
       Max file length (in lines) to attach to.
     ]],
-   },
+  },
 
-   preview_config = {
-      type = 'table',
-      deep_extend = true,
-      default = {
-         border = 'single',
-         style = 'minimal',
-         relative = 'cursor',
-         row = 0,
-         col = 1,
-      },
-      description = [[
+  preview_config = {
+    type = 'table',
+    deep_extend = true,
+    default = {
+      border = 'single',
+      style = 'minimal',
+      relative = 'cursor',
+      row = 0,
+      col = 1,
+    },
+    description = [[
       Option overrides for the Gitsigns preview window. Table is passed directly
       to `nvim_open_win`.
     ]],
-   },
+  },
 
-   attach_to_untracked = {
-      type = 'boolean',
-      default = true,
-      description = [[
+  attach_to_untracked = {
+    type = 'boolean',
+    default = true,
+    description = [[
       Attach to untracked files.
     ]],
-   },
+  },
 
-   update_debounce = {
-      type = 'number',
-      default = 100,
-      description = [[
+  update_debounce = {
+    type = 'number',
+    default = 100,
+    description = [[
       Debounce time for updates (in milliseconds).
     ]],
-   },
+  },
 
-   current_line_blame = {
-      type = 'boolean',
-      default = false,
-      description = [[
+  current_line_blame = {
+    type = 'boolean',
+    default = false,
+    description = [[
       Adds an unobtrusive and customisable blame annotation at the end of
       the current line.
 
       The highlight group used for the text is `GitSignsCurrentLineBlame`.
     ]],
-   },
+  },
 
-   current_line_blame_opts = {
-      type = 'table',
-      deep_extend = true,
-      default = {
-         virt_text = true,
-         virt_text_pos = 'eol',
-         virt_text_priority = 100,
-         delay = 1000,
-      },
-      description = [[
+  current_line_blame_opts = {
+    type = 'table',
+    deep_extend = true,
+    default = {
+      virt_text = true,
+      virt_text_pos = 'eol',
+      virt_text_priority = 100,
+      delay = 1000,
+    },
+    description = [[
       Options for the current line blame annotation.
 
       Fields: ~
@@ -651,27 +589,27 @@ M.schema = {
         • virt_text_priority: integer
           Priority of virtual text.
     ]],
-   },
+  },
 
-   current_line_blame_formatter_opts = {
-      type = 'table',
-      deep_extend = true,
-      deprecated = true,
-      default = {
-         relative_time = false,
-      },
-      description = [[
+  current_line_blame_formatter_opts = {
+    type = 'table',
+    deep_extend = true,
+    deprecated = true,
+    default = {
+      relative_time = false,
+    },
+    description = [[
       Options for the current line blame annotation formatter.
 
       Fields: ~
         • relative_time: boolean
     ]],
-   },
+  },
 
-   current_line_blame_formatter = {
-      type = { 'string', 'function' },
-      default = ' <author>, <author_time> - <summary> ',
-      description = [[
+  current_line_blame_formatter = {
+    type = { 'string', 'function' },
+    default = ' <author>, <author_time> - <summary> ',
+    description = [[
       String or function used to format the virtual text of
       |gitsigns-config-current_line_blame|.
 
@@ -746,65 +684,65 @@ M.schema = {
           field of |nvim_buf_set_extmark| and thus must be a list of
           [text, highlight] tuples.
     ]],
-   },
+  },
 
-   current_line_blame_formatter_nc = {
-      type = { 'string', 'function' },
-      default = ' <author>',
-      description = [[
+  current_line_blame_formatter_nc = {
+    type = { 'string', 'function' },
+    default = ' <author>',
+    description = [[
       String or function used to format the virtual text of
       |gitsigns-config-current_line_blame| for lines that aren't committed.
 
       See |gitsigns-config-current_line_blame_formatter| for more information.
     ]],
-   },
+  },
 
-   trouble = {
-      type = 'boolean',
-      default = function()
-         local has_trouble = pcall(require, 'trouble')
-         return has_trouble
-      end,
-      default_help = "true if installed",
-      description = [[
+  trouble = {
+    type = 'boolean',
+    default = function()
+      local has_trouble = pcall(require, 'trouble')
+      return has_trouble
+    end,
+    default_help = 'true if installed',
+    description = [[
       When using setqflist() or setloclist(), open Trouble instead of the
       quickfix/location list window.
     ]],
-   },
+  },
 
-   yadm = {
-      type = 'table',
-      default = { enable = false },
-      description = [[
+  yadm = {
+    type = 'table',
+    default = { enable = false },
+    description = [[
       yadm configuration.
     ]],
-   },
+  },
 
-   _git_version = {
-      type = 'string',
-      default = 'auto',
-      description = [[
+  _git_version = {
+    type = 'string',
+    default = 'auto',
+    description = [[
       Version of git available. Set to 'auto' to automatically detect.
     ]],
-   },
+  },
 
-   _verbose = {
-      type = 'boolean',
-      default = false,
-      description = [[
+  _verbose = {
+    type = 'boolean',
+    default = false,
+    description = [[
       More verbose debug message. Requires debug_mode=true.
     ]],
-   },
+  },
 
-   _test_mode = {
-      type = 'boolean',
-      default = false,
-   },
+  _test_mode = {
+    type = 'boolean',
+    default = false,
+  },
 
-   word_diff = {
-      type = 'boolean',
-      default = false,
-      description = [[
+  word_diff = {
+    type = 'boolean',
+    default = false,
+    description = [[
       Highlight intra-line word differences in the buffer.
       Requires `config.diff_opts.internal = true` .
 
@@ -822,142 +760,141 @@ M.schema = {
           • `GitSignsChangeVirtLnInline`
           • `GitSignsDeleteVirtLnInline`
     ]],
-   },
+  },
 
-   _refresh_staged_on_update = {
-      type = 'boolean',
-      default = false,
-      description = [[
+  _refresh_staged_on_update = {
+    type = 'boolean',
+    default = false,
+    description = [[
       Always refresh the staged file on each update. Disabling this will cause
       the staged file to only be refreshed when an update to the index is
       detected.
     ]],
-   },
+  },
 
-   _blame_cache = {
-      type = 'boolean',
-      default = true,
-      description = [[
+  _blame_cache = {
+    type = 'boolean',
+    default = true,
+    description = [[
       Cache blame results for current_line_blame
     ]],
-   },
+  },
 
-   _threaded_diff = {
-      type = 'boolean',
-      default = false,
-      description = [[
+  _threaded_diff = {
+    type = 'boolean',
+    default = false,
+    description = [[
       Run diffs on a separate thread
     ]],
-   },
+  },
 
-   _inline2 = {
-      type = 'boolean',
-      default = false,
-      description = [[
+  _inline2 = {
+    type = 'boolean',
+    default = false,
+    description = [[
       Enable enhanced version of preview_hunk_inline()
     ]],
-   },
+  },
 
-   _extmark_signs = {
-      type = 'boolean',
-      default = false,
-      description = [[
+  _extmark_signs = {
+    type = 'boolean',
+    default = false,
+    description = [[
       Use extmarks for placing signs.
     ]],
-   },
+  },
 
-   debug_mode = {
-      type = 'boolean',
-      default = false,
-      description = [[
+  debug_mode = {
+    type = 'boolean',
+    default = false,
+    description = [[
       Enables debug logging and makes the following functions
       available: `dump_cache`, `debug_messages`, `clear_debug`.
     ]],
-   },
-
+  },
 }
 
 warn = function(s, ...)
-   vim.notify(s:format(...), vim.log.levels.WARN, { title = 'gitsigns' })
+  vim.notify(s:format(...), vim.log.levels.WARN, { title = 'gitsigns' })
 end
 
 --- @param config Gitsigns.Config
 local function validate_config(config)
-   for k, v in pairs(config) do
-      local kschema = M.schema[k]
-      if kschema == nil then
-         warn("gitsigns: Ignoring invalid configuration field '%s'", k)
-      elseif kschema.type then
-         if type(kschema.type) == 'string' then
-            vim.validate({
-               [k] = { v, kschema.type },
-            })
-         end
+  for k, v in pairs(config) do
+    local kschema = M.schema[k]
+    if kschema == nil then
+      warn("gitsigns: Ignoring invalid configuration field '%s'", k)
+    elseif kschema.type then
+      if type(kschema.type) == 'string' then
+        vim.validate({
+          [k] = { v, kschema.type },
+        })
       end
-   end
+    end
+  end
 end
 
 local function resolve_default(v)
-   if type(v.default) == 'function' and v.type ~= 'function' then
-      return (v.default)()
-   else
-      return v.default
-   end
+  if type(v.default) == 'function' and v.type ~= 'function' then
+    return (v.default)()
+  else
+    return v.default
+  end
 end
 
 local function handle_deprecated(cfg)
-   for k, v in pairs(M.schema) do
-      local dep = v.deprecated
-      if dep and cfg[k] ~= nil then
-         if type(dep) == "table" then
-            if dep.new_field then
-               local opts_key, field = dep.new_field:match('(.*)%.(.*)')
-               if opts_key and field then
-                  -- Field moved to an options table
-                  local opts = (cfg[opts_key] or {})
-                  opts[field] = cfg[k]
-                  cfg[opts_key] = opts
-               else
-                  -- Field renamed
-                  cfg[dep.new_field] = cfg[k]
-               end
-            end
+  for k, v in pairs(M.schema) do
+    local dep = v.deprecated
+    if dep and cfg[k] ~= nil then
+      if type(dep) == 'table' then
+        if dep.new_field then
+          local opts_key, field = dep.new_field:match('(.*)%.(.*)')
+          if opts_key and field then
+            -- Field moved to an options table
+            local opts = (cfg[opts_key] or {})
+            opts[field] = cfg[k]
+            cfg[opts_key] = opts
+          else
+            -- Field renamed
+            cfg[dep.new_field] = cfg[k]
+          end
+        end
 
-            if dep.hard then
-               if dep.message then
-                  warn(dep.message)
-               elseif dep.new_field then
-                  warn('%s is now deprecated, please use %s', k, dep.new_field)
-               else
-                  warn('%s is now deprecated; ignoring', k)
-               end
-            end
-         end
+        if dep.hard then
+          if dep.message then
+            warn(dep.message)
+          elseif dep.new_field then
+            warn('%s is now deprecated, please use %s', k, dep.new_field)
+          else
+            warn('%s is now deprecated; ignoring', k)
+          end
+        end
       end
-   end
+    end
+  end
 end
 
 --- @param user_config Gitsigns.Config
 function M.build(user_config)
-   user_config = user_config or {}
+  user_config = user_config or {}
 
-   handle_deprecated(user_config)
+  handle_deprecated(user_config)
 
-   validate_config(user_config)
+  validate_config(user_config)
 
-   local config = M.config
-   for k, v in pairs(M.schema) do
-      if user_config[k] ~= nil then
-         if v.deep_extend then
-            local d = resolve_default(v)
-            config[k] = vim.tbl_deep_extend('force', d, user_config[k])
-         else
-            config[k] = user_config[k]
-         end
+  local config = M.config
+  for k, v in pairs(M.schema) do
+    if user_config[k] ~= nil then
+      if v.deep_extend then
+        local d = resolve_default(v)
+        config[k] = vim.tbl_deep_extend('force', d, user_config[k])
       else
-         config[k] = resolve_default(v)
+        config[k] = user_config[k]
       end
-   end
+    else
+      config[k] = resolve_default(v)
+    end
+  end
 end
 
 return M

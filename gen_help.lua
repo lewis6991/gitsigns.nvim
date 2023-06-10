@@ -15,10 +15,6 @@ function table.slice(tbl, first, last, step)
   return sliced
 end
 
-local function is_simple_type(t)
-  return t == 'number' or t == 'string' or t == 'boolean'
-end
-
 local function startswith(str, start)
    return str.sub(str, 1, string.len(start)) == start
 end
@@ -30,18 +26,11 @@ local function read_file(path)
   return t
 end
 
-local function read_file_lines(path)
-  local lines = {}
-  for l in read_file(path):gmatch("([^\n]*)\n?") do
-    table.insert(lines, l)
-  end
-  return lines
-end
-
 -- To make sure the output is consistent between runs (to minimise diffs), we
 -- need to iterate through the schema keys in a deterministic way. To do this we
 -- do a smple scan over the file the schema is defined in and collect the keys
 -- in the order they are defined.
+--- @return string[]
 local function get_ordered_schema_keys()
   local c = read_file('lua/gitsigns/config.lua')
 
@@ -58,59 +47,13 @@ local function get_ordered_schema_keys()
     if startswith(l, '}') then
       break
     end
-    if l:find('^   (%w+).*') then
+    if l:find('^  (%w+).*') then
       local lc = l:gsub('^%s*([%w_]+).*', '%1')
       table.insert(keys, lc)
     end
   end
 
   return keys
-end
-
-local function get_default(field)
-  local cfg = read_file_lines('teal/gitsigns/config.tl')
-
-  local fs, fe
-  for i = 1, #cfg do
-    local l = cfg[i]
-    if l:match('^  '..field..' =') then
-      fs = i
-    end
-    if fs and l:match('^  }') then
-      fe = i
-      break
-    end
-  end
-
-  local ds, de
-  for i = fs, fe do
-    local l = cfg[i]
-    if l:match('^    default =') then
-      ds = i
-      if l:match('},') or l:match('nil,') or l:match("default = '.*'") then
-        de = i
-        break
-      end
-    end
-    if ds and l:match('^    }') then
-      de = i
-      break
-    end
-  end
-
-  local ret = {}
-  for i = ds, de do
-    local l = cfg[i]
-    if i == ds then
-      l = l:gsub('%s*default = ', '')
-    end
-    if i == de then
-      l = l:gsub('(.*),', '%1')
-    end
-    table.insert(ret, l)
-  end
-
-  return table.concat(ret, '\n')
 end
 
 local function gen_config_doc_deprecated(dep_info, out)
@@ -153,19 +96,12 @@ local function gen_config_doc_field(field, out)
   end
 
   if v.description then
-    local d
+    local d --- @type string
     if v.default_help ~= nil then
       d = v.default_help
-    elseif is_simple_type(v.type) then
-      d = inspect(v.default)
-      d = ('`%s`'):format(d)
     else
-      d = get_default(field)
-      if d:find('\n') then
-        d = d:gsub('\n([^\n\r])', '\n%1')
-      else
-        d = ('`%s`'):format(d)
-      end
+      d = inspect(v.default):gsub('\n', '\n    ')
+      d = ('`%s`'):format(d)
     end
 
     local vtype = (function()
@@ -192,8 +128,9 @@ local function gen_config_doc_field(field, out)
   end
 end
 
+--- @return string
 local function gen_config_doc()
-  local res = {}
+  local res = {} ---@type string[]
   local function out(line)
     res[#res+1] = line or ''
   end
@@ -203,6 +140,8 @@ local function gen_config_doc()
   return table.concat(res, '\n')
 end
 
+--- @param line string
+--- @return string
 local function parse_func_header(line)
   local func = line:match('%w+%.([%w_]+)')
   if not func then
@@ -212,7 +151,7 @@ local function parse_func_header(line)
     line:match('function%((.*)%)') or             -- M.name = function(args)
     line:match('function%s+%w+%.[%w_]+%((.*)%)')  -- function M.name(args)
   local args = {}
-  for k in string.gmatch(args_raw, "([%w_]+):") do
+  for k in string.gmatch(args_raw, "([%w_]+)") do
     if k:sub(1, 1) ~= '_' then
       args[#args+1] = string.format('{%s}', k)
     end
@@ -224,6 +163,8 @@ local function parse_func_header(line)
   )
 end
 
+--- @param path string
+--- @return string
 local function gen_functions_doc_from_file(path)
   local i = read_file(path):gmatch("([^\n]*)\n?")
 
@@ -262,6 +203,8 @@ local function gen_functions_doc_from_file(path)
   return table.concat(res, '\n')
 end
 
+--- @param files string[]
+--- @return string
 local function gen_functions_doc(files)
   local res = ''
   for _, path in ipairs(files) do
@@ -270,8 +213,9 @@ local function gen_functions_doc(files)
   return res
 end
 
+--- @return string
 local function gen_highlights_doc()
-  local res = {}
+  local res = {} --- @type string[]
   local highlights = require('lua.gitsigns.highlight')
 
   local name_max = 0
@@ -286,12 +230,11 @@ local function gen_highlights_doc()
   for _, hl in ipairs(highlights.hls) do
     for name, spec in pairs(hl) do
       if not spec.hidden then
-        local fallbacks_tbl = {}
+        local fallbacks_tbl = {} --- @type string[]
         for _, f in ipairs(spec) do
           fallbacks_tbl[#fallbacks_tbl+1] = string.format('`%s`', f)
         end
         local fallbacks = table.concat(fallbacks_tbl, ', ')
-        local pad = string.rep(' ', name_max - name:len())
         res[#res+1] = string.format('%s*hl-%s*', string.rep(' ', 56), name)
         res[#res+1] = string.format('%s', name)
         if spec.desc then
@@ -306,11 +249,12 @@ local function gen_highlights_doc()
   return table.concat(res, '\n')
 end
 
+--- @return string
 local function get_setup_from_readme()
   local i = read_file('README.md'):gmatch("([^\n]*)\n?")
-  local res = {}
+  local res = {} --- @type string[]
   local function append(line)
-      res[#res+1] = line ~= '' and '    '..line or ''
+    res[#res+1] = line ~= '' and '    '..line or ''
   end
   for l in i do
     if l:match("require%('gitsigns'%).setup {") then
@@ -332,14 +276,16 @@ end
 local function get_marker_text(marker)
   return ({
     VERSION   = '0.7-dev',
-    CONFIG    = gen_config_doc,
-    FUNCTIONS = gen_functions_doc{
-      'teal/gitsigns.tl',
-      'teal/gitsigns/attach.tl',
-      'teal/gitsigns/actions.tl',
-    },
-    HIGHLIGHTS = gen_highlights_doc,
-    SETUP     = get_setup_from_readme
+    CONFIG    = function() return gen_config_doc() end,
+    FUNCTIONS = function()
+      return gen_functions_doc{
+        'lua/gitsigns.lua',
+        'lua/gitsigns/attach.lua',
+        'lua/gitsigns/actions.lua',
+      }
+    end,
+    HIGHLIGHTS = function() return gen_highlights_doc() end,
+    SETUP     = function() return get_setup_from_readme() end,
   })[marker]
 end
 

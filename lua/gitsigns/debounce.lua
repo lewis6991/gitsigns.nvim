@@ -2,9 +2,6 @@ local uv = require('gitsigns.uv')
 
 local M = {}
 
-
-
-
 --- Debounces a function on the trailing edge.
 ---
 --- @generic F: function
@@ -12,16 +9,15 @@ local M = {}
 --- @param fn F Function to debounce
 --- @return F Debounced function.
 function M.debounce_trailing(ms, fn)
-   local timer = uv.new_timer(true)
-   return function(...)
-      local argv = { ... }
-      timer:start(ms, 0, function()
-         timer:stop()
-         fn(unpack(argv))
-      end)
-   end
+  local timer = uv.new_timer(true)
+  return function(...)
+    local argv = { ... }
+    timer:start(ms, 0, function()
+      timer:stop()
+      fn(unpack(argv))
+    end)
+  end
 end
-
 
 --- Throttles a function on the leading edge.
 ---
@@ -30,18 +26,18 @@ end
 --- @param fn F Function to throttle
 --- @return F throttled function.
 function M.throttle_leading(ms, fn)
-   local timer = uv.new_timer(true)
-   local running = false
-   return function(...)
-      if not running then
-         timer:start(ms, 0, function()
-            running = false
-            timer:stop()
-         end)
-         running = true
-         fn(...)
-      end
-   end
+  local timer = uv.new_timer(true)
+  local running = false
+  return function(...)
+    if not running then
+      timer:start(ms, 0, function()
+        running = false
+        timer:stop()
+      end)
+      running = true
+      fn(...)
+    end
+  end
 end
 
 --- Throttles a function using the first argument as an ID
@@ -61,26 +57,26 @@ end
 --- @param schedule boolean
 --- @return F throttled function.
 function M.throttle_by_id(fn, schedule)
-   local scheduled = {} --- @type table<any,boolean>
-   local running = {} --- @type table<any,boolean>
-   return function(id, ...)
-      if scheduled[id] then
-         -- If fn is already scheduled, then drop
-         return
-      end
-      if not running[id] or schedule then
-         scheduled[id] = true
-      end
-      if running[id] then
-         return
-      end
-      while scheduled[id] do
-         scheduled[id] = nil
-         running[id] = true
-         fn(id, ...)
-         running[id] = nil
-      end
-   end
+  local scheduled = {} --- @type table<any,boolean>
+  local running = {} --- @type table<any,boolean>
+  return function(id, ...)
+    if scheduled[id] then
+      -- If fn is already scheduled, then drop
+      return
+    end
+    if not running[id] or schedule then
+      scheduled[id] = true
+    end
+    if running[id] then
+      return
+    end
+    while scheduled[id] do
+      scheduled[id] = nil
+      running[id] = true
+      fn(id, ...)
+      running[id] = nil
+    end
+  end
 end
 
 return M
