@@ -2,7 +2,6 @@ local void = require('gitsigns.async').void
 local scheduler = require('gitsigns.async').scheduler
 
 local gs_config = require('gitsigns.config')
-local Config = gs_config.Config
 local config = gs_config.config
 
 local log = require('gitsigns.debug.log')
@@ -14,193 +13,186 @@ local uv = require('gitsigns.uv')
 
 local M = {}
 
-
-   -- from attach.tl
-
-
-
-
-
 local cwd_watcher
 
 local update_cwd_head = void(function()
-   local paths = vim.fs.find('.git', {
-      limit = 1,
-      upward = true,
-      type = 'directory',
-   })
+  local paths = vim.fs.find('.git', {
+    limit = 1,
+    upward = true,
+    type = 'directory',
+  })
 
-   if #paths == 0 then
-      return
-   end
+  if #paths == 0 then
+    return
+  end
 
-   if cwd_watcher then
-      cwd_watcher:stop()
-   else
-      cwd_watcher = uv.new_fs_poll(true)
-   end
+  if cwd_watcher then
+    cwd_watcher:stop()
+  else
+    cwd_watcher = uv.new_fs_poll(true)
+  end
 
-   local cwd = vim.loop.cwd()
-   local gitdir, head
+  local cwd = vim.loop.cwd()
+  local gitdir, head
 
-   local gs_cache = require('gitsigns.cache')
+  local gs_cache = require('gitsigns.cache')
 
-   -- Look in the cache first
-   for _, bcache in pairs(gs_cache.cache) do
-      local repo = bcache.git_obj.repo
-      if repo.toplevel == cwd then
-         head = repo.abbrev_head
-         gitdir = repo.gitdir
-         break
-      end
-   end
+  -- Look in the cache first
+  for _, bcache in pairs(gs_cache.cache) do
+    local repo = bcache.git_obj.repo
+    if repo.toplevel == cwd then
+      head = repo.abbrev_head
+      gitdir = repo.gitdir
+      break
+    end
+  end
 
-   local git = require('gitsigns.git')
+  local git = require('gitsigns.git')
 
-   if not head or not gitdir then
-      local info = git.get_repo_info(cwd)
-      gitdir = info.gitdir
-      head = info.abbrev_head
-   end
+  if not head or not gitdir then
+    local info = git.get_repo_info(cwd)
+    gitdir = info.gitdir
+    head = info.abbrev_head
+  end
 
-   scheduler()
-   vim.g.gitsigns_head = head
+  scheduler()
+  vim.g.gitsigns_head = head
 
-   if not gitdir then
-      return
-   end
+  if not gitdir then
+    return
+  end
 
-   local towatch = gitdir .. '/HEAD'
+  local towatch = gitdir .. '/HEAD'
 
-   if cwd_watcher:getpath() == towatch then
-      -- Already watching
-      return
-   end
+  if cwd_watcher:getpath() == towatch then
+    -- Already watching
+    return
+  end
 
-   -- Watch .git/HEAD to detect branch changes
-   cwd_watcher:start(
-   towatch,
-   config.watch_gitdir.interval,
-   void(function(err)
+  -- Watch .git/HEAD to detect branch changes
+  cwd_watcher:start(
+    towatch,
+    config.watch_gitdir.interval,
+    void(function(err)
       local __FUNC__ = 'cwd_watcher_cb'
       if err then
-         dprintf('Git dir update error: %s', err)
-         return
+        dprintf('Git dir update error: %s', err)
+        return
       end
       dprint('Git cwd dir update')
 
       local new_head = git.get_repo_info(cwd).abbrev_head
       scheduler()
       vim.g.gitsigns_head = new_head
-   end))
-
+    end)
+  )
 end)
 
 local function setup_cli()
-   api.nvim_create_user_command('Gitsigns', function(params)
-      require('gitsigns.cli').run(params)
-   end, {
-      force = true,
-      nargs = '*',
-      range = true,
-      complete = function(arglead, line)
-         return require('gitsigns.cli').complete(arglead, line)
-      end, })
+  api.nvim_create_user_command('Gitsigns', function(params)
+    require('gitsigns.cli').run(params)
+  end, {
+    force = true,
+    nargs = '*',
+    range = true,
+    complete = function(arglead, line)
+      return require('gitsigns.cli').complete(arglead, line)
+    end,
+  })
 end
 
 local exported = {
-   'attach',
-   'actions',
+  'attach',
+  'actions',
 }
 
 local function setup_debug()
-   log.debug_mode = config.debug_mode
-   log.verbose = config._verbose
+  log.debug_mode = config.debug_mode
+  log.verbose = config._verbose
 
-   if config.debug_mode then
-      exported[#exported + 1] = 'debug'
-   end
+  if config.debug_mode then
+    exported[#exported + 1] = 'debug'
+  end
 end
 
 local function setup_attach()
-   scheduler()
+  scheduler()
 
-   -- Attach to all open buffers
-   for _, buf in ipairs(api.nvim_list_bufs()) do
-      if api.nvim_buf_is_loaded(buf) and
-         api.nvim_buf_get_name(buf) ~= '' then
-         M.attach(buf, nil, 'setup')
-         scheduler()
-      end
-   end
+  -- Attach to all open buffers
+  for _, buf in ipairs(api.nvim_list_bufs()) do
+    if api.nvim_buf_is_loaded(buf) and api.nvim_buf_get_name(buf) ~= '' then
+      M.attach(buf, nil, 'setup')
+      scheduler()
+    end
+  end
 
-   api.nvim_create_autocmd({ 'BufRead', 'BufNewFile', 'BufWritePost' }, {
-      group = 'gitsigns',
-      callback = function(data)
-         M.attach(nil, nil, data.event)
-      end,
-   })
+  api.nvim_create_autocmd({ 'BufRead', 'BufNewFile', 'BufWritePost' }, {
+    group = 'gitsigns',
+    callback = function(data)
+      M.attach(nil, nil, data.event)
+    end,
+  })
 end
 
 local function setup_cwd_head()
-   scheduler()
-   update_cwd_head()
-   -- Need to debounce in case some plugin changes the cwd too often
-   -- (like vim-grepper)
-   api.nvim_create_autocmd('DirChanged', {
-      group = 'gitsigns',
-      callback = function()
-         local debounce = require("gitsigns.debounce").debounce_trailing
-         debounce(100, update_cwd_head)
-      end,
-   })
+  scheduler()
+  update_cwd_head()
+  -- Need to debounce in case some plugin changes the cwd too often
+  -- (like vim-grepper)
+  api.nvim_create_autocmd('DirChanged', {
+    group = 'gitsigns',
+    callback = function()
+      local debounce = require('gitsigns.debounce').debounce_trailing
+      debounce(100, update_cwd_head)
+    end,
+  })
 end
 
 --- Setup and start Gitsigns.
 ---
 --- Attributes: ~
----       {async}
+---     {async}
 ---
 --- Parameters: ~
----       {cfg} Table object containing configuration for
----       Gitsigns. See |gitsigns-usage| for more details.
+---     {cfg} Table object containing configuration for
+---     Gitsigns. See |gitsigns-usage| for more details.
 M.setup = void(function(cfg)
-   gs_config.build(cfg)
+  gs_config.build(cfg)
 
-   if vim.fn.executable('git') == 0 then
-      print('gitsigns: git not in path. Aborting setup')
-      return
-   end
+  if vim.fn.executable('git') == 0 then
+    print('gitsigns: git not in path. Aborting setup')
+    return
+  end
 
-   if config.yadm.enable and vim.fn.executable('yadm') == 0 then
-      print("gitsigns: yadm not in path. Ignoring 'yadm.enable' in config")
-      config.yadm.enable = false
-      return
-   end
+  if config.yadm.enable and vim.fn.executable('yadm') == 0 then
+    print("gitsigns: yadm not in path. Ignoring 'yadm.enable' in config")
+    config.yadm.enable = false
+    return
+  end
 
-   setup_debug()
-   setup_cli()
+  setup_debug()
+  setup_cli()
 
-   api.nvim_create_augroup('gitsigns', {})
+  api.nvim_create_augroup('gitsigns', {})
 
-   if config._test_mode then
-      require('gitsigns.attach')._setup()
-      require('gitsigns.git')._set_version(config._git_version)
-   end
+  if config._test_mode then
+    require('gitsigns.attach')._setup()
+    require('gitsigns.git')._set_version(config._git_version)
+  end
 
-   setup_attach()
-   setup_cwd_head()
+  setup_attach()
+  setup_cwd_head()
 
-   M._setup_done = true
+  M._setup_done = true
 end)
 
 return setmetatable(M, {
-   __index = function(_, f)
-      for _, mod in ipairs(exported) do
-         local m = (require)('gitsigns.' .. mod)
-         if m[f] then
-            return m[f]
-         end
+  __index = function(_, f)
+    for _, mod in ipairs(exported) do
+      local m = (require)('gitsigns.' .. mod)
+      if m[f] then
+        return m[f]
       end
-   end,
+    end
+  end,
 })

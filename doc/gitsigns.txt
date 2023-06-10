@@ -594,11 +594,11 @@ on_attach                                          *gitsigns-config-on_attach*
 watch_gitdir                                    *gitsigns-config-watch_gitdir*
       Type: `table[extended]`
       Default: >
-        {
+        `{
           enable = true,
-          interval = 1000,
-          follow_files = true
-        }
+          follow_files = true,
+          interval = 1000
+        }`
 <
       When opening a file, a libuv watcher is placed on the respective
       `.git` directory to detect when changes happen to use as a trigger to
@@ -685,18 +685,9 @@ base                                                    *gitsigns-config-base*
 count_chars                                      *gitsigns-config-count_chars*
       Type: `table`
       Default: >
-        {
-          [1]   = '1', -- '₁',
-          [2]   = '2', -- '₂',
-          [3]   = '3', -- '₃',
-          [4]   = '4', -- '₄',
-          [5]   = '5', -- '₅',
-          [6]   = '6', -- '₆',
-          [7]   = '7', -- '₇',
-          [8]   = '8', -- '₈',
-          [9]   = '9', -- '₉',
-          ['+'] = '>', -- '₊',
-        }
+        `{ "1", "2", "3", "4", "5", "6", "7", "8", "9",
+          ["+"] = ">"
+        }`
 <
       The count characters used when `signs.*.show_count` is enabled. The
       `+` entry is used as a fallback. With the default, any count outside
@@ -728,13 +719,13 @@ max_file_length                              *gitsigns-config-max_file_length*
 preview_config                                *gitsigns-config-preview_config*
       Type: `table[extended]`
       Default: >
-        {
-          border   = 'single',
-          style    = 'minimal',
-          relative = 'cursor',
-          row      = 0,
-          col      = 1
-        }
+        `{
+          border = "single",
+          col = 1,
+          relative = "cursor",
+          row = 0,
+          style = "minimal"
+        }`
 <
       Option overrides for the Gitsigns preview window. Table is passed directly
       to `nvim_open_win`.
@@ -760,12 +751,12 @@ current_line_blame                        *gitsigns-config-current_line_blame*
 current_line_blame_opts              *gitsigns-config-current_line_blame_opts*
       Type: `table[extended]`
       Default: >
-        {
+        `{
+          delay = 1000,
           virt_text = true,
-          virt_text_pos = 'eol',
-          virt_text_priority = 100,
-          delay = 1000
-        }
+          virt_text_pos = "eol",
+          virt_text_priority = 100
+        }`
 <
       Options for the current line blame annotation.
 
@@ -792,9 +783,9 @@ current_line_blame_formatter_opts
 
       Type: `table[extended]`
       Default: >
-        {
-            relative_time = false
-        }
+        `{
+          relative_time = false
+        }`
 <
       Options for the current line blame annotation formatter.
 
@@ -802,7 +793,7 @@ current_line_blame_formatter_opts
         • relative_time: boolean
 
 current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
-      Type: `string|function`, Default: `' <author>, <author_time> - <summary> '`
+      Type: `string|function`, Default: `" <author>, <author_time> - <summary> "`
 
       String or function used to format the virtual text of
       |gitsigns-config-current_line_blame|.
@@ -880,7 +871,7 @@ current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
 
 current_line_blame_formatter_nc
                              *gitsigns-config-current_line_blame_formatter_nc*
-      Type: `string|function`, Default: `' <author>'`
+      Type: `string|function`, Default: `" <author>"`
 
       String or function used to format the virtual text of
       |gitsigns-config-current_line_blame| for lines that aren't committed.
@@ -894,8 +885,12 @@ trouble                                              *gitsigns-config-trouble*
       quickfix/location list window.
 
 yadm                                                    *gitsigns-config-yadm*
-      Type: `table`, Default: `{ enable = false }`
-
+      Type: `table`
+      Default: >
+        `{
+          enable = false
+        }`
+<
       yadm configuration.
 
 word_diff                                          *gitsigns-config-word_diff*

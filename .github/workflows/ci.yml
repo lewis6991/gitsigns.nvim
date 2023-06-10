@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        neovim_branch: ['v0.8.3', 'nightly']
+        neovim_branch: ['v0.8.3', 'v0.9.1', 'nightly']
     runs-on: ubuntu-latest
     env:
       NEOVIM_BRANCH: ${{ matrix.neovim_branch }}
@@ -55,12 +55,6 @@ jobs:
       - name: Build Neovim
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: make test_deps
-
-      - name: Install Lua Deps
-        run: make lua_deps
-
-      - name: Check lua files are built from latest teal
-        run: make tl-ensure
 
       - name: Run Test
         run: make test
