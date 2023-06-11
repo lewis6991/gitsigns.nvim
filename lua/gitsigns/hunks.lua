@@ -1,6 +1,3 @@
-local Sign = require('gitsigns.signs').Sign
-local StatusObj = require('gitsigns.status').StatusObj
-
 local util = require('gitsigns.util')
 
 local min, max = math.min, math.max
@@ -32,8 +29,6 @@ local min, max = math.min, math.max
 local M = { Node = {}, Hunk = {}, Hunk_Public = {} }
 
 -- For internal use
-
-local Hunk = M.Hunk
 
 --- @param old_start integer
 --- @param old_count integer
@@ -330,8 +325,8 @@ function M.find_nearest_hunk(lnum, hunks, forwards, wrap)
   return ret, index
 end
 
---- @param a Gitsigns.Hunk.Hunk[]
---- @param b Gitsigns.Hunk.Hunk[]
+--- @param a Gitsigns.Hunk.Hunk[]?
+--- @param b Gitsigns.Hunk.Hunk[]?
 --- @return boolean
 function M.compare_heads(a, b)
   if (a == nil) ~= (b == nil) then

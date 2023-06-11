@@ -28,7 +28,7 @@ local function get_sign_name(name, stype)
   local key = name .. stype
   if not sign_name_cache[key] then
     sign_name_cache[key] =
-      string.format('%s%s%s', 'GitSigns', capitalise_word(key), capitalise_word(stype))
+      string.format('%s%s%s', 'GitSigns', capitalise_word(name), capitalise_word(stype))
   end
 
   return sign_name_cache[key]

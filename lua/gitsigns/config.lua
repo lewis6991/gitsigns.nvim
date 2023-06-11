@@ -22,7 +22,7 @@ end
 --- @field vertical boolean
 --- @field linematch integer
 
---- @class Gitsign.SignConfig
+--- @class Gitsigns.SignConfig
 --- @field show_count boolean
 --- @field hl string
 --- @field text string

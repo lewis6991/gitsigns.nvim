@@ -1,6 +1,6 @@
 -- vim: foldnestmax=5 foldminlines=1
 
-local Screen = require('test.functional.ui.screen')
+local Screen = require('test.screen')
 local helpers = require('test.gs_helpers')
 
 local clear           = helpers.clear
@@ -9,7 +9,7 @@ local exec_capture    = helpers.exec_capture
 local feed            = helpers.feed
 local insert          = helpers.insert
 local exec_lua        = helpers.exec_lua
-local split           = helpers.split
+local split           = vim.split
 local get_buf_var     = helpers.curbufmeths.get_var
 local fn              = helpers.funcs
 local system          = fn.system
@@ -58,7 +58,7 @@ describe('gitsigns', function()
 
     -- Make gitisigns available
     exec_lua('package.path = ...', package.path)
-    config = helpers.deepcopy(test_config)
+    config = vim.deepcopy(test_config)
     command('cd '..system{"dirname", os.tmpname()})
   end)
 
@@ -91,7 +91,7 @@ describe('gitsigns', function()
         'attach(1): Attaching (trigger=BufReadPost)',
         p'run_job: git .* config user.name',
         p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
-        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..helpers.pesc(test_file)),
+        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..vim.pesc(test_file)),
         'watch_gitdir(1): Watching git dir',
         p'run_job: git .* show :0:dummy.txt',
         'update(1): updates: 1, jobs: 6'
@@ -201,7 +201,7 @@ describe('gitsigns', function()
         'attach(1): Attaching (trigger=BufNewFile)',
         p'run_job: git .* config user.name',
         p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
-        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..helpers.pesc(newfile)),
+        p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..vim.pesc(newfile)),
         'attach(1): Not a file',
       }
 

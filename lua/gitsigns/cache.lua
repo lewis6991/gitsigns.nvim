@@ -1,11 +1,24 @@
-local Hunk = require('gitsigns.hunks').Hunk
-local GitObj = require('gitsigns.git').Obj
 local config = require('gitsigns.config').config
 
-local M = { CacheEntry = {}, CacheObj = {} }
+local M = {
+  CacheEntry = {},
+  ---@class Gitsigns.CacheObj
+  ---@field [integer] Gitsigns.CacheEntry
+  ---@field destroy fun(self: Gitsigns.CacheObj, bufnr: integer)
+  CacheObj = {}
+}
 
 -- Timer object watching the gitdir
 
+--- @class Gitsigns.CacheEntry
+--- @field compare_text?      string[]
+--- @field compare_text_head? string[]
+--- @field hunks              Gitsigns.Hunk.Hunk[]
+--- @field hunks_staged?      Gitsigns.Hunk.Hunk[]
+--- @field commit?            string
+--- @field base?              string
+--- @field git_obj           Gitsigns.GitObj
+--- @field gitdir_watcher?    uv_poll_t
 local CacheEntry = M.CacheEntry
 
 function CacheEntry:get_compare_rev(base)

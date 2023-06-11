@@ -2,7 +2,45 @@ local config = require('gitsigns.config').config
 
 local dprint = require('gitsigns.debug.log').dprint
 
-local B = require('gitsigns.signs.base')
+--- @alias GitSigns.SignType
+--- | 'add'
+--- | 'delete'
+--- | 'change'
+--- | 'topdelete'
+--- | 'changedelete'
+--- | 'untracked'
+
+--- @class Gitsigns.Sign
+--- @field type Gitsigns.SignType
+--- @field count integer
+--- @field lnum integer
+
+--- @class Gitsigns.HlDef
+--- @field hl string
+--- @field numhl string
+--- @field linehl string
+
+--- @class Gitsigns.Signs
+--- @field hls table<Gitsigns.SignType,Gitsigns.HlDef>
+--- @field name string
+--- @field group string
+--- @field config Gitsigns.SignConfig
+--- Used by signs/extmarks.tl
+--- @field ns integer
+--- Used by signs/vimfn.tl
+--- @field placed table<integer,table<integer,Gitsigns.Sign>>
+--- @field new      fun(cfg: Gitsigns.SignConfig, name: string): Gitsigns.Signs
+--- @field _new     fun(cfg: Gitsigns.SignConfig, hls: {SignType:Gitsigns.HlDef}, name: string): Gitsigns.Signs
+--- @field remove   fun(self: Gitsigns.Signs, bufnr: integer, start_lnum?: integer, end_lnum?: integer)
+--- @field add      fun(self: Gitsigns.Signs, bufnr: integer, signs: Gitsigns.Sign[])
+--- @field contains fun(self: Gitsigns.Signs, bufnr: integer, start: integer, last: integer): boolean
+--- @field on_lines fun(self: Gitsigns.Signs, bufnr: integer, first: integer, last_orig: integer, last_new: integer)
+--- @field reset    fun(self: Gitsigns.Signs)
+
+local B = {
+  Sign = {},
+  HlDef = {}
+}
 
 -- local function capitalise_word(x: string): string
 --    return x:sub(1, 1):upper()..x:sub(2)
@@ -10,7 +48,7 @@ local B = require('gitsigns.signs.base')
 
 function B.new(cfg, name)
   local __FUNC__ = 'signs.init'
-  local C
+  local C --- @type Gitsigns.Signs
   if config._extmark_signs then
     dprint('Using extmark signs')
     C = require('gitsigns.signs.extmarks')
