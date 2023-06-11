@@ -14,47 +14,35 @@ jobs:
       # Check commit messages
       - uses: webiny/action-conventional-commits@v1.1.0
 
-  build:
+  test:
+    runs-on: ubuntu-latest
+
     strategy:
       fail-fast: true
       matrix:
-        neovim_branch: ['v0.8.3', 'v0.9.1', 'nightly']
-    runs-on: ubuntu-latest
+        neovim_branch:
+          - 'v0.8.3'
+          - 'v0.9.1'
+          - 'nightly'
+
     env:
-      NEOVIM_BRANCH: ${{ matrix.neovim_branch }}
+      NVIM_TEST_VERSION: ${{ matrix.neovim_branch }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Get Neovim SHA
-        id: get-nvim-sha
-        run: |
-          echo "sha=$(git ls-remote https://github.com/neovim/neovim ${{env.NEOVIM_BRANCH}} | cut -f1)" >> $GITHUB_OUTPUT
-
-      - name: Cache Deps
-        id: cache-deps
-        uses: actions/cache@v3
+      - uses: leafo/gh-actions-lua@v9
         with:
-          path: deps
-          key: ${{ steps.get-nvim-sha.outputs.sha }}-${{ hashFiles('.github/workflows/ci.yml', 'Makefile') }}
+          luaVersion: "5.1.5"
 
-      - name: Install Neovim build dependencies
-        if: steps.cache-deps.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update &&
-          sudo apt-get install -y \
-            cmake \
-            g++ \
-            gettext \
-            libtool-bin \
-            lua-bitop \
-            ninja-build \
-            unzip
+      - uses: leafo/gh-actions-luarocks@v4
 
-      - name: Build Neovim
-        if: steps.cache-deps.outputs.cache-hit != 'true'
-        run: make test_deps
+      - name: install busted
+        run: luarocks install busted
+
+      - name: Download Nvim
+        run: make nvim
 
       - name: Run Test
         run: make test

@@ -3,7 +3,6 @@ local awrap = require('gitsigns.async').wrap
 local scheduler = require('gitsigns.async').scheduler
 
 local gs_cache = require('gitsigns.cache')
-local CacheEntry = gs_cache.CacheEntry
 local cache = gs_cache.cache
 
 local Signs = require('gitsigns.signs')
@@ -23,14 +22,13 @@ local run_diff = require('gitsigns.diff')
 local uv = require('gitsigns.uv')
 
 local gs_hunks = require('gitsigns.hunks')
-local Hunk = gs_hunks.Hunk
 
 local config = require('gitsigns.config').config
 
 local api = vim.api
 
-local signs_normal
-local signs_staged
+local signs_normal --- @type Gitsigns.Signs
+local signs_staged --- @type Gitsigns.Signs
 
 local M = {}
 
@@ -42,6 +40,9 @@ local scheduler_if_buf_valid = awrap(function(buf, cb)
   end)
 end, 2)
 
+--- @param bufnr integer
+--- @param signs Gitsigns.Signs
+--- @param hunks Gitsigns.Hunk.Hunk[]
 local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked)
   if clear then
     signs:remove(bufnr) -- Remove all signs
@@ -107,6 +108,8 @@ end
 
 local ns = api.nvim_create_namespace('gitsigns')
 
+--- @param bufnr integer
+--- @param row integer
 local function apply_word_diff(bufnr, row)
   -- Don't run on folded lines
   if vim.fn.foldclosed(row + 1) ~= -1 then
@@ -191,6 +194,9 @@ local function clear_deleted(bufnr)
   end
 end
 
+--- @param bufnr integer
+--- @param nsd integer
+--- @param hunk Gitsigns.Hunk.Hunk
 function M.show_deleted(bufnr, nsd, hunk)
   local virt_lines = {}
 
@@ -327,6 +333,9 @@ function M.show_deleted_in_float(bufnr, nsd, hunk)
   return winid
 end
 
+--- @param bufnr integer
+--- @param nsw integer
+--- @param hunk Gitsigns.Hunk.Hunk
 function M.show_added(bufnr, nsw, hunk)
   local start_row = hunk.added.start - 1
 
@@ -372,6 +381,8 @@ local update_cnt = 0
 -- Since updates are asynchronous we need to make sure an update isn't performed
 -- whilst another one is in progress. If this happens then schedule another
 -- update after the current one has completed.
+--- @param bufnr integer
+--- @param bcache Gitsigns.CacheEntry
 M.update = throttle_by_id(function(bufnr, bcache)
   local __FUNC__ = 'update'
   bcache = bcache or cache[bufnr]
@@ -441,6 +452,9 @@ M.detach = function(bufnr, keep_signs)
   end
 end
 
+--- @param bufnr integer
+--- @param bcache Gitsigns.CacheEntry
+--- @param old_relpath string
 local function handle_moved(bufnr, bcache, old_relpath)
   local git_obj = bcache.git_obj
   local do_update = false
@@ -489,7 +503,7 @@ function M.watch_gitdir(bufnr, gitdir)
   end
 
   dprintf('Watching git dir')
-  local w = uv.new_fs_poll(true)
+  local w = assert(uv.new_fs_poll(true))
   w:start(
     gitdir,
     config.watch_gitdir.interval,

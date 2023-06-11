@@ -1,5 +1,6 @@
 doc/tags
 
-neovim
-
 scratch/dummy_ignored.txt
+
+nvim-test-*
+nvim-runner-*

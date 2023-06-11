@@ -52,7 +52,7 @@ describe('actions', function()
     clear()
     -- Make gitisigns available
     exec_lua('package.path = ...', package.path)
-    config = helpers.deepcopy(test_config)
+    config = vim.deepcopy(test_config)
     command('cd '..system{"dirname", os.tmpname()})
     setup_gitsigns(config)
   end)

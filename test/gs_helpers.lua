@@ -1,14 +1,13 @@
-local helpers = require('test.functional.helpers')()
+local helpers = require('test.helpers')()
 
 local system       = helpers.funcs.system
 local exec_lua     = helpers.exec_lua
 local matches      = helpers.matches
-local exec_capture = helpers.exec_capture
 local eq           = helpers.eq
 local fn           = helpers.funcs
 local get_buf_var  = helpers.curbufmeths.get_var
 
-local timeout = 4000
+local timeout = 8000
 
 local M = helpers
 
@@ -50,6 +49,7 @@ local test_file_text = {
 
 function M.git(args)
   system{"git", "-C", M.scratch, unpack(args)}
+  exec_lua("vim.loop.sleep(40)")
 end
 
 function M.cleanup()
@@ -185,11 +185,11 @@ local function match_lines2(lines, spec)
   end
 
   if i < #spec + 1 then
-    local unmatched_msg = table.concat(helpers.tbl_map(function(v)
+    local unmatched_msg = table.concat(vim.tbl_map(function(v)
       return string.format('    - %s', v.text or v)
     end, spec), '\n')
 
-    local lines_msg = table.concat(helpers.tbl_map(function(v)
+    local lines_msg = table.concat(vim.tbl_map(function(v)
       return string.format('    - %s', v)
     end, lines), '\n')
 

@@ -9,7 +9,6 @@ local gs_config = require('gitsigns.config')
 local config = gs_config.config
 
 local gs_hunks = require('gitsigns.hunks')
-local Hunk = gs_hunks.Hunk
 
 local uv = vim.loop
 local startswith = vim.startswith
@@ -20,7 +19,14 @@ local err = require('gitsigns.message').error
 
 -- local extensions
 
-local M = { BlameInfo = {}, Version = {}, RepoInfo = {}, Repo = {}, FileProps = {}, Obj = {} }
+local M = {
+  BlameInfo = {},
+  Version = {},
+  RepoInfo = {},
+  Repo = {},
+  FileProps = {},
+  Obj = {}
+}
 
 -- Info in header
 
@@ -45,7 +51,25 @@ local in_git_dir = function(file)
   return false
 end
 
+--- @class Gitsigns.GitObj
+--- @field file string
+--- @field encoding string
+--- @field i_crlf boolean
+--- @field w_crlf boolean
+--- @field mode_bits string
+--- @field object_name string
+--- @field relpath string
+--- @field orig_relpath? string
+--- @field repo Gitsigns.Repo
+--- @field has_conflicts? boolean
 local Obj = M.Obj
+
+--- @class Gitsigns.Repo
+--- @field gitdir string
+--- @field toplevel string
+--- @field detached boolean
+--- @field abbrev_head string
+--- @field username string
 local Repo = M.Repo
 
 local function parse_version(version)
@@ -105,7 +129,7 @@ function M._set_version(version)
   M.version = parse_version(parts[3])
 end
 
---- @async
+--- @type fun(args, spec): string[], string?
 local git_command = async.create(function(args, spec)
   if not M.version then
     M._set_version(config._git_version)
@@ -196,8 +220,7 @@ end
 
 local has_cygpath = jit and jit.os == 'Windows' and vim.fn.executable('cygpath') == 1
 
---- @async
-local cygpath_convert
+local cygpath_convert ---@type fun(path: string): string
 
 if has_cygpath then
   cygpath_convert = function(path)
@@ -214,7 +237,18 @@ local function normalize_path(path)
   return path
 end
 
+--- @class Gitsigns.RepoInfo
+--- @field gitdir string
+--- @field toplevel string
+--- @field detached boolean
+--- @field abbrev_head string
+
 --- @async
+--- @param path string
+--- @param cmd? string
+--- @param gitdir? string
+--- @param toplevel? string
+--- @return Gitsigns.RepoInfo
 function M.get_repo_info(path, cmd, gitdir, toplevel)
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --    https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
@@ -249,6 +283,7 @@ function M.get_repo_info(path, cmd, gitdir, toplevel)
     cwd = toplevel or path,
   })
 
+  --- @type Gitsigns.RepoInfo
   local ret = {
     toplevel = normalize_path(results[1]),
     gitdir = normalize_path(results[2]),
@@ -287,9 +322,10 @@ end
 
 --- @async
 function Repo:files_changed()
+  --- @type string[]
   local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
 
-  local ret = {}
+  local ret = {} --- @type string[]
   for _, line in ipairs(results) do
     if line:sub(1, 2):match('^.M') then
       ret[#ret + 1] = line:sub(4, -1)
@@ -300,7 +336,9 @@ end
 
 local function make_bom(...)
   local r = {}
+  ---@diagnostic disable-next-line:no-unknown
   for i, a in ipairs({ ... }) do
+    ---@diagnostic disable-next-line:no-unknown
     r[i] = string.char(a)
   end
   return table.concat(r)
@@ -338,6 +376,10 @@ end
 
 --- Get version of file in the index, return array lines
 --- @async
+--- @param object string
+--- @param encoding string
+--- @return string[] stdout
+--- @return string? stderr
 function Repo:get_show_text(object, encoding)
   local stdout, stderr = self:command({ 'show', object }, { suppress_stderr = true })
 
@@ -372,7 +414,8 @@ function Repo.new(dir, gitdir, toplevel)
 
   self.username = git_command({ 'config', 'user.name' })[1]
   local info = M.get_repo_info(dir, nil, gitdir, toplevel)
-  for k, v in pairs(info) do
+  for k, v in pairs(info --[[@as table<string,any>]]) do
+    ---@diagnostic disable-next-line:no-unknown
     (self)[k] = v
   end
 
@@ -384,7 +427,8 @@ function Repo.new(dir, gitdir, toplevel)
     then
       M.get_repo_info(dir, 'yadm', gitdir, toplevel)
       local yadm_info = M.get_repo_info(dir, 'yadm', gitdir, toplevel)
-      for k, v in pairs(yadm_info) do
+      for k, v in pairs(yadm_info --[[@as table<string,any>]]) do
+        ---@diagnostic disable-next-line:no-unknown
         (self)[k] = v
       end
     end
@@ -487,7 +531,29 @@ Obj.unstage_file = function(self)
   self:command({ 'reset', self.file })
 end
 
+--- @class Gitsigns.BlameInfo
+--- -- Info in header
+--- @field sha string
+--- @field abbrev_sha string
+--- @field orig_lnum integer
+--- @field final_lnum integer
+--- Porcelain fields
+--- @field author string
+--- @field author_mail string
+--- @field author_time integer
+--- @field author_tz string
+--- @field committer string
+--- @field committer_mail string
+--- @field committer_time integer
+--- @field committer_tz string
+--- @field summary string
+--- @field previous string
+--- @field previous_filename string
+--- @field previous_sha string
+--- @field filename string
+
 --- @async
+--- @return Gitsigns.BlameInfo?
 function Obj:run_blame(lines, lnum, ignore_whitespace)
   local not_committed = {
     author = 'Not Committed Yet',
@@ -528,15 +594,17 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
   end
   local header = vim.split(table.remove(results, 1), ' ')
 
-  local ret = {}
+  local ret = {} --- @type Gitsigns.BlameInfo
   ret.sha = header[1]
-  ret.orig_lnum = tonumber(header[2])
-  ret.final_lnum = tonumber(header[3])
+  ret.orig_lnum = tonumber(header[2]) --[[@as integer]]
+  ret.final_lnum = tonumber(header[3]) --[[@as integer]]
   ret.abbrev_sha = string.sub(ret.sha, 1, 8)
   for _, l in ipairs(results) do
     if not startswith(l, '\t') then
       local cols = vim.split(l, ' ')
+      --- @type string
       local key = table.remove(cols, 1):gsub('-', '_')
+      --- @diagnostic disable-next-line:no-unknown
       ret[key] = table.concat(cols, ' ')
       if key == 'previous' then
         ret.previous_sha = cols[1]
@@ -639,6 +707,10 @@ function Obj:has_moved()
 end
 
 --- @async
+--- @param file string
+--- @param encoding string
+--- @param gitdir string
+--- @param toplevel string
 function Obj.new(file, encoding, gitdir, toplevel)
   if in_git_dir(file) then
     dprint('In git dir')
