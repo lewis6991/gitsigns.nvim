@@ -19,7 +19,7 @@ local eprint = log.eprint
 local subprocess = require('gitsigns.subprocess')
 local util = require('gitsigns.util')
 local run_diff = require('gitsigns.diff')
-local uv = require('gitsigns.uv')
+local uv = vim.loop
 
 local gs_hunks = require('gitsigns.hunks')
 
@@ -43,6 +43,10 @@ end, 2)
 --- @param bufnr integer
 --- @param signs Gitsigns.Signs
 --- @param hunks Gitsigns.Hunk.Hunk[]
+--- @param top integer
+--- @param bot integer
+--- @param clear boolean
+--- @param untracked boolean
 local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked)
   if clear then
     signs:remove(bufnr) -- Remove all signs
@@ -66,6 +70,11 @@ local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked)
   end
 end
 
+--- @param bufnr integer
+--- @param top integer
+--- @param bot integer
+--- @param clear boolean
+--- @param untracked boolean
 local function apply_win_signs(bufnr, top, bot, clear, untracked)
   local bcache = cache[bufnr]
   if not bcache then
@@ -77,7 +86,11 @@ local function apply_win_signs(bufnr, top, bot, clear, untracked)
   end
 end
 
-M.on_lines = function(buf, first, last_orig, last_new)
+--- @param buf integer
+--- @param first integer
+--- @param last_orig integer
+--- @param last_new integer
+function M.on_lines(buf, first, last_orig, last_new)
   local bcache = cache[buf]
   if not bcache then
     dprint('Cache for buffer was nil. Detaching')
@@ -187,6 +200,7 @@ local ns_rm = api.nvim_create_namespace('gitsigns_removed')
 
 local VIRT_LINE_LEN = 300
 
+--- @param bufnr integer
 local function clear_deleted(bufnr)
   local marks = api.nvim_buf_get_extmarks(bufnr, ns_rm, 0, -1, {})
   for _, mark in ipairs(marks) do
@@ -198,10 +212,10 @@ end
 --- @param nsd integer
 --- @param hunk Gitsigns.Hunk.Hunk
 function M.show_deleted(bufnr, nsd, hunk)
-  local virt_lines = {}
+  local virt_lines = {} --- @type {[1]: string, [2]: string}[][]
 
   for i, line in ipairs(hunk.removed.lines) do
-    local vline = {}
+    local vline = {} --- @type {[1]: string, [2]: string}[]
     local last_ecol = 1
 
     if config.word_diff then
@@ -242,8 +256,11 @@ function M.show_deleted(bufnr, nsd, hunk)
   })
 end
 
+--- @param bufnr integer
+--- @param nsd integer
+--- @param hunk Gitsigns.Hunk.Hunk
 function M.show_deleted_in_float(bufnr, nsd, hunk)
-  local virt_lines = {}
+  local virt_lines = {} --- @type {[1]: string, [2]: string}[][]
   for i = 1, hunk.removed.count do
     virt_lines[i] = { { '', 'Normal' } }
   end
@@ -280,8 +297,8 @@ function M.show_deleted_in_float(bufnr, nsd, hunk)
   local winid = api.nvim_open_win(pbufnr, false, opts)
 
   -- Align buffer text by accounting for differences in the statuscolumn
-  local textoff = vim.fn.getwininfo(cwin)[1].textoff
-  local ptextoff = vim.fn.getwininfo(winid)[1].textoff
+  local textoff = vim.fn.getwininfo(cwin)[1].textoff --[[@as integer]]
+  local ptextoff = vim.fn.getwininfo(winid)[1].textoff --[[@as integer]]
   local col_offset = textoff - ptextoff
 
   if col_offset ~= 0 then
@@ -442,7 +459,9 @@ M.update = throttle_by_id(function(bufnr, bcache)
   dprintf('updates: %s, jobs: %s', update_cnt, subprocess.job_cnt)
 end, true)
 
-M.detach = function(bufnr, keep_signs)
+--- @param bufnr integer
+--- @param keep_signs? boolean
+function M.detach(bufnr, keep_signs)
   if not keep_signs then
     -- Remove all signs
     signs_normal:remove(bufnr)
@@ -497,13 +516,15 @@ local function handle_moved(bufnr, bcache, old_relpath)
   end
 end
 
+--- @param bufnr integer
+--- @param gitdir string
 function M.watch_gitdir(bufnr, gitdir)
   if not config.watch_gitdir.enable then
     return
   end
 
   dprintf('Watching git dir')
-  local w = assert(uv.new_fs_poll(true))
+  local w = assert(uv.new_fs_poll())
   w:start(
     gitdir,
     config.watch_gitdir.interval,
@@ -561,6 +582,9 @@ function M.reset_signs()
   end
 end
 
+--- @param bufnr integer
+--- @param topline integer
+--- @param botline_guess integer
 local function on_win(_, _, bufnr, topline, botline_guess)
   local bcache = cache[bufnr]
   if not bcache or not bcache.hunks then
@@ -577,6 +601,8 @@ local function on_win(_, _, bufnr, topline, botline_guess)
   end
 end
 
+--- @param bufnr integer
+--- @param row integer
 local function on_line(_, _, bufnr, row)
   apply_word_diff(bufnr, row)
 end

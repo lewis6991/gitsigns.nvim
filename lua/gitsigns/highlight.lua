@@ -1,7 +1,17 @@
+local api = vim.api
+
+--- @class Gitsigns.Hldef
+--- @field [integer] string
+--- @field desc string
+--- @field hidden boolean
+--- @field fg_factor number
+--- @field bg_factor number
+
 local M = {}
 
 -- Use array of dict so we can iterate deterministically
 -- Export for docgen
+--- @type table<string,Gitsigns.Hldef>[]
 M.hls = {
   {
     GitSignsAdd = {
@@ -235,13 +245,21 @@ M.hls = {
   },
 }
 
+--- @param hl_name string
+--- @return boolean
 local function is_hl_set(hl_name)
   -- TODO: this only works with `set termguicolors`
-  local exists, hl = pcall(vim.api.nvim_get_hl_by_name, hl_name, true)
+  local exists, hl = pcall(api.nvim_get_hl_by_name, hl_name, true)
+  if not exists then
+    return false
+  end
   local color = hl.foreground or hl.background or hl.reverse
-  return exists and color ~= nil
+  return color ~= nil
 end
 
+--- @param x? number
+--- @param factor number
+--- @return number?
 local function cmul(x, factor)
   if not x or factor == 1 then
     return x
@@ -260,6 +278,8 @@ local function dprintf(fmt, ...)
   require('gitsigns.debug.log').dprintf(fmt, ...)
 end
 
+--- @param hl string
+--- @param hldef Gitsigns.Hldef
 local function derive(hl, hldef)
   for _, d in ipairs(hldef) do
     if is_hl_set(d) then
@@ -267,14 +287,14 @@ local function derive(hl, hldef)
       if hldef.fg_factor or hldef.bg_factor then
         hldef.fg_factor = hldef.fg_factor or 1
         hldef.bg_factor = hldef.bg_factor or 1
-        local dh = vim.api.nvim_get_hl_by_name(d, true)
-        vim.api.nvim_set_hl(0, hl, {
+        local dh = api.nvim_get_hl_by_name(d, true)
+        api.nvim_set_hl(0, hl, {
           default = true,
           fg = cmul(dh.foreground, hldef.fg_factor),
           bg = cmul(dh.background, hldef.bg_factor),
         })
       else
-        vim.api.nvim_set_hl(0, hl, { default = true, link = d })
+        api.nvim_set_hl(0, hl, { default = true, link = d })
       end
       return
     end
@@ -283,7 +303,7 @@ local function derive(hl, hldef)
     -- No fallback found which is set. Just link to the first fallback
     -- if there are no modifiers
     dprintf('Deriving %s from %s', hl, hldef[1])
-    vim.api.nvim_set_hl(0, hl, { default = true, link = hldef[1] })
+    api.nvim_set_hl(0, hl, { default = true, link = hldef[1] })
   else
     dprintf('Could not derive %s', hl)
   end
@@ -291,7 +311,7 @@ end
 
 -- Setup a GitSign* highlight by deriving it from other potentially present
 -- highlights.
-M.setup_highlights = function()
+function M.setup_highlights()
   for _, hlg in ipairs(M.hls) do
     for hl, hldef in pairs(hlg) do
       if is_hl_set(hl) then

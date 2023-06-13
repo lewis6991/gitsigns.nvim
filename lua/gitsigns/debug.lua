@@ -14,6 +14,7 @@ local function process(raw_item, path)
     local key = path[#path]
     if key == 'compare_text' or key == 'compare_text_head' then
       local item = raw_item
+      --- @diagnostic disable-next-line:no-unknown
       return { '...', length = #item, head = item[1] }
     elseif not vim.tbl_isempty(raw_item) and key == 'staged_diffs' then
       return { '...', length = #vim.tbl_keys(raw_item) }
@@ -26,13 +27,14 @@ end
 function M.dump_cache()
   -- TODO(lewis6991): hack: use package.loaded to avoid circular deps
   local cache = (require('gitsigns.cache')).cache
+  --- @type string
   local text = vim.inspect(cache, { process = process })
   vim.api.nvim_echo({ { text } }, false, {})
   return cache
 end
 
 --- @param noecho boolean
---- @return string[]
+--- @return string[]?
 function M.debug_messages(noecho)
   if noecho then
     return log.messages

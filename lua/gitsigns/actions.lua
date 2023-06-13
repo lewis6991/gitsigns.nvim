@@ -11,16 +11,13 @@ local run_diff = require('gitsigns.diff')
 
 local gs_cache = require('gitsigns.cache')
 local cache = gs_cache.cache
-local CacheEntry = gs_cache.CacheEntry
 
 local gs_hunks = require('gitsigns.hunks')
-local Hunk = gs_hunks.Hunk
-local Hunk_Public = gs_hunks.Hunk_Public
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
-local M = { QFListOpts = {} }
+local M = {}
 
 -- Variations of functions from M which are used for the Gitsigns command
 local C = {}
@@ -202,10 +199,15 @@ local function get_hunks(bufnr, bcache, greedy, staged)
   return hunks
 end
 
+--- @param bufnr integer
+--- @param range? {[1]: integer, [2]: integer}
+--- @param greedy? boolean
+--- @param staged? boolean
+--- @return Gitsigns.Hunk.Hunk
 local function get_hunk(bufnr, range, greedy, staged)
   local bcache = cache[bufnr]
   local hunks = get_hunks(bufnr, bcache, greedy, staged)
-  local hunk
+  local hunk --- @type Gitsigns.Hunk.Hunk
   if range then
     table.sort(range)
     local top, bot = range[1], range[2]
@@ -308,7 +310,7 @@ M.reset_hunk = mk_repeatable(void(function(range, opts)
     return
   end
 
-  local lstart, lend
+  local lstart, lend ---@type integer, integer
   if hunk.type == 'delete' then
     lstart = hunk.added.start
     lend = hunk.added.start
@@ -464,7 +466,7 @@ local nav_hunk = void(function(opts)
   local hunks = {}
   vim.list_extend(hunks, get_hunks(bufnr, bcache, opts.greedy, false) or {})
   local hunks_head = get_hunks(bufnr, bcache, opts.greedy, true) or {}
-  vim.list_extend(hunks, gs_hunks.filter_common(hunks_head, bcache.hunks))
+  vim.list_extend(hunks, gs_hunks.filter_common(hunks_head, bcache.hunks) or {})
 
   if not hunks or vim.tbl_isempty(hunks) then
     if opts.navigation_message then
@@ -553,9 +555,10 @@ M.prev_hunk = function(opts)
   nav_hunk(opts)
 end
 
-local HlMark = popup.HlMark
-
+--- @param fmt {[1]: string, [2]: string}[][]
+--- @return {[1]: string, [2]: string}[][]
 local function lines_format(fmt, info)
+  --- @type {[1]: string, [2]: string}[][]
   local ret = vim.deepcopy(fmt)
 
   for _, line in ipairs(ret) do
@@ -567,6 +570,8 @@ local function lines_format(fmt, info)
   return ret
 end
 
+--- @param hunk Gitsigns.Hunk.Hunk
+--- @param hl string
 local function hlmarks_for_hunk(hunk, hl)
   local hls = {}
 
@@ -686,7 +691,7 @@ M.preview_hunk_inline = function()
 
   clear_preview_inline(bufnr)
 
-  local winid
+  local winid ---@type integer
   manager.show_added(bufnr, ns_inline, hunk)
   if config._inline2 then
     if hunk.removed.count > 0 then
@@ -766,6 +771,8 @@ M.get_hunks = function(bufnr)
   return ret
 end
 
+--- @param repo Gitsigns.Repo
+--- @param info Gitsigns.BlameInfo
 local function get_blame_hunk(repo, info)
   local a = {}
   -- If no previous so sha of blame added the file
@@ -1045,6 +1052,8 @@ end
 
 CP.show = complete_heads
 
+--- @param buf_or_filename string|integer
+--- @param hunks Gitsigns.Hunk.Hunk[]
 local function hunks_to_qflist(buf_or_filename, hunks, qflist)
   for i, hunk in ipairs(hunks) do
     qflist[#qflist + 1] = {
@@ -1056,6 +1065,7 @@ local function hunks_to_qflist(buf_or_filename, hunks, qflist)
   end
 end
 
+---@param target 'all'|'attached'|integer
 local function buildqflist(target)
   target = target or current_buf()
   if target == 0 then

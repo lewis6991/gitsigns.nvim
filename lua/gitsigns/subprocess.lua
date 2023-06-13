@@ -1,10 +1,18 @@
 local log = require('gitsigns.debug.log')
-local guv = require('gitsigns.uv')
 local uv = vim.loop
 
-local M = { JobSpec = {} }
+local M = {}
 
 M.job_cnt = 0
+
+--- @class Gitsigns.JobSpec
+--- @field command string
+--- @field args string[]
+--- @field cwd string
+--- @field writer string[] | string
+---
+--- Used in git.lua
+--- @field suppress_stderr? boolean
 
 --- @param ... uv_pipe_t
 local function try_close(...)
@@ -53,7 +61,7 @@ local function handle_reader(pipe, output)
   end)
 end
 
---- @param obj table
+--- @param obj Gitsigns.JobSpec
 --- @param callback fun(_: integer, _: integer, _: string?, _: string?)
 function M.run_job(obj, callback)
   local __FUNC__ = 'run_job'
@@ -65,16 +73,16 @@ function M.run_job(obj, callback)
   local stdout_data = {}
   local stderr_data = {}
 
-  local stdout = guv.new_pipe(false)
-  local stderr = guv.new_pipe(false)
-  local stdin
+  local stdout = assert(uv.new_pipe(false))
+  local stderr = assert(uv.new_pipe(false))
+  local stdin --- @type uv_pipe_t?
   if obj.writer then
-    stdin = guv.new_pipe(false)
+    stdin = assert(uv.new_pipe(false))
   end
 
   --- @type uv_process_t?, integer|string
   local handle, _pid
-  handle, _pid = vim.loop.spawn(obj.command, {
+  handle, _pid = uv.spawn(obj.command, {
     args = obj.args,
     stdio = { stdin, stdout, stderr },
     cwd = obj.cwd,
@@ -100,7 +108,9 @@ function M.run_job(obj, callback)
 
   handle_reader(stdout, stdout_data)
   handle_reader(stderr, stderr_data)
-  handle_writer(stdin, obj.writer)
+  if stdin then
+    handle_writer(stdin, obj.writer)
+  end
 
   M.job_cnt = M.job_cnt + 1
 end

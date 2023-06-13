@@ -28,7 +28,6 @@ end
 --- @field text string
 --- @field numhl string
 --- @field linehl string
---- @field keymaps table<string,string>
 
 --- @alias Gitsigns.SignType
 --- | 'add'
@@ -52,8 +51,8 @@ end
 --- @field debug_mode boolean
 --- @field diff_opts Gitsigns.DiffOpts
 --- @field base string
---- @field signs table<Gitsigns.SignType,Gitsign.SignConfig>
---- @field _signs_staged table<Gitsigns.SignType,Gitsign.SignConfig>
+--- @field signs table<Gitsigns.SignType,Gitsigns.SignConfig>
+--- @field _signs_staged table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field _signs_staged_enable boolean
 --- @field count_chars table<string|integer,string>
 --- @field signcolumn boolean
@@ -77,6 +76,7 @@ end
 --- @field yadm { enable: boolean }
 --- @field worktrees {toplevel: string, gitdir: string}[]
 --- @field word_diff boolean
+--- @field keymaps table<string,string>
 --- -- Undocumented
 --- @field _refresh_staged_on_update boolean
 --- @field _blame_cache boolean
@@ -820,6 +820,7 @@ end
 
 --- @param config Gitsigns.Config
 local function validate_config(config)
+  --- @diagnostic disable-next-line:no-unknown
   for k, v in pairs(config) do
     local kschema = M.schema[k]
     if kschema == nil then
@@ -834,6 +835,8 @@ local function validate_config(config)
   end
 end
 
+--- @param v Gitsigns.SchemaElem
+--- @return any
 local function resolve_default(v)
   if type(v.default) == 'function' and v.type ~= 'function' then
     return (v.default)()
@@ -882,7 +885,7 @@ function M.build(user_config)
 
   validate_config(user_config)
 
-  local config = M.config
+  local config = M.config --[[@as table<string,any>]]
   for k, v in pairs(M.schema) do
     if user_config[k] ~= nil then
       if v.deep_extend then

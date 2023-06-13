@@ -2,17 +2,9 @@ local config = require('gitsigns.config').config
 
 local dprint = require('gitsigns.debug.log').dprint
 
---- @alias GitSigns.SignType
---- | 'add'
---- | 'delete'
---- | 'change'
---- | 'topdelete'
---- | 'changedelete'
---- | 'untracked'
-
 --- @class Gitsigns.Sign
 --- @field type Gitsigns.SignType
---- @field count integer
+--- @field count? integer
 --- @field lnum integer
 
 --- @class Gitsigns.HlDef

@@ -1,10 +1,14 @@
 local create_hunk = require('gitsigns.hunks').create_hunk
-local Hunk = require('gitsigns.hunks').Hunk
 local config = require('gitsigns.config').config
 local async = require('gitsigns.async')
 
 local M = {}
 
+--- @alias Gitsigns.Region {[1]:integer, [2]:string, [3]:integer, [4]:integer}
+
+--- @alias Gitsigns.RawHunk {[1]:integer, [2]:integer, [3]:integer, [4]:integer}
+
+--- @type Gitsigns.Difffn
 local run_diff_xdl = function(fa, fb, algorithm, indent_heuristic, linematch)
   local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n') .. '\n'
   local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n') .. '\n'
@@ -14,16 +18,29 @@ local run_diff_xdl = function(fa, fb, algorithm, indent_heuristic, linematch)
     algorithm = algorithm,
     indent_heuristic = indent_heuristic,
     linematch = linematch,
-  })
+  }) --[[@as Gitsigns.RawHunk[] ]]
 end
 
+--- @type Gitsigns.Difffn
 local run_diff_xdl_async = async.wrap(
+  --- @param fa string[]
+  --- @param fb string[]
+  --- @param algorithm? string
+  --- @param indent_heuristic? boolean
+  --- @param linematch? integer
+  --- @param callback fun(hunks: Gitsigns.RawHunk[])
   function(fa, fb, algorithm, indent_heuristic, linematch, callback)
     local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n') .. '\n'
     local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n') .. '\n'
 
     vim.loop
-      .new_work(function(a0, b0, algorithm0, indent_heuristic0, linematch0)
+      .new_work(
+      --- @param a0 string
+      --- @param b0 string
+      --- @param algorithm0 string
+      --- @param indent_heuristic0 integer
+      --- @param linematch0 integer
+      function(a0, b0, algorithm0, indent_heuristic0, linematch0)
         return vim.mpack.encode(vim.diff(a0, b0, {
           result_type = 'indices',
           algorithm = algorithm0,
@@ -31,15 +48,21 @@ local run_diff_xdl_async = async.wrap(
           linematch = linematch0,
         }))
       end, function(r)
-        callback(vim.mpack.decode(r))
+        callback(vim.mpack.decode(r --[[@as string]])  --[[@as Gitsigns.RawHunk[] ]])
       end)
       :queue(a, b, algorithm, indent_heuristic, linematch)
   end,
   6
 )
 
+--- @param fa string[]
+--- @param fb string[]
+--- @param diff_algo? string
+--- @param indent_heuristic? boolean
+--- @param linematch? integer
+--- @return Gitsigns.Hunk.Hunk[]
 M.run_diff = async.void(function(fa, fb, diff_algo, indent_heuristic, linematch)
-  local run_diff0
+  local run_diff0 --- @type Gitsigns.Difffn
   if config._threaded_diff and vim.is_thread then
     run_diff0 = run_diff_xdl_async
   else
@@ -48,10 +71,9 @@ M.run_diff = async.void(function(fa, fb, diff_algo, indent_heuristic, linematch)
 
   local results = run_diff0(fa, fb, diff_algo, indent_heuristic, linematch)
 
-  local hunks = {}
-
+  local hunks = {} --- @type Gitsigns.Hunk.Hunk[]
   for _, r in ipairs(results) do
-    local rs, rc, as, ac = unpack(r)
+    local rs, rc, as, ac = r[1], r[2], r[3], r[4]
     local hunk = create_hunk(rs, rc, as, ac)
     if rc > 0 then
       for i = rs, rs + rc - 1 do
@@ -71,9 +93,11 @@ end)
 
 local gaps_between_regions = 5
 
+--- @param hunks Gitsigns.Hunk.Hunk[]
+--- @return Gitsigns.Hunk.Hunk[]
 local function denoise_hunks(hunks)
   -- Denoise the hunks
-  local ret = { hunks[1] }
+  local ret = { hunks[1] } --- @type Gitsigns.Hunk.Hunk[]
   for j = 2, #hunks do
     local h, n = ret[#ret], hunks[j]
     if not h or not n then
@@ -93,9 +117,13 @@ local function denoise_hunks(hunks)
   return ret
 end
 
+--- @param removed string[]
+--- @param added string[]
+--- @return Gitsigns.Region[] removed
+--- @return Gitsigns.Region[] added
 function M.run_word_diff(removed, added)
-  local adds = {}
-  local rems = {}
+  local adds = {} --- @type Gitsigns.Region[]
+  local rems = {} --- @type Gitsigns.Region[]
 
   if #removed ~= #added then
     return rems, adds
@@ -105,9 +133,9 @@ function M.run_word_diff(removed, added)
     -- pair lines by position
     local a, b = vim.split(removed[i], ''), vim.split(added[i], '')
 
-    local hunks = {}
+    local hunks = {} --- @type Gitsigns.Hunk.Hunk[]
     for _, r in ipairs(run_diff_xdl(a, b)) do
-      local rs, rc, as, ac = unpack(r)
+      local rs, rc, as, ac = r[1], r[2], r[3], r[4]
 
       -- Balance of the unknown offset done in hunk_func
       if rc == 0 then

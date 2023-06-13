@@ -38,9 +38,6 @@ jobs:
 
       - uses: leafo/gh-actions-luarocks@v4
 
-      - name: install busted
-        run: luarocks install busted
-
       - name: Download Nvim
         run: make nvim
 

@@ -181,7 +181,7 @@ end
 
 ---@param fmt string
 ---@param info table
----@param reltime boolean Use relative time as the default date format
+---@param reltime? boolean Use relative time as the default date format
 ---@return string
 function M.expand_format(fmt, info, reltime)
   local ret = {} --- @type string[]

@@ -26,7 +26,7 @@ local min, max = math.min, math.max
 --- @field added Gitsigns.Hunk.Node
 --- @field removed Gitsigns.Hunk.Node
 
-local M = { Node = {}, Hunk = {}, Hunk_Public = {} }
+local M = {}
 
 -- For internal use
 
@@ -114,22 +114,31 @@ function M.patch_lines(hunk, fileformat)
   return lines
 end
 
+local function tointeger(x)
+  return tonumber(x) --[[@as integer]]
+end
+
 --- @param line string
 --- @return Gitsigns.Hunk.Hunk
 function M.parse_diff_line(line)
-  local diffkey = vim.trim(vim.split(line, '@@', true)[2])
+  local diffkey = vim.trim(vim.split(line, '@@', {plain=true})[2])
 
   -- diffKey: "-xx,n +yy"
   -- pre: {xx, n}, now: {yy}
-  local pre, now = unpack(vim.tbl_map(function(s)
-    return vim.split(string.sub(s, 2), ',')
-  end, vim.split(diffkey, ' ')))
+  --- @type string[], string[]
+  local pre, now = unpack(vim.tbl_map(
+    --- @param s string
+    function(s)
+      return vim.split(string.sub(s, 2), ',')
+    end,
+    vim.split(diffkey, ' ')
+  ))
 
   local hunk = M.create_hunk(
-    tonumber(pre[1]),
-    (tonumber(pre[2]) or 1),
-    tonumber(now[1]),
-    (tonumber(now[2]) or 1)
+    tointeger(pre[1]),
+    (tointeger(pre[2]) or 1),
+    tointeger(now[1]),
+    (tointeger(now[2]) or 1)
   )
 
   hunk.head = line
@@ -173,6 +182,7 @@ function M.calc_signs(hunk, min_lnum, max_lnum, untracked)
     end
   end
 
+  --- @type Gitsigns.Sign[]
   local signs = {}
 
   local cend = change_end(hunk)
@@ -182,7 +192,7 @@ function M.calc_signs(hunk, min_lnum, max_lnum, untracked)
 
     signs[#signs + 1] = {
       type = changedelete and 'changedelete' or untracked and 'untracked' or hunk.type,
-      count = lnum == start and (hunk.type == 'add' and added or removed),
+      count = lnum == start and (hunk.type == 'add' and added or removed) or nil,
       lnum = lnum,
     }
   end
@@ -191,7 +201,7 @@ function M.calc_signs(hunk, min_lnum, max_lnum, untracked)
     for lnum = max(cend, min_lnum), min(hunk.vend, max_lnum) do
       signs[#signs + 1] = {
         type = 'add',
-        count = lnum == hunk.vend and (added - removed),
+        count = lnum == hunk.vend and (added - removed) or nil,
         lnum = lnum,
       }
     end
@@ -203,7 +213,7 @@ end
 --- @param relpath string
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @param mode_bits string
---- @param invert boolean
+--- @param invert? boolean
 --- @return string[]
 function M.create_patch(relpath, hunks, mode_bits, invert)
   invert = invert or false
@@ -254,6 +264,7 @@ end
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @return Gitsigns.StatusObj
 function M.get_summary(hunks)
+  --- @type Gitsigns.StatusObj
   local status = { added = 0, changed = 0, removed = 0 }
 
   for _, hunk in ipairs(hunks or {}) do
@@ -334,6 +345,7 @@ function M.compare_heads(a, b)
   elseif a and #a ~= #b then
     return true
   end
+  assert(b)
   for i, ah in ipairs(a or {}) do
     if b[i].head ~= ah.head then
       return true

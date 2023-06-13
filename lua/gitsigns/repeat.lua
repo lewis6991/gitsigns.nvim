@@ -1,5 +1,3 @@
-local api = vim.api
-
 local M = {}
 
 function M.mk_repeatable(fn)
@@ -11,7 +9,7 @@ function M.mk_repeatable(fn)
     M.repeat_action = function()
       fn(unpack(args, 1, nargs))
       if vim.fn.exists('*repeat#set') == 1 then
-        local action = api.nvim_replace_termcodes(
+        local action = vim.api.nvim_replace_termcodes(
           string.format('<cmd>call %s()<cr>', vim.go.operatorfunc),
           true,
           true,

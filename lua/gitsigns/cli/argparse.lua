@@ -5,7 +5,9 @@ local function is_char(x)
 end
 
 -- Return positional arguments and named arguments
+--- @param x string
 function M.parse_args(x)
+  --- @type string[], table<string,string|boolean>
   local pos_args, named_args = {}, {}
 
   local state = 'in_arg'

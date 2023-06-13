@@ -1,24 +1,25 @@
 local config = require('gitsigns.config').config
 
 local M = {
-  CacheEntry = {},
-  ---@class Gitsigns.CacheObj
-  ---@field [integer] Gitsigns.CacheEntry
-  ---@field destroy fun(self: Gitsigns.CacheObj, bufnr: integer)
-  CacheObj = {}
+  CacheEntry = {}
 }
 
 -- Timer object watching the gitdir
 
 --- @class Gitsigns.CacheEntry
---- @field compare_text?      string[]
---- @field compare_text_head? string[]
---- @field hunks              Gitsigns.Hunk.Hunk[]
---- @field hunks_staged?      Gitsigns.Hunk.Hunk[]
---- @field commit?            string
+--- @field file               string
 --- @field base?              string
---- @field git_obj           Gitsigns.GitObj
+--- @field compare_text?      string[]
+--- @field hunks              Gitsigns.Hunk.Hunk[]
+--- @field force_next_update? boolean
+---
+--- @field compare_text_head? string[]
+--- @field hunks_staged?      Gitsigns.Hunk.Hunk[]
+---
+--- @field staged_diffs       Gitsigns.Hunk.Hunk[]
 --- @field gitdir_watcher?    uv_poll_t
+--- @field git_obj            Gitsigns.GitObj
+--- @field commit?            string
 local CacheEntry = M.CacheEntry
 
 function CacheEntry:get_compare_rev(base)
@@ -68,13 +69,13 @@ function CacheEntry:destroy()
   end
 end
 
-function M.CacheObj:destroy(bufnr)
-  self[bufnr]:destroy()
-  self[bufnr] = nil
-end
+---@type table<integer,Gitsigns.CacheEntry>
+M.cache = {}
 
-M.cache = setmetatable({}, {
-  __index = M.CacheObj,
-})
+--- @param bufnr integer
+function M.destroy(bufnr)
+  M.cache[bufnr]:destroy()
+  M.cache[bufnr] = nil
+end
 
 return M

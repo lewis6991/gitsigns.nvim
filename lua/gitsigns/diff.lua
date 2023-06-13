@@ -1,15 +1,20 @@
 local config = require('gitsigns.config').config
 
+--- @alias Gitsigns.Difffn fun(fa: string[], fb: string[], algorithm?: string, indent_heuristic?: boolean, linematch?: integer): Gitsigns.RawHunk[]
+
+--- @param a string[]
+--- @param b string[]
+--- @param linematch? boolean
 return function(a, b, linematch)
   local diff_opts = config.diff_opts
-  local f
+  local f --- @type Gitsigns.Difffn
   if diff_opts.internal then
     f = require('gitsigns.diff_int').run_diff
   else
     f = require('gitsigns.diff_ext').run_diff
   end
 
-  local linematch0 --- @type boolean?
+  local linematch0 --- @type integer?
   if linematch ~= false then
     linematch0 = diff_opts.linematch
   end
