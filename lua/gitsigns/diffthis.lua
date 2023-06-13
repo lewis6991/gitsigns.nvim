@@ -6,7 +6,6 @@ local awrap = require('gitsigns.async').wrap
 
 local gs_cache = require('gitsigns.cache')
 local cache = gs_cache.cache
-local CacheEntry = gs_cache.CacheEntry
 
 local util = require('gitsigns.util')
 local manager = require('gitsigns.manager')
@@ -14,15 +13,20 @@ local message = require('gitsigns.message')
 
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
+--- @type fun(opts: table): string
 local input = awrap(vim.ui.input, 2)
 
-local M = { DiffthisOpts = {} }
+local M = {}
 
+--- @param bufnr integer
+--- @param dbufnr integer
+--- @param base string
+--- @param bcache Gitsigns.CacheEntry
 local bufread = void(function(bufnr, dbufnr, base, bcache)
   local comp_rev = bcache:get_compare_rev(util.calc_base(base))
-  local text
+  local text --- @type string[]
   if util.calc_base(base) == util.calc_base(bcache.base) then
-    text = bcache.compare_text
+    text = assert(bcache.compare_text)
   else
     local err
     text, err = bcache.git_obj:get_show_text(comp_rev)
@@ -45,6 +49,10 @@ local bufread = void(function(bufnr, dbufnr, base, bcache)
   vim.bo[dbufnr].bufhidden = 'wipe'
 end)
 
+--- @param bufnr integer
+--- @param dbufnr integer
+--- @param base string
+--- @param bcache Gitsigns.CacheEntry
 local bufwrite = void(function(bufnr, dbufnr, base, bcache)
   local buftext = util.buf_lines(dbufnr)
   bcache.git_obj:stage_lines(buftext)
@@ -58,6 +66,13 @@ local bufwrite = void(function(bufnr, dbufnr, base, bcache)
   end
 end)
 
+--- @class Gitsigns.DiffthisOpts
+--- @field vertical boolean
+--- @field split string
+
+--- @param base string
+--- @param diffthis? boolean
+--- @param opts? Gitsigns.DiffthisOpts
 local function run(base, diffthis, opts)
   local bufnr = vim.api.nvim_get_current_buf()
   local bcache = cache[bufnr]
@@ -123,6 +138,8 @@ local function run(base, diffthis, opts)
   end
 end
 
+--- @param base string
+--- @param opts Gitsigns.DiffthisOpts
 M.diffthis = void(function(base, opts)
   if vim.wo.diff then
     return
@@ -146,15 +163,17 @@ M.diffthis = void(function(base, opts)
   api.nvim_set_current_win(cwin)
 end)
 
+--- @param base string
 M.show = void(function(base)
   run(base, false)
 end)
 
+--- @param bufnr integer
 local function should_reload(bufnr)
   if not vim.bo[bufnr].modified then
     return true
   end
-  local response
+  local response --- @type string?
   while not vim.tbl_contains({ 'O', 'L' }, response) do
     response = input({
       prompt = 'Warning: The git index has changed and the buffer was changed as well. [O]K, (L)oad File:',
@@ -164,6 +183,7 @@ local function should_reload(bufnr)
 end
 
 -- This function needs to be throttled as there is a call to vim.ui.input
+--- @param bufnr integer
 M.update = throttle_by_id(void(function(bufnr)
   if not vim.wo.diff then
     return

@@ -1,13 +1,14 @@
 local git_diff = require('gitsigns.git').diff
 
 local gs_hunks = require('gitsigns.hunks')
-local Hunk = gs_hunks.Hunk
 local util = require('gitsigns.util')
 local scheduler = require('gitsigns.async').scheduler
 
 local M = {}
 -- Async function
 
+--- @param path string
+--- @param text string[]
 local function write_to_file(path, text)
   local f, err = io.open(path, 'wb')
   if f == nil then
@@ -20,8 +21,14 @@ local function write_to_file(path, text)
   f:close()
 end
 
-M.run_diff = function(text_cmp, text_buf, diff_algo, indent_heuristic)
-  local results = {}
+--- @async
+--- @param text_cmp string[]
+--- @param text_buf string[]
+--- @param diff_algo string
+--- @param indent_heuristic? boolean
+--- @return Gitsigns.Hunk.Hunk[]
+function M.run_diff(text_cmp, text_buf, diff_algo, indent_heuristic)
+  local results = {} --- @type Gitsigns.Hunk.Hunk[]
 
   -- tmpname must not be called in a callback
   if vim.in_fast_event() then

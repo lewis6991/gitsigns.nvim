@@ -1,12 +1,15 @@
 local api = vim.api
 
-local StatusObj = {}
+--- @class Gitsigns.StatusObj
+--- @field added integer
+--- @field removed integer
+--- @field changed integer
 
-local Status = {
-  StatusObj = StatusObj,
-}
+local M = {}
 
-function Status:update(bufnr, status)
+--- @param bufnr integer
+--- @param status Gitsigns.StatusObj
+function M:update(bufnr, status)
   if not api.nvim_buf_is_loaded(bufnr) then
     return
   end
@@ -22,7 +25,7 @@ function Status:update(bufnr, status)
   vim.b[bufnr].gitsigns_status = config.status_formatter(status)
 end
 
-function Status:clear(bufnr)
+function M:clear(bufnr)
   if not api.nvim_buf_is_loaded(bufnr) then
     return
   end
@@ -31,8 +34,8 @@ function Status:clear(bufnr)
   vim.b[bufnr].gitsigns_status = nil
 end
 
-function Status:clear_diff(bufnr)
+function M:clear_diff(bufnr)
   self:update(bufnr, { added = 0, removed = 0, changed = 0 })
 end
 
-return Status
+return M

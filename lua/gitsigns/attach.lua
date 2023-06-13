@@ -28,14 +28,18 @@ local M = {}
 
 local vimgrep_running = false
 
--- @return (string, string) Tuple of buffer name and commit
+--- @param name string
+--- @return string? buffer
+--- @return string? commit
 local function parse_fugitive_uri(name)
   if vim.fn.exists('*FugitiveReal') == 0 then
     dprint('Fugitive not installed')
     return
   end
 
+  ---@type string
   local path = vim.fn.FugitiveReal(name)
+  ---@type string?
   local commit = vim.fn.FugitiveParse(name)[1]:match('([^:]+):.*')
   if commit == '0' then
     -- '0' means the index so clear commit so we attach normally
@@ -44,8 +48,12 @@ local function parse_fugitive_uri(name)
   return path, commit
 end
 
+--- @param name string
+--- @return string? buffer
+--- @return string? commit
 local function parse_gitsigns_uri(name)
   -- TODO(lewis6991): Support submodules
+  --- @type any, any, string?, string?, string
   local _, _, root_path, commit, rel_path = name:find([[^gitsigns://(.*)/%.git/(.*):(.*)]])
   if commit == ':0' then
     -- ':0' means the index so clear commit so we attach normally
@@ -57,6 +65,8 @@ local function parse_gitsigns_uri(name)
   return name, commit
 end
 
+--- @param bufnr integer
+--- @return string, string?
 local function get_buf_path(bufnr)
   local file = uv.fs_realpath(api.nvim_buf_get_name(bufnr))
     or api.nvim_buf_call(bufnr, function()
@@ -95,19 +105,26 @@ local function on_lines(_, bufnr, _, first, last_orig, last_new, byte_count)
   return manager.on_lines(bufnr, first, last_orig, last_new)
 end
 
+--- @param bufnr integer
 local function on_reload(_, bufnr)
   local __FUNC__ = 'on_reload'
   dprint('Reload')
   manager.update_debounced(bufnr)
 end
 
+--- @param bufnr integer
 local function on_detach(_, bufnr)
   M.detach(bufnr, true)
 end
 
+--- @param bufnr integer
+--- @return string?
+--- @return string?
 local function on_attach_pre(bufnr)
+  --- @type string?, string?
   local gitdir, toplevel
   if config._on_attach_pre then
+    --- @type {gitdir: string?, toplevel: string?}
     local res = async.wrap(config._on_attach_pre, 2)(bufnr)
     dprintf('ran on_attach_pre with result %s', vim.inspect(res))
     if type(res) == 'table' then
@@ -122,6 +139,7 @@ local function on_attach_pre(bufnr)
   return gitdir, toplevel
 end
 
+--- @param _bufnr integer
 local function try_worktrees(_bufnr, file, encoding)
   if not config.worktrees then
     return
@@ -187,9 +205,19 @@ function M._setup()
   })
 end
 
+--- @class Gitsigns.GitContext
+--- @field toplevel string
+--- @field gitdir string
+--- @field file string
+--- @field commit string
+--- @field base string
+
 -- Ensure attaches cannot be interleaved.
 -- Since attaches are asynchronous we need to make sure an attach isn't
 -- performed whilst another one is in progress.
+--- @param cbuf integer
+--- @param ctx Gitsigns.GitContext
+--- @param aucmd string
 local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   local __FUNC__ = 'attach'
 
@@ -220,10 +248,10 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   if encoding == '' then
     encoding = 'utf-8'
   end
-  local file
-  local commit
-  local gitdir_oap
-  local toplevel_oap
+  local file --- @type string
+  local commit --- @type string?
+  local gitdir_oap --- @type string?
+  local toplevel_oap --- @type string?
 
   if ctx then
     gitdir_oap = ctx.gitdir
@@ -362,7 +390,7 @@ function M.detach(bufnr, _keep_signs)
   -- Clear status variables
   Status:clear(bufnr)
 
-  cache:destroy(bufnr)
+  gs_cache.destroy(bufnr)
 end
 
 --- Attach Gitsigns to the buffer.

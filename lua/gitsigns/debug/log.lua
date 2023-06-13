@@ -1,13 +1,15 @@
 local M = {
   debug_mode = false,
   verbose = false,
-  messages = {},
+  messages = {}, --- @type string[]
 }
 
+--- @param name string
+--- @param lvl integer
 local function getvarvalue(name, lvl)
   lvl = lvl + 1
-  local value
-  local found
+  local value --- @type any?
+  local found --- @type boolean?
 
   -- try local variables
   local i = 1
@@ -41,12 +43,15 @@ local function getvarvalue(name, lvl)
   end
 
   -- not found; get global
+  --- @diagnostic disable-next-line:deprecated
   return getfenv(func)[name]
 end
 
+--- @param lvl integer
+--- @return {name:string, bufnr: integer}
 local function get_context(lvl)
   lvl = lvl + 1
-  local ret = {}
+  local ret = {} --- @type {name:string, bufnr: integer}
   ret.name = getvarvalue('__FUNC__', lvl)
   if not ret.name then
     local name0 = debug.getinfo(lvl, 'n').name or ''
@@ -62,11 +67,12 @@ end
 
 -- If called in a callback then make sure the callback defines a __FUNC__
 -- variable which can be used to identify the name of the function.
+--- @param lvl integer
 local function cprint(obj, lvl)
   lvl = lvl + 1
   local msg = type(obj) == 'string' and obj or vim.inspect(obj)
   local ctx = get_context(lvl)
-  local msg2
+  local msg2 --- @type string
   if ctx.bufnr then
     msg2 = string.format('%s(%s): %s', ctx.name, ctx.bufnr, msg)
   else

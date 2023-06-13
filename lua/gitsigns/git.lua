@@ -17,32 +17,11 @@ local dprint = require('gitsigns.debug.log').dprint
 local eprint = require('gitsigns.debug.log').eprint
 local err = require('gitsigns.message').error
 
--- local extensions
+local M = {}
 
-local M = {
-  BlameInfo = {},
-  Version = {},
-  RepoInfo = {},
-  Repo = {},
-  FileProps = {},
-  Obj = {}
-}
-
--- Info in header
-
--- Porcelain fields
-
--- Use for tracking moved files
-
--- Object has crlf
--- Working copy has crlf
-
--- Use for tracking moved files
-
--- Object has crlf
--- Working copy has crlf
-
-local in_git_dir = function(file)
+--- @param file string
+--- @return boolean
+local function in_git_dir(file)
   for _, p in ipairs(vim.split(file, util.path_sep)) do
     if p == '.git' then
       return true
@@ -54,15 +33,17 @@ end
 --- @class Gitsigns.GitObj
 --- @field file string
 --- @field encoding string
---- @field i_crlf boolean
---- @field w_crlf boolean
+--- @field i_crlf boolean Object has crlf
+--- @field w_crlf boolean Working copy has crlf
 --- @field mode_bits string
 --- @field object_name string
 --- @field relpath string
---- @field orig_relpath? string
+--- @field orig_relpath? string Use for tracking moved files
 --- @field repo Gitsigns.Repo
 --- @field has_conflicts? boolean
-local Obj = M.Obj
+local Obj = {}
+
+M.Obj = Obj
 
 --- @class Gitsigns.Repo
 --- @field gitdir string
@@ -70,25 +51,35 @@ local Obj = M.Obj
 --- @field detached boolean
 --- @field abbrev_head string
 --- @field username string
-local Repo = M.Repo
+local Repo = {}
+M.Repo = Repo
 
+--- @class Gitsigns.Version
+--- @field major integer
+--- @field minor integer
+--- @field patch integer
+
+--- @param version string
+--- @return Gitsigns.Version
 local function parse_version(version)
   assert(version:match('%d+%.%d+%.%w+'), 'Invalid git version: ' .. version)
   local ret = {}
   local parts = vim.split(version, '%.')
-  ret.major = tonumber(parts[1])
-  ret.minor = tonumber(parts[2])
+  ret.major = assert(tonumber(parts[1]))
+  ret.minor = assert(tonumber(parts[2]))
 
   if parts[3] == 'GIT' then
     ret.patch = 0
   else
-    ret.patch = tonumber(parts[3])
+    ret.patch = assert(tonumber(parts[3]))
   end
 
   return ret
 end
 
 -- Usage: check_version{2,3}
+--- @param version {[1]: integer, [2]:integer, [3]:integer}
+--- @return boolean
 local function check_version(version)
   if not M.version then
     return false
@@ -106,18 +97,20 @@ local function check_version(version)
 end
 
 --- @async
+--- @param version string
 function M._set_version(version)
   if version ~= 'auto' then
     M.version = parse_version(version)
     return
   end
 
+  --- @type integer, integer, string?, string?
   local _, _, stdout, stderr = async.wait(2, subprocess.run_job, {
     command = 'git',
     args = { '--version' },
   })
 
-  local line = vim.split(stdout or '', '\n', true)[1]
+  local line = vim.split(stdout or '', '\n', {plain=true})[1]
   if not line then
     err("Unable to detect git version as 'git --version' failed to return anything")
     eprint(stderr)
@@ -129,7 +122,11 @@ function M._set_version(version)
   M.version = parse_version(parts[3])
 end
 
---- @type fun(args, spec): string[], string?
+--- @async
+--- @param args string[]
+--- @param spec? Gitsigns.JobSpec
+--- @return string[]
+--- @return string?
 local git_command = async.create(function(args, spec)
   if not M.version then
     M._set_version(config._git_version)
@@ -150,6 +147,7 @@ local git_command = async.create(function(args, spec)
     spec.cwd = vim.env.HOME
   end
 
+  --- @type integer, integer, string?, string?
   local _, _, stdout, stderr = async.wait(2, subprocess.run_job, spec)
 
   if not spec.suppress_stderr then
@@ -159,7 +157,7 @@ local git_command = async.create(function(args, spec)
     end
   end
 
-  local stdout_lines = vim.split(stdout or '', '\n', true)
+  local stdout_lines = vim.split(stdout or '', '\n', {plain=true})
 
   -- If stdout ends with a newline, then remove the final empty string after
   -- the split
@@ -178,6 +176,10 @@ local git_command = async.create(function(args, spec)
 end, 2)
 
 --- @async
+--- @param file_cmp string
+--- @param file_buf string
+--- @param indent_heuristic? boolean
+--- @param diff_algo string
 function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
   return git_command({
     '-c',
@@ -194,6 +196,10 @@ function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
 end
 
 --- @async
+--- @param gitdir string
+--- @param head_str string
+--- @param path string
+--- @param cmd? string
 local function process_abbrev_head(gitdir, head_str, path, cmd)
   if not gitdir then
     return head_str
@@ -228,6 +234,8 @@ if has_cygpath then
   end
 end
 
+--- @param path string
+--- @return string
 local function normalize_path(path)
   if path and has_cygpath and not uv.fs_stat(path) then
     -- If on windows and path isn't recognizable as a file, try passing it
@@ -290,7 +298,7 @@ function M.get_repo_info(path, cmd, gitdir, toplevel)
   }
   ret.abbrev_head = process_abbrev_head(ret.gitdir, results[3], path, cmd)
   if ret.gitdir and not has_abs_gd then
-    ret.gitdir = uv.fs_realpath(ret.gitdir)
+    ret.gitdir = assert(uv.fs_realpath(ret.gitdir))
   end
   ret.detached = ret.toplevel and ret.gitdir ~= ret.toplevel .. '/.git'
   return ret
@@ -302,6 +310,8 @@ end
 
 --- Run git command the with the objects gitdir and toplevel
 --- @async
+--- @param args string[]
+--- @param spec? Gitsigns.JobSpec
 function Repo:command(args, spec)
   spec = spec or {}
   spec.cwd = self.toplevel
@@ -364,6 +374,8 @@ local function strip_bom(x, encoding)
   return x
 end
 
+--- @param encoding string
+--- @return boolean
 local function iconv_supported(encoding)
   -- TODO(lewis6991): needs https://github.com/neovim/neovim/pull/21924
   if vim.startswith(encoding, 'utf-16') then
@@ -377,7 +389,7 @@ end
 --- Get version of file in the index, return array lines
 --- @async
 --- @param object string
---- @param encoding string
+--- @param encoding? string
 --- @return string[] stdout
 --- @return string? stderr
 function Repo:get_show_text(object, encoding)
@@ -385,18 +397,9 @@ function Repo:get_show_text(object, encoding)
 
   if encoding and encoding ~= 'utf-8' and iconv_supported(encoding) then
     stdout[1] = strip_bom(stdout[1], encoding)
-    if vim.iconv then
-      for i, l in ipairs(stdout) do
-        stdout[i] = vim.iconv(l, encoding, 'utf-8')
-      end
-    else
-      scheduler()
-      for i, l in ipairs(stdout) do
-        -- vimscript will interpret strings containing NUL as blob type
-        if vim.fn.type(l) == vim.v.t_string then
-          stdout[i] = vim.fn.iconv(l, encoding, 'utf-8')
-        end
-      end
+    for i, l in ipairs(stdout) do
+      --- @diagnostic disable-next-line:param-type-mismatch
+      stdout[i] = vim.iconv(l, encoding, 'utf-8')
     end
   end
 
@@ -409,6 +412,10 @@ function Repo:update_abbrev_head()
 end
 
 --- @async
+--- @param dir string
+--- @param gitdir? string
+--- @param toplevel? string
+--- @return Gitsigns.Repo
 function Repo.new(dir, gitdir, toplevel)
   local self = setmetatable({}, { __index = Repo })
 
@@ -422,7 +429,7 @@ function Repo.new(dir, gitdir, toplevel)
   -- Try yadm
   if config.yadm.enable and not self.gitdir then
     if
-      vim.startswith(dir, os.getenv('HOME'))
+      vim.startswith(dir, assert(os.getenv('HOME')))
       and #git_command({ 'ls-files', dir }, { command = 'yadm' }) ~= 0
     then
       M.get_repo_info(dir, 'yadm', gitdir, toplevel)
@@ -665,7 +672,9 @@ function Obj:stage_lines(lines)
 end
 
 --- @async
-Obj.stage_hunks = function(self, hunks, invert)
+--- @param hunks Gitsigns.Hunk.Hunk
+--- @param invert? boolean
+function Obj.stage_hunks(self, hunks, invert)
   ensure_file_in_index(self)
 
   local patch = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert)
@@ -689,6 +698,7 @@ Obj.stage_hunks = function(self, hunks, invert)
 end
 
 --- @async
+--- @return string?
 function Obj:has_moved()
   local out = self:command({ 'diff', '--name-status', '-C', '--cached' })
   local orig_relpath = self.orig_relpath or self.relpath
@@ -709,8 +719,9 @@ end
 --- @async
 --- @param file string
 --- @param encoding string
---- @param gitdir string
---- @param toplevel string
+--- @param gitdir string?
+--- @param toplevel string?
+--- @return Gitsigns.GitObj?
 function Obj.new(file, encoding, gitdir, toplevel)
   if in_git_dir(file) then
     dprint('In git dir')

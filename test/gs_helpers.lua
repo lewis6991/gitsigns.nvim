@@ -48,8 +48,9 @@ local test_file_text = {
 }
 
 function M.git(args)
+  exec_lua("vim.loop.sleep(20)")
   system{"git", "-C", M.scratch, unpack(args)}
-  exec_lua("vim.loop.sleep(40)")
+  exec_lua("vim.loop.sleep(20)")
 end
 
 function M.cleanup()

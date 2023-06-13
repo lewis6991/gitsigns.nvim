@@ -22,6 +22,7 @@ local Async_T = {}
 
 -- Store all the async threads in a weak table so we don't prevent them from
 -- being garbage collected
+--- @type table<thread,uv_handle_t>
 local handles = setmetatable({}, { __mode = 'k' })
 
 --- Returns whether the current execution context is async.
@@ -71,7 +72,7 @@ local function run(func, callback, ...)
     local stat = ret[1]
 
     if not stat then
-      local err = ret[2]
+      local err = ret[2] --[[@as string]]
       error(
         string.format('The coroutine failed with this message: %s\n%s', err, debug.traceback(co))
       )
@@ -84,7 +85,8 @@ local function run(func, callback, ...)
       return
     end
 
-    local _, nargs, fn = unpack(ret)
+    --- @type integer, function
+    local nargs, fn = ret[2], ret[3]
 
     assert(type(fn) == 'function', 'type error :: expected func')
 
@@ -105,7 +107,7 @@ function M.wait(argc, func, ...)
   -- Always run the wrapped functions in xpcall and re-raise the error in the
   -- coroutine. This makes pcall work as normal.
   local function pfunc(...)
-    local args = { ... }
+    local args = { ... } --- @type any[]
     local cb = args[argc]
     args[argc] = function(...)
       cb(true, ...)
@@ -143,7 +145,9 @@ end
 ---Use this to create a function which executes in an async context but
 ---called from a non-async context. Inherently this cannot return anything
 ---since it is non-blocking
----@param func function
+---@generic F: function
+---@param func F
+---@return F
 function M.create(func, argc)
   argc = argc or 0
   return function(...)

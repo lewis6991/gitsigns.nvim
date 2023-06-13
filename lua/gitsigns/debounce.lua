@@ -1,4 +1,4 @@
-local uv = require('gitsigns.uv')
+local uv = vim.loop
 
 local M = {}
 
@@ -9,7 +9,7 @@ local M = {}
 --- @param fn F Function to debounce
 --- @return F Debounced function.
 function M.debounce_trailing(ms, fn)
-  local timer = uv.new_timer(true)
+  local timer = assert(uv.new_timer())
   return function(...)
     local argv = { ... }
     timer:start(ms, 0, function()
@@ -26,7 +26,7 @@ end
 --- @param fn F Function to throttle
 --- @return F throttled function.
 function M.throttle_leading(ms, fn)
-  local timer = uv.new_timer(true)
+  local timer = assert(uv.new_timer())
   local running = false
   return function(...)
     if not running then
@@ -54,7 +54,7 @@ end
 ---
 --- @generic F: function
 --- @param fn F Function to throttle
---- @param schedule boolean
+--- @param schedule? boolean
 --- @return F throttled function.
 function M.throttle_by_id(fn, schedule)
   local scheduled = {} --- @type table<any,boolean>

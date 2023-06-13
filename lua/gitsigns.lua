@@ -9,11 +9,11 @@ local dprintf = log.dprintf
 local dprint = log.dprint
 
 local api = vim.api
-local uv = require('gitsigns.uv')
+local uv = vim.loop
 
 local M = {}
 
-local cwd_watcher
+local cwd_watcher ---@type uv_fs_poll_t
 
 local update_cwd_head = void(function()
   local paths = vim.fs.find('.git', {
@@ -29,10 +29,11 @@ local update_cwd_head = void(function()
   if cwd_watcher then
     cwd_watcher:stop()
   else
-    cwd_watcher = uv.new_fs_poll(true)
+    cwd_watcher = assert(uv.new_fs_poll())
   end
 
-  local cwd = vim.loop.cwd()
+  local cwd = assert(vim.loop.cwd())
+  --- @type string, string
   local gitdir, head
 
   local gs_cache = require('gitsigns.cache')
@@ -101,18 +102,9 @@ local function setup_cli()
   })
 end
 
-local exported = {
-  'attach',
-  'actions',
-}
-
 local function setup_debug()
   log.debug_mode = config.debug_mode
   log.verbose = config._verbose
-
-  if config.debug_mode then
-    exported[#exported + 1] = 'debug'
-  end
 end
 
 local function setup_attach()
@@ -188,10 +180,20 @@ end)
 
 return setmetatable(M, {
   __index = function(_, f)
-    for _, mod in ipairs(exported) do
-      local m = (require)('gitsigns.' .. mod)
-      if m[f] then
-        return m[f]
+    local attach = require('gitsigns.attach')
+    if attach[f] then
+      return attach[f]
+    end
+
+    local actions = require('gitsigns.actions')
+    if actions[f] then
+      return actions[f]
+    end
+
+    if config.debug_mode then
+      local debug = require('gitsigns.debug')
+      if debug[f] then
+        return debug[f]
       end
     end
   end,

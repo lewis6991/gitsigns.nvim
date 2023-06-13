@@ -1,9 +1,10 @@
-local popup = { HlMark = {} }
-
-local HlMark = popup.HlMark
+local M = {}
 
 local api = vim.api
 
+--- @param bufnr integer
+--- @param lines string[]
+--- @return integer
 local function bufnr_calc_width(bufnr, lines)
   return api.nvim_buf_call(bufnr, function()
     local width = 0
@@ -20,6 +21,8 @@ local function bufnr_calc_width(bufnr, lines)
 end
 
 -- Expand height until all lines are visible to account for wrapped lines.
+--- @param winid integer
+--- @param nlines integer
 local function expand_height(winid, nlines)
   local newheight = 0
   for _ = 0, 50 do
@@ -28,6 +31,7 @@ local function expand_height(winid, nlines)
       -- Window must be max height
       break
     end
+    --- @type integer
     local wd = api.nvim_win_call(winid, function()
       return vim.fn.line('w$')
     end)
@@ -50,13 +54,14 @@ local function offset_hlmarks(hlmarks, row_offset)
   end
 end
 
+--- @param fmt {[1]: string, [2]: string}[][]
 local function process_linesspec(fmt)
-  local lines = {}
+  local lines = {} --- @type string[]
   local hls = {}
 
   local row = 0
   for _, section in ipairs(fmt) do
-    local sec = {}
+    local sec = {} --- @type string[]
     local pos = 0
     for _, part in ipairs(section) do
       local text = part[1]
@@ -106,7 +111,7 @@ local function close_all_but(id)
   end
 end
 
-function popup.close(id)
+function M.close(id)
   for _, winid in ipairs(api.nvim_list_wins()) do
     if vim.w[winid].gitsigns_preview == id then
       pcall(api.nvim_win_close, winid, true)
@@ -114,7 +119,7 @@ function popup.close(id)
   end
 end
 
-function popup.create0(lines, opts, id)
+function M.create0(lines, opts, id)
   -- Close any popups not matching id
   close_all_but(id)
 
@@ -198,9 +203,9 @@ end
 
 local ns = api.nvim_create_namespace('gitsigns_popup')
 
-function popup.create(lines_spec, opts, id)
+function M.create(lines_spec, opts, id)
   local lines, highlights = process_linesspec(lines_spec)
-  local winid, bufnr = popup.create0(lines, opts, id)
+  local winid, bufnr = M.create0(lines, opts, id)
 
   for _, hl in ipairs(highlights) do
     local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, ns, hl.start_row, hl.start_col or 0, {
@@ -217,7 +222,7 @@ function popup.create(lines_spec, opts, id)
   return winid, bufnr
 end
 
-function popup.is_open(id)
+function M.is_open(id)
   for _, winid in ipairs(api.nvim_list_wins()) do
     if vim.w[winid].gitsigns_preview == id then
       return winid
@@ -226,12 +231,12 @@ function popup.is_open(id)
   return nil
 end
 
-function popup.focus_open(id)
-  local winid = popup.is_open(id)
+function M.focus_open(id)
+  local winid = M.is_open(id)
   if winid then
     api.nvim_set_current_win(winid)
   end
   return winid
 end
 
-return popup
+return M
