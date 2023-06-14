@@ -216,4 +216,11 @@ function M.expand_format(fmt, info, reltime)
   return table.concat(ret, '')
 end
 
+--- @param buf string
+--- @return boolean
+function M.bufexists(buf)
+  --- @diagnostic disable-next-line:param-type-mismatch
+  return vim.fn.bufexists(buf) == 1
+end
+
 return M
