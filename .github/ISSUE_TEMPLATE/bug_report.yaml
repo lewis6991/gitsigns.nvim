@@ -44,18 +44,15 @@ body:
          `init.lua` at the indicated lines.
        render: Lua
        value: |
-         vim.o.packpath = '/tmp/nvim/site'
-
-         local plugins = {
+         for name, url in pairs{
            gitsigns = 'https://github.com/lewis6991/gitsigns.nvim',
            -- ADD OTHER PLUGINS _NECESSARY_ TO REPRODUCE THE ISSUE
-         }
-
-         for name, url in pairs(plugins) do
-           local install_path = '/tmp/nvim/site/pack/test/start/'..name
+         } do
+           local install_path = vim.fn.fnamemodify('gitsigns_issue/'..name, ':p')
            if vim.fn.isdirectory(install_path) == 0 then
              vim.fn.system { 'git', 'clone', '--depth=1', url, install_path }
            end
+           vim.opt.runtimepath:append(install_path)
          end
 
          require('gitsigns').setup{
