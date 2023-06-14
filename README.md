@@ -40,38 +40,13 @@ Super fast git decorations implemented purely in Lua.
 
 - Newish version of git. Older versions may not work with some features.
 
-## Installation
+## Installation & Usage
 
-[packer.nvim]:
-```lua
-use {
-  'lewis6991/gitsigns.nvim',
-  -- tag = 'release' -- To use the latest release (do not use this if you run Neovim nightly or dev builds!)
-}
-```
+Install using your package manager of choice.
 
-[vim-plug]:
-```vim
-Plug 'lewis6991/gitsigns.nvim'
-```
-
-## Usage
-
-For basic setup with all batteries included:
+For recommended setup with all batteries included:
 ```lua
 require('gitsigns').setup()
-```
-
-If using [packer.nvim] gitsigns can
-be setup directly in the plugin spec:
-
-```lua
-use {
-  'lewis6991/gitsigns.nvim',
-  config = function()
-    require('gitsigns').setup()
-  end
-}
 ```
 
 Configuration can be passed to the setup function. Here is an example with most of
@@ -329,12 +304,10 @@ If you are using lspsaga.nvim you can config `code_action.extend_gitsigns` (defa
 [luv]: https://github.com/luvit/luv/blob/master/docs.md
 [null-ls]: https://github.com/jose-elias-alvarez/null-ls.nvim
 [nvim-lua-guide]: https://github.com/nanotee/nvim-lua-guide
-[packer.nvim]: https://github.com/wbthomason/packer.nvim
 [release]: https://github.com/lewis6991/gitsigns.nvim/releases
 [trouble.nvim]: https://github.com/folke/trouble.nvim
 [vim-fugitive]: https://github.com/tpope/vim-fugitive
 [vim-gitgutter]: https://github.com/airblade/vim-gitgutter
-[vim-plug]: https://github.com/junegunn/vim-plug
 [vim-signify]: https://github.com/mhinz/vim-signify
 [virtual lines]: https://github.com/neovim/neovim/pull/15351
 [yadm]: https://yadm.io
