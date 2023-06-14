@@ -21,8 +21,8 @@ local M = {}
 --- @param bufnr integer
 --- @param dbufnr integer
 --- @param base string
---- @param bcache Gitsigns.CacheEntry
-local bufread = void(function(bufnr, dbufnr, base, bcache)
+local bufread = void(function(bufnr, dbufnr, base)
+  local bcache = cache[bufnr]
   local comp_rev = bcache:get_compare_rev(util.calc_base(base))
   local text --- @type string[]
   if util.calc_base(base) == util.calc_base(bcache.base) then
@@ -52,8 +52,8 @@ end)
 --- @param bufnr integer
 --- @param dbufnr integer
 --- @param base string
---- @param bcache Gitsigns.CacheEntry
-local bufwrite = void(function(bufnr, dbufnr, base, bcache)
+local bufwrite = void(function(bufnr, dbufnr, base)
+  local bcache = cache[bufnr]
   local buftext = util.buf_lines(dbufnr)
   bcache.git_obj:stage_lines(buftext)
   scheduler()
@@ -66,50 +66,40 @@ local bufwrite = void(function(bufnr, dbufnr, base, bcache)
   end
 end)
 
---- @class Gitsigns.DiffthisOpts
---- @field vertical boolean
---- @field split string
-
+--- Create a gitsigns buffer for a certain revision of a file
+--- @param bufnr integer
 --- @param base string
---- @param diffthis? boolean
---- @param opts? Gitsigns.DiffthisOpts
-local function run(base, diffthis, opts)
-  local bufnr = vim.api.nvim_get_current_buf()
-  local bcache = cache[bufnr]
-  if not bcache then
-    return
+--- @return string? buf Buffer name
+local function create_show_buf(bufnr, base)
+  local bcache = assert(cache[bufnr])
+
+  local revision = bcache:get_compare_rev(util.calc_base(base))
+  local bufname = bcache:get_rev_bufname(revision)
+
+  if util.bufexists(bufname) then
+    return bufname
   end
 
-  opts = opts or {}
+  local dbuf = api.nvim_create_buf(false, true)
+  api.nvim_buf_set_name(dbuf, bufname)
 
-  local comp_rev = bcache:get_compare_rev(util.calc_base(base))
-  local bufname = bcache:get_rev_bufname(comp_rev)
-
-  local dbuf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_name(dbuf, bufname)
-
-  local ok, err = pcall(bufread, bufnr, dbuf, base, bcache)
+  local ok, err = pcall(bufread, bufnr, dbuf, base)
   if not ok then
-    message.error(err)
+    message.error(err --[[@as string]])
     scheduler()
-    vim.cmd('bdelete')
-    if diffthis then
-      vim.cmd('diffoff')
-    end
+    api.nvim_buf_delete(dbuf, { force = true })
     return
   end
 
-  if comp_rev == ':0' then
+  -- allow editing the index revision
+  if revision == ':0' then
     vim.bo[dbuf].buftype = 'acwrite'
 
     api.nvim_create_autocmd('BufReadCmd', {
       group = 'gitsigns',
       buffer = dbuf,
       callback = function()
-        bufread(bufnr, dbuf, base, bcache)
-        if diffthis then
-          vim.cmd('diffthis')
-        end
+        bufread(bufnr, dbuf, base)
       end,
     })
 
@@ -117,7 +107,7 @@ local function run(base, diffthis, opts)
       group = 'gitsigns',
       buffer = dbuf,
       callback = function()
-        bufwrite(bufnr, dbuf, base, bcache)
+        bufwrite(bufnr, dbuf, base)
       end,
     })
   else
@@ -125,17 +115,32 @@ local function run(base, diffthis, opts)
     vim.bo[dbuf].modifiable = false
   end
 
-  if diffthis then
-    vim.cmd(table.concat({
-      'keepalt',
-      opts.split or 'aboveleft',
-      opts.vertical and 'vertical' or '',
-      'diffsplit',
-      bufname,
-    }, ' '))
-  else
-    vim.cmd('edit ' .. bufname)
+  return bufname
+end
+
+--- @class Gitsigns.DiffthisOpts
+--- @field vertical boolean
+--- @field split string
+
+--- @param base string
+--- @param opts? Gitsigns.DiffthisOpts
+local function diffthis_rev(base, opts)
+  local bufnr = api.nvim_get_current_buf()
+
+  local bufname = create_show_buf(bufnr, base)
+  if not bufname then
+    return
   end
+
+  opts = opts or {}
+
+  vim.cmd(table.concat({
+    'keepalt',
+    opts.split or 'aboveleft',
+    opts.vertical and 'vertical' or '',
+    'diffsplit',
+    bufname,
+  }, ' '))
 end
 
 --- @param base string
@@ -145,7 +150,7 @@ M.diffthis = void(function(base, opts)
     return
   end
 
-  local bufnr = vim.api.nvim_get_current_buf()
+  local bufnr = api.nvim_get_current_buf()
   local bcache = cache[bufnr]
   if not bcache then
     return
@@ -153,22 +158,29 @@ M.diffthis = void(function(base, opts)
 
   local cwin = api.nvim_get_current_win()
   if not base and bcache.git_obj.has_conflicts then
-    run(':2', true, opts)
+    diffthis_rev(':2', opts)
     api.nvim_set_current_win(cwin)
     opts.split = 'belowright'
-    run(':3', true, opts)
+    diffthis_rev(':3', opts)
   else
-    run(base, true, opts)
+    diffthis_rev(base, opts)
   end
   api.nvim_set_current_win(cwin)
 end)
 
 --- @param base string
 M.show = void(function(base)
-  run(base, false)
+  local bufnr = api.nvim_get_current_buf()
+  local bufname = create_show_buf(bufnr, base)
+  if not bufname then
+    return
+  end
+
+  vim.cmd.edit(bufname)
 end)
 
 --- @param bufnr integer
+--- @return boolean
 local function should_reload(bufnr)
   if not vim.bo[bufnr].modified then
     return true
@@ -202,8 +214,8 @@ M.update = throttle_by_id(void(function(bufnr)
       if bname == bufname or vim.startswith(bname, 'fugitive://') then
         if should_reload(b) then
           api.nvim_buf_call(b, function()
-            vim.cmd('doautocmd BufReadCmd')
-            vim.cmd('diffthis')
+            vim.cmd.doautocmd('BufReadCmd')
+            vim.cmd.diffthis()
           end)
         end
       end

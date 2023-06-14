@@ -504,7 +504,7 @@ local function handle_moved(bufnr, bcache, old_relpath)
     git_obj:update_file_info()
     scheduler()
 
-    local bufexists = vim.fn.bufexists(bcache.file) == 1
+    local bufexists = util.bufexists(bcache.file)
     local old_name = api.nvim_buf_get_name(bufnr)
 
     if not bufexists then
