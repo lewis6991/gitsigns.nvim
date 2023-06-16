@@ -83,6 +83,19 @@ require('gitsigns').setup {
   update_debounce = 100,
   status_formatter = nil, -- Use default
   max_file_length = 40000, -- Disable if file is longer than this (in lines)
+  line_blame_formatter = {
+    {{'<abbrev_sha> ', 'Directory'}, {'<author> ', 'MoreMsg'}, {'(<author_time:%Y-%m-%d %H:%M>)', 'Label'}, {':', 'NormalFloat'}},
+    {{'<summary>', 'NormalFloat'}},
+
+    -- example of the blame format that previously was achieved by
+    -- running blame_line { full = true }
+    -- {{'<abbrev_sha> ', 'Directory'}, {'<author> ', 'MoreMsg'}, {'(<author_time:%Y-%m-%d %H:%M>)', 'Label'}, {':', 'NormalFloat'}},
+    -- {{'<body>', 'NormalFloat'}},
+    -- {{'', 'Label'}},
+    -- {{'Hunk <hunk_no> of <num_hunks>', 'Title'}, {' <hunk_head>', 'LineNr'}},
+    -- {{'<hunk>', 'NormalFloat'}}
+  },
+  line_blame_ignore_whitespace = false,
   preview_config = {
     -- Options passed to nvim_open_win
     border = 'single',

@@ -796,6 +796,30 @@ M.get_hunks = function(bufnr)
   return ret
 end
 
+-- drops empty lines from the beginning and the end
+local function trim(lines)
+  local start_index = 1
+  local end_index = #lines
+
+  -- Find the first non-empty line from the beginning
+  while start_index <= #lines and lines[start_index] == "" do
+    start_index = start_index + 1
+  end
+
+  -- Find the last non-empty line from the end
+  while end_index > start_index and lines[end_index] == "" do
+    end_index = end_index - 1
+  end
+
+  -- Return the trimmed lines
+  local trimmed_lines = {}
+  for i = start_index, end_index do
+    table.insert(trimmed_lines, lines[i])
+  end
+
+  return trimmed_lines
+end
+
 --- @param repo Gitsigns.Repo
 --- @param info Gitsigns.BlameInfo
 --- @return Gitsigns.Hunk.Hunk?, integer?, integer
@@ -811,55 +835,26 @@ local function get_blame_hunk(repo, info)
   return hunk, i, #hunks
 end
 
-local function create_blame_fmt(is_committed, full)
+local function create_blame_fmt(is_committed)
   if not is_committed then
     return {
       { { '<author>', 'Label' } },
     }
   end
 
-  local header = {
-    { '<abbrev_sha> ', 'Directory' },
-    { '<author> ', 'MoreMsg' },
-    { '(<author_time:%Y-%m-%d %H:%M>)', 'Label' },
-    { ':', 'NormalFloat' },
-  }
-
-  if full then
-    return {
-      header,
-      { { '<body>', 'NormalFloat' } },
-      { { 'Hunk <hunk_no> of <num_hunks>', 'Title' }, { ' <hunk_head>', 'LineNr' } },
-      { { '<hunk>', 'NormalFloat' } },
-    }
-  end
-
-  return {
-    header,
-    { { '<summary>', 'NormalFloat' } },
-  }
+  return vim.deepcopy(config.line_blame_formatter)
 end
 
 --- Run git blame on the current line and show the results in a
 --- floating window. If already open, calling this will cause the
 --- window to get focus.
 ---
---- Parameters: ~
----     {opts}   (table|nil):
----              Additional options:
----              • {full}: (boolean)
----                Display full commit message with hunk.
----              • {ignore_whitespace}: (boolean)
----                Ignore whitespace when running blame.
----
 --- Attributes: ~
 ---     {async}
-M.blame_line = void(function(opts)
+M.blame_line = void(function()
   if popup.focus_open('blame') then
     return
   end
-
-  opts = opts or {}
 
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -875,7 +870,7 @@ M.blame_line = void(function(opts)
   local buftext = util.buf_lines(bufnr)
   local fileformat = vim.bo[bufnr].fileformat
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
+  local result = bcache.git_obj:run_blame(buftext, lnum, config.line_blame_ignore_whitespace)
   pcall(function()
     loading:close()
   end)
@@ -884,10 +879,11 @@ M.blame_line = void(function(opts)
 
   local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
 
-  local blame_fmt = create_blame_fmt(is_committed, opts.full)
+  local blame_fmt = create_blame_fmt(is_committed)
 
-  if is_committed and opts.full then
-    result.body = bcache.git_obj:command({ 'show', '-s', '--format=%B', result.sha })
+  if is_committed then
+    local body = bcache.git_obj:command({ 'show', '-s', '--format=%B', result.sha })
+    result.body = trim(body)
 
     local hunk
 

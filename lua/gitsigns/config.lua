@@ -71,6 +71,8 @@ end
 --- @field current_line_blame_formatter string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_formatter_nc string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_opts Gitsigns.CurrentLineBlameOpts
+--- @field line_blame_formatter table<table<table<string>>>
+--- @field line_blame_ignore_whitespace boolean
 --- @field preview_config table<string,any>
 --- @field attach_to_untracked boolean
 --- @field yadm { enable: boolean }
@@ -490,6 +492,25 @@ M.schema = {
     default = 40000,
     description = [[
       Max file length (in lines) to attach to.
+    ]],
+  },
+
+  line_blame_formatter = {
+    type = 'table',
+    default = {
+      {{'<abbrev_sha> ', 'Directory'}, {'<author> ', 'MoreMsg'}, {'(<author_time:%Y-%m-%d %H:%M>)', 'Label'}, {':', 'NormalFloat'}},
+      {{'<summary>', 'NormalFloat'}},
+    },
+    description = [[
+      Line blame formatter string.
+    ]],
+  },
+
+  line_blame_ignore_whitespace = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      Ignore whitespace when running blame.
     ]],
   },
 
