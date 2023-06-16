@@ -1,11 +1,8 @@
 local fn = vim.fn
 
-local SignsConfig = require('gitsigns.config').Config.SignsConfig
 local config = require('gitsigns.config').config
 
 local emptytable = require('gitsigns.util').emptytable
-
-local B = require('gitsigns.signs.base')
 
 local M = {}
 

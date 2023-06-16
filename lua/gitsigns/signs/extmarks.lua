@@ -1,9 +1,6 @@
 local api = vim.api
 
-local SignsConfig = require('gitsigns.config').Config.SignsConfig
 local config = require('gitsigns.config').config
-
-local B = require('gitsigns.signs.base')
 
 local M = {}
 
