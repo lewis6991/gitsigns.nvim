@@ -77,6 +77,7 @@ end
 --- @field worktrees {toplevel: string, gitdir: string}[]
 --- @field word_diff boolean
 --- @field keymaps table<string,string>
+--- @field trouble boolean
 --- -- Undocumented
 --- @field _refresh_staged_on_update boolean
 --- @field _blame_cache boolean

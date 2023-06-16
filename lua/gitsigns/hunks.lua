@@ -128,6 +128,7 @@ function M.parse_diff_line(line)
   --- @type string[], string[]
   local pre, now = unpack(vim.tbl_map(
     --- @param s string
+    --- @return string[]
     function(s)
       return vim.split(string.sub(s, 2), ',')
     end,

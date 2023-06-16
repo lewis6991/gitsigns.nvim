@@ -1,10 +1,11 @@
 local config = require('gitsigns.config').config
 
---- @alias Gitsigns.Difffn fun(fa: string[], fb: string[], algorithm?: string, indent_heuristic?: boolean, linematch?: integer): Gitsigns.RawHunk[]
+--- @alias Gitsigns.Difffn fun(fa: string[], fb: string[], algorithm?: string, indent_heuristic?: boolean, linematch?: integer): Gitsigns.Hunk.Hunk[]
 
 --- @param a string[]
 --- @param b string[]
 --- @param linematch? boolean
+--- @return Gitsigns.Hunk.Hunk[] hunks
 return function(a, b, linematch)
   local diff_opts = config.diff_opts
   local f --- @type Gitsigns.Difffn

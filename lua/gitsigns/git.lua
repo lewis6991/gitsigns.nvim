@@ -96,7 +96,6 @@ local function check_version(version)
   return true
 end
 
---- @async
 --- @param version string
 function M._set_version(version)
   if version ~= 'auto' then
@@ -122,11 +121,9 @@ function M._set_version(version)
   M.version = parse_version(parts[3])
 end
 
---- @async
 --- @param args string[]
 --- @param spec? Gitsigns.JobSpec
---- @return string[]
---- @return string?
+--- @return string[] stdout, string? stderr
 local git_command = async.create(function(args, spec)
   if not M.version then
     M._set_version(config._git_version)
@@ -175,11 +172,11 @@ local git_command = async.create(function(args, spec)
   return stdout_lines, stderr
 end, 2)
 
---- @async
 --- @param file_cmp string
 --- @param file_buf string
 --- @param indent_heuristic? boolean
 --- @param diff_algo string
+--- @return string[] stdout, string? stderr
 function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
   return git_command({
     '-c',
@@ -195,11 +192,11 @@ function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
   })
 end
 
---- @async
 --- @param gitdir string
 --- @param head_str string
 --- @param path string
 --- @param cmd? string
+--- @return string
 local function process_abbrev_head(gitdir, head_str, path, cmd)
   if not gitdir then
     return head_str
@@ -251,7 +248,6 @@ end
 --- @field detached boolean
 --- @field abbrev_head string
 
---- @async
 --- @param path string
 --- @param cmd? string
 --- @param gitdir? string
@@ -309,9 +305,9 @@ end
 --------------------------------------------------------------------------------
 
 --- Run git command the with the objects gitdir and toplevel
---- @async
 --- @param args string[]
 --- @param spec? Gitsigns.JobSpec
+--- @return string[] stdout, string? stderr
 function Repo:command(args, spec)
   spec = spec or {}
   spec.cwd = self.toplevel
@@ -330,7 +326,7 @@ function Repo:command(args, spec)
   return git_command(args1, spec)
 end
 
---- @async
+--- @return string[]
 function Repo:files_changed()
   --- @type string[]
   local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
@@ -344,6 +340,8 @@ function Repo:files_changed()
   return ret
 end
 
+--- @param ... integer
+--- @return string
 local function make_bom(...)
   local r = {}
   ---@diagnostic disable-next-line:no-unknown
@@ -387,11 +385,9 @@ local function iconv_supported(encoding)
 end
 
 --- Get version of file in the index, return array lines
---- @async
 --- @param object string
 --- @param encoding? string
---- @return string[] stdout
---- @return string? stderr
+--- @return string[] stdout, string? stderr
 function Repo:get_show_text(object, encoding)
   local stdout, stderr = self:command({ 'show', object }, { suppress_stderr = true })
 
@@ -406,12 +402,10 @@ function Repo:get_show_text(object, encoding)
   return stdout, stderr
 end
 
---- @async
 function Repo:update_abbrev_head()
   self.abbrev_head = M.get_repo_info(self.toplevel).abbrev_head
 end
 
---- @async
 --- @param dir string
 --- @param gitdir? string
 --- @param toplevel? string
@@ -449,12 +443,16 @@ end
 --------------------------------------------------------------------------------
 
 --- Run git command the with the objects gitdir and toplevel
---- @async
+--- @param args string[]
+--- @param spec? Gitsigns.JobSpec
+--- @return string[] stdout, string? stderr
 function Obj:command(args, spec)
   return self.repo:command(args, spec)
 end
 
---- @async
+--- @param update_relpath? boolean
+--- @param silent? boolean
+--- @return boolean
 function Obj:update_file_info(update_relpath, silent)
   local old_object_name = self.object_name
   local props = self:file_info(self.file, silent)
@@ -471,7 +469,17 @@ function Obj:update_file_info(update_relpath, silent)
   return old_object_name ~= self.object_name
 end
 
---- @async
+--- @class Gitsigns.FileInfo
+--- @field relpath string
+--- @field i_crlf boolean
+--- @field w_crlf boolean
+--- @field mode_bits string
+--- @field object_name string
+--- @field has_conflicts true?
+
+--- @param file string
+--- @param silent? boolean
+--- @return Gitsigns.FileInfo
 function Obj:file_info(file, silent)
   local results, stderr = self:command({
     '-c',
@@ -515,7 +523,8 @@ function Obj:file_info(file, silent)
   return result
 end
 
---- @async
+--- @param revision string
+--- @return string[] stdout, string? stderr
 function Obj:get_show_text(revision)
   if not self.relpath then
     return {}
@@ -533,7 +542,6 @@ function Obj:get_show_text(revision)
   return stdout, stderr
 end
 
---- @async
 Obj.unstage_file = function(self)
   self:command({ 'reset', self.file })
 end
@@ -559,7 +567,9 @@ end
 --- @field previous_sha string
 --- @field filename string
 
---- @async
+--- @param lines string[]
+--- @param lnum integer
+--- @param ignore_whitespace boolean
 --- @return Gitsigns.BlameInfo?
 function Obj:run_blame(lines, lnum, ignore_whitespace)
   local not_committed = {
@@ -631,7 +641,7 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
   return ret
 end
 
---- @async
+--- @param obj Gitsigns.GitObj
 local function ensure_file_in_index(obj)
   if obj.object_name and not obj.has_conflicts then
     return
@@ -651,7 +661,6 @@ local function ensure_file_in_index(obj)
 end
 
 -- Stage 'lines' as the entire contents of the file
---- @async
 --- @param lines string[]
 function Obj:stage_lines(lines)
   local stdout = self:command({
@@ -671,7 +680,6 @@ function Obj:stage_lines(lines)
   })
 end
 
---- @async
 --- @param hunks Gitsigns.Hunk.Hunk
 --- @param invert? boolean
 function Obj.stage_hunks(self, hunks, invert)
@@ -697,7 +705,6 @@ function Obj.stage_hunks(self, hunks, invert)
   })
 end
 
---- @async
 --- @return string?
 function Obj:has_moved()
   local out = self:command({ 'diff', '--name-status', '-C', '--cached' })
@@ -716,7 +723,6 @@ function Obj:has_moved()
   end
 end
 
---- @async
 --- @param file string
 --- @param encoding string
 --- @param gitdir string?

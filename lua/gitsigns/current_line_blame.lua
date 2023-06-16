@@ -80,6 +80,7 @@ end
 
 --- @param bufnr integer
 --- @param lnum integer
+--- @return Gitsigns.BlameInfo?
 function BlameCache:get(bufnr, lnum)
   if not config._blame_cache then
     return
