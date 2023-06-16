@@ -162,7 +162,7 @@ end
 ---Use this to create a function which executes in an async context but
 ---called from a non-async context. Inherently this cannot return anything
 ---since it is non-blocking
----@param func function
+---@param func async fun(...)
 function M.void(func)
   return function(...)
     if M.running() then

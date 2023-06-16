@@ -90,6 +90,7 @@ end
 --- @param first integer
 --- @param last_orig integer
 --- @param last_new integer
+--- @return true?
 function M.on_lines(buf, first, last_orig, last_new)
   local bcache = cache[buf]
   if not bcache then
@@ -259,6 +260,7 @@ end
 --- @param bufnr integer
 --- @param nsd integer
 --- @param hunk Gitsigns.Hunk.Hunk
+--- @return integer winid
 function M.show_deleted_in_float(bufnr, nsd, hunk)
   local virt_lines = {} --- @type {[1]: string, [2]: string}[][]
   for i = 1, hunk.removed.count do
@@ -381,6 +383,7 @@ function M.show_added(bufnr, nsw, hunk)
   end
 end
 
+--- @param bufnr integer
 local function update_show_deleted(bufnr)
   local bcache = cache[bufnr]
 
@@ -394,12 +397,12 @@ end
 
 local update_cnt = 0
 
--- Ensure updates cannot be interleaved.
--- Since updates are asynchronous we need to make sure an update isn't performed
--- whilst another one is in progress. If this happens then schedule another
--- update after the current one has completed.
+--- Ensure updates cannot be interleaved.
+--- Since updates are asynchronous we need to make sure an update isn't performed
+--- whilst another one is in progress. If this happens then schedule another
+--- update after the current one has completed.
 --- @param bufnr integer
---- @param bcache Gitsigns.CacheEntry
+--- @param bcache? Gitsigns.CacheEntry
 M.update = throttle_by_id(function(bufnr, bcache)
   local __FUNC__ = 'update'
   bcache = bcache or cache[bufnr]
@@ -518,6 +521,7 @@ end
 
 --- @param bufnr integer
 --- @param gitdir string
+--- @return uv_fs_poll_t?
 function M.watch_gitdir(bufnr, gitdir)
   if not config.watch_gitdir.enable then
     return
@@ -582,10 +586,13 @@ function M.reset_signs()
   end
 end
 
+--- @param _cb 'win'
+--- @param _winid integer
 --- @param bufnr integer
 --- @param topline integer
 --- @param botline_guess integer
-local function on_win(_, _, bufnr, topline, botline_guess)
+--- @return false?
+local function on_win(_cb, _winid, bufnr, topline, botline_guess)
   local bcache = cache[bufnr]
   if not bcache or not bcache.hunks then
     return false
@@ -601,9 +608,11 @@ local function on_win(_, _, bufnr, topline, botline_guess)
   end
 end
 
+--- @param _cb 'line'
+--- @param _winid integer
 --- @param bufnr integer
 --- @param row integer
-local function on_line(_, _, bufnr, row)
+local function on_line(_cb, _winid, bufnr, row)
   apply_word_diff(bufnr, row)
 end
 

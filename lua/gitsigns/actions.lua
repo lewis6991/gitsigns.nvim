@@ -12,14 +12,26 @@ local run_diff = require('gitsigns.diff')
 local gs_cache = require('gitsigns.cache')
 local cache = gs_cache.cache
 
-local gs_hunks = require('gitsigns.hunks')
+local Hunks = require('gitsigns.hunks')
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
 local M = {}
 
+--- @class Gitsigns.CmdParams.Smods
+--- @field vertical boolean
+--- @field split 'aboveleft'|'belowright'|'topleft'|'botright'
+
+--- @class Gitsigns.CmdParams
+--- @field range integer
+--- @field line1 integer
+--- @field line2 integer
+--- @field count integer
+--- @field smods Gitsigns.CmdParams.Smods
+
 -- Variations of functions from M which are used for the Gitsigns command
+--- @type table<string,fun(args: table, params: Gitsigns.CmdParams)>
 local C = {}
 
 local CP = {}
@@ -153,9 +165,10 @@ local function get_cursor_hunk(bufnr, hunks)
   end
 
   local lnum = api.nvim_win_get_cursor(0)[1]
-  return gs_hunks.find_hunk(lnum, hunks)
+  return Hunks.find_hunk(lnum, hunks)
 end
 
+--- @param bufnr integer
 local function update(bufnr)
   manager.update(bufnr)
   scheduler()
@@ -165,38 +178,43 @@ local function update(bufnr)
 end
 
 local function get_range(params)
-  local range
+  local range --- @type {[1]: integer, [2]: integer}?
   if params.range > 0 then
     range = { params.line1, params.line2 }
   end
   return range
 end
 
+--- @param bufnr integer
+--- @param bcache Gitsigns.CacheEntry
+--- @param greedy? boolean
+--- @param staged? boolean
+--- @return Gitsigns.Hunk.Hunk[]? hunks
 local function get_hunks(bufnr, bcache, greedy, staged)
-  local hunks
+  local hunks --- @type Gitsigns.Hunk.Hunk[]
 
   if greedy then
     -- Re-run the diff without linematch
     local buftext = util.buf_lines(bufnr)
-    local text
+    local text --- @type string[]?
     if staged then
       text = bcache.compare_text_head
     else
       text = bcache.compare_text
     end
-    if text then
-      hunks = run_diff(text, buftext, false)
+    if not text then
+      return
     end
+    hunks = run_diff(text, buftext, false)
     scheduler()
-  else
-    if staged then
-      hunks = bcache.hunks_staged
-    else
-      hunks = bcache.hunks
-    end
+    return hunks
   end
 
-  return hunks
+  if staged then
+    return bcache.hunks_staged
+  end
+
+  return bcache.hunks
 end
 
 --- @param bufnr integer
@@ -211,7 +229,7 @@ local function get_hunk(bufnr, range, greedy, staged)
   if range then
     table.sort(range)
     local top, bot = range[1], range[2]
-    hunk = gs_hunks.create_partial_hunk(hunks, top, bot)
+    hunk = Hunks.create_partial_hunk(hunks, top, bot)
     hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
     hunk.removed.lines = vim.list_slice(
       bcache.compare_text,
@@ -443,6 +461,7 @@ local function process_nav_opts(opts)
 end
 
 -- Defer function to the next main event
+--- @param fn function
 local function defer(fn)
   if vim.in_fast_event() then
     vim.schedule(fn)
@@ -451,6 +470,8 @@ local function defer(fn)
   end
 end
 
+--- @param bufnr integer
+--- @return boolean
 local function has_preview_inline(bufnr)
   return #api.nvim_buf_get_extmarks(bufnr, ns_inline, 0, -1, { limit = 1 }) > 0
 end
@@ -466,7 +487,7 @@ local nav_hunk = void(function(opts)
   local hunks = {}
   vim.list_extend(hunks, get_hunks(bufnr, bcache, opts.greedy, false) or {})
   local hunks_head = get_hunks(bufnr, bcache, opts.greedy, true) or {}
-  vim.list_extend(hunks, gs_hunks.filter_common(hunks_head, bcache.hunks) or {})
+  vim.list_extend(hunks, Hunks.filter_common(hunks_head, bcache.hunks) or {})
 
   if not hunks or vim.tbl_isempty(hunks) then
     if opts.navigation_message then
@@ -476,7 +497,7 @@ local nav_hunk = void(function(opts)
   end
   local line = api.nvim_win_get_cursor(0)[1]
 
-  local hunk, index = gs_hunks.find_nearest_hunk(line, hunks, opts.forwards, opts.wrap)
+  local hunk, index = Hunks.find_nearest_hunk(line, hunks, opts.forwards, opts.wrap)
 
   if hunk == nil then
     if opts.navigation_message then
@@ -556,6 +577,7 @@ M.prev_hunk = function(opts)
 end
 
 --- @param fmt {[1]: string, [2]: string}[][]
+--- @param info table
 --- @return {[1]: string, [2]: string}[][]
 local function lines_format(fmt, info)
   --- @type {[1]: string, [2]: string}[][]
@@ -572,8 +594,9 @@ end
 
 --- @param hunk Gitsigns.Hunk.Hunk
 --- @param hl string
+--- @return table[]
 local function hlmarks_for_hunk(hunk, hl)
-  local hls = {}
+  local hls = {} --- @type table[]
 
   local removed, added = hunk.removed, hunk.added
 
@@ -621,6 +644,8 @@ local function hlmarks_for_hunk(hunk, hl)
   return hls
 end
 
+--- @param fmt {[1]: string, [2]: string}[][]
+--- @param hunk Gitsigns.Hunk.Hunk
 local function insert_hunk_hlmarks(fmt, hunk)
   for _, line in ipairs(fmt) do
     for _, s in ipairs(line) do
@@ -669,7 +694,7 @@ M.preview_hunk = noautocmd(function()
   local lines_spec = lines_format(lines_fmt, {
     hunk_no = index,
     num_hunks = #cache[bufnr].hunks,
-    hunk = gs_hunks.patch_lines(hunk, vim.bo[bufnr].fileformat),
+    hunk = Hunks.patch_lines(hunk, vim.bo[bufnr].fileformat),
   })
 
   popup.create(lines_spec, config.preview_config, 'hunk')
@@ -762,7 +787,7 @@ M.get_hunks = function(bufnr)
   for _, h in ipairs(cache[bufnr].hunks or {}) do
     ret[#ret + 1] = {
       head = h.head,
-      lines = gs_hunks.patch_lines(h, vim.bo[bufnr].fileformat),
+      lines = Hunks.patch_lines(h, vim.bo[bufnr].fileformat),
       type = h.type,
       added = h.added,
       removed = h.removed,
@@ -773,6 +798,7 @@ end
 
 --- @param repo Gitsigns.Repo
 --- @param info Gitsigns.BlameInfo
+--- @return Gitsigns.Hunk.Hunk?, integer?, integer
 local function get_blame_hunk(repo, info)
   local a = {}
   -- If no previous so sha of blame added the file
@@ -781,7 +807,7 @@ local function get_blame_hunk(repo, info)
   end
   local b = repo:get_show_text(info.sha .. ':' .. info.filename)
   local hunks = run_diff(a, b, false)
-  local hunk, i = gs_hunks.find_hunk(info.orig_lnum, hunks)
+  local hunk, i = Hunks.find_hunk(info.orig_lnum, hunks)
   return hunk, i, #hunks
 end
 
@@ -854,27 +880,27 @@ M.blame_line = void(function(opts)
     loading:close()
   end)
 
+  assert(result)
+
   local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
 
   local blame_fmt = create_blame_fmt(is_committed, opts.full)
 
-  local info = result
-
   if is_committed and opts.full then
-    info.body = bcache.git_obj:command({ 'show', '-s', '--format=%B', result.sha })
+    result.body = bcache.git_obj:command({ 'show', '-s', '--format=%B', result.sha })
 
     local hunk
 
-    hunk, info.hunk_no, info.num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
+    hunk, result.hunk_no, result.num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
 
-    info.hunk = gs_hunks.patch_lines(hunk, fileformat)
-    info.hunk_head = hunk.head
+    result.hunk = Hunks.patch_lines(hunk, fileformat)
+    result.hunk_head = hunk.head
     insert_hunk_hlmarks(blame_fmt, hunk)
   end
 
   scheduler()
 
-  popup.create(lines_format(blame_fmt, info), config.preview_config, 'blame')
+  popup.create(lines_format(blame_fmt, result), config.preview_config, 'blame')
 end)
 
 local function update_buf_base(buf, bcache, base)
@@ -1054,6 +1080,7 @@ CP.show = complete_heads
 
 --- @param buf_or_filename string|integer
 --- @param hunks Gitsigns.Hunk.Hunk[]
+--- @param qflist table[]?
 local function hunks_to_qflist(buf_or_filename, hunks, qflist)
   for i, hunk in ipairs(hunks) do
     qflist[#qflist + 1] = {
@@ -1066,12 +1093,13 @@ local function hunks_to_qflist(buf_or_filename, hunks, qflist)
 end
 
 ---@param target 'all'|'attached'|integer
+---@return table[]?
 local function buildqflist(target)
   target = target or current_buf()
   if target == 0 then
     target = current_buf()
   end
-  local qflist = {}
+  local qflist = {} ---@type table[]
 
   if type(target) == 'number' then
     local bufnr = target
@@ -1084,7 +1112,7 @@ local function buildqflist(target)
       hunks_to_qflist(bufnr, bcache.hunks, qflist)
     end
   elseif target == 'all' then
-    local repos = {}
+    local repos = {} --- @type table<string,Gitsigns.Repo>
     for _, bcache in pairs(cache) do
       local repo = bcache.git_obj.repo
       if not repos[repo.gitdir] then
@@ -1092,7 +1120,7 @@ local function buildqflist(target)
       end
     end
 
-    local repo = git.Repo.new(vim.loop.cwd())
+    local repo = git.Repo.new(assert(vim.loop.cwd()))
     if not repos[repo.gitdir] then
       repos[repo.gitdir] = repo
     end
@@ -1206,6 +1234,7 @@ M.get_actions = function()
   end
   local hunk = get_cursor_hunk()
 
+  --- @type function[]
   local actions_l = {}
 
   local function add_action(action)
