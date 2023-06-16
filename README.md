@@ -79,6 +79,7 @@ require('gitsigns').setup {
     ignore_whitespace = false,
   },
   current_line_blame_formatter = '<author>, <author_time:%Y-%m-%d> - <summary>',
+  automatic_hunk_inline = false, -- `:h gitsigns-config-automatic_hunk_inline`
   sign_priority = 6,
   update_debounce = 100,
   status_formatter = nil, -- Use default
@@ -177,6 +178,7 @@ require('gitsigns').setup {
     map('n', '<leader>hu', '<cmd>Gitsigns undo_stage_hunk<CR>')
     map('n', '<leader>hR', '<cmd>Gitsigns reset_buffer<CR>')
     map('n', '<leader>hp', '<cmd>Gitsigns preview_hunk<CR>')
+    map('n', '<leader>hP', '<cmd>Gitsigns automatic_hunk_inline<CR>')
     map('n', '<leader>hb', '<cmd>lua require"gitsigns".blame_line{full=true}<CR>')
     map('n', '<leader>tb', '<cmd>Gitsigns toggle_current_line_blame<CR>')
     map('n', '<leader>hd', '<cmd>Gitsigns diffthis<CR>')
@@ -231,7 +233,7 @@ Ensures signs are always up to date                      | :white_check_mark: * 
 Never saves the buffer                                   | :white_check_mark:   | :white_check_mark: :heavy_exclamation_mark: * | * Writes [buffer](https://github.com/airblade/vim-gitgutter/blob/0f98634b92da9a35580b618c11a6d2adc42d9f90/autoload/gitgutter/diff.vim#L106) (and index) to short lived temp files
 Quick jumping between hunks                              | :white_check_mark:   | :white_check_mark:                            |
 Stage/reset/preview individual hunks                     | :white_check_mark:   | :white_check_mark:                            |
-Preview hunks directly in the buffer (inline)            | :white_check_mark: * |                                               | * Via `preview_hunk_inline`
+Preview hunks directly in the buffer (inline)            | :white_check_mark: * |                                               | * Via `preview_hunk_inline` on demand or on hover via `automatic_hunk_inline`
 Stage/reset hunks in range/selection                     | :white_check_mark:   | :white_check_mark: :heavy_exclamation_mark: * | * Only stage
 Stage/reset all hunks in buffer                          | :white_check_mark:   |                                               |
 Undo staged hunks                                        | :white_check_mark:   |                                               |

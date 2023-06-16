@@ -77,6 +77,7 @@ end
 --- @field worktrees {toplevel: string, gitdir: string}[]
 --- @field word_diff boolean
 --- @field keymaps table<string,string>
+--- @field automatic_hunk_inline boolean
 --- -- Undocumented
 --- @field _refresh_staged_on_update boolean
 --- @field _blame_cache boolean
@@ -759,6 +760,18 @@ M.schema = {
           • `GitSignsAddVirtLnInline`
           • `GitSignsChangeVirtLnInline`
           • `GitSignsDeleteVirtLnInline`
+    ]],
+  },
+
+  automatic_hunk_inline = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      The `automatic_hunk_inline` function enables automatic inline preview of
+      a hunk's diff when the cursor is inside the hunk. The preview is removed
+      when the cursor moves outside the hunk. This option ensures that any
+      newly attached buffer will have this functionality enabled by default,
+      without the need to manually call `Gitsigns automatic_hunk_inline`.
     ]],
   },
 
