@@ -29,15 +29,13 @@ M.test_config = {
     changedelete = {hl = 'DiffChange', text = '%'},
     untracked    = {hl = 'DiffChange', text = '#'},
   },
-  keymaps = {
-    noremap = true,
-    buffer = true,
-    ['n mhs'] = '<cmd>lua require"gitsigns".stage_hunk()<CR>',
-    ['n mhu'] = '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>',
-    ['n mhr'] = '<cmd>lua require"gitsigns".reset_hunk()<CR>',
-    ['n mhp'] = '<cmd>lua require"gitsigns".preview_hunk()<CR>',
-    ['n mhS'] = '<cmd>lua require"gitsigns".stage_buffer()<CR>',
-    ['n mhU'] = '<cmd>lua require"gitsigns".reset_buffer_index()<CR>',
+  on_attach = {
+    {'n', 'mhs', '<cmd>lua require"gitsigns".stage_hunk()<CR>'},
+    {'n', 'mhu', '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>'},
+    {'n', 'mhr', '<cmd>lua require"gitsigns".reset_hunk()<CR>'},
+    {'n', 'mhp', '<cmd>lua require"gitsigns".preview_hunk()<CR>'},
+    {'n', 'mhS', '<cmd>lua require"gitsigns".stage_buffer()<CR>'},
+    {'n', 'mhU', '<cmd>lua require"gitsigns".reset_buffer_index()<CR>'},
   },
   update_debounce = 5,
 }
@@ -225,12 +223,18 @@ function M.match_debug_messages(spec)
   end)
 end
 
-local git_version
-
 function M.setup_gitsigns(config, extra)
   extra = extra or ''
   exec_lua([[
       local config = ...
+      if config and config.on_attach then
+        local maps = config.on_attach
+        config.on_attach = function(bufnr)
+          for _, map in ipairs(maps) do
+            vim.keymap.set(map[1], map[2], map[3], {buffer = bufnr})
+          end
+        end
+      end
     ]]..extra..[[
       require('gitsigns').setup(...)
     ]], config)

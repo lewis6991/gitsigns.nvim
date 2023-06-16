@@ -1,10 +1,10 @@
 #!/bin/sh
 _=[[
-exec luajit "$0" "$@"
+exec nvim -l "$0" "$@"
 ]]
 -- Simple script to update the help doc by reading the config schema.
 
-local inspect = require('inspect')
+local inspect = vim.inspect
 local config = require('lua.gitsigns.config')
 
 function table.slice(tbl, first, last, step)
@@ -184,8 +184,11 @@ local function gen_functions_doc_from_file(path)
     else
       if in_block then
         -- First line after block
-        block[1] = parse_func_header(l)
-        blocks[#blocks+1] = block
+        local ok, header = pcall(parse_func_header, l)
+        if ok then
+          block[1] = header
+          blocks[#blocks+1] = block
+        end
         block = {''}
       end
       in_block = false
