@@ -783,7 +783,7 @@ M.schema = {
 
   _threaded_diff = {
     type = 'boolean',
-    default = false,
+    default = true,
     description = [[
       Run diffs on a separate thread
     ]],
