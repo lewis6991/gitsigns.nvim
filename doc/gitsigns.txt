@@ -32,7 +32,7 @@ For basic setup with all batteries included:
 
 Configuration can be passed to the setup function. Here is an example with most
 of the default settings:
->
+>lua
     require('gitsigns').setup {
       signs = {
         add          = { text = '│' },
@@ -59,6 +59,7 @@ of the default settings:
         ignore_whitespace = false,
       },
       current_line_blame_formatter = '<author>, <author_time:%Y-%m-%d> - <summary>',
+      automatic_hunk_inline = false, -- `:h gitsigns-config-automatic_hunk_inline`
       sign_priority = 6,
       update_debounce = 100,
       status_formatter = nil, -- Use default
@@ -333,6 +334,13 @@ select_hunk()                                         *gitsigns.select_hunk()*
 
 preview_hunk_inline()                         *gitsigns.preview_hunk_inline()*
                 Preview the hunk at the cursor position inline in the buffer.
+
+automatic_hunk_inline()                     *gitsigns.automatic_hunk_inline()*
+                Preview the hunk at the current cursor position inline in the
+                buffer automatically every time the CursorMoved event is
+                triggered. This function enables or disables the inline diff
+                functionality based on whether the cursor is inside or outside
+                of a hunk.
 
 preview_hunk()                                       *gitsigns.preview_hunk()*
                 Preview the hunk at the cursor position in a floating
@@ -919,6 +927,14 @@ debug_mode                                        *gitsigns-config-debug_mode*
       Enables debug logging and makes the following functions
       available: `dump_cache`, `debug_messages`, `clear_debug`.
 
+automatic_hunk_inline                  *gitsigns-config-automatic_hunk_inline*
+      Type: `boolean`, Default: `false`
+
+      The `automatic_hunk_inline` function enables automatic inline preview of
+      a hunk's diff when the cursor is inside the hunk. The preview is removed
+      when the cursor moves outside the hunk. This option ensures that any
+      newly attached buffer will have this functionality enabled by default,
+      without the need to manually call `Gitsigns automatic_hunk_inline`.
 
 ==============================================================================
 HIGHLIGHT GROUPS                                   *gitsigns-highlight-groups*

@@ -675,7 +675,13 @@ M.preview_hunk = noautocmd(function()
   popup.create(lines_spec, config.preview_config, 'hunk')
 end)
 
+local preview_hunk_state = { prev_hunk = nil, floating = nil, keep = false }
+
 local function clear_preview_inline(bufnr)
+  preview_hunk_state.prev_hunk = nil
+  if preview_hunk_state.floating then
+    pcall(api.nvim_win_close, preview_hunk_state.floating, true)
+  end
   api.nvim_buf_clear_namespace(bufnr, ns_inline, 0, -1)
 end
 
@@ -686,32 +692,34 @@ M.preview_hunk_inline = function()
   local hunk = get_cursor_hunk(bufnr)
 
   if not hunk then
+    clear_preview_inline(bufnr)
     return
   end
 
-  clear_preview_inline(bufnr)
+  if hunk == preview_hunk_state.prev_hunk then return end
 
-  local winid ---@type integer
+  clear_preview_inline(bufnr)
+  preview_hunk_state.prev_hunk = hunk
+
   manager.show_added(bufnr, ns_inline, hunk)
   if config._inline2 then
     if hunk.removed.count > 0 then
-      winid = manager.show_deleted_in_float(bufnr, ns_inline, hunk)
+      preview_hunk_state.floating = manager.show_deleted_in_float(bufnr, ns_inline, hunk)
     end
   else
     manager.show_deleted(bufnr, ns_inline, hunk)
   end
 
-  api.nvim_create_autocmd({ 'CursorMoved', 'InsertEnter' }, {
-    buffer = bufnr,
-    desc = 'Clear gitsigns inline preview',
-    callback = function()
-      if winid then
-        pcall(api.nvim_win_close, winid, true)
-      end
-      clear_preview_inline(bufnr)
-    end,
-    once = true,
-  })
+  if not preview_hunk_state.keep then
+    api.nvim_create_autocmd({ 'CursorMoved', 'InsertEnter' }, {
+      buffer = bufnr,
+      desc = 'Clear gitsigns inline preview',
+      callback = function()
+        clear_preview_inline(bufnr)
+      end,
+      once = true,
+    })
+  end
 
   -- Virtual lines will be hidden if cursor is on the top row, so automatically
   -- scroll the viewport.
@@ -721,6 +729,33 @@ M.preview_hunk_inline = function()
     api.nvim_feedkeys(cy, 'n', false)
   end
 end
+
+
+--- Preview the hunk at the current cursor position inline in the buffer automatically
+--- every time the CursorMoved event is triggered. This function enables or disables the inline
+--- diff functionality based on whether the cursor is inside or outside of a hunk.
+M.automatic_hunk_inline = noautocmd(function()
+  local bufnr = current_buf()
+  if not cache[bufnr] then return end
+
+  local group = api.nvim_create_augroup("gitsigns_automatic_hunk_inline", { clear = false })
+
+  -- If the autocmd group already has registered autocmds, clear them and disable the preview
+  if #api.nvim_get_autocmds({ group = group, buffer = bufnr }) > 0 then
+    api.nvim_clear_autocmds({ group = group, buffer = bufnr })
+    clear_preview_inline(bufnr)
+    preview_hunk_state = {}
+  else
+    -- Enable the preview
+    preview_hunk_state.keep = true
+    api.nvim_create_autocmd("CursorMoved", {
+      group = group,
+      buffer = bufnr,
+      callback = M.preview_hunk_inline,
+      desc = "Automatically show inline diff on hover"
+    })
+  end
+end)
 
 --- Select the hunk under the cursor.
 M.select_hunk = function()

@@ -356,6 +356,10 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   if config.keymaps and not vim.tbl_isempty(config.keymaps) then
     require('gitsigns.mappings')(config.keymaps, cbuf)
   end
+
+  if config.automatic_hunk_inline then
+    require('gitsigns.actions').automatic_hunk_inline()
+  end
 end)
 
 --- Detach Gitsigns from all buffers it is attached to.
