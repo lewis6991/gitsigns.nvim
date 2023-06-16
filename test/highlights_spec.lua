@@ -58,7 +58,7 @@ describe('highlights', function()
     config.linehl = true
     config._test_mode = true
 
-    exec_lua('gs.setup(...)', config)
+    setup_gitsigns(config)
 
     expectf(function()
       match_dag(debug_messages(), {

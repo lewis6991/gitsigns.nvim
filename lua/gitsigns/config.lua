@@ -76,7 +76,6 @@ end
 --- @field yadm { enable: boolean }
 --- @field worktrees {toplevel: string, gitdir: string}[]
 --- @field word_diff boolean
---- @field keymaps table<string,string>
 --- @field trouble boolean
 --- -- Undocumented
 --- @field _refresh_staged_on_update boolean
@@ -224,29 +223,6 @@ M.schema = {
     ]],
   },
 
-  keymaps = {
-    deprecated = {
-      message = 'config.keymaps is now deprecated. Please define mappings in config.on_attach() instead.',
-    },
-    type = 'table',
-    default = {},
-    description = [[
-      Keymaps to set up when attaching to a buffer.
-
-      Each key in the table defines the mode and key (whitespace delimited)
-      for the mapping and the value defines what the key maps to. The value
-      can be a table which can contain keys matching the options defined in
-      |map-arguments| which are: `expr`, `noremap`, `nowait`, `script`, `silent`
-      and `unique`.  These options can also be used in the top level of the
-      table to define default options for all mappings.
-
-      Since this field is not extended (unlike |gitsigns-config-signs|),
-      mappings defined in this field can be disabled by setting the whole field
-      to `{}`, and |gitsigns-config-on_attach| can instead be used to define
-      mappings.
-      ]],
-  },
-
   worktrees = {
     type = 'table',
     default = nil,
@@ -294,9 +270,8 @@ M.schema = {
     type = 'function',
     default = nil,
     description = [[
-      Callback called when attaching to a buffer. Mainly used to setup keymaps
-      when `config.keymaps` is empty. The buffer number is passed as the first
-      argument.
+      Callback called when attaching to a buffer. Mainly used to setup keymaps.
+      The buffer number is passed as the first argument.
 
       This callback can return `false` to prevent attaching to the buffer.
 
