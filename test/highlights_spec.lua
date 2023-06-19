@@ -12,7 +12,7 @@ local match_dag     = helpers.match_dag
 local p             = helpers.p
 local setup_gitsigns = helpers.setup_gitsigns
 
-local it = helpers.it(it)
+helpers.env()
 
 describe('highlights', function()
   local screen

@@ -15,7 +15,7 @@ local setup_gitsigns  = helpers.setup_gitsigns
 local test_file       = helpers.test_file
 local git             = helpers.git
 
-local it = helpers.it(it)
+helpers.env()
 
 local function get_bufs()
   local bufs = {}

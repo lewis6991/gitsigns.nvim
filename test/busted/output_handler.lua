@@ -1,5 +1,5 @@
 local pretty = require 'pl.pretty'
-local global_helpers = require('test.helpers')()
+local global_helpers = require('test.helpers')
 
 -- Colors are disabled by default. #15610
 local colors = require 'term.colors'

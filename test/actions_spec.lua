@@ -10,19 +10,20 @@ local exec_lua        = helpers.exec_lua
 local fn              = helpers.funcs
 local system          = fn.system
 local test_config     = helpers.test_config
-local cleanup         = helpers.cleanup
 local clear           = helpers.clear
 local setup_test_repo = helpers.setup_test_repo
 local eq              = helpers.eq
 local expectf         = helpers.expectf
 
-local it = helpers.it(it)
+helpers.env()
 
+--- @param exp_hunks string[]
 local function expect_hunks(exp_hunks)
   expectf(function()
+    --- @type table[]
     local hunks = exec_lua"return require('gitsigns').get_hunks()"
     if #exp_hunks~= #hunks then
-      local msg = {}
+      local msg = {} --- @type string[]
       msg[#msg+1] = ''
       msg[#msg+1] = string.format(
               'Number of hunks do not match. Expected: %d, passed in: %d',
