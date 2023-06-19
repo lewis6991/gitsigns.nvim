@@ -1,7 +1,5 @@
 local helpers = require('test.gs_helpers')
 
-local Screen = require('test.screen')
-
 local clear           = helpers.clear
 local exec_lua        = helpers.exec_lua
 local edit            = helpers.edit
@@ -11,11 +9,11 @@ local cleanup         = helpers.cleanup
 local command         = helpers.command
 local test_config     = helpers.test_config
 local match_debug_messages = helpers.match_debug_messages
-local p               = helpers.p
+local match_dag = helpers.match_dag
+local n, p, np        = helpers.n, helpers.p, helpers.np
 local setup_gitsigns  = helpers.setup_gitsigns
 local test_file       = helpers.test_file
 local git             = helpers.git
-local get_buf_name    = helpers.curbufmeths.get_name
 
 local it = helpers.it(it)
 
@@ -48,12 +46,12 @@ describe('gitdir_watcher', function()
 
     match_debug_messages {
       'attach(1): Attaching (trigger=BufReadPost)',
-      p"run_job: git .* config user.name",
-      p"run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD",
-      p('run_job: git .* ls%-files .* '..vim.pesc(test_file)),
-      'watch_gitdir(1): Watching git dir',
-      p'run_job: git .* show :0:dummy.txt',
-      'update(1): updates: 1, jobs: 5',
+      np"run_job: git .* config user.name",
+      np"run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD",
+      np('run_job: git .* ls%-files .* '..vim.pesc(test_file)),
+      n'watch_gitdir(1): Watching git dir',
+      np'run_job: git .* show :0:dummy.txt',
+      n'update(1): updates: 1, jobs: 5',
     }
 
     eq({[1] = test_file}, get_bufs())
@@ -63,16 +61,21 @@ describe('gitdir_watcher', function()
     local test_file2 = test_file..'2'
     git{'mv', test_file, test_file2}
 
+    match_dag {
+      "watcher_cb(1): Git dir update: 'index.lock' { rename = true } (ignoring)",
+      "watcher_cb(1): Git dir update: 'index' { rename = true }",
+      "watcher_cb(1): Git dir update: 'index' { rename = true }",
+    }
+
     match_debug_messages {
-      'watcher_cb(1): Git dir update',
-      p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
-      p('run_job: git .* ls%-files .* '..vim.pesc(test_file)),
-      p'run_job: git .* diff %-%-name%-status %-C %-%-cached',
-      'handle_moved(1): File moved to dummy.txt2',
-      p('run_job: git .* ls%-files .* '..vim.pesc(test_file2)),
-      p'handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt to .*/dummy.txt2',
-      p'run_job: git .* show :0:dummy.txt2',
-      'update(1): updates: 2, jobs: 10'
+      np'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
+      np('run_job: git .* ls%-files .* '..vim.pesc(test_file)),
+      np'run_job: git .* diff %-%-name%-status %-C %-%-cached',
+      n'handle_moved(1): File moved to dummy.txt2',
+      np('run_job: git .* ls%-files .* '..vim.pesc(test_file2)),
+      np'handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt to .*/dummy.txt2',
+      np'run_job: git .* show :0:dummy.txt2',
+      n'update(1): updates: 2, jobs: 10'
     }
 
     eq({[1] = test_file2}, get_bufs())
@@ -83,16 +86,21 @@ describe('gitdir_watcher', function()
 
     git{'mv', test_file2, test_file3}
 
+    match_dag {
+      "watcher_cb(1): Git dir update: 'index.lock' { rename = true } (ignoring)",
+      "watcher_cb(1): Git dir update: 'index' { rename = true }",
+      "watcher_cb(1): Git dir update: 'index' { rename = true }",
+    }
+
     match_debug_messages {
-      'watcher_cb(1): Git dir update',
       p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
-      p('run_job: git .* ls%-files .* '..vim.pesc(test_file2)),
-      p'run_job: git .* diff %-%-name%-status %-C %-%-cached',
-      'handle_moved(1): File moved to dummy.txt3',
-      p('run_job: git .* ls%-files .* '..vim.pesc(test_file3)),
-      p'handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt2 to .*/dummy.txt3',
-      p'run_job: git .* show :0:dummy.txt3',
-      'update(1): updates: 3, jobs: 15'
+      np('run_job: git .* ls%-files .* '..vim.pesc(test_file2)),
+      np'run_job: git .* diff %-%-name%-status %-C %-%-cached',
+      n'handle_moved(1): File moved to dummy.txt3',
+      np('run_job: git .* ls%-files .* '..vim.pesc(test_file3)),
+      np'handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt2 to .*/dummy.txt3',
+      np'run_job: git .* show :0:dummy.txt3',
+      n'update(1): updates: 3, jobs: 15'
     }
 
     eq({[1] = test_file3}, get_bufs())
@@ -101,17 +109,22 @@ describe('gitdir_watcher', function()
 
     git{'mv', test_file3, test_file}
 
+    match_dag {
+      "watcher_cb(1): Git dir update: 'index.lock' { rename = true } (ignoring)",
+      "watcher_cb(1): Git dir update: 'index' { rename = true }",
+      "watcher_cb(1): Git dir update: 'index' { rename = true }",
+    }
+
     match_debug_messages {
-      'watcher_cb(1): Git dir update',
       p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
-      p('run_job: git .* ls%-files .* '..vim.pesc(test_file3)),
-      p'run_job: git .* diff %-%-name%-status %-C %-%-cached',
-      p('run_job: git .* ls%-files .* '..vim.pesc(test_file)),
-      'handle_moved(1): Moved file reset',
-      p('run_job: git .* ls%-files .* '..vim.pesc(test_file)),
-      p'handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt3 to .*/dummy.txt',
-      p'run_job: git .* show :0:dummy.txt',
-      'update(1): updates: 4, jobs: 21'
+      np('run_job: git .* ls%-files .* '..vim.pesc(test_file3)),
+      np'run_job: git .* diff %-%-name%-status %-C %-%-cached',
+      np('run_job: git .* ls%-files .* '..vim.pesc(test_file)),
+      n'handle_moved(1): Moved file reset',
+      np('run_job: git .* ls%-files .* '..vim.pesc(test_file)),
+      np'handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt3 to .*/dummy.txt',
+      np'run_job: git .* show :0:dummy.txt',
+      n'update(1): updates: 4, jobs: 21'
     }
 
     eq({[1] = test_file}, get_bufs())

@@ -18,7 +18,6 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
-      fail-fast: true
       matrix:
         neovim_branch:
           - 'v0.8.3'

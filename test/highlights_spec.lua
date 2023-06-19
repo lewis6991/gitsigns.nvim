@@ -9,7 +9,6 @@ local cleanup       = helpers.cleanup
 local test_config   = helpers.test_config
 local expectf       = helpers.expectf
 local match_dag     = helpers.match_dag
-local debug_messages = helpers.debug_messages
 local p             = helpers.p
 local setup_gitsigns = helpers.setup_gitsigns
 
@@ -61,7 +60,7 @@ describe('highlights', function()
     setup_gitsigns(config)
 
     expectf(function()
-      match_dag(debug_messages(), {
+      match_dag {
         p'Deriving GitSignsAdd from DiffAdd',
         p'Deriving GitSignsAddLn from DiffAdd',
         p'Deriving GitSignsAddNr from GitSignsAdd',
@@ -69,7 +68,7 @@ describe('highlights', function()
         p'Deriving GitSignsChangeNr from GitSignsChange',
         p'Deriving GitSignsDelete from DiffDelete',
         p'Deriving GitSignsDeleteNr from GitSignsDelete',
-      })
+      }
     end)
 
     -- eq('GitSignsChange xxx links to DiffChange',

@@ -13,3 +13,27 @@ globals:
   package.config:
     any: true
     property: read-only
+
+  # busted
+  describe:
+    args:
+      - type: string
+        required: true
+      - type: function
+        required: true
+  it:
+    args:
+      - type: string
+        required: true
+      - type: function
+        required: true
+  before_each:
+    args:
+      - type: function
+        required: true
+  after_each:
+    args:
+      - type: function
+        required: true
+  pending:
+    args: []

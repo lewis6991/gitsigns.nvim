@@ -13,7 +13,7 @@ local uv = vim.loop
 
 local M = {}
 
-local cwd_watcher ---@type uv_fs_poll_t
+local cwd_watcher ---@type uv_fs_event_t?
 
 local update_cwd_head = void(function()
   local paths = vim.fs.find('.git', {
@@ -29,7 +29,7 @@ local update_cwd_head = void(function()
   if cwd_watcher then
     cwd_watcher:stop()
   else
-    cwd_watcher = assert(uv.new_fs_poll())
+    cwd_watcher = assert(uv.new_fs_event())
   end
 
   local cwd = assert(vim.loop.cwd())
@@ -70,10 +70,18 @@ local update_cwd_head = void(function()
     return
   end
 
+  local debounce_trailing = require('gitsigns.debounce').debounce_trailing
+
+  local update_head = debounce_trailing(100, void(function()
+    local new_head = git.get_repo_info(cwd).abbrev_head
+    scheduler()
+    vim.g.gitsigns_head = new_head
+  end))
+
   -- Watch .git/HEAD to detect branch changes
   cwd_watcher:start(
     towatch,
-    config.watch_gitdir.interval,
+    {},
     void(function(err)
       local __FUNC__ = 'cwd_watcher_cb'
       if err then
@@ -82,9 +90,7 @@ local update_cwd_head = void(function()
       end
       dprint('Git cwd dir update')
 
-      local new_head = git.get_repo_info(cwd).abbrev_head
-      scheduler()
-      vim.g.gitsigns_head = new_head
+      update_head()
     end)
   )
 end)

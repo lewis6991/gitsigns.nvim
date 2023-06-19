@@ -17,7 +17,7 @@ local M = {
 --- @field hunks_staged?      Gitsigns.Hunk.Hunk[]
 ---
 --- @field staged_diffs       Gitsigns.Hunk.Hunk[]
---- @field gitdir_watcher?    uv_poll_t
+--- @field gitdir_watcher?    uv_fs_event_t
 --- @field git_obj            Gitsigns.GitObj
 --- @field commit?            string
 local CacheEntry = M.CacheEntry
@@ -57,6 +57,8 @@ function CacheEntry:invalidate()
   self.hunks_staged = nil
 end
 
+--- @param o Gitsigns.CacheEntry
+--- @return Gitsigns.CacheEntry
 function CacheEntry.new(o)
   o.staged_diffs = o.staged_diffs or {}
   return setmetatable(o, { __index = CacheEntry })

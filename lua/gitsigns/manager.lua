@@ -497,7 +497,7 @@ local function handle_moved(bufnr, bcache, old_relpath)
       git_obj.orig_relpath = nil
       do_update = true
     end
-  else
+  -- else
     -- File removed from index, do nothing
   end
 
@@ -519,59 +519,78 @@ local function handle_moved(bufnr, bcache, old_relpath)
   end
 end
 
+-- vim.inspect but on one line
+--- @param x any
+--- @return string
+local function inspect(x)
+  return vim.inspect(x, {indent = '', newline = ' '})
+end
+
+local watch_gitdir_handler = debounce_trailing(100, void(function(bufnr)
+  local bcache = cache[bufnr]
+
+  if not bcache then
+    -- Very occasionally an external git operation may cause the buffer to
+    -- detach and update the git dir simultaneously. When this happens this
+    -- handler will trigger but there will be no cache.
+    dprint('Has detached, aborting')
+    return
+  end
+
+  local git_obj = bcache.git_obj
+
+  git_obj.repo:update_abbrev_head()
+
+  scheduler()
+  Status:update(bufnr, { head = git_obj.repo.abbrev_head })
+
+  local was_tracked = git_obj.object_name ~= nil
+  local old_relpath = git_obj.relpath
+
+  git_obj:update_file_info()
+
+  if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
+    -- File was tracked but is no longer tracked. Must of been removed or
+    -- moved. Check if it was moved and switch to it.
+    handle_moved(bufnr, bcache, old_relpath)
+  end
+
+  bcache:invalidate()
+
+  M.update(bufnr, bcache)
+end))
+
 --- @param bufnr integer
 --- @param gitdir string
---- @return uv_fs_poll_t?
+--- @return uv_fs_event_t?
 function M.watch_gitdir(bufnr, gitdir)
   if not config.watch_gitdir.enable then
     return
   end
 
   dprintf('Watching git dir')
-  local w = assert(uv.new_fs_poll())
+  local w = assert(uv.new_fs_event())
   w:start(
     gitdir,
-    config.watch_gitdir.interval,
-    void(function(err)
+    {},
+    function(err, filename, events)
       local __FUNC__ = 'watcher_cb'
       if err then
         dprintf('Git dir update error: %s', err)
         return
       end
-      dprint('Git dir update')
 
-      local bcache = cache[bufnr]
+      local info = string.format("Git dir update: '%s' %s", filename, inspect(events))
 
-      if not bcache then
-        -- Very occasionally an external git operation may cause the buffer to
-        -- detach and update the git dir simultaneously. When this happens this
-        -- handler will trigger but there will be no cache.
-        dprint('Has detached, aborting')
+      if vim.endswith(filename, '.lock') then
+        dprintf("%s (ignoring)", info)
         return
       end
 
-      local git_obj = bcache.git_obj
+      dprint(info)
 
-      git_obj.repo:update_abbrev_head()
-
-      scheduler()
-      Status:update(bufnr, { head = git_obj.repo.abbrev_head })
-
-      local was_tracked = git_obj.object_name ~= nil
-      local old_relpath = git_obj.relpath
-
-      git_obj:update_file_info()
-
-      if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
-        -- File was tracked but is no longer tracked. Must of been removed or
-        -- moved. Check if it was moved and switch to it.
-        handle_moved(bufnr, bcache, old_relpath)
-      end
-
-      bcache:invalidate()
-
-      M.update(bufnr, bcache)
-    end)
+      watch_gitdir_handler(bufnr)
+    end
   )
   return w
 end
