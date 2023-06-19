@@ -575,8 +575,7 @@ watch_gitdir                                    *gitsigns-config-watch_gitdir*
       Default: >
         `{
           enable = true,
-          follow_files = true,
-          interval = 1000
+          follow_files = true
         }`
 <
       When opening a file, a libuv watcher is placed on the respective
@@ -586,9 +585,6 @@ watch_gitdir                                    *gitsigns-config-watch_gitdir*
       Fields: ~
         • `enable`:
             Whether the watcher is enabled.
-
-        • `interval`:
-            Interval the watcher waits between polls of the gitdir in milliseconds.
 
         • `follow_files`:
             If a file is moved with `git mv`, switch the buffer to the new location.
