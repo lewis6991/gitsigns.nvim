@@ -526,7 +526,7 @@ local function inspect(x)
   return vim.inspect(x, {indent = '', newline = ' '})
 end
 
-local watch_gitdir_handler = debounce_trailing(100, void(function(bufnr)
+local watch_gitdir_handler = void(function(bufnr)
   local bcache = cache[bufnr]
 
   if not bcache then
@@ -558,7 +558,7 @@ local watch_gitdir_handler = debounce_trailing(100, void(function(bufnr)
   bcache:invalidate()
 
   M.update(bufnr, bcache)
-end))
+end)
 
 --- @param bufnr integer
 --- @param gitdir string
@@ -567,6 +567,10 @@ function M.watch_gitdir(bufnr, gitdir)
   if not config.watch_gitdir.enable then
     return
   end
+
+  -- Setup debounce as we create the luv object so the debounce is independent
+  -- to each watcher
+  local watch_gitdir_handler_db = debounce_trailing(100, watch_gitdir_handler)
 
   dprintf('Watching git dir')
   local w = assert(uv.new_fs_event())
@@ -589,7 +593,7 @@ function M.watch_gitdir(bufnr, gitdir)
 
       dprint(info)
 
-      watch_gitdir_handler(bufnr)
+      watch_gitdir_handler_db(bufnr)
     end
   )
   return w
