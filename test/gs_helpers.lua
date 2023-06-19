@@ -123,63 +123,38 @@ function M.write_to_file(path, text)
   f:close()
 end
 
-local function spec_text(s)
-  if type(s) == 'table' then
-    return s.text
+--- @param line string
+--- @param spec string|{next:boolean, pattern:boolean, text:string}
+--- @return boolean
+local function match_spec_elem(line, spec)
+
+  if spec.pattern then
+    if line:match(spec.text) then
+      return true
+    end
+  elseif spec.next then
+    -- local matcher = spec.pattern and matches or eq
+    -- matcher(spec.text, line)
+    if spec.pattern then
+      matches(spec.text, line)
+    else
+      eq(spec.text, line)
+    end
+    return true
   end
-  return s
+
+  return spec == line
 end
 
+--- Match lines in spec. Not all lines have to match
+--- @param lines string[]
+--- @param spec table<integer, (string|{next:boolean, pattern:boolean, text:string})?>
 function M.match_lines(lines, spec)
   local i = 1
-  for lid, line in ipairs(lines) do
-    if line ~= '' then
-      local s = spec[i]
-      if s then
-        if s.pattern then
-          matches(s.text, line)
-        else
-          eq(s, line)
-        end
-      else
-        local extra = {}
-        for j=lid,#lines do
-          table.insert(extra, lines[j])
-        end
-        error('Unexpected extra text:\n    '..table.concat(extra, '\n    '))
-      end
-      i = i + 1
-    end
-  end
-
-  if i < #spec + 1 then
-    local msg = {'lines:'}
-    for _, l in ipairs(lines) do
-      msg[#msg+1] = string.format('    - "%s"', l)
-    end
-    error(('Did not match pattern \'%s\' with %s'):format(spec_text(spec[i]), table.concat(msg, '\n')))
-  end
-end
-
-local function match_lines2(lines, spec)
-  local i = 1
   for _, line in ipairs(lines) do
-    if line ~= '' then
-      local s = spec[i]
-      if s then
-        if s.pattern then
-          if string.match(line, s.text) then
-            i = i + 1
-          end
-        elseif s.next then
-          eq(s.text, line)
-          i = i + 1
-        else
-          if s == line then
-            i = i + 1
-          end
-        end
-      end
+    local s = spec[i]
+    if line ~= '' and s and match_spec_elem(line, s) then
+      i = i + 1
     end
   end
 
@@ -200,21 +175,30 @@ local function match_lines2(lines, spec)
 end
 
 function M.p(str)
-  return {text=str, pattern=true}
+  return {text = str, pattern = true}
 end
 
 function M.n(str)
-  return {text=str, next=true}
+  return {text = str, next = true}
 end
 
+function M.np(str)
+  return {text = str, pattern = true, next = true}
+end
+
+--- @return string[]
 function M.debug_messages()
   return exec_lua("return require'gitsigns.debug.log'.messages")
 end
 
-function M.match_dag(lines, spec)
-  for _, s in ipairs(spec) do
-    match_lines2(lines, {s})
-  end
+--- @param spec table<integer, (string|{next:boolean, pattern:boolean, text:string})?>
+function M.match_dag(spec)
+  M.expectf(function()
+    local messages = M.debug_messages()
+    for _, s in ipairs(spec) do
+      M.match_lines(messages, {s})
+    end
+  end)
 end
 
 function M.match_debug_messages(spec)

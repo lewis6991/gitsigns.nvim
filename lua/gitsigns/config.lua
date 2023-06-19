@@ -62,7 +62,7 @@ end
 --- @field sign_priority integer
 --- @field _on_attach_pre fun(bufnr: integer, callback: fun(_: table))
 --- @field on_attach fun(bufnr: integer)
---- @field watch_gitdir { enable: boolean, interval: integer, follow_files: boolean }
+--- @field watch_gitdir { enable: boolean, follow_files: boolean }
 --- @field max_file_length integer
 --- @field update_debounce integer
 --- @field status_formatter fun(_: table<string,any>): string
@@ -295,7 +295,6 @@ M.schema = {
     deep_extend = true,
     default = {
       enable = true,
-      interval = 1000,
       follow_files = true,
     },
     description = [[
@@ -306,9 +305,6 @@ M.schema = {
       Fields: ~
         • `enable`:
             Whether the watcher is enabled.
-
-        • `interval`:
-            Interval the watcher waits between polls of the gitdir in milliseconds.
 
         • `follow_files`:
             If a file is moved with `git mv`, switch the buffer to the new location.
