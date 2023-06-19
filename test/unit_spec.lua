@@ -3,6 +3,8 @@ local exec_lua = helpers.exec_lua
 local setup_gitsigns  = helpers.setup_gitsigns
 local clear           = helpers.clear
 
+helpers.env()
+
 local function get_tests(pattern)
   local modules = exec_lua[[return vim.tbl_keys(package.loaded)]]
 

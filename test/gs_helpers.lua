@@ -1,17 +1,14 @@
-local helpers = require('test.helpers')()
-
-local system       = helpers.funcs.system
-local exec_lua     = helpers.exec_lua
-local matches      = helpers.matches
-local eq           = helpers.eq
-local fn           = helpers.funcs
-local get_buf_var  = helpers.curbufmeths.get_var
+local helpers = require'test.helpers'
 
 local timeout = 8000
 
 local M = helpers
 
-M.inspect = require('vim.inspect')
+local exec_lua = helpers.exec_lua
+local matches = helpers.matches
+local eq = helpers.eq
+local get_buf_var = helpers.curbufmeths.get_var
+local system = helpers.funcs.system
 
 M.scratch   = os.getenv('PJ_ROOT')..'/scratch'
 M.gitdir    = M.scratch..'/.git'
@@ -106,12 +103,8 @@ function M.expectf(cond, interval)
   cond()
 end
 
-function M.command_fmt(str, ...)
-  helpers.command(str:format(...))
-end
-
 function M.edit(path)
-  M.command_fmt("edit %s", path)
+  helpers.command("edit " .. path)
 end
 
 function M.write_to_file(path, text)
@@ -127,7 +120,6 @@ end
 --- @param spec string|{next:boolean, pattern:boolean, text:string}
 --- @return boolean
 local function match_spec_elem(line, spec)
-
   if spec.pattern then
     if line:match(spec.text) then
       return true
@@ -191,6 +183,7 @@ function M.debug_messages()
   return exec_lua("return require'gitsigns.debug.log'.messages")
 end
 
+--- Like match_debug_messages but elements in spec are unordered
 --- @param spec table<integer, (string|{next:boolean, pattern:boolean, text:string})?>
 function M.match_dag(spec)
   M.expectf(function()
@@ -201,6 +194,7 @@ function M.match_dag(spec)
   end)
 end
 
+--- @param spec table<integer, (string|{next:boolean, pattern:boolean, text:string})?>
 function M.match_debug_messages(spec)
   M.expectf(function()
     M.match_lines(M.debug_messages(), spec)
@@ -227,16 +221,10 @@ function M.setup_gitsigns(config, extra)
   end)
 end
 
-local id = 0
-M.it = function(it)
-  return function(name, test)
-    id = id+1
-    return it(name..' #'..id..'#', test)
-  end
-end
-
 function M.check(attrs, interval)
   attrs = attrs or {}
+  local fn = helpers.funcs
+
   M.expectf(function()
     local status = attrs.status
     local signs  = attrs.signs
@@ -293,7 +281,7 @@ function M.check(attrs, interval)
         end
       end
 
-      eq(signs, act, M.inspect(buf_signs))
+      eq(signs, act, vim.inspect(buf_signs))
     end
   end, interval)
 end

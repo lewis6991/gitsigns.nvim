@@ -36,4 +36,5 @@ globals:
       - type: function
         required: true
   pending:
-    args: []
+    args:
+      - type: string

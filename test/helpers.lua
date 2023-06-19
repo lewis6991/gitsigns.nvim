@@ -7,15 +7,6 @@ local ChildProcessStream = uv_stream.ChildProcessStream
 
 assert:set_parameter('TableFormatLevel', 100)
 
-local quote_me = '[^.%w%+%-%@%_%/]' -- complement (needn't quote)
-local function shell_quote(str)
-  if string.find(str, quote_me) or str == '' then
-    return '"' .. str:gsub('[$%%"\\]', '\\%0') .. '"'
-  else
-    return str
-  end
-end
-
 local M = {}
 
 -- sleeps the test runner (_not_ the nvim instance)
@@ -166,89 +157,6 @@ function M.remove_trace(s)
   return (s:gsub("\n%s*stack traceback:.*", ""))
 end
 
---- @param path string
---- @return boolean
-local function isdir(path)
-  if not path then
-    return false
-  end
-  local stat = luv.fs_stat(path)
-  return stat and stat.type == 'directory'
-end
-
---- @return string
-local function argss_to_cmd(...)
-  local cmd = ''
-  for i = 1, select('#', ...) do
-    local arg = select(i, ...)
-    if type(arg) == 'string' then
-      cmd = cmd .. ' ' ..shell_quote(arg)
-    else
-      for _, subarg in ipairs(arg) do
-        cmd = cmd .. ' ' .. shell_quote(subarg)
-      end
-    end
-  end
-  return cmd
-end
-
-local function popen_r(...)
-  return io.popen(argss_to_cmd(...), 'r')
-end
-
-local check_logs_useless_lines = {
-  ['Warning: noted but unhandled ioctl']=1,
-  ['could cause spurious value errors to appear']=2,
-  ['See README_MISSING_SYSCALL_OR_IOCTL for guidance']=3,
-}
-
-function M.check_logs()
-  local log_dir = os.getenv('LOG_DIR')
-  local runtime_errors = {}
-  if log_dir and isdir(log_dir) then
-    for tail in vim.fs.dir(log_dir) do
-      if tail:sub(1, 30) == 'valgrind-' or tail:find('san%.') then
-        local file = log_dir .. '/' .. tail
-        local fd = io.open(file)
-        local start_msg = ('='):rep(20) .. ' File ' .. file .. ' ' .. ('='):rep(20)
-        local lines = {}
-        local warning_line = 0
-        for line in fd:lines() do
-          local cur_warning_line = check_logs_useless_lines[line]
-          if cur_warning_line == warning_line + 1 then
-            warning_line = cur_warning_line
-          else
-            lines[#lines + 1] = line
-          end
-        end
-        fd:close()
-        if #lines > 0 then
-          local status, f
-          local out = io.stdout
-          if os.getenv('SYMBOLIZER') then
-            status, f = pcall(popen_r, os.getenv('SYMBOLIZER'), '-l', file)
-          end
-          out:write(start_msg .. '\n')
-          if status then
-            for line in f:lines() do
-              out:write('= '..line..'\n')
-            end
-            f:close()
-          else
-            out:write('= ' .. table.concat(lines, '\n= ') .. '\n')
-          end
-          out:write(select(1, start_msg:gsub('.', '=')) .. '\n')
-          table.insert(runtime_errors, file)
-        end
-        os.remove(file)
-      end
-    end
-  end
-  assert(0 == #runtime_errors, string.format(
-    'Found runtime errors in logfile(s): %s',
-    table.concat(runtime_errors, ', ')))
-end
-
 -- Concat list-like tables.
 function M.concat_tables(...)
   local ret = {}
@@ -288,7 +196,7 @@ end
 
 -- Gets the (tail) contents of `logfile`.
 -- Also moves the file to "${NVIM_LOG_FILE}.displayed" on CI environments.
-function M.read_nvim_log(logfile, ci_rename)
+function M.read_nvim_log(logfile)
   logfile = logfile or os.getenv('NVIM_LOG_FILE') or '.nvimlog'
   local keep = 10
   local lines = read_file_list(logfile, -keep) or {}
@@ -498,11 +406,11 @@ local function remove_args(args, args_rm)
   end
   local last = ''
   for _, arg in ipairs(args) do
-    if tbl_contains(skip_following, last) then
+    if vim.tbl_contains(skip_following, last) then
       last = ''
-    elseif tbl_contains(args_rm, arg) then
+    elseif vim.tbl_contains(args_rm, arg) then
       last = arg
-    elseif arg == runtime_set and tbl_contains(args_rm, 'runtimepath') then
+    elseif arg == runtime_set and vim.tbl_contains(args_rm, 'runtimepath') then
       table.remove(new_args)  -- Remove the preceding "--cmd".
       last = ''
     else
@@ -636,7 +544,9 @@ function M.create_callindex(func)
   local table = {}
   setmetatable(table, {
     __index = function(tbl, arg1)
-      local ret = function(...) return func(arg1, ...) end
+      local ret = function(...)
+        return func(arg1, ...)
+      end
       tbl[arg1] = ret
       return ret
     end,
@@ -699,25 +609,42 @@ function M.exec_lua(code, ...)
   return M.meths.exec_lua(code, {...})
 end
 
-function M.poke_eventloop()
-  -- Execute 'nvim_eval' (a deferred function) to
-  -- force at least one main_loop iteration
-  session:request('nvim_eval', '1')
+--- @param after_each fun(name:string,block:fun())
+function M.after_each(after_each)
+  after_each(function()
+    if not session then
+      return
+    end
+    local msg = session:next_message(0)
+    if msg then
+      if msg[1] == "notification" and msg[2] == "nvim_error_event" then
+        error(msg[3][2])
+      end
+    end
+  end)
 end
 
-return function(after_each)
-  if after_each then
-    after_each(function()
-      M.check_logs()
-      if session then
-        local msg = session:next_message(0)
-        if msg then
-          if msg[1] == "notification" and msg[2] == "nvim_error_event" then
-            error(msg[3][2])
-          end
-        end
-      end
-    end)
+local it_id = 0
+function M.env()
+  local g = getfenv(2)
+
+  local it0 = g.it
+  g.it = function(name, test)
+    it_id = it_id + 1
+    return it0(name..' #'..it_id..'#', test)
   end
-  return M
+
+  g.after_each(function()
+    if not session then
+      return
+    end
+    local msg = session:next_message(0)
+    if msg then
+      if msg[1] == "notification" and msg[2] == "nvim_error_event" then
+        error(msg[3][2])
+      end
+    end
+  end)
 end
+
+return M
