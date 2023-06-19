@@ -4,3 +4,5 @@ scratch/dummy_ignored.txt
 
 nvim-test-*
 nvim-runner-*
+
+.luarocks
