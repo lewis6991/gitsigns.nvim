@@ -257,14 +257,37 @@ function M.show_deleted(bufnr, nsd, hunk)
   })
 end
 
+--- @param win integer
+--- @param lnum integer
+--- @param width integer
+--- @return string str
+--- @return {group:string, start:integer}[]? highlights
+local function build_lno_str(win, lnum, width)
+  local has_col, statuscol = pcall(api.nvim_get_option_value, 'statuscolumn', {win = win, scope = "local"})
+  if has_col and statuscol and statuscol ~= ""  then
+    local ok, data = pcall(api.nvim_eval_statusline, statuscol, {
+      winid = win,
+      use_statuscol_lnum = lnum,
+      highlights = true,
+    })
+    if ok then
+      return data.str, data.highlights
+    end
+  end
+  return string.format('%'..width..'d', lnum)
+end
+
 --- @param bufnr integer
 --- @param nsd integer
 --- @param hunk Gitsigns.Hunk.Hunk
 --- @return integer winid
 function M.show_deleted_in_float(bufnr, nsd, hunk)
+  local cwin = api.nvim_get_current_win()
   local virt_lines = {} --- @type {[1]: string, [2]: string}[][]
+  local textoff = vim.fn.getwininfo(cwin)[1].textoff --[[@as integer]]
   for i = 1, hunk.removed.count do
-    virt_lines[i] = { { '', 'Normal' } }
+    local sc  = build_lno_str(cwin, hunk.removed.start + i, textoff - 1)
+    virt_lines[i] = { { sc, 'LineNr' } }
   end
 
   local topdelete = hunk.added.start == 0 and hunk.type == 'delete'
@@ -275,46 +298,32 @@ function M.show_deleted_in_float(bufnr, nsd, hunk)
     virt_lines = virt_lines,
     -- TODO(lewis6991): Note virt_lines_above doesn't work on row 0 neovim/neovim#16166
     virt_lines_above = virt_lines_above,
+    virt_lines_leftcol = true,
   })
 
   local bcache = cache[bufnr]
   local pbufnr = api.nvim_create_buf(false, true)
   api.nvim_buf_set_lines(pbufnr, 0, -1, false, bcache.compare_text)
 
-  local cwin = api.nvim_get_current_win()
   local width = api.nvim_win_get_width(0)
 
-  local opts = {
+  local bufpos_offset = virt_lines_above and not topdelete and 1 or 0
+
+  local pwinid = api.nvim_open_win(pbufnr, false, {
     relative = 'win',
     win = cwin,
-    width = width,
+    width = width - textoff,
     height = hunk.removed.count,
     anchor = 'SW',
-    bufpos = { hunk.added.start, 0 },
-  }
-
-  local bufpos_offset = virt_lines_above and not topdelete and 1 or 0
-  opts.bufpos[1] = opts.bufpos[1] - bufpos_offset
-
-  local winid = api.nvim_open_win(pbufnr, false, opts)
-
-  -- Align buffer text by accounting for differences in the statuscolumn
-  local textoff = vim.fn.getwininfo(cwin)[1].textoff --[[@as integer]]
-  local ptextoff = vim.fn.getwininfo(winid)[1].textoff --[[@as integer]]
-  local col_offset = textoff - ptextoff
-
-  if col_offset ~= 0 then
-    opts.width = opts.width - col_offset
-    opts.bufpos[2] = opts.bufpos[2] + col_offset
-    api.nvim_win_set_config(winid, opts)
-  end
+    bufpos = { hunk.added.start - bufpos_offset, 0 },
+    style = 'minimal'
+  })
 
   vim.bo[pbufnr].filetype = vim.bo[bufnr].filetype
   vim.bo[pbufnr].bufhidden = 'wipe'
-  vim.wo[winid].scrolloff = 0
-  vim.wo[winid].relativenumber = false
+  vim.wo[pwinid].scrolloff = 0
 
-  api.nvim_win_call(winid, function()
+  api.nvim_win_call(pwinid, function()
     -- Expand folds
     vim.cmd('normal ' .. 'zR')
 
@@ -349,7 +358,7 @@ function M.show_deleted_in_float(bufnr, nsd, hunk)
     })
   end
 
-  return winid
+  return pwinid
 end
 
 --- @param bufnr integer
