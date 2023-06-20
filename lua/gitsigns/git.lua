@@ -8,8 +8,6 @@ local subprocess = require('gitsigns.subprocess')
 local gs_config = require('gitsigns.config')
 local config = gs_config.config
 
-local gs_hunks = require('gitsigns.hunks')
-
 local uv = vim.loop
 local startswith = vim.startswith
 
@@ -685,6 +683,7 @@ end
 function Obj.stage_hunks(self, hunks, invert)
   ensure_file_in_index(self)
 
+  local gs_hunks = require('gitsigns.hunks')
   local patch = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert)
 
   if not self.i_crlf and self.w_crlf then
