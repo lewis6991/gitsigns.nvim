@@ -140,6 +140,9 @@ local function on_attach_pre(bufnr)
 end
 
 --- @param _bufnr integer
+--- @param file string
+--- @param encoding string
+--- @return Gitsigns.GitObj?
 local function try_worktrees(_bufnr, file, encoding)
   if not config.worktrees then
     return
@@ -333,9 +336,13 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     base = ctx and ctx.base or config.base,
     file = file,
     commit = commit,
-    gitdir_watcher = manager.watch_gitdir(cbuf, repo.gitdir),
     git_obj = git_obj,
   })
+
+  if config.watch_gitdir.enable then
+    local watcher = require'gitsigns.watcher'
+    cache[cbuf].gitdir_watcher = watcher.watch_gitdir(cbuf, repo.gitdir)
+  end
 
   if not api.nvim_buf_is_loaded(cbuf) then
     dprint('Un-loaded buffer')

@@ -1,6 +1,5 @@
 local void = require('gitsigns.async').void
 local awrap = require('gitsigns.async').wrap
-local scheduler = require('gitsigns.async').scheduler
 
 local gs_cache = require('gitsigns.cache')
 local cache = gs_cache.cache
@@ -19,7 +18,6 @@ local eprint = log.eprint
 local subprocess = require('gitsigns.subprocess')
 local util = require('gitsigns.util')
 local run_diff = require('gitsigns.diff')
-local uv = vim.loop
 
 local gs_hunks = require('gitsigns.hunks')
 
@@ -481,131 +479,6 @@ function M.detach(bufnr, keep_signs)
       signs_staged:remove(bufnr)
     end
   end
-end
-
---- @param bufnr integer
---- @param bcache Gitsigns.CacheEntry
---- @param old_relpath string
-local function handle_moved(bufnr, bcache, old_relpath)
-  local git_obj = bcache.git_obj
-  local do_update = false
-
-  local new_name = git_obj:has_moved()
-  if new_name then
-    dprintf('File moved to %s', new_name)
-    git_obj.relpath = new_name
-    if not git_obj.orig_relpath then
-      git_obj.orig_relpath = old_relpath
-    end
-    do_update = true
-  elseif git_obj.orig_relpath then
-    local orig_file = git_obj.repo.toplevel .. util.path_sep .. git_obj.orig_relpath
-    if git_obj:file_info(orig_file).relpath then
-      dprintf('Moved file reset')
-      git_obj.relpath = git_obj.orig_relpath
-      git_obj.orig_relpath = nil
-      do_update = true
-    end
-  -- else
-    -- File removed from index, do nothing
-  end
-
-  if do_update then
-    git_obj.file = git_obj.repo.toplevel .. util.path_sep .. git_obj.relpath
-    bcache.file = git_obj.file
-    git_obj:update_file_info()
-    scheduler()
-
-    local bufexists = util.bufexists(bcache.file)
-    local old_name = api.nvim_buf_get_name(bufnr)
-
-    if not bufexists then
-      util.buf_rename(bufnr, bcache.file)
-    end
-
-    local msg = bufexists and 'Cannot rename' or 'Renamed'
-    dprintf('%s buffer %d from %s to %s', msg, bufnr, old_name, bcache.file)
-  end
-end
-
--- vim.inspect but on one line
---- @param x any
---- @return string
-local function inspect(x)
-  return vim.inspect(x, {indent = '', newline = ' '})
-end
-
-local watch_gitdir_handler = void(function(bufnr)
-  local bcache = cache[bufnr]
-
-  if not bcache then
-    -- Very occasionally an external git operation may cause the buffer to
-    -- detach and update the git dir simultaneously. When this happens this
-    -- handler will trigger but there will be no cache.
-    dprint('Has detached, aborting')
-    return
-  end
-
-  local git_obj = bcache.git_obj
-
-  git_obj.repo:update_abbrev_head()
-
-  scheduler()
-  Status:update(bufnr, { head = git_obj.repo.abbrev_head })
-
-  local was_tracked = git_obj.object_name ~= nil
-  local old_relpath = git_obj.relpath
-
-  git_obj:update_file_info()
-
-  if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
-    -- File was tracked but is no longer tracked. Must of been removed or
-    -- moved. Check if it was moved and switch to it.
-    handle_moved(bufnr, bcache, old_relpath)
-  end
-
-  bcache:invalidate()
-
-  M.update(bufnr, bcache)
-end)
-
---- @param bufnr integer
---- @param gitdir string
---- @return uv_fs_event_t?
-function M.watch_gitdir(bufnr, gitdir)
-  if not config.watch_gitdir.enable then
-    return
-  end
-
-  -- Setup debounce as we create the luv object so the debounce is independent
-  -- to each watcher
-  local watch_gitdir_handler_db = debounce_trailing(100, watch_gitdir_handler)
-
-  dprintf('Watching git dir')
-  local w = assert(uv.new_fs_event())
-  w:start(
-    gitdir,
-    {},
-    function(err, filename, events)
-      local __FUNC__ = 'watcher_cb'
-      if err then
-        dprintf('Git dir update error: %s', err)
-        return
-      end
-
-      local info = string.format("Git dir update: '%s' %s", filename, inspect(events))
-
-      if vim.endswith(filename, '.lock') then
-        dprintf("%s (ignoring)", info)
-        return
-      end
-
-      dprint(info)
-
-      watch_gitdir_handler_db(bufnr)
-    end
-  )
-  return w
 end
 
 function M.reset_signs()
