@@ -50,6 +50,7 @@ FUNCTIONS                                                 *gitsigns-functions*
 Note functions with the {async} attribute are run asynchronously and are
 non-blocking (return immediately).
 
+
 {{FUNCTIONS}}
 
 ==============================================================================
