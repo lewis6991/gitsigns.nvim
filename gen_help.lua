@@ -25,7 +25,9 @@ end
 -- in the order they are defined.
 --- @return string[]
 local function get_ordered_schema_keys()
-  for l in read_file('lua/gitsigns/config.lua'):gmatch('[^\n\r]+') do
+  local ci = read_file('lua/gitsigns/config.lua'):gmatch('[^\n\r]+')
+
+  for l in ci do
     if startswith(l, 'M.schema = {') then
       break
     end
