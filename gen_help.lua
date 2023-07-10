@@ -5,20 +5,13 @@ exec nvim -l "$0" "$@"
 -- Simple script to update the help doc by reading the config schema.
 
 local inspect = vim.inspect
+local list_extend = vim.list_extend
+local startswith = vim.startswith
+
 local config = require('lua.gitsigns.config')
 
-function table.slice(tbl, first, last, step)
-  local sliced = {}
-  for i = first or 1, last or #tbl, step or 1 do
-    sliced[#sliced+1] = tbl[i]
-  end
-  return sliced
-end
-
-local function startswith(str, start)
-   return str.sub(str, 1, string.len(start)) == start
-end
-
+--- @param path string
+--- @return string
 local function read_file(path)
   local f = assert(io.open(path, 'r'))
   local t = f:read("*all")
@@ -163,42 +156,209 @@ local function parse_func_header(line)
   )
 end
 
---- @param path string
---- @return string
-local function gen_functions_doc_from_file(path)
-  local i = read_file(path):gmatch("([^\n]*)\n?")
+--- @param x string
+--- @return string? name
+--- @return string? type
+--- @return string? description
+local function parse_param(x)
+   local name, ty, des = x:match('([^ ]+) +([^ ]+) *(.*)')
+   return name, ty, des
+end
 
-  local res = {}
-  local blocks = {}
-  local block = {''}
-
-  local in_block = false
-  for l in i do
-    local l1 = l:match('^%-%-%- ?(.*)')
-    if l1 then
-      in_block = true
-      if l1 ~= '' and l1 ~= '<' then
-        l1 = '                '..l1
-      end
-      block[#block+1] = l1
-    else
-      if in_block then
-        -- First line after block
-        local ok, header = pcall(parse_func_header, l)
-        if ok then
-          block[1] = header
-          blocks[#blocks+1] = block
-        end
-        block = {''}
-      end
-      in_block = false
+--- @param x string[]
+--- @return string[]
+local function trim_lines(x)
+  local min_pad --- @type integer?
+  for _, e in ipairs(x) do
+    local _, i = e:find('^ *')
+    if not min_pad or min_pad > i then
+      min_pad = i
     end
   end
 
+  local r = {} --- @type string[]
+  for _, e in ipairs(x) do
+    r[#r+1] = e:sub(min_pad + 1)
+  end
+
+  return r
+end
+
+--- @param name string
+--- @param ty string
+--- @param desc string[]
+--- @param name_pad? integer
+--- @return string[]
+local function render_param_or_return(name, ty, desc, name_pad)
+  name_pad = name_pad and (name_pad + 3) or 0
+  local name_str --- @type string
+
+  if name == ':' then
+    name_str = ''
+  else
+    local nf = '%-'..tostring(name_pad)..'s'
+    name_str = nf:format(string.format('{%s} ', name))
+  end
+
+  if #desc == 0 then
+    return { string.format('    %s(%s)', name_str, ty) }
+  end
+
+  local r = {} --- @type string[]
+
+  local desc1 = desc[1] == '' and '' or ' '..desc[1]
+  r[#r+1] = string.format('    %s(%s): %s', name_str, ty, desc1)
+
+  local remain_desc = trim_lines(vim.list_slice(desc, 2))
+  for _, d in ipairs(remain_desc) do
+    r[#r+1] = '    '..string.rep(' ', name_pad)..d
+  end
+
+  return r
+end
+
+--- @param x string[]
+--- @param amount integer
+--- @return string[]
+local function pad(x, amount)
+  local pad_str = string.rep(' ', amount)
+
+  local r = {} --- @type string[]
+  for _, e in ipairs(x) do
+    r[#r+1] = pad_str..e
+  end
+  return r
+end
+
+--- @param state EmmyState
+--- @param doc_comment string
+--- @param desc string[]
+--- @param params {[1]: string, [2]: string, [3]: string[]}[]
+--- @param returns {[1]: string, [2]: string, [3]: string[]}[]
+--- @return EmmyState
+local function process_doc_comment(state, doc_comment, desc, params, returns)
+  if state == 'none' then
+    state = 'in_block'
+  end
+
+  local emmy_type, emmy_str = doc_comment:match(' ?@([a-z]+) (.*)')
+
+  if emmy_type == 'param' then
+    local name, ty, pdesc = parse_param(emmy_str)
+    params[#params+1] = {name, ty, { pdesc }}
+    return 'in_param'
+  end
+
+  if emmy_type == 'return' then
+    local ty, name, rdesc = parse_param(emmy_str)
+    returns[#returns+1] = {name, ty, { rdesc }}
+    return 'in_return'
+  end
+
+  if state == 'in_param' then
+    -- Consume any remaining doc document lines as the description for the
+    -- last parameter
+    local lastdes = params[#params][3]
+    lastdes[#lastdes+1] = doc_comment
+  elseif state == 'in_return' then
+    -- Consume any remaining doc document lines as the description for the
+    -- last return
+    local lastdes = returns[#returns][3]
+    lastdes[#lastdes+1] = doc_comment
+  else
+    if doc_comment ~= '' and doc_comment ~= '<' then
+      doc_comment = string.rep(' ', 16)..doc_comment
+    end
+    desc[#desc+1] = doc_comment
+  end
+
+  return state
+end
+
+--- @param header string
+--- @param block string[]
+--- @param params {[1]: string, [2]: string, [3]: string[]}[]
+--- @param returns {[1]: string, [2]: string, [3]: string[]}[]
+--- @return string[]
+local function render_block(header, block, params, returns)
+  local res = { header }
+  list_extend(res, block)
+
+  -- filter arguments beginning with '_'
+  params = vim.tbl_filter(
+    --- @param v {[1]: string, [2]: string, [3]: string[]}
+    --- @return boolean
+    function(v)
+      return not startswith(v[1], '_')
+    end,
+    params
+  )
+
+  if #params > 0 then
+    local param_block = {'Parameters: ~'}
+
+    local name_pad = 0
+    for _, v in ipairs(params) do
+      if #v[1] > name_pad then
+        name_pad = #v[1]
+      end
+    end
+
+    for _, v in ipairs(params) do
+      local name, ty, desc = v[1], v[2], v[3]
+      list_extend(param_block, render_param_or_return(name, ty, desc, name_pad))
+    end
+    list_extend(res, pad(param_block, 16))
+  end
+
+  if #returns > 0 then
+    res[#res+1] = ''
+    local param_block = {'Returns: ~'}
+    for _, v in ipairs(returns) do
+      local name, ty, desc = v[1], v[2], v[3]
+      list_extend(param_block, render_param_or_return(name, ty, desc))
+    end
+    list_extend(res, pad(param_block, 16))
+  end
+
+  return res
+end
+
+--- @param path string
+--- @return string
+local function gen_functions_doc_from_file(path)
+  local i = read_file(path):gmatch("([^\n]*)\n?") --- @type Iterator[string]
+
+  local blocks = {} --- @type string[][]
+
+  --- @alias EmmyState 'none'|'in_block'|'in_param'|'in_return'
+  local state = 'none' --- @type EmmyState
+  local desc = {} --- @type string[]
+  local params = {} --- @type {[1]: string, [2]: string, [3]: string[]}[]
+  local returns = {} --- @type {[1]: string, [2]: string, [3]: string[]}[]
+
+  for l in i do
+    local doc_comment = l:match('^%-%-%- ?(.*)') --- @type string?
+    if doc_comment then
+      state = process_doc_comment(state, doc_comment, desc, params, returns)
+    elseif state ~= 'none' then
+      -- First line after block
+      local ok, header = pcall(parse_func_header, l)
+      if ok then
+        blocks[#blocks+1] = render_block(header, desc, params, returns)
+      end
+      state = 'none'
+      desc = {}
+      params = {}
+      returns = {}
+    end
+  end
+
+  local res = {} --- @type string[]
   for j = #blocks, 1, -1 do
     local b = blocks[j]
     for k = 1, #b do
-      res[#res+1] = b[k]
+      res[#res+1] = b[k]:match('^ *$') and '' or b[k]
     end
     res[#res+1] = ''
   end
@@ -254,19 +414,21 @@ end
 
 --- @return string
 local function get_setup_from_readme()
-  local i = read_file('README.md'):gmatch("([^\n]*)\n?")
+  local readme = read_file('README.md'):gmatch("([^\n]*)\n?") --- @type Iterator
   local res = {} --- @type string[]
+
   local function append(line)
     res[#res+1] = line ~= '' and '    '..line or ''
   end
-  for l in i do
+
+  for l in readme do
     if l:match("require%('gitsigns'%).setup {") then
       append(l)
       break
     end
   end
 
-  for l in i do
+  for l in readme do
     append(l)
     if l == '}' then
       break
@@ -276,6 +438,8 @@ local function get_setup_from_readme()
   return table.concat(res, '\n')
 end
 
+--- @param marker string
+--- @return string|fun():string
 local function get_marker_text(marker)
   return ({
     VERSION   = '0.7-dev',
@@ -293,11 +457,11 @@ local function get_marker_text(marker)
 end
 
 local function main()
-  local i = read_file('etc/doc_template.txt'):gmatch("([^\n]*)\n?")
+  local template = read_file('etc/doc_template.txt'):gmatch("([^\n]*)\n?") --- @type Iterator
 
-  local out = io.open('doc/gitsigns.txt', 'w')
+  local out = assert(io.open('doc/gitsigns.txt', 'w'))
 
-  for l in i do
+  for l in template do
     local marker = l:match('{{(.*)}}')
     if marker then
       local sub = get_marker_text(marker)

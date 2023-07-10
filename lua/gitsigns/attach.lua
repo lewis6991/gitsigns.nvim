@@ -105,6 +105,7 @@ local function on_lines(_, bufnr, _, first, last_orig, last_new, byte_count)
   return manager.on_lines(bufnr, first, last_orig, last_new)
 end
 
+--- @param _ 'reload'
 --- @param bufnr integer
 local function on_reload(_, bufnr)
   local __FUNC__ = 'on_reload'
@@ -112,6 +113,7 @@ local function on_reload(_, bufnr)
   manager.update_debounced(bufnr)
 end
 
+--- @param _ 'detach'
 --- @param bufnr integer
 local function on_detach(_, bufnr)
   M.detach(bufnr, true)
@@ -371,8 +373,8 @@ end
 --- Detach Gitsigns from the buffer {bufnr}. If {bufnr} is not
 --- provided then the current buffer is used.
 ---
---- Parameters: ~
----     {bufnr}  (number): Buffer number
+--- @param bufnr integer Buffer number
+--- @param _keep_signs? boolean
 function M.detach(bufnr, _keep_signs)
   -- When this is called interactively (with no arguments) we want to remove all
   -- the signs, however if called via a detach event (due to nvim_buf_attach)
@@ -401,23 +403,22 @@ end
 --- Attributes: ~
 ---     {async}
 ---
---- Parameters: ~
----     {bufnr}  (number): Buffer number
----     {ctx}    (table|nil):
----              Git context data that may optionally be used to attach to any
----              buffer that represents a real git object.
----              • {file}: (string)
----                Path to the file represented by the buffer, relative to the
----                top-level.
----              • {toplevel}: (string)
----                Path to the top-level of the parent git repository.
----              • {gitdir}: (string)
----                Path to the git directory of the parent git repository
----                (typically the ".git/" directory).
----              • {commit}: (string)
----                The git revision that the file belongs to.
----              • {base}: (string|nil)
----                The git revision that the file should be compared to.
+--- @param bufnr integer Buffer number
+--- @param ctx table|nil
+---     Git context data that may optionally be used to attach to any
+---     buffer that represents a real git object.
+---     • {file}: (string)
+---       Path to the file represented by the buffer, relative to the
+---       top-level.
+---     • {toplevel}: (string)
+---       Path to the top-level of the parent git repository.
+---     • {gitdir}: (string)
+---       Path to the git directory of the parent git repository
+---       (typically the ".git/" directory).
+---     • {commit}: (string)
+---       The git revision that the file belongs to.
+---     • {base}: (string|nil)
+---       The git revision that the file should be compared to.
 M.attach = void(function(bufnr, ctx, _trigger)
   attach_throttled(bufnr or api.nvim_get_current_buf(), ctx, _trigger)
 end)

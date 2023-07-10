@@ -48,12 +48,9 @@ end
 
 --- Toggle |gitsigns-config-signbooleancolumn|
 ---
---- Parameters:~
----     {value} boolean|nil Value to set toggle. If `nil`
+--- @param value boolean|nil Value to set toggle. If `nil`
 ---     the toggle value is inverted.
----
---- Returns:~
----     Current value of |gitsigns-config-signcolumn|
+--- @return boolean : Current value of |gitsigns-config-signcolumn|
 M.toggle_signs = function(value)
   if value ~= nil then
     config.signcolumn = value
@@ -66,12 +63,10 @@ end
 
 --- Toggle |gitsigns-config-numhl|
 ---
---- Parameters:~
----     {value} boolean|nil Value to set toggle. If `nil`
+--- @param value boolean|nil Value to set toggle. If `nil`
 ---     the toggle value is inverted.
 ---
---- Returns:~
----     Current value of |gitsigns-config-numhl|
+--- @return boolean : Current value of |gitsigns-config-numhl|
 M.toggle_numhl = function(value)
   if value ~= nil then
     config.numhl = value
@@ -84,12 +79,9 @@ end
 
 --- Toggle |gitsigns-config-linehl|
 ---
---- Parameters:~
----     {value} boolean|nil Value to set toggle. If `nil`
+--- @param value boolean|nil Value to set toggle. If `nil`
 ---     the toggle value is inverted.
----
---- Returns:~
----     Current value of |gitsigns-config-linehl|
+--- @return boolean : Current value of |gitsigns-config-linehl|
 M.toggle_linehl = function(value)
   if value ~= nil then
     config.linehl = value
@@ -102,12 +94,9 @@ end
 
 --- Toggle |gitsigns-config-word_diff|
 ---
---- Parameters:~
----     {value} boolean|nil Value to set toggle. If `nil`
+--- @param value boolean|nil Value to set toggle. If `nil`
 ---     the toggle value is inverted.
----
---- Returns:~
----     Current value of |gitsigns-config-word_diff|
+--- @return boolean : Current value of |gitsigns-config-word_diff|
 M.toggle_word_diff = function(value)
   if value ~= nil then
     config.word_diff = value
@@ -121,12 +110,9 @@ end
 
 --- Toggle |gitsigns-config-current_line_blame|
 ---
---- Parameters:~
----     {value} boolean|nil Value to set toggle. If `nil`
+--- @param value boolean|nil Value to set toggle. If `nil`
 ---     the toggle value is inverted.
----
---- Returns:~
----     Current value of |gitsigns-config-current_line_blame|
+--- @return boolean : Current value of |gitsigns-config-current_line_blame|
 M.toggle_current_line_blame = function(value)
   if value ~= nil then
     config.current_line_blame = value
@@ -139,12 +125,9 @@ end
 
 --- Toggle |gitsigns-config-show_deleted|
 ---
---- Parameters:~
----     {value} boolean|nil Value to set toggle. If `nil`
+--- @param value boolean|nil Value to set toggle. If `nil`
 ---     the toggle value is inverted.
----
---- Returns:~
----     Current value of |gitsigns-config-show_deleted|
+--- @return boolean : Current value of |gitsigns-config-show_deleted|
 M.toggle_deleted = function(value)
   if value ~= nil then
     config.show_deleted = value
@@ -251,16 +234,14 @@ end
 --- Attributes: ~
 ---     {async}
 ---
---- Parameters:~
----     {range} table|nil List-like table of two integers making
+--- @param range table|nil List-like table of two integers making
 ---             up the line range from which you want to stage the hunks.
 ---             If running via command line, then this is taken from the
 ---             command modifiers.
----     {opts}  table|nil Additional options:
+--- @param opts table|nil Additional options:
 ---             • {greedy}: (boolean)
 ---               Stage all contiguous hunks. Only useful if 'diff_opts'
 ---               contains `linematch`. Defaults to `true`.
----
 M.stage_hunk = mk_repeatable(void(function(range, opts)
   opts = opts or {}
   local bufnr = current_buf()
@@ -304,16 +285,14 @@ end
 --- meaning if a range only includes a portion of a particular
 --- hunk, only the lines within the range will be reset.
 ---
---- Parameters:~
----     {range} table|nil List-like table of two integers making
----             up the line range from which you want to reset the hunks.
----             If running via command line, then this is taken from the
----             command modifiers.
----     {opts}  table|nil Additional options:
----             • {greedy}: (boolean)
----               Stage all contiguous hunks. Only useful if 'diff_opts'
----               contains `linematch`. Defaults to `true`.
----
+--- @param range table|nil List-like table of two integers making
+---     up the line range from which you want to reset the hunks.
+---     If running via command line, then this is taken from the
+---     command modifiers.
+--- @param opts table|nil Additional options:
+---     • {greedy}: (boolean)
+---       Stage all contiguous hunks. Only useful if 'diff_opts'
+---       contains `linematch`. Defaults to `true`.
 M.reset_hunk = mk_repeatable(void(function(range, opts)
   opts = opts or {}
   local bufnr = current_buf()
@@ -540,24 +519,23 @@ end)
 --- (popup or inline) was previously opened, it will be re-opened
 --- at the next hunk.
 ---
---- Parameters: ~
----     {opts}  table|nil Configuration table. Keys:
----             • {wrap}: (boolean)
----               Whether to loop around file or not. Defaults
----               to the value 'wrapscan'
----             • {navigation_message}: (boolean)
----               Whether to show navigation messages or not.
----               Looks at 'shortmess' for default behaviour.
----             • {foldopen}: (boolean)
----               Expand folds when navigating to a hunk which is
----               inside a fold. Defaults to `true` if 'foldopen'
----               contains `search`.
----             • {preview}: (boolean)
----               Automatically open preview_hunk() upon navigating
----               to a hunk.
----             • {greedy}: (boolean)
----               Only navigate between non-contiguous hunks. Only useful if
----               'diff_opts' contains `linematch`. Defaults to `true`.
+--- @param opts table|nil Configuration table. Keys:
+---     • {wrap}: (boolean)
+---       Whether to loop around file or not. Defaults
+---       to the value 'wrapscan'
+---     • {navigation_message}: (boolean)
+---       Whether to show navigation messages or not.
+---       Looks at 'shortmess' for default behaviour.
+---     • {foldopen}: (boolean)
+---       Expand folds when navigating to a hunk which is
+---       inside a fold. Defaults to `true` if 'foldopen'
+---       contains `search`.
+---     • {preview}: (boolean)
+---       Automatically open preview_hunk() upon navigating
+---       to a hunk.
+---     • {greedy}: (boolean)
+---       Only navigate between non-contiguous hunks. Only useful if
+---       'diff_opts' contains `linematch`. Defaults to `true`.
 M.next_hunk = function(opts)
   opts = opts or {}
   opts.forwards = true
@@ -759,24 +737,22 @@ end
 
 --- Get hunk array for specified buffer.
 ---
---- Parameters: ~
----     {bufnr} integer: Buffer number, if not provided (or 0)
+--- @param bufnr integer Buffer number, if not provided (or 0)
 ---             will use current buffer.
----
---- Return: ~
----    Array of hunk objects. Each hunk object has keys:
----      • `"type"`: String with possible values: "add", "change",
----        "delete"
----      • `"head"`: Header that appears in the unified diff
----        output.
----      • `"lines"`: Line contents of the hunks prefixed with
----        either `"-"` or `"+"`.
----      • `"removed"`: Sub-table with fields:
----        • `"start"`: Line number (1-based)
----        • `"count"`: Line count
----      • `"added"`: Sub-table with fields:
----        • `"start"`: Line number (1-based)
----        • `"count"`: Line count
+--- @return table|nil : Array of hunk objects.
+---     Each hunk object has keys:
+---         • `"type"`: String with possible values: "add", "change",
+---           "delete"
+---         • `"head"`: Header that appears in the unified diff
+---           output.
+---         • `"lines"`: Line contents of the hunks prefixed with
+---           either `"-"` or `"+"`.
+---         • `"removed"`: Sub-table with fields:
+---           • `"start"`: Line number (1-based)
+---           • `"count"`: Line count
+---         • `"added"`: Sub-table with fields:
+---           • `"start"`: Line number (1-based)
+---           • `"count"`: Line count
 M.get_hunks = function(bufnr)
   bufnr = bufnr or current_buf()
   if not cache[bufnr] then
@@ -844,16 +820,14 @@ end
 --- floating window. If already open, calling this will cause the
 --- window to get focus.
 ---
---- Parameters: ~
----     {opts}   (table|nil):
----              Additional options:
----              • {full}: (boolean)
----                Display full commit message with hunk.
----              • {ignore_whitespace}: (boolean)
----                Ignore whitespace when running blame.
----
 --- Attributes: ~
 ---     {async}
+---
+--- @param opts table|nil Additional options:
+---     • {full}: (boolean)
+---       Display full commit message with hunk.
+---     • {ignore_whitespace}: (boolean)
+---       Ignore whitespace when running blame.
 M.blame_line = void(function(opts)
   if popup.focus_open('blame') then
     return
@@ -917,10 +891,6 @@ end
 --- Attributes: ~
 ---     {async}
 ---
---- Parameters:~
----     {base} string|nil The object/revision to diff against.
----     {global} boolean|nil Change the base of all buffers.
----
 --- Examples: >
 ---   " Change base to 1 commit behind head
 ---   :lua require('gitsigns').change_base('HEAD~1')
@@ -942,6 +912,9 @@ end
 ---
 --- For a more complete list of ways to specify bases, see
 --- |gitsigns-revision|.
+---
+--- @param base string|nil The object/revision to diff against.
+--- @param global boolean|nil Change the base of all buffers.
 M.change_base = void(function(base, global)
   base = util.calc_base(base)
 
@@ -986,19 +959,6 @@ end
 --- If {base} is the index, then the opened buffer is editable and
 --- any written changes will update the index accordingly.
 ---
---- Parameters: ~
----     {base}   (string|nil): Revision to diff against. Defaults
----              to index.
----     {opts}   (table|nil):
----              Additional options:
----              • {vertical}: {boolean}. Split window vertically. Defaults to
----              config.diff_opts.vertical. If running via command line, then
----              this is taken from the command modifiers.
----              • {split}: {string}. One of: 'aboveleft', 'belowright',
----              'botright', 'rightbelow', 'leftabove', 'topleft'. Defaults to
----              'aboveleft'. If running via command line, then this is taken
----              from the command modifiers.
----
 --- Examples: >
 ---   " Diff against the index
 ---   :Gitsigns diffthis
@@ -1012,6 +972,16 @@ end
 ---
 --- Attributes: ~
 ---     {async}
+---
+--- @param base string|nil Revision to diff against. Defaults to index.
+--- @param opts table|nil Additional options:
+---     • {vertical}: {boolean}. Split window vertically. Defaults to
+---       config.diff_opts.vertical. If running via command line, then
+---       this is taken from the command modifiers.
+---     • {split}: {string}. One of: 'aboveleft', 'belowright',
+---       'botright', 'rightbelow', 'leftabove', 'topleft'. Defaults to
+---       'aboveleft'. If running via command line, then this is taken
+---       from the command modifiers.
 M.diffthis = function(base, opts)
   -- TODO(lewis6991): can't pass numbers as strings from the command line
   if base ~= nil then
@@ -1147,28 +1117,26 @@ end
 --- Attributes: ~
 ---     {async}
 ---
---- Parameters: ~
----     {target} (integer or string):
----              Specifies which files hunks are collected from.
----              Possible values.
----              • [integer]: The buffer with the matching buffer
----                number. `0` for current buffer (default).
----              • `"attached"`: All attached buffers.
----              • `"all"`: All modified files for each git
----                directory of all attached buffers in addition
----                to the current working directory.
----     {opts}   (table|nil):
----              Additional options:
----              • {use_location_list}: (boolean)
----                Populate the location list instead of the
----                quickfix list. Default to `false`.
----              • {nr}: (integer)
----                Window number or ID when using location list.
----                Expand folds when navigating to a hunk which is
----                inside a fold. Defaults to `0`.
----              • {open}: (boolean)
----                Open the quickfix/location list viewer.
----                Defaults to `true`.
+--- @param target integer|string
+---     Specifies which files hunks are collected from.
+---     Possible values.
+---     • [integer]: The buffer with the matching buffer
+---       number. `0` for current buffer (default).
+---     • `"attached"`: All attached buffers.
+---     • `"all"`: All modified files for each git
+---       directory of all attached buffers in addition
+---       to the current working directory.
+--- @param opts table|nil Additional options:
+---     • {use_location_list}: (boolean)
+---       Populate the location list instead of the
+---       quickfix list. Default to `false`.
+---     • {nr}: (integer)
+---       Window number or ID when using location list.
+---       Expand folds when navigating to a hunk which is
+---       inside a fold. Defaults to `0`.
+---     • {open}: (boolean)
+---       Open the quickfix/location list viewer.
+---       Defaults to `true`.
 M.setqflist = void(function(target, opts)
   opts = opts or {}
   if opts.open == nil then
@@ -1209,10 +1177,9 @@ end)
 --- Attributes: ~
 ---     {async}
 ---
---- Parameters: ~
----     {nr}     (integer): Window number or the |window-ID|.
----              `0` for the current window (default).
----     {target} (integer or string): See |gitsigns.setqflist()|.
+--- @param nr integer Window number or the |window-ID|.
+---     `0` for the current window (default).
+--- @param target integer|string See |gitsigns.setqflist()|.
 M.setloclist = function(nr, target)
   M.setqflist(target, {
     nr = nr,
@@ -1223,8 +1190,7 @@ end
 --- Get all the available line specific actions for the current
 --- buffer at the cursor position.
 ---
---- Return: ~
----     Dictionary of action name to function which when called
+--- @return table|nil : Dictionary of action name to function which when called
 ---     performs action.
 M.get_actions = function()
   local bufnr = current_buf()
