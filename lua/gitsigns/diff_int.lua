@@ -35,21 +35,23 @@ local run_diff_xdl_async = async.wrap(
 
     vim.loop
       .new_work(
-      --- @param a0 string
-      --- @param b0 string
-      --- @param algorithm0 string
-      --- @param indent_heuristic0 integer
-      --- @param linematch0 integer
-      function(a0, b0, algorithm0, indent_heuristic0, linematch0)
-        return vim.mpack.encode(vim.diff(a0, b0, {
-          result_type = 'indices',
-          algorithm = algorithm0,
-          indent_heuristic = indent_heuristic0,
-          linematch = linematch0,
-        }))
-      end, function(r)
-        callback(vim.mpack.decode(r --[[@as string]])  --[[@as Gitsigns.RawHunk[] ]])
-      end)
+        --- @param a0 string
+        --- @param b0 string
+        --- @param algorithm0 string
+        --- @param indent_heuristic0 integer
+        --- @param linematch0 integer
+        function(a0, b0, algorithm0, indent_heuristic0, linematch0)
+          return vim.mpack.encode(vim.diff(a0, b0, {
+            result_type = 'indices',
+            algorithm = algorithm0,
+            indent_heuristic = indent_heuristic0,
+            linematch = linematch0,
+          }))
+        end,
+        function(r)
+          callback(vim.mpack.decode(r --[[@as string]]) --[[@as Gitsigns.RawHunk[] ]])
+        end
+      )
       :queue(a, b, algorithm, indent_heuristic, linematch)
   end,
   6

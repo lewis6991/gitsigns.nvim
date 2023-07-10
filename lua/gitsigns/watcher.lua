@@ -107,28 +107,24 @@ function M.watch_gitdir(bufnr, gitdir)
 
   dprintf('Watching git dir')
   local w = assert(uv.new_fs_event())
-  w:start(
-    gitdir,
-    {},
-    function(err, filename, events)
-      local __FUNC__ = 'watcher_cb'
-      if err then
-        dprintf('Git dir update error: %s', err)
-        return
-      end
-
-      local info = string.format("Git dir update: '%s' %s", filename, inspect(events))
-
-      if vim.endswith(filename, '.lock') then
-        dprintf('%s (ignoring)', info)
-        return
-      end
-
-      dprint(info)
-
-      watch_gitdir_handler_db(bufnr)
+  w:start(gitdir, {}, function(err, filename, events)
+    local __FUNC__ = 'watcher_cb'
+    if err then
+      dprintf('Git dir update error: %s', err)
+      return
     end
-  )
+
+    local info = string.format("Git dir update: '%s' %s", filename, inspect(events))
+
+    if vim.endswith(filename, '.lock') then
+      dprintf('%s (ignoring)', info)
+      return
+    end
+
+    dprint(info)
+
+    watch_gitdir_handler_db(bufnr)
+  end)
   return w
 end
 

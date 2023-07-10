@@ -121,7 +121,7 @@ end
 --- @param line string
 --- @return Gitsigns.Hunk.Hunk
 function M.parse_diff_line(line)
-  local diffkey = vim.trim(vim.split(line, '@@', {plain=true})[2])
+  local diffkey = vim.trim(vim.split(line, '@@', { plain = true })[2])
 
   -- diffKey: "-xx,n +yy"
   -- pre: {xx, n}, now: {yy}

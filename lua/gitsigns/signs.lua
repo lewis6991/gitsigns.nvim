@@ -31,7 +31,7 @@ local dprint = require('gitsigns.debug.log').dprint
 
 local B = {
   Sign = {},
-  HlDef = {}
+  HlDef = {},
 }
 
 -- local function capitalise_word(x: string): string

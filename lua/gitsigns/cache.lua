@@ -1,7 +1,7 @@
 local config = require('gitsigns.config').config
 
 local M = {
-  CacheEntry = {}
+  CacheEntry = {},
 }
 
 -- Timer object watching the gitdir

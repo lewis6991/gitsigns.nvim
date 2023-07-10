@@ -261,8 +261,9 @@ end
 --- @return string str
 --- @return {group:string, start:integer}[]? highlights
 local function build_lno_str(win, lnum, width)
-  local has_col, statuscol = pcall(api.nvim_get_option_value, 'statuscolumn', {win = win, scope = "local"})
-  if has_col and statuscol and statuscol ~= ""  then
+  local has_col, statuscol =
+    pcall(api.nvim_get_option_value, 'statuscolumn', { win = win, scope = 'local' })
+  if has_col and statuscol and statuscol ~= '' then
     local ok, data = pcall(api.nvim_eval_statusline, statuscol, {
       winid = win,
       use_statuscol_lnum = lnum,
@@ -272,7 +273,7 @@ local function build_lno_str(win, lnum, width)
       return data.str, data.highlights
     end
   end
-  return string.format('%'..width..'d', lnum)
+  return string.format('%' .. width .. 'd', lnum)
 end
 
 --- @param bufnr integer
@@ -284,7 +285,7 @@ function M.show_deleted_in_float(bufnr, nsd, hunk)
   local virt_lines = {} --- @type {[1]: string, [2]: string}[][]
   local textoff = vim.fn.getwininfo(cwin)[1].textoff --[[@as integer]]
   for i = 1, hunk.removed.count do
-    local sc  = build_lno_str(cwin, hunk.removed.start + i, textoff - 1)
+    local sc = build_lno_str(cwin, hunk.removed.start + i, textoff - 1)
     virt_lines[i] = { { sc, 'LineNr' } }
   end
 
@@ -314,7 +315,7 @@ function M.show_deleted_in_float(bufnr, nsd, hunk)
     height = hunk.removed.count,
     anchor = 'SW',
     bufpos = { hunk.added.start - bufpos_offset, 0 },
-    style = 'minimal'
+    style = 'minimal',
   })
 
   vim.bo[pbufnr].filetype = vim.bo[bufnr].filetype

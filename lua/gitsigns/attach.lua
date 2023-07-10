@@ -340,7 +340,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   })
 
   if config.watch_gitdir.enable then
-    local watcher = require'gitsigns.watcher'
+    local watcher = require('gitsigns.watcher')
     cache[cbuf].gitdir_watcher = watcher.watch_gitdir(cbuf, repo.gitdir)
   end
 

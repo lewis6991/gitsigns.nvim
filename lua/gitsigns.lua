@@ -72,11 +72,14 @@ local update_cwd_head = void(function()
 
   local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 
-  local update_head = debounce_trailing(100, void(function()
-    local new_head = git.get_repo_info(cwd).abbrev_head
-    scheduler()
-    vim.g.gitsigns_head = new_head
-  end))
+  local update_head = debounce_trailing(
+    100,
+    void(function()
+      local new_head = git.get_repo_info(cwd).abbrev_head
+      scheduler()
+      vim.g.gitsigns_head = new_head
+    end)
+  )
 
   -- Watch .git/HEAD to detect branch changes
   cwd_watcher:start(

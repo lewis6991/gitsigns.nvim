@@ -109,7 +109,7 @@ function M._set_version(version)
     args = { '--version' },
   })
 
-  local line = vim.split(stdout or '', '\n', {plain=true})[1]
+  local line = vim.split(stdout or '', '\n', { plain = true })[1]
   if not line then
     err("Unable to detect git version as 'git --version' failed to return anything")
     eprint(stderr)
@@ -154,7 +154,7 @@ local git_command = async.create(function(args, spec)
     end
   end
 
-  local stdout_lines = vim.split(stdout or '', '\n', {plain=true})
+  local stdout_lines = vim.split(stdout or '', '\n', { plain = true })
 
   -- If stdout ends with a newline, then remove the final empty string after
   -- the split
@@ -415,7 +415,9 @@ function Repo.new(dir, gitdir, toplevel)
 
   self.username = git_command({ 'config', 'user.name' })[1]
   local info = M.get_repo_info(dir, nil, gitdir, toplevel)
-  for k, v in pairs(info --[[@as table<string,any>]]) do
+  for k, v in
+    pairs(info --[[@as table<string,any>]])
+  do
     ---@diagnostic disable-next-line:no-unknown
     (self)[k] = v
   end
@@ -428,7 +430,9 @@ function Repo.new(dir, gitdir, toplevel)
     then
       M.get_repo_info(dir, 'yadm', gitdir, toplevel)
       local yadm_info = M.get_repo_info(dir, 'yadm', gitdir, toplevel)
-      for k, v in pairs(yadm_info --[[@as table<string,any>]]) do
+      for k, v in
+        pairs(yadm_info --[[@as table<string,any>]])
+      do
         ---@diagnostic disable-next-line:no-unknown
         (self)[k] = v
       end
