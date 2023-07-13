@@ -1,0 +1,23 @@
+{
+    "$schema": "https://raw.githubusercontent.com/sumneko/vscode-lua/master/setting/schema.json",
+    "runtime": {
+        "version": "LuaJIT"
+    },
+    "workspace.library": [
+        "$NVIM_TYPES_DIR",
+        "$NVIM_RUNTIME",
+        "lua",
+    ],
+    "workspace.checkThirdParty": false,
+    "diagnostics": {
+      "groupFileStatus": {
+        "strict": "Opened",
+        "strong": "Opened",
+      },
+      "groupSeverity": {
+        "strong": "Warning",
+        "strict": "Warning",
+      },
+      "unusedLocalExclude": [ "_*" ],
+    }
+}
