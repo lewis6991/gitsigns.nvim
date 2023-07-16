@@ -75,9 +75,11 @@ require('gitsigns').setup {
     virt_text = true,
     virt_text_pos = 'eol', -- 'eol' | 'overlay' | 'right_align'
     delay = 1000,
+    github_blame = false,
     ignore_whitespace = false,
   },
   current_line_blame_formatter = '<author>, <author_time:%Y-%m-%d> - <summary>',
+  current_line_blame_formatter_gh = ' <author>, <mergedAt:%Y-%m-%d>, PR: #<number> • <title>',
   sign_priority = 6,
   update_debounce = 100,
   status_formatter = nil, -- Use default
