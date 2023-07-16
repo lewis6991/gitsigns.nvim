@@ -46,6 +46,7 @@ end
 --- @field delay integer
 --- @field ignore_whitespace boolean
 --- @field virt_text_priority integer
+--- @field github_blame boolean
 
 --- @class Gitsigns.Config
 --- @field debug_mode boolean
@@ -70,6 +71,7 @@ end
 --- @field current_line_blame_formatter_opts { relative_time: boolean }
 --- @field current_line_blame_formatter string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_formatter_nc string|Gitsigns.CurrentLineBlameFmtFun
+--- @field current_line_blame_formatter_gh string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_opts Gitsigns.CurrentLineBlameOpts
 --- @field preview_config table<string,any>
 --- @field attach_to_untracked boolean
@@ -664,6 +666,27 @@ M.schema = {
     description = [[
       String or function used to format the virtual text of
       |gitsigns-config-current_line_blame| for lines that aren't committed.
+
+      See |gitsigns-config-current_line_blame_formatter| for more information.
+    ]],
+  },
+
+  current_line_blame_formatter_gh = {
+    type = { 'string', 'function' },
+    default = ' <author>, <mergedAt>, PR: #<number> • <title>',
+    --- TODO: confirm <author_time> in github
+    description = [[
+      String or function used to format the virtual text of
+      |gitsigns-config-current_line_blame| when github is used.
+
+      Note: |gitsigns-config-current_line_blame_opts-github_blame| must be active.
+
+      When a string, accepts the following format specifiers in addition to the defaults:
+
+          • `<number>`
+          • `<author>`
+          • `<mergedAt>` or `<mergedAt:FORMAT>`
+          • `<title>`
 
       See |gitsigns-config-current_line_blame_formatter| for more information.
     ]],
