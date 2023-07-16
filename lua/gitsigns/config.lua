@@ -432,15 +432,15 @@ M.schema = {
   count_chars = {
     type = 'table',
     default = {
-      [1] = '1', -- '₁',
-      [2] = '2', -- '₂',
-      [3] = '3', -- '₃',
-      [4] = '4', -- '₄',
-      [5] = '5', -- '₅',
-      [6] = '6', -- '₆',
-      [7] = '7', -- '₇',
-      [8] = '8', -- '₈',
-      [9] = '9', -- '₉',
+      [1] = '1',   -- '₁',
+      [2] = '2',   -- '₂',
+      [3] = '3',   -- '₃',
+      [4] = '4',   -- '₄',
+      [5] = '5',   -- '₅',
+      [6] = '6',   -- '₆',
+      [7] = '7',   -- '₇',
+      [8] = '8',   -- '₈',
+      [9] = '9',   -- '₉',
       ['+'] = '>', -- '₊',
     },
     description = [[
@@ -674,7 +674,6 @@ M.schema = {
   current_line_blame_formatter_gh = {
     type = { 'string', 'function' },
     default = ' <author>, <mergedAt>, PR: #<number> • <title>',
-    --- TODO: confirm <author_time> in github
     description = [[
       String or function used to format the virtual text of
       |gitsigns-config-current_line_blame| when github is used.
