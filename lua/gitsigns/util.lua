@@ -186,7 +186,7 @@ end
 ---@param reltime? boolean Use relative time as the default date format
 ---@return string
 function M.expand_format(fmt, info, reltime)
-  local ret = {} --- @type string[]
+  local ret = {}   --- @type string[]
 
   for _ = 1, 20 do -- loop protection
     -- Capture <name> or <name:format>
@@ -226,7 +226,7 @@ function M.bufexists(buf)
   return vim.fn.bufexists(buf) == 1
 end
 
---- Converts a DateTime string into a timestamp
+--- Converts a DateTime string into its timestamp
 ---
 --- @param dateTime string
 --- @return number? The timestamp

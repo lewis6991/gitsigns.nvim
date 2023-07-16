@@ -1,7 +1,6 @@
 local async = require('gitsigns.async')
-local subprocess = require('gitsigns.subprocess')
 local log = require('gitsigns.debug.log')
-
+local subprocess = require('gitsigns.subprocess')
 
 --- @class GitHub.PrInfo
 --- @field url string
