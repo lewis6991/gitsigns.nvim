@@ -145,6 +145,7 @@ local function run_blame(bufnr, lnum, opts)
       result = last_pr;
       -- the parser does not support accessing keys like <author.name>
       result.author = last_pr.author.name
+      result.is_github = true;
     end
   end
 
@@ -162,12 +163,13 @@ local function handle_blame_info(bufnr, lnum, blame_info, opts)
   local bcache = cache[bufnr]
   local virt_text ---@type {[1]: string, [2]: string}[]
   local code_committed = blame_info.author ~= 'Not Committed Yet'
+  local use_github = opts.github_blame and blame_info.is_github;
 
   local clb_formatter = code_committed
       and config.current_line_blame_formatter
       or config.current_line_blame_formatter_nc
 
-  if opts.github_blame and code_committed then
+  if code_committed and use_github then
     clb_formatter = config.current_line_blame_formatter_gh
   end
 

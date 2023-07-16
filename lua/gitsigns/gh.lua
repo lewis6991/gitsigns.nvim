@@ -9,6 +9,7 @@ local log = require('gitsigns.debug.log')
 --- @field mergedAt string
 --- @field number string
 --- @field title string
+--- @field is_github? boolean
 
 local M = {}
 
