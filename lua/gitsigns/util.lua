@@ -228,9 +228,13 @@ end
 
 --- Converts a DateTime string into its timestamp
 ---
---- @param dateTime string
+--- @param dateTime string|number
 --- @return number? The timestamp
 function get_timestamp_from_datetime(dateTime)
+  if (type(dateTime) ~= 'string') then
+    return nil
+  end
+
   local inYear, inMonth, inDay, inHour, inMinute, inSecond, inZone =
       string.match(dateTime, '^(%d%d%d%d)-(%d%d)-(%d%d)T(%d%d):(%d%d):(%d%d)(.-)$')
 
