@@ -1,3 +1,5 @@
+local log = require('gitsigns.debug.log')
+
 local M = {}
 
 function M.path_exists(path)
@@ -201,10 +203,11 @@ function M.expand_format(fmt, info, reltime)
       if type(v) == 'table' then
         v = table.concat(v, '\n')
       end
-      if vim.endswith(key, '_time') then
+      if vim.endswith(key, '_time') or vim.endswith(key, 'At') then
         if time_fmt == '' then
           time_fmt = reltime and '%R' or '%Y-%m-%d'
         end
+        v = get_timestamp_from_datetime(v) or v;
         v = expand_date(time_fmt, v)
       end
       match = tostring(v)
@@ -221,6 +224,39 @@ end
 function M.bufexists(buf)
   --- @diagnostic disable-next-line:param-type-mismatch
   return vim.fn.bufexists(buf) == 1
+end
+
+--- Converts a DateTime string into a timestamp
+---
+--- @param dateTime string
+--- @return number? The timestamp
+function get_timestamp_from_datetime(dateTime)
+  local inYear, inMonth, inDay, inHour, inMinute, inSecond, inZone =
+      string.match(dateTime, '^(%d%d%d%d)-(%d%d)-(%d%d)T(%d%d):(%d%d):(%d%d)(.-)$')
+
+  if not inYear then
+    log.eprintf("Could not parse DateTime '%s'. Pattern did not match.", dateTime);
+
+    return nil;
+  end
+
+  local zHours, zMinutes = string.match(inZone, '^(.-):(%d%d)$')
+
+  local returnTime = os.time({
+    year = inYear,
+    month = inMonth,
+    day = inDay,
+    hour = inHour,
+    min = inMinute,
+    sec = inSecond,
+    isdst = false
+  })
+
+  if zHours then
+    returnTime = returnTime - ((tonumber(zHours) * 3600) + (tonumber(zMinutes) * 60))
+  end
+
+  return returnTime
 end
 
 return M
