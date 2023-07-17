@@ -638,7 +638,7 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
   -- The output given by "git blame" that attributes a line to contents
   -- taken from the file specified by the "--contents" option shows it
   -- differently from a line attributed to the working tree file.
-  if ret.author_mail == '<external.file>' then
+  if ret.author_mail == '<external.file>' or ret.author_mail == 'External file (--contents)' then
     ret = vim.tbl_extend('force', ret, not_committed)
   end
 
