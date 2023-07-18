@@ -23,8 +23,9 @@ end
 -- Expand height until all lines are visible to account for wrapped lines.
 --- @param winid integer
 --- @param nlines integer
-local function expand_height(winid, nlines)
+local function expand_height(winid, nlines, border)
   local newheight = 0
+  local maxheight = vim.o.lines - vim.o.cmdheight - (border ~= '' and 2 or 0)
   for _ = 0, 50 do
     local winheight = api.nvim_win_get_height(winid)
     if newheight > winheight then
@@ -39,6 +40,10 @@ local function expand_height(winid, nlines)
       break
     end
     newheight = winheight + nlines - wd
+    if newheight > maxheight then
+      api.nvim_win_set_height(winid, maxheight)
+      break
+    end
     api.nvim_win_set_height(winid, newheight)
   end
 end
@@ -145,7 +150,7 @@ function M.create0(lines, opts, id)
   vim.w[winid].gitsigns_preview = id or true
 
   if not opts.height then
-    expand_height(winid, #lines)
+    expand_height(winid, #lines, opts.border)
   end
 
   if opts1.style == 'minimal' then
