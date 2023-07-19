@@ -170,6 +170,12 @@ M.setup = void(function(cfg)
     return
   end
 
+  if config.current_line_blame_opts.github_blame and vim.fn.executable('gh') == 0 then
+    print("gitsigns: gh not in path. Ignoring 'current_line_blame_opts.github_blame' in config")
+    config.current_line_blame_opts.github_blame = false
+  end
+
+
   setup_debug()
   setup_cli()
 

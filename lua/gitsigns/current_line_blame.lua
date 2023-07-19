@@ -139,7 +139,7 @@ local function run_blame(bufnr, lnum, opts)
   result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
 
   if result and opts.github_blame then
-    local last_pr = gh.get_last_associated_pr(bcache.git_obj.repo.toplevel, result.sha);
+    local last_pr = gh.get_last_associated_pr(result.sha);
 
     if last_pr then
       result = last_pr;

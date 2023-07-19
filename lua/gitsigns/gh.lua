@@ -12,41 +12,50 @@ local subprocess = require('gitsigns.subprocess')
 
 local M = {}
 
+local GH_NOT_FOUND_ERROR = "Could not find 'gh' command. Is the gh-cli package installed?";
+
+
+local gh_command = function(args)
+  if vim.fn.executable('gh') then
+    return async.wait(2, subprocess.run_job, { command = 'gh', args = args });
+  end
+
+  return {};
+end
+
 --- Requests a list of GitHub PRs associated with the given commit SHA
 ---
---- @param toplevel string The URL to the repository
 --- @param sha string The commit SHA
 ---
 --- @return GitHub.PrInfo[]? : Array of PR object
-M.associated_prs = function(toplevel, sha)
-  local _, _, stdout, stderr = async.wait(2, subprocess.run_job, {
-    command = 'gh',
-    cwd = toplevel,
-    args = {
-      'pr', 'list',
-      '--search', sha,
-      '--state', 'merged',
-      '--json', 'url,author,title,number,mergedAt',
-    },
+M.associated_prs = function(sha)
+  local _, _, stdout, stderr = gh_command({
+    'pr', 'list',
+    '--search', sha,
+    '--state', 'merged',
+    '--json', 'url,author,title,number,mergedAt',
   })
 
   if stderr then
     log.eprintf("Received stderr when running 'gh pr list' command:\n%s", stderr)
-
-    return {};
   end
 
-  return vim.json.decode(stdout);
+  local empty_set_len = 2;
+
+  if type(stdout) == string and #stdout > empty_set_len then
+    return vim.json.decode(stdout);
+  end
+
+  return nil;
 end
 
 --- Returns the last PR associated with the commit
 ---
---- @param toplevel string The URL to the repository
 --- @param sha string The commit SHA
 ---
 --- @return GitHub.PrInfo? : The latest PR associated with the commit or nil
-M.get_last_associated_pr = function(toplevel, sha)
-  local prs = M.associated_prs(toplevel, sha);
+M.get_last_associated_pr = function(sha)
+  local prs = M.associated_prs(sha);
   --- @type GitHub.PrInfo?
   local last_pr = nil;
 

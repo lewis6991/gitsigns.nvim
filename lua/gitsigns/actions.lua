@@ -868,7 +868,7 @@ M.blame_line = void(function(opts)
     local hunk
 
     hunk, result.hunk_no, result.num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
-    local last_pr = gh.get_last_associated_pr(bcache.git_obj.repo.toplevel, result.sha);
+    local last_pr = gh.get_last_associated_pr(result.sha);
     result.pr_info = last_pr and last_pr.number or 'No PR found';
 
     result.hunk = Hunks.patch_lines(hunk, fileformat)
