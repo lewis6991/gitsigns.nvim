@@ -26,6 +26,11 @@ end
 local function expand_height(winid, nlines, border)
   local newheight = 0
   local maxheight = vim.o.lines - vim.o.cmdheight - (border ~= '' and 2 or 0)
+  local config = require('gitsigns.config').config
+  local MAX_HEIGHT = config.preview_max_height or maxheight
+  if maxheight > MAX_HEIGHT then
+    maxheight = MAX_HEIGHT
+  end
   for _ = 0, 50 do
     local winheight = api.nvim_win_get_height(winid)
     if newheight > winheight then

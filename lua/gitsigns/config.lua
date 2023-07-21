@@ -72,6 +72,7 @@ end
 --- @field current_line_blame_formatter_nc string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_opts Gitsigns.CurrentLineBlameOpts
 --- @field preview_config table<string,any>
+--- @field preview_max_height integer | nil
 --- @field attach_to_untracked boolean
 --- @field yadm { enable: boolean }
 --- @field worktrees {toplevel: string, gitdir: string}[]
@@ -503,6 +504,13 @@ M.schema = {
       Option overrides for the Gitsigns preview window. Table is passed directly
       to `nvim_open_win`.
     ]],
+  },
+  preview_max_height = {
+    type = 'number',
+    default = nil,
+    description = [[
+      Optional maximum height value of the popup window.
+    ]]
   },
 
   attach_to_untracked = {
