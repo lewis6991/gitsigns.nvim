@@ -148,6 +148,11 @@ function M.create0(lines, opts, id)
 
   local opts1 = vim.deepcopy(opts or {})
   opts1.height = opts1.height or #lines -- Guess, adjust later
+
+  local max_height = require('gitsigns.config').config.preview_max_height
+  if max_height and opts1.height > max_height then
+    opts1.height = max_height
+  end
   opts1.width = opts1.width or bufnr_calc_width(bufnr, lines)
 
   local winid = api.nvim_open_win(bufnr, false, opts1)
