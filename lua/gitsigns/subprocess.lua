@@ -10,9 +10,6 @@ M.job_cnt = 0
 --- @field args string[]
 --- @field cwd string
 --- @field writer string[] | string
----
---- Used in git.lua
---- @field suppress_stderr? boolean
 
 --- @param ... uv_pipe_t
 local function try_close(...)

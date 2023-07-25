@@ -121,8 +121,14 @@ function M._set_version(version)
   M.version = parse_version(parts[3])
 end
 
+--- @class Gitsigns.Git.JobSpec
+--- @field command? string
+--- @field cwd? string
+--- @field writer? string[] | string
+--- @field suppress_stderr? boolean
+
 --- @param args string[]
---- @param spec? Gitsigns.JobSpec
+--- @param spec? Gitsigns.Git.JobSpec
 --- @return string[] stdout, string? stderr
 local git_command = async.create(function(args, spec)
   if not M.version then
@@ -287,17 +293,19 @@ function M.get_repo_info(path, cmd, gitdir, toplevel)
     cwd = toplevel or path,
   })
 
-  --- @type Gitsigns.RepoInfo
-  local ret = {
-    toplevel = normalize_path(results[1]),
-    gitdir = normalize_path(results[2]),
-  }
-  ret.abbrev_head = process_abbrev_head(ret.gitdir, results[3], path, cmd)
-  if ret.gitdir and not has_abs_gd then
-    ret.gitdir = assert(uv.fs_realpath(ret.gitdir))
+  local toplevel_r = normalize_path(results[1])
+  local gitdir_r = normalize_path(results[2])
+
+  if gitdir_r and not has_abs_gd then
+    gitdir_r = assert(uv.fs_realpath(gitdir_r))
   end
-  ret.detached = ret.toplevel and ret.gitdir ~= ret.toplevel .. '/.git'
-  return ret
+
+  return {
+    toplevel = toplevel_r,
+    gitdir = gitdir_r,
+    abbrev_head = process_abbrev_head(gitdir_r, results[3], path, cmd),
+    detached = toplevel_r and gitdir_r ~= toplevel_r .. '/.git'
+  }
 end
 
 --------------------------------------------------------------------------------
@@ -306,7 +314,7 @@ end
 
 --- Run git command the with the objects gitdir and toplevel
 --- @param args string[]
---- @param spec? Gitsigns.JobSpec
+--- @param spec? Gitsigns.Git.JobSpec
 --- @return string[] stdout, string? stderr
 function Repo:command(args, spec)
   spec = spec or {}
@@ -448,7 +456,7 @@ end
 
 --- Run git command the with the objects gitdir and toplevel
 --- @param args string[]
---- @param spec? Gitsigns.JobSpec
+--- @param spec? Gitsigns.Git.JobSpec
 --- @return string[] stdout, string? stderr
 function Obj:command(args, spec)
   return self.repo:command(args, spec)
@@ -615,6 +623,7 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
   end
   local header = vim.split(table.remove(results, 1), ' ')
 
+  --- @diagnostic disable-next-line:missing-fields
   local ret = {} --- @type Gitsigns.BlameInfo
   ret.sha = header[1]
   ret.orig_lnum = tonumber(header[2]) --[[@as integer]]
@@ -684,7 +693,7 @@ function Obj:stage_lines(lines)
   })
 end
 
---- @param hunks Gitsigns.Hunk.Hunk
+--- @param hunks Gitsigns.Hunk.Hunk[]
 --- @param invert? boolean
 function Obj.stage_hunks(self, hunks, invert)
   ensure_file_in_index(self)

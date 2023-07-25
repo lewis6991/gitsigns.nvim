@@ -11,6 +11,7 @@ local actions = require('gitsigns.actions')
 local attach = require('gitsigns.attach')
 local gs_debug = require('gitsigns.debug')
 
+--- @type table<table<string,function>,boolean>
 local sources = {
   [actions] = true,
   [attach] = false,

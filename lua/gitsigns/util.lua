@@ -87,6 +87,19 @@ function M.tmpname()
   return vim.fn.tempname()
 end
 
+--- @param time number
+--- @param divisor integer
+--- @param time_word string
+--- @return string
+local function to_relative_string(time, divisor, time_word)
+  local num = math.floor(time / divisor)
+  if num > 1 then
+    time_word = time_word .. 's'
+  end
+
+  return num .. ' ' .. time_word .. ' ago'
+end
+
 --- @param timestamp number
 --- @return string
 function M.get_relative_time(timestamp)
@@ -102,15 +115,6 @@ function M.get_relative_time(timestamp)
   local day_seconds = hour_seconds * 24
   local month_seconds = day_seconds * 30
   local year_seconds = month_seconds * 12
-
-  local to_relative_string = function(time, divisor, time_word)
-    local num = math.floor(time / divisor)
-    if num > 1 then
-      time_word = time_word .. 's'
-    end
-
-    return num .. ' ' .. time_word .. ' ago'
-  end
 
   if elapsed < minute_seconds then
     return to_relative_string(elapsed, 1, 'second')
@@ -156,6 +160,7 @@ function M.strip_cr(xs0)
   return xs
 end
 
+--- @param base? string
 function M.calc_base(base)
   if base and base:sub(1, 1):match('[~\\^]') then
     base = 'HEAD' .. base

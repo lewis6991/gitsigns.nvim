@@ -38,12 +38,19 @@ local CP = {}
 
 local ns_inline = api.nvim_create_namespace('gitsigns_preview_inline')
 
+--- @param arglead string
+--- @return string[]
 local function complete_heads(arglead)
+  --- @type string[]
   local all =
     vim.fn.systemlist({ 'git', 'rev-parse', '--symbolic', '--branches', '--tags', '--remotes' })
-  return vim.tbl_filter(function(x)
-    return vim.startswith(x, arglead)
-  end, all)
+    return vim.tbl_filter(
+      --- @param x string
+      function(x)
+        return vim.startswith(x, arglead)
+      end,
+      all
+    )
 end
 
 --- Toggle |gitsigns-config-signbooleancolumn|
@@ -212,7 +219,7 @@ local function get_hunk(bufnr, range, greedy, staged)
   if range then
     table.sort(range)
     local top, bot = range[1], range[2]
-    hunk = Hunks.create_partial_hunk(hunks, top, bot)
+    hunk = Hunks.create_partial_hunk(hunks or {}, top, bot)
     hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
     hunk.removed.lines = vim.list_slice(
       bcache.compare_text,
@@ -758,7 +765,7 @@ M.get_hunks = function(bufnr)
   if not cache[bufnr] then
     return
   end
-  local ret = {}
+  local ret = {} --- @type Gitsigns.Hunk.Hunk_Public[]
   -- TODO(lewis6991): allow this to accept a greedy option
   for _, h in ipairs(cache[bufnr].hunks or {}) do
     ret[#ret + 1] = {
@@ -863,9 +870,11 @@ M.blame_line = void(function(opts)
   if is_committed and opts.full then
     result.body = bcache.git_obj:command({ 'show', '-s', '--format=%B', result.sha })
 
-    local hunk
+    local hunk --- @type Gitsigns.Hunk.Hunk?
 
     hunk, result.hunk_no, result.num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
+
+    assert(hunk)
 
     result.hunk = Hunks.patch_lines(hunk, fileformat)
     result.hunk_head = hunk.head
@@ -1222,7 +1231,7 @@ M.get_actions = function()
 
   local actions = {}
   for _, a in ipairs(actions_l) do
-    actions[a] = (M)[a]
+    actions[a] = M[a]
   end
 
   return actions
@@ -1242,10 +1251,14 @@ M.refresh = void(function()
   end
 end)
 
+--- @param name string
+--- @return fun(args: table, params: Gitsigns.CmdParams)
 function M._get_cmd_func(name)
   return C[name]
 end
 
+--- @param name string
+--- @return fun(arglead: string): string[]
 function M._get_cmp_func(name)
   return CP[name]
 end

@@ -9,10 +9,10 @@ end
 
 --- @class Gitsigns.SchemaElem
 --- @field type string|string[]
---- @field deep_extend boolean
+--- @field deep_extend? boolean
 --- @field default any
---- @field deprecated boolean|{new_field:string,message:string,hard:boolean}
---- @field default_help string
+--- @field deprecated? boolean|{new_field:string,message:string,hard:boolean}
+--- @field default_help? string
 --- @field description string
 
 --- @class Gitsigns.DiffOpts
@@ -707,6 +707,7 @@ M.schema = {
   },
 
   _test_mode = {
+    description = "Enable test mode",
     type = 'boolean',
     default = false,
   },
