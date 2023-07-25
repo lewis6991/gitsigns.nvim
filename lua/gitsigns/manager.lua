@@ -427,6 +427,7 @@ M.update = throttle_by_id(function(bufnr, bcache)
 
   if not bcache.compare_text or config._refresh_staged_on_update then
     bcache.compare_text = git_obj:get_show_text(bcache:get_compare_rev())
+    scheduler_if_buf_valid(bufnr)
   end
 
   bcache.hunks = run_diff(bcache.compare_text, buftext)

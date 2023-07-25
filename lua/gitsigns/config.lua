@@ -99,8 +99,28 @@ local M = {
   },
 }
 
+--- @param v Gitsigns.SchemaElem
+--- @return any
+local function resolve_default(v)
+  if type(v.default) == 'function' and v.type ~= 'function' then
+    return v.default()
+  else
+    return v.default
+  end
+end
+
 --- @type Gitsigns.Config
-M.config = {}
+M.config = setmetatable({}, {
+  __index = function(t, k)
+    if rawget(t, k) == nil then
+      local field = M.schema[k]
+      if field then
+        rawset(t, k, resolve_default(field))
+      end
+    end
+    return rawget(t, k)
+  end
+})
 
 --- @type table<string,Gitsigns.SchemaElem>
 M.schema = {
@@ -808,16 +828,6 @@ local function validate_config(config)
   end
 end
 
---- @param v Gitsigns.SchemaElem
---- @return any
-local function resolve_default(v)
-  if type(v.default) == 'function' and v.type ~= 'function' then
-    return (v.default)()
-  else
-    return v.default
-  end
-end
-
 local function handle_deprecated(cfg)
   for k, v in pairs(M.schema) do
     local dep = v.deprecated
@@ -867,8 +877,6 @@ function M.build(user_config)
       else
         config[k] = user_config[k]
       end
-    else
-      config[k] = resolve_default(v)
     end
   end
 end
