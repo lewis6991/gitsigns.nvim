@@ -169,7 +169,14 @@ end
 --- @param untracked boolean
 --- @return Gitsigns.Sign[]
 function M.calc_signs(hunk, min_lnum, max_lnum, untracked)
-  assert(not untracked or hunk.type == 'add')
+  assert(
+    not untracked or hunk.type == 'add',
+    string.format(
+      'Invalid hunk with untracked=%s hunk="%s"',
+      untracked,
+      vim.inspect(hunk, untracked, vim.inspect(hunk.head))
+    )
+  )
   min_lnum = min_lnum or 1
   max_lnum = max_lnum or math.huge
   local start, added, removed = hunk.added.start, hunk.added.count, hunk.removed.count
