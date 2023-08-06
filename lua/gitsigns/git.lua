@@ -71,7 +71,8 @@ local function parse_version(version)
   if parts[3] == 'GIT' then
     ret.patch = 0
   else
-    ret.patch = assert(tonumber(parts[3]))
+    local patch_ver = vim.split(parts[3], '-')
+    ret.patch = assert(tonumber(patch_ver[1]))
   end
 
   return ret
