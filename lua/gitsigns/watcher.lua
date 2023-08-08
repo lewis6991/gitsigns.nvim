@@ -116,7 +116,7 @@ function M.watch_gitdir(bufnr, gitdir)
 
     local info = string.format("Git dir update: '%s' %s", filename, inspect(events))
 
-    if vim.endswith(filename, '.lock') then
+    if filename == nil or vim.endswith(filename, '.lock') then
       dprintf('%s (ignoring)', info)
       return
     end
