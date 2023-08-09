@@ -116,7 +116,10 @@ function M.watch_gitdir(bufnr, gitdir)
 
     local info = string.format("Git dir update: '%s' %s", filename, inspect(events))
 
-    if vim.endswith(filename, '.lock') then
+    -- The luv docs say filename is passed as a string but it has been observed
+    -- to sometimes be nil.
+    --    https://github.com/lewis6991/gitsigns.nvim/issues/848
+    if filename == nil or vim.endswith(filename, '.lock') then
       dprintf('%s (ignoring)', info)
       return
     end
