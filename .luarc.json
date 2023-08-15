@@ -1,23 +1,26 @@
 {
-    "$schema": "https://raw.githubusercontent.com/sumneko/vscode-lua/master/setting/schema.json",
-    "runtime": {
-        "version": "LuaJIT"
-    },
-    "workspace.library": [
-        "$NVIM_TYPES_DIR",
-        "$NVIM_RUNTIME",
-        "lua",
+  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "runtime": {
+    "version": "LuaJIT"
+  },
+  "workspace": {
+    "library": [
+      "lua",
+      "$VIMRUNTIME",
+      "${3rd}/busted/library",
+      "${3rd}/luv/library"
     ],
-    "workspace.checkThirdParty": false,
-    "diagnostics": {
-      "groupFileStatus": {
-        "strict": "Opened",
-        "strong": "Opened",
-      },
-      "groupSeverity": {
-        "strong": "Warning",
-        "strict": "Warning",
-      },
-      "unusedLocalExclude": [ "_*" ],
-    }
+    "checkThirdParty": false
+  },
+  "diagnostics": {
+    "groupFileStatus": {
+      "strict": "Opened",
+      "strong": "Opened"
+    },
+    "groupSeverity": {
+      "strong": "Warning",
+      "strict": "Warning"
+    },
+    "unusedLocalExclude": [ "_*" ]
+  }
 }
