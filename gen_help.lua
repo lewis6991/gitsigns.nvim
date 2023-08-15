@@ -197,6 +197,8 @@ end
 --- @param name_pad? integer
 --- @return string[]
 local function render_param_or_return(name, ty, desc, name_pad)
+  ty = ty:gsub('Gitsigns%.%w+', 'table')
+
   name_pad = name_pad and (name_pad + 3) or 0
   local name_str --- @type string
 
@@ -286,8 +288,12 @@ end
 --- @param block string[]
 --- @param params {[1]: string, [2]: string, [3]: string[]}[]
 --- @param returns {[1]: string, [2]: string, [3]: string[]}[]
---- @return string[]
+--- @return string[]?
 local function render_block(header, block, params, returns)
+  if vim.startswith(header, '_') then
+    return
+  end
+
   local res = { header }
   list_extend(res, block)
 

@@ -13,7 +13,7 @@ local uv = vim.loop
 
 local M = {}
 
-local cwd_watcher ---@type uv_fs_event_t?
+local cwd_watcher ---@type uv.uv_fs_event_t?
 
 local update_cwd_head = void(function()
   local paths = vim.fs.find('.git', {

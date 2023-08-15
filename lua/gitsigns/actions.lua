@@ -23,6 +23,11 @@ local M = {}
 --- @field vertical boolean
 --- @field split 'aboveleft'|'belowright'|'topleft'|'botright'
 
+--- @class Gitsigns.CmdArgs
+--- @field vertical? boolean
+--- @field split? boolean
+--- @field global? boolean
+
 --- @class Gitsigns.CmdParams
 --- @field range integer
 --- @field line1 integer
@@ -31,7 +36,7 @@ local M = {}
 --- @field smods Gitsigns.CmdParams.Smods
 
 -- Variations of functions from M which are used for the Gitsigns command
---- @type table<string,fun(args: table, params: Gitsigns.CmdParams)>
+--- @type table<string,fun(args: Gitsigns.CmdArgs, params: Gitsigns.CmdParams)>
 local C = {}
 
 local CP = {}
@@ -46,6 +51,7 @@ local function complete_heads(arglead)
     vim.fn.systemlist({ 'git', 'rev-parse', '--symbolic', '--branches', '--tags', '--remotes' })
     return vim.tbl_filter(
       --- @param x string
+      --- @return boolean
       function(x)
         return vim.startswith(x, arglead)
       end,
@@ -426,24 +432,44 @@ M.reset_buffer_index = void(function()
   update(bufnr)
 end)
 
+--- @class Gitsigns.NavOpts
+--- @field wrap boolean
+--- @field foldopen boolean
+--- @field navigation_message boolean
+--- @field greedy boolean
+--- @field preview boolean
+
+--- @param x string
+--- @param word string
+--- @return boolean
+local function findword(x, word)
+  return string.find(x, '%f[%w_]'..word..'%f[^%w_]') ~= nil
+end
+
+--- @param opts? Gitsigns.NavOpts
+--- @return Gitsigns.NavOpts
 local function process_nav_opts(opts)
+  opts = opts or {}
+
   -- show navigation message
   if opts.navigation_message == nil then
-    opts.navigation_message = not vim.opt.shortmess:get().S
+    opts.navigation_message = vim.o.shortmess:find('S') == nil
   end
 
   -- wrap around
   if opts.wrap == nil then
-    opts.wrap = vim.opt.wrapscan:get()
+    opts.wrap = vim.o.wrapscan
   end
 
   if opts.foldopen == nil then
-    opts.foldopen = vim.tbl_contains(vim.opt.foldopen:get(), 'search')
+    opts.foldopen = findword(vim.o.foldopen, 'search')
   end
 
   if opts.greedy == nil then
     opts.greedy = true
   end
+
+  return opts
 end
 
 -- Defer function to the next main event
@@ -462,8 +488,10 @@ local function has_preview_inline(bufnr)
   return #api.nvim_buf_get_extmarks(bufnr, ns_inline, 0, -1, { limit = 1 }) > 0
 end
 
-local nav_hunk = void(function(opts)
-  process_nav_opts(opts)
+--- @param opts? Gitsigns.NavOpts
+--- @param forwards boolean
+local nav_hunk = void(function(opts, forwards)
+  opts = process_nav_opts(opts)
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
@@ -483,7 +511,7 @@ local nav_hunk = void(function(opts)
   end
   local line = api.nvim_win_get_cursor(0)[1]
 
-  local hunk, index = Hunks.find_nearest_hunk(line, hunks, opts.forwards, opts.wrap)
+  local hunk, index = Hunks.find_nearest_hunk(line, hunks, forwards, opts.wrap)
 
   if hunk == nil then
     if opts.navigation_message then
@@ -492,7 +520,7 @@ local nav_hunk = void(function(opts)
     return
   end
 
-  local row = opts.forwards and hunk.added.start or hunk.vend
+  local row = forwards and hunk.added.start or hunk.vend
   if row then
     -- Handle topdelete
     if row == 0 then
@@ -544,9 +572,7 @@ end)
 ---       Only navigate between non-contiguous hunks. Only useful if
 ---       'diff_opts' contains `linematch`. Defaults to `true`.
 M.next_hunk = function(opts)
-  opts = opts or {}
-  opts.forwards = true
-  nav_hunk(opts)
+  nav_hunk(opts, true)
 end
 
 --- Jump to the previous hunk in the current buffer. If a hunk preview
@@ -556,9 +582,7 @@ end
 --- Parameters: ~
 ---     See |gitsigns.next_hunk()|.
 M.prev_hunk = function(opts)
-  opts = opts or {}
-  opts.forwards = false
-  nav_hunk(opts)
+  nav_hunk(opts, false)
 end
 
 --- @param fmt {[1]: string, [2]: string}[][]
@@ -629,7 +653,7 @@ local function hlmarks_for_hunk(hunk, hl)
   return hls
 end
 
---- @param fmt {[1]: string, [2]: string}[][]
+--- @param fmt {[1]: string, [2]: string|Gitsigns.HlMark[]}[][]
 --- @param hunk Gitsigns.Hunk.Hunk
 local function insert_hunk_hlmarks(fmt, hunk)
   for _, line in ipairs(fmt) do
@@ -1209,29 +1233,27 @@ M.get_actions = function()
   end
   local hunk = get_cursor_hunk()
 
-  --- @type function[]
+  --- @type string[]
   local actions_l = {}
 
-  local function add_action(action)
-    actions_l[#actions_l + 1] = action
-  end
-
   if hunk then
-    add_action('stage_hunk')
-    add_action('reset_hunk')
-    add_action('preview_hunk')
-    add_action('select_hunk')
+    vim.list_extend(actions_l, {
+      'stage_hunk',
+      'reset_hunk',
+      'preview_hunk',
+      'select_hunk'
+    })
   else
-    add_action('blame_line')
+    actions_l[#actions_l + 1] = 'blame_line'
   end
 
   if not vim.tbl_isempty(bcache.staged_diffs) then
-    add_action('undo_stage_hunk')
+    actions_l[#actions_l + 1] = 'undo_stage_hunk'
   end
 
-  local actions = {}
+  local actions = {} --- @type table<string,function>
   for _, a in ipairs(actions_l) do
-    actions[a] = M[a]
+    actions[a] = M[a] --[[@as function]]
   end
 
   return actions

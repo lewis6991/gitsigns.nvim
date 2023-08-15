@@ -7,8 +7,9 @@ local M = {}
 --- @alias Gitsigns.Region {[1]:integer, [2]:string, [3]:integer, [4]:integer}
 
 --- @alias Gitsigns.RawHunk {[1]:integer, [2]:integer, [3]:integer, [4]:integer}
+--- @alias Gitsigns.RawDifffn fun(fa: string[], fb: string[], algorithm?: string, indent_heuristic?: boolean, linematch?: integer): Gitsigns.RawHunk[]
 
---- @type Gitsigns.Difffn
+--- @type Gitsigns.RawDifffn
 local run_diff_xdl = function(fa, fb, algorithm, indent_heuristic, linematch)
   local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n') .. '\n'
   local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n') .. '\n'
@@ -21,7 +22,7 @@ local run_diff_xdl = function(fa, fb, algorithm, indent_heuristic, linematch)
   }) --[[@as Gitsigns.RawHunk[] ]]
 end
 
---- @type Gitsigns.Difffn
+--- @type Gitsigns.RawDifffn
 local run_diff_xdl_async = async.wrap(
   --- @param fa string[]
   --- @param fb string[]
@@ -40,7 +41,9 @@ local run_diff_xdl_async = async.wrap(
         --- @param algorithm0 string
         --- @param indent_heuristic0 integer
         --- @param linematch0 integer
+        --- @return string
         function(a0, b0, algorithm0, indent_heuristic0, linematch0)
+          --- @diagnostic disable-next-line:return-type-mismatch
           return vim.mpack.encode(vim.diff(a0, b0, {
             result_type = 'indices',
             algorithm = algorithm0,
@@ -48,8 +51,9 @@ local run_diff_xdl_async = async.wrap(
             linematch = linematch0,
           }))
         end,
+        --- @param r string
         function(r)
-          callback(vim.mpack.decode(r --[[@as string]]) --[[@as Gitsigns.RawHunk[] ]])
+          callback(vim.mpack.decode(r) --[[@as Gitsigns.RawHunk[] ]])
         end
       )
       :queue(a, b, algorithm, indent_heuristic, linematch)
@@ -63,8 +67,8 @@ local run_diff_xdl_async = async.wrap(
 --- @param indent_heuristic? boolean
 --- @param linematch? integer
 --- @return Gitsigns.Hunk.Hunk[]
-M.run_diff = async.void(function(fa, fb, diff_algo, indent_heuristic, linematch)
-  local run_diff0 --- @type Gitsigns.Difffn
+function M.run_diff(fa, fb, diff_algo, indent_heuristic, linematch)
+  local run_diff0 --- @type Gitsigns.RawDifffn
   if config._threaded_diff and vim.is_thread then
     run_diff0 = run_diff_xdl_async
   else
@@ -91,7 +95,7 @@ M.run_diff = async.void(function(fa, fb, diff_algo, indent_heuristic, linematch)
   end
 
   return hunks
-end)
+end
 
 local gaps_between_regions = 5
 
