@@ -7,6 +7,14 @@ local config = require('gitsigns.config').config
 --- @param linematch? boolean
 --- @return Gitsigns.Hunk.Hunk[] hunks
 return function(a, b, linematch)
+  -- -- Short circuit optimization
+  -- if not a or #a == 0 then
+  --   local Hunks = require('gitsigns.hunks')
+  --   local hunk = Hunks.create_hunk(0, 0, 1, #b)
+  --   hunk.added.lines = b
+  --   return { hunk }
+  -- end
+
   local diff_opts = config.diff_opts
   local f --- @type Gitsigns.Difffn
   if diff_opts.internal then
@@ -19,5 +27,6 @@ return function(a, b, linematch)
   if linematch ~= false then
     linematch0 = diff_opts.linematch
   end
+
   return f(a, b, diff_opts.algorithm, diff_opts.indent_heuristic, linematch0)
 end

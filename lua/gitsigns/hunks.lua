@@ -350,6 +350,7 @@ function M.compare_heads(a, b)
     return true
   end
   for i, ah in ipairs(a or {}) do
+    --- @diagnostic disable-next-line:need-check-nil
     if b[i].head ~= ah.head then
       return true
     end

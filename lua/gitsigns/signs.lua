@@ -16,7 +16,7 @@ local dprint = require('gitsigns.debug.log').dprint
 --- @field hls table<Gitsigns.SignType,Gitsigns.HlDef>
 --- @field name string
 --- @field group string
---- @field config Gitsigns.SignConfig
+--- @field config table<string,Gitsigns.SignConfig>
 --- Used by signs/extmarks.tl
 --- @field ns integer
 --- Used by signs/vimfn.tl

@@ -49,7 +49,7 @@ local function parse_fugitive_uri(name)
 end
 
 --- @param name string
---- @return string? buffer
+--- @return string buffer
 --- @return string? commit
 local function parse_gitsigns_uri(name)
   -- TODO(lewis6991): Support submodules
@@ -77,18 +77,20 @@ local function get_buf_path(bufnr)
     if vim.startswith(file, 'fugitive://') then
       local path, commit = parse_fugitive_uri(file)
       dprintf("Fugitive buffer for file '%s' from path '%s'", path, file)
-      path = uv.fs_realpath(path)
       if path then
-        return path, commit
+        local realpath = uv.fs_realpath(path)
+        if realpath then
+          return realpath, commit
+        end
       end
     end
 
     if vim.startswith(file, 'gitsigns://') then
       local path, commit = parse_gitsigns_uri(file)
       dprintf("Gitsigns buffer for file '%s' from path '%s'", path, file)
-      path = uv.fs_realpath(path)
-      if path then
-        return path, commit
+      local realpath = uv.fs_realpath(path)
+      if realpath then
+        return realpath, commit
       end
     end
   end
@@ -222,7 +224,7 @@ end
 -- performed whilst another one is in progress.
 --- @param cbuf integer
 --- @param ctx Gitsigns.GitContext
---- @param aucmd string
+--- @param aucmd? string
 local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   local __FUNC__ = 'attach'
 
@@ -404,7 +406,7 @@ end
 ---     {async}
 ---
 --- @param bufnr integer Buffer number
---- @param ctx table|nil
+--- @param ctx Gitsigns.GitContext|nil
 ---     Git context data that may optionally be used to attach to any
 ---     buffer that represents a real git object.
 ---     • {file}: (string)
@@ -419,6 +421,7 @@ end
 ---       The git revision that the file belongs to.
 ---     • {base}: (string|nil)
 ---       The git revision that the file should be compared to.
+--- @param _trigger? string
 M.attach = void(function(bufnr, ctx, _trigger)
   attach_throttled(bufnr or api.nvim_get_current_buf(), ctx, _trigger)
 end)

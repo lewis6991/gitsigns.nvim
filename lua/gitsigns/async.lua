@@ -22,7 +22,7 @@ local Async_T = {}
 
 -- Store all the async threads in a weak table so we don't prevent them from
 -- being garbage collected
---- @type table<thread,uv_handle_t>
+--- @type table<thread,uv.uv_handle_t>
 local handles = setmetatable({}, { __mode = 'k' })
 
 --- Returns whether the current execution context is async.
@@ -147,6 +147,7 @@ end
 ---since it is non-blocking
 ---@generic F: function
 ---@param func F
+---@param argc integer
 ---@return F
 function M.create(func, argc)
   argc = argc or 0
@@ -162,7 +163,9 @@ end
 ---Use this to create a function which executes in an async context but
 ---called from a non-async context. Inherently this cannot return anything
 ---since it is non-blocking
----@param func async fun(...)
+---@generic F: function
+---@param func F
+---@return async F
 function M.void(func)
   return function(...)
     if M.running() then

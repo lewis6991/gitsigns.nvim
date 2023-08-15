@@ -99,7 +99,7 @@ local M = {}
 
 --- @param bufnr integer
 --- @param gitdir string
---- @return uv_fs_event_t?
+--- @return uv.uv_fs_event_t
 function M.watch_gitdir(bufnr, gitdir)
   -- Setup debounce as we create the luv object so the debounce is independent
   -- to each watcher
