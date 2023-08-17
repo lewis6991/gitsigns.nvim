@@ -1,8 +1,4 @@
-local a = require('gitsigns.async')
-local wrap = a.wrap
-local void = a.void
-local scheduler = a.scheduler
-
+local async = require('gitsigns.async')
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local util = require('gitsigns.util')
@@ -18,7 +14,7 @@ local timer = assert(uv.new_timer())
 
 local M = {}
 
-local wait_timer = wrap(uv.timer_start, 4)
+local wait_timer = async.wrap(uv.timer_start, 4)
 
 --- @param bufnr integer
 --- @param row integer
@@ -218,7 +214,7 @@ local function update0()
 
   -- Note because the same timer is re-used, this call has a debouncing effect.
   wait_timer(timer, opts.delay, 0)
-  scheduler()
+  async.scheduler()
 
   local bcache = cache[bufnr]
   if not bcache or not bcache.git_obj.object_name then
@@ -226,18 +222,13 @@ local function update0()
   end
 
   local blame_info = run_blame(bufnr, lnum, opts)
-  scheduler()
+  async.scheduler_if_buf_valid(bufnr)
 
   local lnum1 = get_lnum()
   if bufnr == current_buf() and lnum ~= lnum1 then
     -- Cursor has moved during events; abort and tr-trigger another update
     -- since it's likely blame jobs where skipped
     update0()
-    return
-  end
-
-  if not api.nvim_buf_is_loaded(bufnr) then
-    -- Buffer is no longer loaded; abort
     return
   end
 
@@ -248,7 +239,7 @@ local function update0()
   end
 end
 
-local update = void(update0)
+local update = async.void(update0)
 
 function M.setup()
   local group = api.nvim_create_augroup('gitsigns_blame', {})

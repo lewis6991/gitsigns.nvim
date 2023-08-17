@@ -1,5 +1,4 @@
-local void = require('gitsigns.async').void
-local awrap = require('gitsigns.async').wrap
+local async = require('gitsigns.async')
 
 local gs_cache = require('gitsigns.cache')
 local cache = gs_cache.cache
@@ -29,14 +28,6 @@ local signs_normal --- @type Gitsigns.Signs
 local signs_staged --- @type Gitsigns.Signs
 
 local M = {}
-
-local scheduler_if_buf_valid = awrap(function(buf, cb)
-  vim.schedule(function()
-    if vim.api.nvim_buf_is_valid(buf) then
-      cb()
-    end
-  end)
-end, 2)
 
 --- @param bufnr integer
 --- @param signs Gitsigns.Signs
@@ -421,13 +412,13 @@ M.update = throttle_by_id(function(bufnr, bcache)
   local old_hunks, old_hunks_staged = bcache.hunks, bcache.hunks_staged
   bcache.hunks, bcache.hunks_staged = nil, nil
 
-  scheduler_if_buf_valid(bufnr)
+  async.scheduler_if_buf_valid(bufnr)
   local buftext = util.buf_lines(bufnr)
   local git_obj = bcache.git_obj
 
   if not bcache.compare_text or config._refresh_staged_on_update then
     bcache.compare_text = git_obj:get_show_text(bcache:get_compare_rev())
-    scheduler_if_buf_valid(bufnr)
+    async.scheduler_if_buf_valid(bufnr)
   end
 
   bcache.hunks = run_diff(bcache.compare_text, buftext)
@@ -440,7 +431,7 @@ M.update = throttle_by_id(function(bufnr, bcache)
     bcache.hunks_staged = gs_hunks.filter_common(hunks_head, bcache.hunks)
   end
 
-  scheduler_if_buf_valid(bufnr)
+  async.scheduler_if_buf_valid(bufnr)
 
   -- Note the decoration provider may have invalidated bcache.hunks at this
   -- point
@@ -536,7 +527,7 @@ function M.setup()
     signs_staged = Signs.new(config._signs_staged, 'staged')
   end
 
-  M.update_debounced = debounce_trailing(config.update_debounce, void(M.update))
+  M.update_debounced = debounce_trailing(config.update_debounce, async.void(M.update))
 end
 
 return M
