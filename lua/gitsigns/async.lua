@@ -179,4 +179,13 @@ end
 ---able to call the API.
 M.scheduler = M.wrap(vim.schedule, 1)
 
+--- @param buf? integer
+M.scheduler_if_buf_valid = M.wrap(function(buf, cb)
+  vim.schedule(function()
+    if not buf or vim.api.nvim_buf_is_valid(buf) then
+      cb()
+    end
+  end)
+end, 2)
+
 return M

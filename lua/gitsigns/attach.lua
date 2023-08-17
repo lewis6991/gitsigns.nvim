@@ -291,7 +291,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   if not git_obj and not ctx then
     git_obj = try_worktrees(cbuf, file, encoding)
-    async.scheduler()
+    async.scheduler_if_buf_valid(cbuf)
   end
 
   if not git_obj then
@@ -300,7 +300,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   end
   local repo = git_obj.repo
 
-  async.scheduler()
+  async.scheduler_if_buf_valid(cbuf)
   Status:update(cbuf, {
     head = repo.abbrev_head,
     root = repo.toplevel,
@@ -329,7 +329,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   -- On windows os.tmpname() crashes in callback threads so initialise this
   -- variable on the main thread.
-  async.scheduler()
+  async.scheduler_if_buf_valid(cbuf)
 
   if config.on_attach and config.on_attach(cbuf) == false then
     dprint('User on_attach() returned false')

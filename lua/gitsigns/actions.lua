@@ -1,6 +1,4 @@
-local void = require('gitsigns.async').void
-local scheduler = require('gitsigns.async').scheduler
-
+local async = require('gitsigns.async')
 local config = require('gitsigns.config').config
 local mk_repeatable = require('gitsigns.repeat').mk_repeatable
 local popup = require('gitsigns.popup')
@@ -167,7 +165,7 @@ end
 --- @param bufnr integer
 local function update(bufnr)
   manager.update(bufnr)
-  scheduler()
+  async.scheduler_if_buf_valid(bufnr)
   if vim.wo.diff then
     require('gitsigns.diffthis').update(bufnr)
   end
@@ -202,7 +200,7 @@ local function get_hunks(bufnr, bcache, greedy, staged)
       return
     end
     hunks = run_diff(text, buftext, false)
-    scheduler()
+    async.scheduler()
     return hunks
   end
 
@@ -255,7 +253,7 @@ end
 ---             • {greedy}: (boolean)
 ---               Stage all contiguous hunks. Only useful if 'diff_opts'
 ---               contains `linematch`. Defaults to `true`.
-M.stage_hunk = mk_repeatable(void(function(range, opts)
+M.stage_hunk = mk_repeatable(async.void(function(range, opts)
   opts = opts or {}
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -306,7 +304,7 @@ end
 ---     • {greedy}: (boolean)
 ---       Stage all contiguous hunks. Only useful if 'diff_opts'
 ---       contains `linematch`. Defaults to `true`.
-M.reset_hunk = mk_repeatable(void(function(range, opts)
+M.reset_hunk = mk_repeatable(async.void(function(range, opts)
   opts = opts or {}
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -353,7 +351,7 @@ end
 ---
 --- Attributes: ~
 ---     {async}
-M.undo_stage_hunk = void(function()
+M.undo_stage_hunk = async.void(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
@@ -375,7 +373,7 @@ end)
 ---
 --- Attributes: ~
 ---     {async}
-M.stage_buffer = void(function()
+M.stage_buffer = async.void(function()
   local bufnr = current_buf()
 
   local bcache = cache[bufnr]
@@ -411,7 +409,7 @@ end)
 ---
 --- Attributes: ~
 ---     {async}
-M.reset_buffer_index = void(function()
+M.reset_buffer_index = async.void(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
@@ -490,7 +488,7 @@ end
 
 --- @param opts? Gitsigns.NavOpts
 --- @param forwards boolean
-local nav_hunk = void(function(opts, forwards)
+local nav_hunk = async.void(function(opts, forwards)
   opts = process_nav_opts(opts)
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -859,7 +857,7 @@ end
 ---       Display full commit message with hunk.
 ---     • {ignore_whitespace}: (boolean)
 ---       Ignore whitespace when running blame.
-M.blame_line = void(function(opts)
+M.blame_line = async.void(function(opts)
   if popup.focus_open('blame') then
     return
   end
@@ -876,7 +874,7 @@ M.blame_line = void(function(opts)
     popup.create({ { { 'Loading...', 'Title' } } }, config.preview_config)
   end, 1000)
 
-  scheduler()
+  async.scheduler_if_buf_valid()
   local buftext = util.buf_lines(bufnr)
   local fileformat = vim.bo[bufnr].fileformat
   local lnum = api.nvim_win_get_cursor(0)[1]
@@ -905,7 +903,7 @@ M.blame_line = void(function(opts)
     insert_hunk_hlmarks(blame_fmt, hunk)
   end
 
-  scheduler()
+  async.scheduler_if_buf_valid(bufnr)
 
   popup.create(lines_format(blame_fmt, result), config.preview_config, 'blame')
 end)
@@ -948,7 +946,7 @@ end
 ---
 --- @param base string|nil The object/revision to diff against.
 --- @param global boolean|nil Change the base of all buffers.
-M.change_base = void(function(base, global)
+M.change_base = async.void(function(base, global)
   base = util.calc_base(base)
 
   if global then
@@ -1134,7 +1132,7 @@ local function buildqflist(target)
         local stat = vim.loop.fs_stat(f_abs)
         if stat and stat.type == 'file' then
           local a = r:get_show_text(':0:' .. f)
-          scheduler()
+          async.scheduler()
           local hunks = run_diff(a, util.file_lines(f_abs))
           hunks_to_qflist(f_abs, hunks, qflist)
         end
@@ -1170,7 +1168,7 @@ end
 ---     • {open}: (boolean)
 ---       Open the quickfix/location list viewer.
 ---       Defaults to `true`.
-M.setqflist = void(function(target, opts)
+M.setqflist = async.void(function(target, opts)
   opts = opts or {}
   if opts.open == nil then
     opts.open = true
@@ -1179,7 +1177,7 @@ M.setqflist = void(function(target, opts)
     items = buildqflist(target),
     title = 'Hunks',
   }
-  scheduler()
+  async.scheduler()
   if opts.use_location_list then
     local nr = opts.nr or 0
     vim.fn.setloclist(nr, {}, ' ', qfopts)
@@ -1263,7 +1261,7 @@ end
 ---
 --- Attributes: ~
 ---     {async}
-M.refresh = void(function()
+M.refresh = async.void(function()
   manager.reset_signs()
   require('gitsigns.highlight').setup_highlights()
   require('gitsigns.current_line_blame').setup()

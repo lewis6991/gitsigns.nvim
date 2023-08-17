@@ -43,7 +43,7 @@ local function handle_moved(bufnr, old_relpath)
   git_obj.file = git_obj.repo.toplevel .. util.path_sep .. git_obj.relpath
   bcache.file = git_obj.file
   git_obj:update_file_info()
-  async.scheduler()
+  async.scheduler_if_buf_valid(bufnr)
 
   local bufexists = util.bufexists(bcache.file)
   local old_name = api.nvim_buf_get_name(bufnr)
@@ -69,7 +69,7 @@ local watch_gitdir_handler = async.void(function(bufnr)
 
   git_obj.repo:update_abbrev_head()
 
-  async.scheduler()
+  async.scheduler_if_buf_valid(bufnr)
   Status:update(bufnr, { head = git_obj.repo.abbrev_head })
 
   local was_tracked = git_obj.object_name ~= nil
