@@ -9,7 +9,7 @@ local message = require('gitsigns.message')
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
 --- @type fun(opts: table): string
-local input = async.awrap(vim.ui.input, 2)
+local input = async.wrap(vim.ui.input, 2)
 
 local M = {}
 
