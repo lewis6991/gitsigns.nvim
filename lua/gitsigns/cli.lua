@@ -98,7 +98,7 @@ M.run = void(function(params)
   end
 
   for m, has_named in pairs(sources) do
-    local f = (m)[func]
+    local f = m[func]
     if type(f) == 'function' then
       -- Note functions here do not have named arguments
       print_nonnil(f(unpack(pos_args), has_named and named_args or nil))

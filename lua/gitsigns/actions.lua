@@ -149,10 +149,16 @@ M.toggle_deleted = function(value)
   return config.show_deleted
 end
 
+---@param bufnr integer
+---@param hunks Gitsigns.Hunk.Hunk[]?
+---@return Gitsigns.Hunk.Hunk?
 local function get_cursor_hunk(bufnr, hunks)
   bufnr = bufnr or current_buf()
 
   if not hunks then
+    if not cache[bufnr] then
+      return
+    end
     hunks = {}
     vim.list_extend(hunks, cache[bufnr].hunks or {})
     vim.list_extend(hunks, cache[bufnr].hunks_staged or {})
@@ -1255,6 +1261,14 @@ M.get_actions = function()
   end
 
   return actions
+end
+
+for name, f in pairs(M --[[@as table<string,function>]]) do
+  if vim.startswith(name, 'toggle') then
+    C[name] = function(args)
+      f(args[1])
+    end
+  end
 end
 
 --- Refresh all buffers.
