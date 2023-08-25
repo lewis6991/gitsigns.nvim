@@ -1,0 +1,21 @@
+name: no_response
+on:
+  schedule:
+    - cron: '30 1 * * *' # Run every day at 01:30
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v8
+        with:
+          stale-issue-message:
+            This has been labeled stale since a request for information has
+            not been answered for 30 days.
+          close-issue-message:
+            This has been closed since it has been marked stale for 30 days.
+            It can be reopened when the requested information is provided.
+          days-before-stale: 30
+          days-before-close: 30
+          any-of-labels: needs response
+          labels-to-remove-when-stale: needs response
