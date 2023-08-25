@@ -263,6 +263,9 @@ describe('gitsigns', function()
 
       -- Wait until the virtual blame line appears
       screen:sleep(1000)
+      -- print(vim.inspect(exec_lua[[return require'gitsigns.cache'.cache[vim.api.nvim_get_current_buf()].compare_text]]))
+      -- print(vim.inspect(exec_lua[[return require'gitsigns.util'.buf_lines(vim.api.nvim_get_current_buf())]]))
+
       screen:expect{grid=[[
         ^{MATCH:This {6: tester, %d seco}}|
         is                  |
