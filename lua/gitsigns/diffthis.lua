@@ -29,9 +29,6 @@ local bufread = async.void(function(bufnr, dbufnr, base)
       error(err, 2)
     end
     async.scheduler_if_buf_valid(bufnr)
-    if vim.bo[bufnr].fileformat == 'dos' then
-      text = util.strip_cr(text)
-    end
   end
 
   local modifiable = vim.bo[dbufnr].modifiable
