@@ -78,9 +78,11 @@ end
 --- @param lines string[]
 function M.set_lines(bufnr, start_row, end_row, lines)
   if vim.bo[bufnr].fileformat == 'dos' then
-    for i = 1, #lines do
-      lines[i] = lines[i]:gsub('\r$', '')
-    end
+    lines = M.strip_cr(lines)
+  end
+  if start_row == 0 and end_row == -1 and lines[#lines] == '' then
+    lines = vim.deepcopy(lines)
+    lines[#lines] = nil
   end
   vim.api.nvim_buf_set_lines(bufnr, start_row, end_row, false, lines)
 end
