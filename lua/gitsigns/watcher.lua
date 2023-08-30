@@ -13,6 +13,24 @@ local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local dprint = log.dprint
 local dprintf = log.dprintf
 
+--- @param bufnr? integer
+--- @param cb function
+local buf_check = async.wrap(function(bufnr, cb)
+  vim.schedule(function()
+    if bufnr then
+      if not api.nvim_buf_is_valid(bufnr) then
+        dprint('Buffer not valid, aborting')
+        return
+      end
+      if not cache[bufnr] then
+        dprint('Has detached, aborting')
+        return
+      end
+    end
+    cb()
+  end)
+end, 2)
+
 --- @param bufnr integer
 --- @param old_relpath string
 local function handle_moved(bufnr, old_relpath)
@@ -57,30 +75,27 @@ local function handle_moved(bufnr, old_relpath)
 end
 
 local watch_gitdir_handler = async.void(function(bufnr)
-  if not cache[bufnr] then
-    -- Very occasionally an external git operation may cause the buffer to
-    -- detach and update the git dir simultaneously. When this happens this
-    -- handler will trigger but there will be no cache.
-    dprint('Has detached, aborting')
-    return
-  end
+  buf_check(bufnr)
 
   local git_obj = cache[bufnr].git_obj
 
   git_obj.repo:update_abbrev_head()
 
-  async.scheduler_if_buf_valid(bufnr)
+  buf_check(bufnr)
+
   Status:update(bufnr, { head = git_obj.repo.abbrev_head })
 
   local was_tracked = git_obj.object_name ~= nil
   local old_relpath = git_obj.relpath
 
   git_obj:update_file_info()
+  buf_check(bufnr)
 
   if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
     -- File was tracked but is no longer tracked. Must of been removed or
     -- moved. Check if it was moved and switch to it.
     handle_moved(bufnr, old_relpath)
+    buf_check(bufnr)
   end
 
   cache[bufnr]:invalidate()
