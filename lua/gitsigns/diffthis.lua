@@ -160,9 +160,9 @@ M.diffthis = async.void(function(base, opts)
   api.nvim_set_current_win(cwin)
 end)
 
+--- @param bufnr integer
 --- @param base string
-M.show = async.void(function(base)
-  local bufnr = api.nvim_get_current_buf()
+M.show = async.void(function(bufnr, base)
   local bufname = create_show_buf(bufnr, base)
   if not bufname then
     return

@@ -1079,8 +1079,13 @@ CP.diffthis = complete_heads
 --- Attributes: ~
 ---     {async}
 M.show = function(revision)
+  local bufnr = api.nvim_get_current_buf()
+  if not cache[bufnr] then
+    print('Error: Buffer is not attached.')
+    return
+  end
   local diffthis = require('gitsigns.diffthis')
-  diffthis.show(revision)
+  diffthis.show(bufnr, revision)
 end
 
 CP.show = complete_heads
