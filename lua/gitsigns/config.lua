@@ -1,13 +1,4 @@
-local warn
-do
-  -- this is included in gen_help.lua so don't error if requires fail
-  local ok, ret = pcall(require, 'gitsigns.message')
-  if ok then
-    warn = ret.warn
-  end
-end
-
---- @class Gitsigns.SchemaElem
+--- @class (exact) Gitsigns.SchemaElem
 --- @field type string|string[]
 --- @field deep_extend? boolean
 --- @field default any
@@ -15,14 +6,14 @@ end
 --- @field default_help? string
 --- @field description string
 
---- @class Gitsigns.DiffOpts
+--- @class (exact) Gitsigns.DiffOpts
 --- @field algorithm string
 --- @field internal boolean
 --- @field indent_heuristic boolean
 --- @field vertical boolean
 --- @field linematch integer
 
---- @class Gitsigns.SignConfig
+--- @class (exact) Gitsigns.SignConfig
 --- @field show_count boolean
 --- @field hl string
 --- @field text string
@@ -40,14 +31,14 @@ end
 --- @alias Gitsigns.CurrentLineBlameFmtOpts { relative_time: boolean }
 --- @alias Gitsigns.CurrentLineBlameFmtFun fun(_: string, _: table<string,any>, _: Gitsigns.CurrentLineBlameFmtOpts): {[1]:string,[2]:string}[]
 
---- @class Gitsigns.CurrentLineBlameOpts
+--- @class (exact) Gitsigns.CurrentLineBlameOpts
 --- @field virt_text boolean
 --- @field virt_text_pos 'eol'|'overlay'|'right_align'
 --- @field delay integer
 --- @field ignore_whitespace boolean
 --- @field virt_text_priority integer
 
---- @class Gitsigns.Config
+--- @class (exact) Gitsigns.Config
 --- @field debug_mode boolean
 --- @field diff_opts Gitsigns.DiffOpts
 --- @field base string
@@ -395,7 +386,7 @@ M.schema = {
         vertical = true,
         linematch = nil,
       }
-      for _, o in ipairs(vim.opt.diffopt:get()) do
+      for _, o in ipairs(vim.opt.diffopt:get() --[[@as string[] ]]) do
         if o == 'indent-heuristic' then
           r.indent_heuristic = true
         elseif o == 'internal' then
@@ -474,6 +465,8 @@ M.schema = {
 
   status_formatter = {
     type = 'function',
+    --- @param status Gitsigns.StatusObj
+    --- @return string
     default = function(status)
       local added, changed, removed = status.added, status.changed, status.removed
       local status_txt = {}
@@ -807,7 +800,7 @@ M.schema = {
   },
 }
 
-warn = function(s, ...)
+local function warn(s, ...)
   vim.notify(s:format(...), vim.log.levels.WARN, { title = 'gitsigns' })
 end
 
@@ -828,6 +821,7 @@ local function validate_config(config)
   end
 end
 
+---@param cfg table<string,any>
 local function handle_deprecated(cfg)
   for k, v in pairs(M.schema) do
     local dep = v.deprecated
@@ -837,7 +831,7 @@ local function handle_deprecated(cfg)
           local opts_key, field = dep.new_field:match('(.*)%.(.*)')
           if opts_key and field then
             -- Field moved to an options table
-            local opts = (cfg[opts_key] or {})
+            local opts = (cfg[opts_key] or {}) --[[@as table<string,any>]]
             opts[field] = cfg[k]
             cfg[opts_key] = opts
           else

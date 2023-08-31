@@ -7,13 +7,8 @@ local dprint = require('gitsigns.debug.log').dprint
 --- @field count? integer
 --- @field lnum integer
 
---- @class Gitsigns.HlDef
---- @field hl string
---- @field numhl string
---- @field linehl string
-
 --- @class Gitsigns.Signs
---- @field hls table<Gitsigns.SignType,Gitsigns.HlDef>
+--- @field hls table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field name string
 --- @field group string
 --- @field config table<string,Gitsigns.SignConfig>
@@ -22,7 +17,7 @@ local dprint = require('gitsigns.debug.log').dprint
 --- Used by signs/vimfn.tl
 --- @field placed table<integer,table<integer,Gitsigns.Sign>>
 --- @field new      fun(cfg: Gitsigns.SignConfig, name: string): Gitsigns.Signs
---- @field _new     fun(cfg: Gitsigns.SignConfig, hls: {SignType:Gitsigns.HlDef}, name: string): Gitsigns.Signs
+--- @field _new     fun(cfg: Gitsigns.SignConfig, hls: {SignType:Gitsigns.SignConfig}, name: string): Gitsigns.Signs
 --- @field remove   fun(self: Gitsigns.Signs, bufnr: integer, start_lnum?: integer, end_lnum?: integer)
 --- @field add      fun(self: Gitsigns.Signs, bufnr: integer, signs: Gitsigns.Sign[])
 --- @field contains fun(self: Gitsigns.Signs, bufnr: integer, start: integer, last: integer): boolean
@@ -49,6 +44,7 @@ function B.new(cfg, name)
     C = require('gitsigns.signs.vimfn')
   end
 
+  --- @type table<Gitsigns.SignType,Gitsigns.SignConfig>
   local hls = (name == 'staged' and config._signs_staged or config.signs)
   -- Add when config.signs.*.[hl,numhl,linehl] are removed
   -- for _, t in ipairs {

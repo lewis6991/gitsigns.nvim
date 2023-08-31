@@ -1,6 +1,6 @@
 local api = vim.api
 
---- @class Gitsigns.Hldef
+--- @class (exact) Gitsigns.Hldef
 --- @field [integer] string
 --- @field desc string
 --- @field hidden boolean

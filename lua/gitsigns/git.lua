@@ -124,6 +124,7 @@ end
 
 --- @class Gitsigns.Git.JobSpec
 --- @field command? string
+--- @field args? string[]
 --- @field cwd? string
 --- @field writer? string[] | string
 --- @field suppress_stderr? boolean
@@ -563,7 +564,7 @@ Obj.unstage_file = function(self)
   self:command({ 'reset', self.file })
 end
 
---- @class Gitsigns.BlameInfo
+--- @class (exact) Gitsigns.BlameInfo
 --- -- Info in header
 --- @field sha string
 --- @field abbrev_sha string
@@ -583,6 +584,13 @@ end
 --- @field previous_filename string
 --- @field previous_sha string
 --- @field filename string
+
+--- @class (exact) Gitsigns.BlameInfo2 : Gitsigns.BlameInfo
+--- @field body? string[]
+--- @field hunk_no? integer
+--- @field num_hunks? integer
+--- @field hunk? string[]
+--- @field hunk_head? string
 
 --- @param lines string[]
 --- @param lnum integer

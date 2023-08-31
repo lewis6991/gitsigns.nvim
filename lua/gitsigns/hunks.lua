@@ -7,19 +7,19 @@ local min, max = math.min, math.max
 --- | "change"
 --- | "delete"
 
---- @class Gitsigns.Hunk.Node
+--- @class (exact) Gitsigns.Hunk.Node
 --- @field start integer
 --- @field count integer
 --- @field lines string[]
 
---- @class Gitsigns.Hunk.Hunk
+--- @class (exact) Gitsigns.Hunk.Hunk
 --- @field type Gitsigns.Hunk.Type
 --- @field head string
 --- @field added Gitsigns.Hunk.Node
 --- @field removed Gitsigns.Hunk.Node
 --- @field vend integer
 
---- @class Gitsigns.Hunk.Hunk_Public
+--- @class (exact) Gitsigns.Hunk.Hunk_Public
 --- @field type Gitsigns.Hunk.Type
 --- @field head string
 --- @field lines string[]

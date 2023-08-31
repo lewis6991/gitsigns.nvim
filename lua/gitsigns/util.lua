@@ -169,6 +169,7 @@ function M.strip_cr(xs0)
 end
 
 --- @param base? string
+--- @return string?
 function M.calc_base(base)
   if base and base:sub(1, 1):match('[~\\^]') then
     base = 'HEAD' .. base
@@ -178,6 +179,9 @@ end
 
 function M.emptytable()
   return setmetatable({}, {
+    ---@param t table<any,any>
+    ---@param k any
+    ---@return any
     __index = function(t, k)
       t[k] = {}
       return t[k]
@@ -193,7 +197,7 @@ local function expand_date(fmt, time)
 end
 
 ---@param fmt string
----@param info table
+---@param info table<string,any>
 ---@param reltime? boolean Use relative time as the default date format
 ---@return string
 function M.expand_format(fmt, info, reltime)
@@ -201,6 +205,7 @@ function M.expand_format(fmt, info, reltime)
 
   for _ = 1, 20 do -- loop protection
     -- Capture <name> or <name:format>
+    --- @type integer?, integer?, string, string, string
     local scol, ecol, match, key, time_fmt = fmt:find('(<([^:>]+):?([^>]*)>)')
     if not match then
       break

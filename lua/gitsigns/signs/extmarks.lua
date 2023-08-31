@@ -8,7 +8,7 @@ local M = {}
 local group_base = 'gitsigns_extmark_signs_'
 
 --- @param cfg Gitsigns.SignConfig
---- @param hls table<Gitsigns.SignType,Gitsigns.HlDef>
+--- @param hls table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @param name string
 --- @return Gitsigns.ExmarkSigns
 function M._new(cfg, hls, name)

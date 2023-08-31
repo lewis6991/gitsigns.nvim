@@ -121,7 +121,7 @@ function M.wait(argc, func, ...)
 
   local ok = ret[1]
   if not ok then
-    local _, err, traceback = unpack(ret)
+    local err, traceback = ret[2], ret[3]
     error(string.format('Wrapped function failed: %s\n%s', err, traceback))
   end
 
@@ -180,6 +180,7 @@ end
 M.scheduler = M.wrap(vim.schedule, 1)
 
 --- @param buf? integer
+--- @param cb function
 M.scheduler_if_buf_valid = M.wrap(function(buf, cb)
   vim.schedule(function()
     if not buf or vim.api.nvim_buf_is_valid(buf) then

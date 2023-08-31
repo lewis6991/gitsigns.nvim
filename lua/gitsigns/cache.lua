@@ -6,7 +6,7 @@ local M = {
 
 -- Timer object watching the gitdir
 
---- @class Gitsigns.CacheEntry
+--- @class (exact) Gitsigns.CacheEntry
 --- @field file               string
 --- @field base?              string
 --- @field compare_text?      string[]
@@ -17,9 +17,11 @@ local M = {
 --- @field hunks_staged?      Gitsigns.Hunk.Hunk[]
 ---
 --- @field staged_diffs       Gitsigns.Hunk.Hunk[]
---- @field gitdir_watcher?    uv_fs_event_t
+--- @field gitdir_watcher?    uv.uv_fs_event_t
 --- @field git_obj            Gitsigns.GitObj
 --- @field commit?            string
+---
+--- @field new fun(o: Gitsigns.CacheEntry): Gitsigns.CacheEntry
 local CacheEntry = M.CacheEntry
 
 function CacheEntry:get_compare_rev(base)

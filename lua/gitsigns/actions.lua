@@ -149,8 +149,8 @@ M.toggle_deleted = function(value)
   return config.show_deleted
 end
 
----@param bufnr integer
----@param hunks Gitsigns.Hunk.Hunk[]?
+---@param bufnr? integer
+---@param hunks? Gitsigns.Hunk.Hunk[]
 ---@return Gitsigns.Hunk.Hunk?
 local function get_cursor_hunk(bufnr, hunks)
   bufnr = bufnr or current_buf()
@@ -221,24 +221,24 @@ end
 --- @param range? {[1]: integer, [2]: integer}
 --- @param greedy? boolean
 --- @param staged? boolean
---- @return Gitsigns.Hunk.Hunk
+--- @return Gitsigns.Hunk.Hunk?
 local function get_hunk(bufnr, range, greedy, staged)
   local bcache = cache[bufnr]
   local hunks = get_hunks(bufnr, bcache, greedy, staged)
-  local hunk --- @type Gitsigns.Hunk.Hunk
-  if range then
-    table.sort(range)
-    local top, bot = range[1], range[2]
-    hunk = Hunks.create_partial_hunk(hunks or {}, top, bot)
-    hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
-    hunk.removed.lines = vim.list_slice(
-      bcache.compare_text,
-      hunk.removed.start,
-      hunk.removed.start + hunk.removed.count - 1
-    )
-  else
-    hunk = get_cursor_hunk(bufnr, hunks)
+
+  if not range then
+    return get_cursor_hunk(bufnr, hunks)
   end
+
+  table.sort(range)
+  local top, bot = range[1], range[2]
+  local hunk = Hunks.create_partial_hunk(hunks or {}, top, bot)
+  hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
+  hunk.removed.lines = vim.list_slice(
+    bcache.compare_text,
+    hunk.removed.start,
+    hunk.removed.start + hunk.removed.count - 1
+  )
   return hunk
 end
 
@@ -436,7 +436,7 @@ M.reset_buffer_index = async.void(function()
   update(bufnr)
 end)
 
---- @class Gitsigns.NavOpts
+--- @class (exact) Gitsigns.NavOpts
 --- @field wrap boolean
 --- @field foldopen boolean
 --- @field navigation_message boolean
@@ -890,6 +890,7 @@ M.blame_line = async.void(function(opts)
   end)
 
   assert(result)
+  --- @cast result Gitsigns.BlameInfo2
 
   local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
 

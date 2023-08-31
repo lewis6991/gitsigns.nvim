@@ -76,6 +76,7 @@ M.run = void(function(params)
   local func = pos_args_raw[1]
 
   if not func then
+    --- @type string
     func = async.wrap(vim.ui.select, 3)(M.complete('', 'Gitsigns '), {})
   end
 
