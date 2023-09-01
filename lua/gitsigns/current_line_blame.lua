@@ -1,6 +1,7 @@
 local async = require('gitsigns.async')
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
+local gh = require('gitsigns.gh')
 local util = require('gitsigns.util')
 local uv = vim.loop
 
@@ -59,7 +60,7 @@ BlameCache.contents = {}
 
 --- @param bufnr integer
 --- @param lnum integer
---- @param x? Gitsigns.BlameInfo
+--- @param x? Gitsigns.BlameInfo|GitHub.PrInfo
 function BlameCache:add(bufnr, lnum, x)
   if not x then
     return
@@ -76,7 +77,7 @@ end
 
 --- @param bufnr integer
 --- @param lnum integer
---- @return Gitsigns.BlameInfo?
+--- @return Gitsigns.BlameInfo|GitHub.PrInfo|nil
 function BlameCache:get(bufnr, lnum)
   if not config._blame_cache then
     return
@@ -117,7 +118,7 @@ local running = false
 --- @param bufnr integer
 --- @param lnum integer
 --- @param opts Gitsigns.CurrentLineBlameOpts
---- @return Gitsigns.BlameInfo?
+--- @return Gitsigns.BlameInfo|GitHub.PrInfo|nil
 local function run_blame(bufnr, lnum, opts)
   local result = BlameCache:get(bufnr, lnum)
   if result then
@@ -132,6 +133,18 @@ local function run_blame(bufnr, lnum, opts)
   local buftext = util.buf_lines(bufnr)
   local bcache = cache[bufnr]
   result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
+
+  if result and opts.github_blame then
+    local last_pr = gh.get_last_associated_pr(result.sha);
+
+    if last_pr then
+      result = last_pr;
+      -- the parser does not support accessing keys like <author.name>
+      result.author = last_pr.author.name
+      result.is_github = true;
+    end
+  end
+
   BlameCache:add(bufnr, lnum, result)
   running = false
 
@@ -145,9 +158,17 @@ end
 local function handle_blame_info(bufnr, lnum, blame_info, opts)
   local bcache = cache[bufnr]
   local virt_text ---@type {[1]: string, [2]: string}[]
-  local clb_formatter = blame_info.author == 'Not Committed Yet'
-      and config.current_line_blame_formatter_nc
-    or config.current_line_blame_formatter
+  local code_committed = blame_info.author ~= 'Not Committed Yet'
+  local use_github = opts.github_blame and blame_info.is_github;
+
+  local clb_formatter = code_committed
+      and config.current_line_blame_formatter
+      or config.current_line_blame_formatter_nc
+
+  if code_committed and use_github then
+    clb_formatter = config.current_line_blame_formatter_gh
+  end
+
   if type(clb_formatter) == 'string' then
     virt_text = {
       {

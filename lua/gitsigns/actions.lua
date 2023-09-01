@@ -5,6 +5,7 @@ local popup = require('gitsigns.popup')
 local util = require('gitsigns.util')
 local manager = require('gitsigns.manager')
 local git = require('gitsigns.git')
+local gh = require('gitsigns.gh')
 local run_diff = require('gitsigns.diff')
 
 local gs_cache = require('gitsigns.cache')
@@ -840,6 +841,7 @@ local function create_blame_fmt(is_committed, full)
     return {
       header,
       { { '<body>', 'NormalFloat' } },
+      { { 'PR #<pr_info>', 'Label' } },
       { { 'Hunk <hunk_no> of <num_hunks>', 'Title' }, { ' <hunk_head>', 'LineNr' } },
       { { '<hunk>', 'NormalFloat' } },
     }
@@ -901,6 +903,8 @@ M.blame_line = async.void(function(opts)
     local hunk --- @type Gitsigns.Hunk.Hunk?
 
     hunk, result.hunk_no, result.num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
+    local last_pr = gh.get_last_associated_pr(result.sha);
+    result.pr_info = last_pr and last_pr.number or 'No PR found';
 
     assert(hunk)
 
