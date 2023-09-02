@@ -144,6 +144,9 @@ end
 --- @param opts Gitsigns.CurrentLineBlameOpts
 local function handle_blame_info(bufnr, lnum, blame_info, opts)
   local bcache = cache[bufnr]
+  if not bcache then
+    return
+  end
   local virt_text ---@type {[1]: string, [2]: string}[]
   local clb_formatter = blame_info.author == 'Not Committed Yet'
       and config.current_line_blame_formatter_nc
