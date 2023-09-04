@@ -41,10 +41,6 @@ function CacheEntry:get_compare_rev(base)
   return string.format(':%d', stage)
 end
 
-function CacheEntry:get_staged_compare_rev()
-  return self.commit and string.format('%s^', self.commit) or 'HEAD'
-end
-
 function CacheEntry:get_rev_bufname(rev)
   rev = rev or self:get_compare_rev()
   return string.format('gitsigns://%s/%s:%s', self.git_obj.repo.gitdir, rev, self.git_obj.relpath)

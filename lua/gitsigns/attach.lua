@@ -362,7 +362,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   })
 
   -- Initial update
-  manager.update(cbuf, cache[cbuf])
+  manager.update(cbuf)
 end)
 
 --- Detach Gitsigns from all buffers it is attached to.

@@ -7,36 +7,28 @@ local M = {}
 --- @generic F: function
 --- @param ms number Timeout in ms
 --- @param fn F Function to debounce
+--- @param hash? integer|fun(...): any Function that determines id from arguments to fn
 --- @return F Debounced function.
-function M.debounce_trailing(ms, fn)
-  local timer = assert(uv.new_timer())
+function M.debounce_trailing(ms, fn, hash)
+  local running = {} --- @type table<any,uv.uv_timer_t>
+  if type(hash) == 'number' then
+    local hash_i = hash
+    hash = function(...)
+      return select(hash_i, ...)
+    end
+  end
   return function(...)
+    local id = hash and hash(...) or true
+    if running[id] == nil then
+      running[id] = assert(uv.new_timer())
+    end
+    local timer = running[id]
     local argv = { ... }
     timer:start(ms, 0, function()
       timer:stop()
-      fn(unpack(argv))
+      running[id] = nil
+      fn(unpack(argv, 1, table.maxn(argv)))
     end)
-  end
-end
-
---- Throttles a function on the leading edge.
----
---- @generic F: function
---- @param ms number Timeout in ms
---- @param fn F Function to throttle
---- @return F throttled function.
-function M.throttle_leading(ms, fn)
-  local timer = assert(uv.new_timer())
-  local running = false
-  return function(...)
-    if not running then
-      timer:start(ms, 0, function()
-        running = false
-        timer:stop()
-      end)
-      running = true
-      fn(...)
-    end
   end
 end
 
