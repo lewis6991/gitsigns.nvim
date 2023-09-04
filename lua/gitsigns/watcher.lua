@@ -9,27 +9,12 @@ local util = require('gitsigns.util')
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
+local manager = require('gitsigns.manager')
+
+local buf_check = manager.buf_check
 
 local dprint = log.dprint
 local dprintf = log.dprintf
-
---- @param bufnr? integer
---- @param cb function
-local buf_check = async.wrap(function(bufnr, cb)
-  vim.schedule(function()
-    if bufnr then
-      if not api.nvim_buf_is_valid(bufnr) then
-        dprint('Buffer not valid, aborting')
-        return
-      end
-      if not cache[bufnr] then
-        dprint('Has detached, aborting')
-        return
-      end
-    end
-    cb()
-  end)
-end, 2)
 
 --- @param bufnr integer
 --- @param old_relpath string
@@ -74,7 +59,9 @@ local function handle_moved(bufnr, old_relpath)
   dprintf('%s buffer %d from %s to %s', msg, bufnr, old_name, bcache.file)
 end
 
-local watch_gitdir_handler = async.void(function(bufnr)
+--- @param bufnr integer
+local handler = debounce_trailing(200, async.void(function(bufnr)
+  local __FUNC__ = 'watcher_handler'
   buf_check(bufnr)
 
   local git_obj = cache[bufnr].git_obj
@@ -100,8 +87,8 @@ local watch_gitdir_handler = async.void(function(bufnr)
 
   cache[bufnr]:invalidate()
 
-  require('gitsigns.manager').update(bufnr, cache[bufnr])
-end)
+  require('gitsigns.manager').update(bufnr)
+end), 1)
 
 -- vim.inspect but on one line
 --- @param x any
@@ -112,14 +99,15 @@ end
 
 local M = {}
 
+local WATCH_IGNORE = {
+  ORIG_HEAD = true,
+  FETCH_HEAD = true
+}
+
 --- @param bufnr integer
 --- @param gitdir string
 --- @return uv.uv_fs_event_t
 function M.watch_gitdir(bufnr, gitdir)
-  -- Setup debounce as we create the luv object so the debounce is independent
-  -- to each watcher
-  local watch_gitdir_handler_db = debounce_trailing(200, watch_gitdir_handler)
-
   dprintf('Watching git dir')
   local w = assert(uv.new_fs_event())
   w:start(gitdir, {}, function(err, filename, events)
@@ -134,14 +122,14 @@ function M.watch_gitdir(bufnr, gitdir)
     -- The luv docs say filename is passed as a string but it has been observed
     -- to sometimes be nil.
     --    https://github.com/lewis6991/gitsigns.nvim/issues/848
-    if filename == nil or vim.endswith(filename, '.lock') then
+    if filename == nil or WATCH_IGNORE[filename] or vim.endswith(filename, '.lock') then
       dprintf('%s (ignoring)', info)
       return
     end
 
     dprint(info)
 
-    watch_gitdir_handler_db(bufnr)
+    handler(bufnr)
   end)
   return w
 end
