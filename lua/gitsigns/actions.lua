@@ -149,8 +149,8 @@ M.toggle_deleted = function(value)
   return config.show_deleted
 end
 
----@param bufnr integer
----@param hunks Gitsigns.Hunk.Hunk[]?
+---@param bufnr? integer
+---@param hunks? Gitsigns.Hunk.Hunk[]?
 ---@return Gitsigns.Hunk.Hunk?
 local function get_cursor_hunk(bufnr, hunks)
   bufnr = bufnr or current_buf()
@@ -221,11 +221,11 @@ end
 --- @param range? {[1]: integer, [2]: integer}
 --- @param greedy? boolean
 --- @param staged? boolean
---- @return Gitsigns.Hunk.Hunk
+--- @return Gitsigns.Hunk.Hunk?
 local function get_hunk(bufnr, range, greedy, staged)
   local bcache = cache[bufnr]
   local hunks = get_hunks(bufnr, bcache, greedy, staged)
-  local hunk --- @type Gitsigns.Hunk.Hunk
+  local hunk --- @type Gitsigns.Hunk.Hunk?
   if range then
     table.sort(range)
     local top, bot = range[1], range[2]
@@ -896,14 +896,13 @@ M.blame_line = async.void(function(opts)
   local blame_fmt = create_blame_fmt(is_committed, opts.full)
 
   if is_committed and opts.full then
-    result.body = bcache.git_obj:command({ 'show', '-s', '--format=%B', result.sha })
+    local body = bcache.git_obj:command({ 'show', '-s', '--format=%B', result.sha })
+    local hunk, hunk_no, num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
+    assert(hunk and hunk_no and num_hunks)
 
-    local hunk --- @type Gitsigns.Hunk.Hunk?
-
-    hunk, result.hunk_no, result.num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
-
-    assert(hunk)
-
+    result.hunk_no = hunk_no
+    result.body = body
+    result.num_hunks = num_hunks
     result.hunk = Hunks.patch_lines(hunk, fileformat)
     result.hunk_head = hunk.head
     insert_hunk_hlmarks(blame_fmt, hunk)

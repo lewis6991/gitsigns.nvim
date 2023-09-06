@@ -17,7 +17,7 @@ local M = {
 --- @field hunks_staged?      Gitsigns.Hunk.Hunk[]
 ---
 --- @field staged_diffs       Gitsigns.Hunk.Hunk[]
---- @field gitdir_watcher?    uv_fs_event_t
+--- @field gitdir_watcher?    uv.uv_fs_event_t
 --- @field git_obj            Gitsigns.GitObj
 --- @field commit?            string
 local CacheEntry = M.CacheEntry

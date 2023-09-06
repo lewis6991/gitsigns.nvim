@@ -1,12 +1,3 @@
-local warn
-do
-  -- this is included in gen_help.lua so don't error if requires fail
-  local ok, ret = pcall(require, 'gitsigns.message')
-  if ok then
-    warn = ret.warn
-  end
-end
-
 --- @class Gitsigns.SchemaElem
 --- @field type string|string[]
 --- @field deep_extend? boolean
@@ -395,7 +386,8 @@ M.schema = {
         vertical = true,
         linematch = nil,
       }
-      for _, o in ipairs(vim.opt.diffopt:get()) do
+      local diffopt = vim.opt.diffopt:get() --[[@as string[] ]]
+      for _, o in ipairs(diffopt) do
         if o == 'indent-heuristic' then
           r.indent_heuristic = true
         elseif o == 'internal' then
@@ -474,6 +466,8 @@ M.schema = {
 
   status_formatter = {
     type = 'function',
+    --- @param status Gitsigns.StatusObj
+    --- @return string
     default = function(status)
       local added, changed, removed = status.added, status.changed, status.removed
       local status_txt = {}
@@ -807,7 +801,7 @@ M.schema = {
   },
 }
 
-warn = function(s, ...)
+local function warn(s, ...)
   vim.notify(s:format(...), vim.log.levels.WARN, { title = 'gitsigns' })
 end
 
@@ -828,6 +822,7 @@ local function validate_config(config)
   end
 end
 
+--- @param cfg table<any, any>
 local function handle_deprecated(cfg)
   for k, v in pairs(M.schema) do
     local dep = v.deprecated
@@ -837,7 +832,7 @@ local function handle_deprecated(cfg)
           local opts_key, field = dep.new_field:match('(.*)%.(.*)')
           if opts_key and field then
             -- Field moved to an options table
-            local opts = (cfg[opts_key] or {})
+            local opts = (cfg[opts_key] or {}) --[[@as table<any,any>]]
             opts[field] = cfg[k]
             cfg[opts_key] = opts
           else

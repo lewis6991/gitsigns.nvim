@@ -69,6 +69,8 @@ local function print_nonnil(x)
   end
 end
 
+local select = async.wrap(vim.ui.select, 3)
+
 M.run = void(function(params)
   local __FUNC__ = 'cli.run'
   local pos_args_raw, named_args_raw = parse_args(params.args)
@@ -76,7 +78,7 @@ M.run = void(function(params)
   local func = pos_args_raw[1]
 
   if not func then
-    func = async.wrap(vim.ui.select, 3)(M.complete('', 'Gitsigns '), {})
+    func = select(M.complete('', 'Gitsigns '), {}) --[[@as string]]
   end
 
   local pos_args = vim.tbl_map(parse_to_lua, vim.list_slice(pos_args_raw, 2))

@@ -11,7 +11,7 @@ M.job_cnt = 0
 --- @field cwd string
 --- @field writer string[] | string
 
---- @param ... uv_pipe_t
+--- @param ... uv.uv_pipe_t
 local function try_close(...)
   for i = 1, select('#', ...) do
     local pipe = select(i, ...)
@@ -21,7 +21,7 @@ local function try_close(...)
   end
 end
 
---- @param pipe uv_pipe_t
+--- @param pipe uv.uv_pipe_t
 --- @param x string[]|string
 local function handle_writer(pipe, x)
   if type(x) == 'table' then
@@ -43,7 +43,7 @@ local function handle_writer(pipe, x)
   end
 end
 
---- @param pipe uv_pipe_t
+--- @param pipe uv.uv_pipe_t
 --- @param output string[]
 local function handle_reader(pipe, output)
   pipe:read_start(function(err, data)
@@ -72,13 +72,14 @@ function M.run_job(obj, callback)
 
   local stdout = assert(uv.new_pipe(false))
   local stderr = assert(uv.new_pipe(false))
-  local stdin --- @type uv_pipe_t?
+  local stdin --- @type uv.uv_pipe_t?
   if obj.writer then
     stdin = assert(uv.new_pipe(false))
   end
 
-  --- @type uv_process_t?, integer|string
+  --- @type uv.uv_process_t?, integer|string
   local handle, _pid
+  --- @diagnostic disable-next-line:missing-fields
   handle, _pid = uv.spawn(obj.command, {
     args = obj.args,
     stdio = { stdin, stdout, stderr },
