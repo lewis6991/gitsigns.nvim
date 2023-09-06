@@ -219,11 +219,11 @@ end
 --- @field commit string
 --- @field base string
 
--- Ensure attaches cannot be interleaved.
--- Since attaches are asynchronous we need to make sure an attach isn't
--- performed whilst another one is in progress.
+--- Ensure attaches cannot be interleaved.
+--- Since attaches are asynchronous we need to make sure an attach isn't
+--- performed whilst another one is in progress.
 --- @param cbuf integer
---- @param ctx Gitsigns.GitContext
+--- @param ctx? Gitsigns.GitContext
 --- @param aucmd? string
 local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   local __FUNC__ = 'attach'

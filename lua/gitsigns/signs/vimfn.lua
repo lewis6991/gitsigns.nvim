@@ -82,7 +82,7 @@ end
 local group_base = 'gitsigns_vimfn_signs_'
 
 --- @param cfg Gitsigns.SignConfig
---- @param hls table<Gitsigns.SignType,Gitsigns.HlDef>
+--- @param hls table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @param name string
 --- @return Gitsigns.VimFnSigns
 function M._new(cfg, hls, name)

@@ -144,7 +144,9 @@ end
 --- @return T[]
 function M.copy_array(x)
   local r = {}
+  --- @diagnostic disable-next-line:no-unknown
   for i, e in ipairs(x) do
+    --- @diagnostic disable-next-line:no-unknown
     r[i] = e
   end
   return r
@@ -169,6 +171,7 @@ function M.strip_cr(xs0)
 end
 
 --- @param base? string
+--- @return string?
 function M.calc_base(base)
   if base and base:sub(1, 1):match('[~\\^]') then
     base = 'HEAD' .. base
@@ -178,6 +181,9 @@ end
 
 function M.emptytable()
   return setmetatable({}, {
+    ---@param t table<any,any>
+    ---@param k any
+    ---@return any
     __index = function(t, k)
       t[k] = {}
       return t[k]
@@ -193,7 +199,7 @@ local function expand_date(fmt, time)
 end
 
 ---@param fmt string
----@param info table
+---@param info table<string,any>
 ---@param reltime? boolean Use relative time as the default date format
 ---@return string
 function M.expand_format(fmt, info, reltime)
@@ -205,6 +211,7 @@ function M.expand_format(fmt, info, reltime)
     if not match then
       break
     end
+    --- @cast key string
 
     ret[#ret + 1], fmt = fmt:sub(1, scol - 1), fmt:sub(ecol + 1)
 

@@ -144,7 +144,11 @@ end
 --- @param line string
 --- @return string
 local function parse_func_header(line)
-  local func = line:match('%w+%.([%w_]+)')
+  -- match:
+  --   prefix.name = ...
+  --   function prefix.name(...
+  local func = line:match('^%w+%.([%w_]+) =')
+    or line:match('^function %w+%.([%w_]+)%(')
   if not func then
     error('Unable to parse: ' .. line)
   end

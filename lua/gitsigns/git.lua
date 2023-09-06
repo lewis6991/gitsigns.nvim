@@ -128,6 +128,7 @@ end
 --- @field writer? string[] | string
 --- @field suppress_stderr? boolean
 --- @field raw? boolean Do not strip trailing newlines from stdout
+--- @field args? string[]
 
 --- @param args string[]
 --- @param spec? Gitsigns.Git.JobSpec
@@ -583,6 +584,13 @@ end
 --- @field previous_filename string
 --- @field previous_sha string
 --- @field filename string
+---
+--- Custom fields
+--- @field body? string[]
+--- @field hunk_no? integer
+--- @field num_hunks? integer
+--- @field hunk? string[]
+--- @field hunk_head? string
 
 --- @param lines string[]
 --- @param lnum integer
