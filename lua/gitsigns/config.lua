@@ -41,7 +41,7 @@
 --- @class Gitsigns.Config
 --- @field debug_mode boolean
 --- @field diff_opts Gitsigns.DiffOpts
---- @field base string
+--- @field base? string
 --- @field signs table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field _signs_staged table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field _signs_staged_enable boolean

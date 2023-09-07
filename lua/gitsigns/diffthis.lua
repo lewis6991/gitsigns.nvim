@@ -54,7 +54,7 @@ local bufwrite = async.void(function(bufnr, dbufnr, base)
   -- signs.
   if util.calc_base(base) == util.calc_base(bcache.base) then
     bcache.compare_text = buftext
-    manager.update(bufnr, bcache)
+    manager.update(bufnr)
   end
 end)
 

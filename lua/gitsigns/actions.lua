@@ -1285,7 +1285,7 @@ M.refresh = async.void(function()
   require('gitsigns.current_line_blame').setup()
   for k, v in pairs(cache) do
     v:invalidate()
-    manager.update(k, v)
+    manager.update(k)
   end
 end)
 
