@@ -363,11 +363,9 @@ end
 --- @param ... integer
 --- @return string
 local function make_bom(...)
-  local r = {}
-  ---@diagnostic disable-next-line:no-unknown
-  for i, a in ipairs({ ... }) do
-    ---@diagnostic disable-next-line:no-unknown
-    r[i] = string.char(a)
+  local r = {} --- @type string[]
+  for i = 1, select('#', ...) do
+    r[i] = string.char(select(i, ...))
   end
   return table.concat(r)
 end
@@ -384,6 +382,9 @@ local BOM_TABLE = {
   ['utf-1'] = make_bom(0xf7, 0x54, 0x4c),
 }
 
+---@param x string
+---@param encoding string
+---@return string
 local function strip_bom(x, encoding)
   local bom = BOM_TABLE[encoding]
   if bom and vim.startswith(x, bom) then
@@ -603,7 +604,8 @@ function Obj:get_show_text(revision)
     return {}
   end
 
-  local stdout, stderr = self.repo:get_show_text(revision .. ':' .. self.relpath, self.encoding)
+  local object = revision .. ':' .. self.relpath
+  local stdout, stderr = self.repo:get_show_text(object, self.encoding)
 
   -- local get_show_text = self:_atomic(function()
   --   return self.repo:get_show_text(revision .. ':' .. self.relpath, self.encoding)
