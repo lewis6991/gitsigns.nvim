@@ -14,10 +14,14 @@ local uv = vim.loop
 local startswith = vim.startswith
 
 local dprint = require('gitsigns.debug.log').dprint
+local dprintf = require('gitsigns.debug.log').dprintf
 local eprint = require('gitsigns.debug.log').eprint
 local err = require('gitsigns.message').error
 
 local M = {}
+
+--- @type table<string,Gitsigns.Repo>
+M.repos = setmetatable({}, { __mode = 'v' })
 
 --- @param file string
 --- @return boolean
@@ -45,12 +49,14 @@ local Obj = {}
 
 M.Obj = Obj
 
---- @class Gitsigns.Repo
+--- @class (exact) Gitsigns.Repo
 --- @field gitdir string
 --- @field toplevel string
 --- @field detached boolean
 --- @field abbrev_head string
 --- @field username string
+--- @field watcher uv.uv_fs_event_t
+--- @field callbacks table<integer,function> Callbacks for watcher
 local Repo = {}
 M.Repo = Repo
 
@@ -203,11 +209,11 @@ function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
   })
 end
 
---- @param gitdir string
+--- @param gitdir string?
 --- @param head_str string
 --- @param path string
 --- @param cmd? string
---- @return string
+--- @return string?
 local function process_abbrev_head(gitdir, head_str, path, cmd)
   if not gitdir then
     return head_str
@@ -242,8 +248,8 @@ if has_cygpath then
   end
 end
 
---- @param path string
---- @return string
+--- @param path? string
+--- @return string?
 local function normalize_path(path)
   if path and has_cygpath and not uv.fs_stat(path) then
     -- If on windows and path isn't recognizable as a file, try passing it
@@ -253,18 +259,18 @@ local function normalize_path(path)
   return path
 end
 
---- @class Gitsigns.RepoInfo
---- @field gitdir string
---- @field toplevel string
---- @field detached boolean
---- @field abbrev_head string
+--- @class (exact) Gitsigns.RepoInfo
+--- @field gitdir? string
+--- @field toplevel? string
+--- @field detached? boolean
+--- @field abbrev_head? string
 
 --- @param path string
 --- @param cmd? string
 --- @param gitdir? string
 --- @param toplevel? string
 --- @return Gitsigns.RepoInfo
-function M.get_repo_info(path, cmd, gitdir, toplevel)
+local function get_repo_info(path, cmd, gitdir, toplevel)
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --    https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
   local has_abs_gd = check_version({ 2, 13 })
@@ -300,6 +306,7 @@ function M.get_repo_info(path, cmd, gitdir, toplevel)
 
   local toplevel_r = normalize_path(results[1])
   local gitdir_r = normalize_path(results[2])
+  local abbrev_head = results[3]
 
   if gitdir_r and not has_abs_gd then
     gitdir_r = assert(uv.fs_realpath(gitdir_r))
@@ -308,7 +315,7 @@ function M.get_repo_info(path, cmd, gitdir, toplevel)
   return {
     toplevel = toplevel_r,
     gitdir = gitdir_r,
-    abbrev_head = process_abbrev_head(gitdir_r, results[3], path, cmd),
+    abbrev_head = process_abbrev_head(gitdir_r, abbrev_head, path, cmd),
     detached = toplevel_r and gitdir_r ~= toplevel_r .. '/.git'
   }
 end
@@ -415,42 +422,61 @@ function Repo:get_show_text(object, encoding)
   return stdout, stderr
 end
 
-function Repo:update_abbrev_head()
-  self.abbrev_head = M.get_repo_info(self.toplevel).abbrev_head
+function Repo:update()
+  local info = get_repo_info(self.toplevel)
+  self.abbrev_head = info.abbrev_head
+  self.detached = info.detached
+end
+
+--- @param dir string
+--- @return boolean
+local function check_yadm(dir)
+  if config.yadm.enable then
+    return false
+  end
+  if not vim.startswith(dir, assert(os.getenv('HOME'))) then
+    return false
+  end
+
+  return #git_command({ 'ls-files', dir }, { command = 'yadm' }) ~= 0
 end
 
 --- @param dir string
 --- @param gitdir? string
 --- @param toplevel? string
 --- @return Gitsigns.Repo
-function Repo.new(dir, gitdir, toplevel)
-  local self = setmetatable({}, { __index = Repo })
-
-  self.username = git_command({ 'config', 'user.name' })[1]
-  local info = M.get_repo_info(dir, nil, gitdir, toplevel)
-  for k, v in
-    pairs(info --[[@as table<string,any>]])
-  do
-    ---@diagnostic disable-next-line:no-unknown
-    (self)[k] = v
-  end
+function M.get_repo(dir, gitdir, toplevel)
+  local info = get_repo_info(dir, nil, gitdir, toplevel)
 
   -- Try yadm
-  if config.yadm.enable and not self.gitdir then
-    if
-      vim.startswith(dir, assert(os.getenv('HOME')))
-      and #git_command({ 'ls-files', dir }, { command = 'yadm' }) ~= 0
-    then
-      M.get_repo_info(dir, 'yadm', gitdir, toplevel)
-      local yadm_info = M.get_repo_info(dir, 'yadm', gitdir, toplevel)
-      for k, v in
-        pairs(yadm_info --[[@as table<string,any>]])
-      do
-        ---@diagnostic disable-next-line:no-unknown
-        (self)[k] = v
-      end
-    end
+  if not info.gitdir and check_yadm(dir) then
+    info = get_repo_info(dir, 'yadm', gitdir, toplevel)
   end
+
+  if not info.gitdir then
+    return {}
+  end
+
+  if M.repos[info.gitdir] then
+    return M.repos[info.gitdir]
+  end
+
+  --- @type Gitsigns.Repo
+  local self = setmetatable({
+    gitdir = info.gitdir,
+    toplevel = info.toplevel,
+    detached = info.detached,
+    abbrev_head = info.abbrev_head,
+    username = git_command({ 'config', 'user.name' }, { cwd = info.toplevel })[1],
+    callbacks = {}
+  }, { __index = Repo })
+
+  if config.watch_gitdir.enable then
+    local watcher = require('gitsigns.git.watcher')
+    self.watcher = watcher.watch_gitdir(self)
+  end
+
+  M.repos[self.gitdir] = self
 
   return self
 end
@@ -540,6 +566,36 @@ function Obj:file_info(file, silent)
   return result
 end
 
+--- @private
+--- Run a function pseudo atomically
+---
+--- Keep running fn until the object_name before and after
+--- Are the same.
+--- @generic F: function
+--- @param fn F
+--- @return F
+function Obj:_atomic(fn)
+  return function(...)
+    --- @type string
+    local object_name
+
+    --- @diagnostic disable-next-line: no-unknown
+    local res
+
+    -- Ensure the file contents is coherent with the object_name
+    repeat
+      object_name = self.object_name
+      res = { fn(...) }
+      self:update_file_info()
+      if object_name ~= self.object_name then
+        dprintf('object_name for "%s" changed during command, rerunning...', self.relpath)
+      end
+    until (object_name == self.object_name)
+
+    return unpack(res, 1, table.maxn(res))
+  end
+end
+
 --- @param revision string
 --- @return string[] stdout, string? stderr
 function Obj:get_show_text(revision)
@@ -548,6 +604,12 @@ function Obj:get_show_text(revision)
   end
 
   local stdout, stderr = self.repo:get_show_text(revision .. ':' .. self.relpath, self.encoding)
+
+  -- local get_show_text = self:_atomic(function()
+  --   return self.repo:get_show_text(revision .. ':' .. self.relpath, self.encoding)
+  -- end)
+
+  -- local stdout, stderr = get_show_text()
 
   if not self.i_crlf and self.w_crlf then
     -- Add cr
@@ -759,16 +821,19 @@ function Obj.new(file, encoding, gitdir, toplevel)
     dprint('In git dir')
     return nil
   end
-  local self = setmetatable({}, { __index = Obj })
 
-  self.file = file
-  self.encoding = encoding
-  self.repo = Repo.new(util.dirname(file), gitdir, toplevel)
+  local repo = M.get_repo(util.dirname(file), gitdir, toplevel)
 
-  if not self.repo.gitdir then
+  if not repo.gitdir then
     dprint('Not in git repo')
     return nil
   end
+
+  local self = setmetatable({
+    file = file,
+    encoding = encoding,
+    repo = repo
+  }, { __index = Obj })
 
   -- When passing gitdir and toplevel, suppress stderr when resolving the file
   local silent = gitdir ~= nil and toplevel ~= nil

@@ -51,9 +51,9 @@ local update_cwd_head = void(function()
   local git = require('gitsigns.git')
 
   if not head or not gitdir then
-    local info = git.get_repo_info(cwd)
-    gitdir = info.gitdir
-    head = info.abbrev_head
+    local repo = git.get_repo(cwd)
+    gitdir = repo.gitdir
+    head = repo.abbrev_head
   end
 
   scheduler()
@@ -75,7 +75,7 @@ local update_cwd_head = void(function()
   local update_head = debounce_trailing(
     100,
     void(function()
-      local new_head = git.get_repo_info(cwd).abbrev_head
+      local new_head = git.get_repo(cwd).abbrev_head
       scheduler()
       vim.g.gitsigns_head = new_head
     end)

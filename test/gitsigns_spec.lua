@@ -81,14 +81,15 @@ describe('gitsigns', function()
     -- Don't set this too low, or else the test will lock up
     config.watch_gitdir = {interval = 100}
     setup_gitsigns(config)
+    command('Gitsigns clear_debug')
     edit(test_file)
 
     match_dag {
       'attach(1): Attaching (trigger=BufReadPost)',
-      p'run_job: git .* config user.name',
       p'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
+      p'run_job: git .* config user.name',
       p('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..vim.pesc(test_file)),
-      'watch_gitdir(1): Watching git dir',
+      'watch_gitdir: Watching git dir',
       p'run_job: git .* show :0:dummy.txt',
       'update(1): updates: 1, jobs: 6'
     }
@@ -108,12 +109,12 @@ describe('gitsigns', function()
 
   it('can open files not in a git repo', function()
     setup_gitsigns(config)
+    command('Gitsigns clear_debug')
     local tmpfile = os.tmpname()
     edit(tmpfile)
 
     match_debug_messages {
       'attach(1): Attaching (trigger=BufReadPost)',
-      np'run_job: git .* config user.name',
       np'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
       n'new: Not in git repo',
       n'attach(1): Empty git obj',
@@ -125,7 +126,6 @@ describe('gitsigns', function()
 
     match_debug_messages {
       n'attach(1): Attaching (trigger=BufWritePost)',
-      np'run_job: git .* config user.name',
       np'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
       n'new: Not in git repo',
       n'attach(1): Empty git obj'
@@ -166,7 +166,8 @@ describe('gitsigns', function()
       }
     end)
 
-    it('doesn\'t attach to ignored files', function()
+    it('does not attach to ignored files', function()
+      command('Gitsigns clear_debug')
       write_to_file(scratch..'/.gitignore', {'dummy_ignored.txt'})
 
       local ignored_file = scratch.."/dummy_ignored.txt"
@@ -176,8 +177,8 @@ describe('gitsigns', function()
 
       match_debug_messages {
         'attach(1): Attaching (trigger=BufReadPost)',
-        np'run_job: git .* config user.name',
         np'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
+        np'run_job: git .* config user.name',
         np'run_job: git .* ls%-files .*/dummy_ignored.txt',
         n'attach(1): Cannot resolve file in repo',
       }
@@ -190,8 +191,8 @@ describe('gitsigns', function()
 
       match_debug_messages {
         'attach(1): Attaching (trigger=BufNewFile)',
-        np'run_job: git .* config user.name',
         np'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
+        np'run_job: git .* config user.name',
         np('run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '..vim.pesc(newfile)),
         n'attach(1): Not a file',
       }
@@ -267,7 +268,7 @@ describe('gitsigns', function()
       -- print(vim.inspect(exec_lua[[return require'gitsigns.util'.buf_lines(vim.api.nvim_get_current_buf())]]))
 
       screen:expect{grid=[[
-        ^{MATCH:This {6: tester, %d seco}}|
+        ^{MATCH:This {6: You, %d second }}|
         is                  |
         a                   |
         windows             |
@@ -323,13 +324,15 @@ describe('gitsigns', function()
           return false
         end
       ]])
+      command('Gitsigns clear_debug')
 
       edit(test_file)
       match_debug_messages {
         'attach(1): Attaching (trigger=BufReadPost)',
-        np'run_job: git .* config user.name',
         np'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
         np'run_job: git .* rev%-parse %-%-short HEAD',
+        np'run_job: git .* config user.name',
+        n'watch_gitdir: Watching git dir',
         np'run_job: git .* %-%-git%-dir .* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*',
         n'attach(1): User on_attach() returned false',
       }
@@ -436,22 +439,22 @@ describe('gitsigns', function()
 
       it('attaches to newly created files', function()
         setup_gitsigns(config)
+        command('Gitsigns clear_debug')
         edit(newfile)
         match_debug_messages{
           'attach(1): Attaching (trigger=BufNewFile)',
-          np'run_job: git .* config user.name',
           np'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
+          np'run_job: git .* config user.name',
           np'run_job: git .* ls%-files .*',
           n'attach(1): Not a file',
         }
+        command('Gitsigns clear_debug')
         command("write")
 
         local messages = {
           'attach(1): Attaching (trigger=BufWritePost)',
-          np"run_job: git .* config user.name",
           np'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD',
           np'run_job: git .* ls%-files .*',
-          n'watch_gitdir(1): Watching git dir',
           np'run_job: git .* show :0:newfile.txt'
         }
 
@@ -459,7 +462,7 @@ describe('gitsigns', function()
           table.insert(messages, np'run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*')
         end
 
-        local jobs = internal_diff and 8 or 9
+        local jobs = internal_diff and 7 or 8
         table.insert(messages, n("update(1): updates: 1, jobs: "..jobs))
 
         match_debug_messages(messages)

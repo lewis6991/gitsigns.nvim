@@ -412,6 +412,81 @@ M.buf_check = async.wrap(function(bufnr, cb)
   end)
 end, 2)
 
+--- @param bufnr integer
+--- @param old_relpath string
+local function handle_moved(bufnr, old_relpath)
+  local bcache = cache[bufnr]
+  local git_obj = bcache.git_obj
+
+  local new_name = git_obj:has_moved()
+  if new_name then
+    dprintf('File moved to %s', new_name)
+    git_obj.relpath = new_name
+    if not git_obj.orig_relpath then
+      git_obj.orig_relpath = old_relpath
+    end
+  elseif git_obj.orig_relpath then
+    local orig_file = git_obj.repo.toplevel .. util.path_sep .. git_obj.orig_relpath
+    if not git_obj:file_info(orig_file).relpath then
+      return
+    end
+    --- File was moved in the index, but then reset
+    dprintf('Moved file reset')
+    git_obj.relpath = git_obj.orig_relpath
+    git_obj.orig_relpath = nil
+  else
+    -- File removed from index, do nothing
+    return
+  end
+
+  git_obj.file = git_obj.repo.toplevel .. util.path_sep .. git_obj.relpath
+  bcache.file = git_obj.file
+  git_obj:update_file_info()
+  M.buf_check(bufnr)
+
+  local bufexists = util.bufexists(bcache.file)
+  local old_name = api.nvim_buf_get_name(bufnr)
+
+  if not bufexists then
+    local cwd = vim.fn.getcwd() .. util.path_sep
+    local name = bcache.file
+    if vim.startswith(name, cwd) then
+      name = name:sub(cwd:len() + 1)
+    end
+    util.buf_rename(bufnr, name)
+  end
+
+  local msg = bufexists and 'Cannot rename' or 'Renamed'
+  dprintf('%s buffer %d from %s to %s', msg, bufnr, old_name, bcache.file)
+end
+
+--- @param bufnr integer
+M.gitdir_update = debounce_trailing(200, async.void(function(bufnr)
+  local __FUNC__ = 'watcher_handler'
+  M.buf_check(bufnr)
+
+  local git_obj = cache[bufnr].git_obj
+
+  Status:update(bufnr, { head = git_obj.repo.abbrev_head })
+
+  local was_tracked = git_obj.object_name ~= nil
+  local old_relpath = git_obj.relpath
+
+  git_obj:update_file_info()
+  M.buf_check(bufnr)
+
+  if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
+    -- File was tracked but is no longer tracked. Must of been removed or
+    -- moved. Check if it was moved and switch to it.
+    handle_moved(bufnr, old_relpath)
+    M.buf_check(bufnr)
+  end
+
+  cache[bufnr]:invalidate()
+
+  M.update(bufnr)
+end), 1)
+
 local update_cnt = 0
 
 --- Ensure updates cannot be interleaved.
