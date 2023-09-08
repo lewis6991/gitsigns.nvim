@@ -395,8 +395,9 @@ local function update_show_deleted(bufnr)
 end
 
 --- @param bufnr? integer
+--- @param check_compare_text? boolean
 --- @param cb function
-M.buf_check = async.wrap(function(bufnr, cb)
+M.buf_check = async.wrap(function(bufnr, check_compare_text, cb)
   vim.schedule(function()
     if bufnr then
       if not api.nvim_buf_is_valid(bufnr) then
@@ -407,10 +408,14 @@ M.buf_check = async.wrap(function(bufnr, cb)
         dprint('Has detached, aborting')
         return
       end
+      if check_compare_text and not cache[bufnr].compare_text then
+        dprint('compare_text was invalid, aborting')
+        return
+      end
     end
     cb()
   end)
-end, 2)
+end, 3)
 
 local update_cnt = 0
 
@@ -430,7 +435,7 @@ M.update = throttle_by_id(function(bufnr)
 
   if not bcache.compare_text or config._refresh_staged_on_update then
     bcache.compare_text = git_obj:get_show_text(bcache:get_compare_rev())
-    M.buf_check(bufnr)
+    M.buf_check(bufnr, true)
   end
 
   local buftext = util.buf_lines(bufnr)
@@ -442,7 +447,7 @@ M.update = throttle_by_id(function(bufnr)
     if not bcache.compare_text_head or config._refresh_staged_on_update then
       local staged_compare_rev = bcache.commit and string.format('%s^', bcache.commit) or 'HEAD'
       bcache.compare_text_head = git_obj:get_show_text(staged_compare_rev)
-      M.buf_check(bufnr)
+      M.buf_check(bufnr, true)
     end
     local hunks_head = run_diff(bcache.compare_text_head, buftext)
     M.buf_check(bufnr)
