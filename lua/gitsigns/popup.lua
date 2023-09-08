@@ -23,8 +23,10 @@ end
 -- Expand height until all lines are visible to account for wrapped lines.
 --- @param winid integer
 --- @param nlines integer
-local function expand_height(winid, nlines)
+--- @param border string
+local function expand_height(winid, nlines, border)
   local newheight = 0
+  local maxheight = vim.o.lines - vim.o.cmdheight - (border ~= '' and 2 or 0)
   for _ = 0, 50 do
     local winheight = api.nvim_win_get_height(winid)
     if newheight > winheight then
@@ -39,10 +41,23 @@ local function expand_height(winid, nlines)
       break
     end
     newheight = winheight + nlines - wd
+    if newheight > maxheight then
+      api.nvim_win_set_height(winid, maxheight)
+      break
+    end
     api.nvim_win_set_height(winid, newheight)
   end
 end
 
+--- @class Gitsigns.HlMark
+--- @field hl_group string
+--- @field start_row? integer
+--- @field start_col? integer
+--- @field end_row? integer
+--- @field end_col? integer
+
+--- @param hlmarks Gitsigns.HlMark[]
+--- @param row_offset integer
 local function offset_hlmarks(hlmarks, row_offset)
   for _, h in ipairs(hlmarks) do
     if h.start_row then
@@ -54,10 +69,12 @@ local function offset_hlmarks(hlmarks, row_offset)
   end
 end
 
---- @param fmt {[1]: string, [2]: string}[][]
+--- @param fmt {[1]: string, [2]: string|Gitsigns.HlMark[]}[][]
+--- @return string[]
+--- @return Gitsigns.HlMark[]
 local function process_linesspec(fmt)
   local lines = {} --- @type string[]
-  local hls = {}
+  local hls = {} --- @type Gitsigns.HlMark[]
 
   local row = 0
   for _, section in ipairs(fmt) do
@@ -103,6 +120,7 @@ local function process_linesspec(fmt)
   return lines, hls
 end
 
+--- @param id string|true
 local function close_all_but(id)
   for _, winid in ipairs(api.nvim_list_wins()) do
     if vim.w[winid].gitsigns_preview ~= nil and vim.w[winid].gitsigns_preview ~= id then
@@ -111,6 +129,7 @@ local function close_all_but(id)
   end
 end
 
+--- @param id string
 function M.close(id)
   for _, winid in ipairs(api.nvim_list_wins()) do
     if vim.w[winid].gitsigns_preview == id then
@@ -119,7 +138,13 @@ function M.close(id)
   end
 end
 
+--- @param lines string[]
+--- @param opts table
+--- @param id? string|true
+--- @return integer winid, integer bufnr
 function M.create0(lines, opts, id)
+  id = id or true
+
   -- Close any popups not matching id
   close_all_but(id)
 
@@ -142,10 +167,10 @@ function M.create0(lines, opts, id)
 
   local winid = api.nvim_open_win(bufnr, false, opts1)
 
-  vim.w[winid].gitsigns_preview = id or true
+  vim.w[winid].gitsigns_preview = id
 
   if not opts.height then
-    expand_height(winid, #lines)
+    expand_height(winid, #lines, opts.border)
   end
 
   if opts1.style == 'minimal' then
@@ -203,6 +228,10 @@ end
 
 local ns = api.nvim_create_namespace('gitsigns_popup')
 
+--- @param lines_spec {[1]: string, [2]: string|Gitsigns.HlMark[]}[][]
+--- @param opts table
+--- @param id? string
+--- @return integer winid, integer bufnr
 function M.create(lines_spec, opts, id)
   local lines, highlights = process_linesspec(lines_spec)
   local winid, bufnr = M.create0(lines, opts, id)
@@ -222,15 +251,18 @@ function M.create(lines_spec, opts, id)
   return winid, bufnr
 end
 
+--- @param id string
+--- @return integer? winid
 function M.is_open(id)
   for _, winid in ipairs(api.nvim_list_wins()) do
     if vim.w[winid].gitsigns_preview == id then
       return winid
     end
   end
-  return nil
 end
 
+--- @param id string
+--- @return integer? winid
 function M.focus_open(id)
   local winid = M.is_open(id)
   if winid then

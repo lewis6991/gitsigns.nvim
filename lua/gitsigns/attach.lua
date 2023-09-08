@@ -49,7 +49,7 @@ local function parse_fugitive_uri(name)
 end
 
 --- @param name string
---- @return string? buffer
+--- @return string buffer
 --- @return string? commit
 local function parse_gitsigns_uri(name)
   -- TODO(lewis6991): Support submodules
@@ -77,18 +77,20 @@ local function get_buf_path(bufnr)
     if vim.startswith(file, 'fugitive://') then
       local path, commit = parse_fugitive_uri(file)
       dprintf("Fugitive buffer for file '%s' from path '%s'", path, file)
-      path = uv.fs_realpath(path)
       if path then
-        return path, commit
+        local realpath = uv.fs_realpath(path)
+        if realpath then
+          return realpath, commit
+        end
       end
     end
 
     if vim.startswith(file, 'gitsigns://') then
       local path, commit = parse_gitsigns_uri(file)
       dprintf("Gitsigns buffer for file '%s' from path '%s'", path, file)
-      path = uv.fs_realpath(path)
-      if path then
-        return path, commit
+      local realpath = uv.fs_realpath(path)
+      if realpath then
+        return realpath, commit
       end
     end
   end
@@ -105,6 +107,7 @@ local function on_lines(_, bufnr, _, first, last_orig, last_new, byte_count)
   return manager.on_lines(bufnr, first, last_orig, last_new)
 end
 
+--- @param _ 'reload'
 --- @param bufnr integer
 local function on_reload(_, bufnr)
   local __FUNC__ = 'on_reload'
@@ -112,6 +115,7 @@ local function on_reload(_, bufnr)
   manager.update_debounced(bufnr)
 end
 
+--- @param _ 'detach'
 --- @param bufnr integer
 local function on_detach(_, bufnr)
   M.detach(bufnr, true)
@@ -140,6 +144,9 @@ local function on_attach_pre(bufnr)
 end
 
 --- @param _bufnr integer
+--- @param file string
+--- @param encoding string
+--- @return Gitsigns.GitObj?
 local function try_worktrees(_bufnr, file, encoding)
   if not config.worktrees then
     return
@@ -212,12 +219,12 @@ end
 --- @field commit string
 --- @field base string
 
--- Ensure attaches cannot be interleaved.
--- Since attaches are asynchronous we need to make sure an attach isn't
--- performed whilst another one is in progress.
+--- Ensure attaches cannot be interleaved.
+--- Since attaches are asynchronous we need to make sure an attach isn't
+--- performed whilst another one is in progress.
 --- @param cbuf integer
---- @param ctx Gitsigns.GitContext
---- @param aucmd string
+--- @param ctx? Gitsigns.GitContext
+--- @param aucmd? string
 local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   local __FUNC__ = 'attach'
 
@@ -284,7 +291,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   if not git_obj and not ctx then
     git_obj = try_worktrees(cbuf, file, encoding)
-    async.scheduler()
+    async.scheduler_if_buf_valid(cbuf)
   end
 
   if not git_obj then
@@ -293,7 +300,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   end
   local repo = git_obj.repo
 
-  async.scheduler()
+  async.scheduler_if_buf_valid(cbuf)
   Status:update(cbuf, {
     head = repo.abbrev_head,
     root = repo.toplevel,
@@ -322,7 +329,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   -- On windows os.tmpname() crashes in callback threads so initialise this
   -- variable on the main thread.
-  async.scheduler()
+  async.scheduler_if_buf_valid(cbuf)
 
   if config.on_attach and config.on_attach(cbuf) == false then
     dprint('User on_attach() returned false')
@@ -333,9 +340,13 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     base = ctx and ctx.base or config.base,
     file = file,
     commit = commit,
-    gitdir_watcher = manager.watch_gitdir(cbuf, repo.gitdir),
     git_obj = git_obj,
   })
+
+  if config.watch_gitdir.enable then
+    local watcher = require('gitsigns.watcher')
+    cache[cbuf].gitdir_watcher = watcher.watch_gitdir(cbuf, repo.gitdir)
+  end
 
   if not api.nvim_buf_is_loaded(cbuf) then
     dprint('Un-loaded buffer')
@@ -351,7 +362,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   })
 
   -- Initial update
-  manager.update(cbuf, cache[cbuf])
+  manager.update(cbuf)
 end)
 
 --- Detach Gitsigns from all buffers it is attached to.
@@ -364,8 +375,8 @@ end
 --- Detach Gitsigns from the buffer {bufnr}. If {bufnr} is not
 --- provided then the current buffer is used.
 ---
---- Parameters: ~
----     {bufnr}  (number): Buffer number
+--- @param bufnr integer Buffer number
+--- @param _keep_signs? boolean
 function M.detach(bufnr, _keep_signs)
   -- When this is called interactively (with no arguments) we want to remove all
   -- the signs, however if called via a detach event (due to nvim_buf_attach)
@@ -394,23 +405,23 @@ end
 --- Attributes: ~
 ---     {async}
 ---
---- Parameters: ~
----     {bufnr}  (number): Buffer number
----     {ctx}    (table|nil):
----              Git context data that may optionally be used to attach to any
----              buffer that represents a real git object.
----              • {file}: (string)
----                Path to the file represented by the buffer, relative to the
----                top-level.
----              • {toplevel}: (string)
----                Path to the top-level of the parent git repository.
----              • {gitdir}: (string)
----                Path to the git directory of the parent git repository
----                (typically the ".git/" directory).
----              • {commit}: (string)
----                The git revision that the file belongs to.
----              • {base}: (string|nil)
----                The git revision that the file should be compared to.
+--- @param bufnr integer Buffer number
+--- @param ctx Gitsigns.GitContext|nil
+---     Git context data that may optionally be used to attach to any
+---     buffer that represents a real git object.
+---     • {file}: (string)
+---       Path to the file represented by the buffer, relative to the
+---       top-level.
+---     • {toplevel}: (string)
+---       Path to the top-level of the parent git repository.
+---     • {gitdir}: (string)
+---       Path to the git directory of the parent git repository
+---       (typically the ".git/" directory).
+---     • {commit}: (string)
+---       The git revision that the file belongs to.
+---     • {base}: (string|nil)
+---       The git revision that the file should be compared to.
+--- @param _trigger? string
 M.attach = void(function(bufnr, ctx, _trigger)
   attach_throttled(bufnr or api.nvim_get_current_buf(), ctx, _trigger)
 end)

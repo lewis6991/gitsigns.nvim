@@ -1,18 +1,9 @@
-local warn
-do
-  -- this is included in gen_help.lua so don't error if requires fail
-  local ok, ret = pcall(require, 'gitsigns.message')
-  if ok then
-    warn = ret.warn
-  end
-end
-
 --- @class Gitsigns.SchemaElem
 --- @field type string|string[]
---- @field deep_extend boolean
+--- @field deep_extend? boolean
 --- @field default any
---- @field deprecated boolean|{new_field:string,message:string,hard:boolean}
---- @field default_help string
+--- @field deprecated? boolean|{new_field:string,message:string,hard:boolean}
+--- @field default_help? string
 --- @field description string
 
 --- @class Gitsigns.DiffOpts
@@ -50,7 +41,7 @@ end
 --- @class Gitsigns.Config
 --- @field debug_mode boolean
 --- @field diff_opts Gitsigns.DiffOpts
---- @field base string
+--- @field base? string
 --- @field signs table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field _signs_staged table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field _signs_staged_enable boolean
@@ -99,8 +90,28 @@ local M = {
   },
 }
 
+--- @param v Gitsigns.SchemaElem
+--- @return any
+local function resolve_default(v)
+  if type(v.default) == 'function' and v.type ~= 'function' then
+    return v.default()
+  else
+    return v.default
+  end
+end
+
 --- @type Gitsigns.Config
-M.config = {}
+M.config = setmetatable({}, {
+  __index = function(t, k)
+    if rawget(t, k) == nil then
+      local field = M.schema[k]
+      if field then
+        rawset(t, k, resolve_default(field))
+      end
+    end
+    return rawget(t, k)
+  end
+})
 
 --- @type table<string,Gitsigns.SchemaElem>
 M.schema = {
@@ -375,7 +386,8 @@ M.schema = {
         vertical = true,
         linematch = nil,
       }
-      for _, o in ipairs(vim.opt.diffopt:get()) do
+      local diffopt = vim.opt.diffopt:get() --[[@as string[] ]]
+      for _, o in ipairs(diffopt) do
         if o == 'indent-heuristic' then
           r.indent_heuristic = true
         elseif o == 'internal' then
@@ -454,6 +466,8 @@ M.schema = {
 
   status_formatter = {
     type = 'function',
+    --- @param status Gitsigns.StatusObj
+    --- @return string
     default = function(status)
       local added, changed, removed = status.added, status.changed, status.removed
       local status_txt = {}
@@ -707,6 +721,7 @@ M.schema = {
   },
 
   _test_mode = {
+    description = "Enable test mode",
     type = 'boolean',
     default = false,
   },
@@ -786,7 +801,7 @@ M.schema = {
   },
 }
 
-warn = function(s, ...)
+local function warn(s, ...)
   vim.notify(s:format(...), vim.log.levels.WARN, { title = 'gitsigns' })
 end
 
@@ -807,16 +822,7 @@ local function validate_config(config)
   end
 end
 
---- @param v Gitsigns.SchemaElem
---- @return any
-local function resolve_default(v)
-  if type(v.default) == 'function' and v.type ~= 'function' then
-    return (v.default)()
-  else
-    return v.default
-  end
-end
-
+--- @param cfg table<any, any>
 local function handle_deprecated(cfg)
   for k, v in pairs(M.schema) do
     local dep = v.deprecated
@@ -826,7 +832,7 @@ local function handle_deprecated(cfg)
           local opts_key, field = dep.new_field:match('(.*)%.(.*)')
           if opts_key and field then
             -- Field moved to an options table
-            local opts = (cfg[opts_key] or {})
+            local opts = (cfg[opts_key] or {}) --[[@as table<any,any>]]
             opts[field] = cfg[k]
             cfg[opts_key] = opts
           else
@@ -866,8 +872,6 @@ function M.build(user_config)
       else
         config[k] = user_config[k]
       end
-    else
-      config[k] = resolve_default(v)
     end
   end
 end

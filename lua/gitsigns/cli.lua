@@ -11,6 +11,7 @@ local actions = require('gitsigns.actions')
 local attach = require('gitsigns.attach')
 local gs_debug = require('gitsigns.debug')
 
+--- @type table<table<string,function>,boolean>
 local sources = {
   [actions] = true,
   [attach] = false,
@@ -68,6 +69,8 @@ local function print_nonnil(x)
   end
 end
 
+local select = async.wrap(vim.ui.select, 3)
+
 M.run = void(function(params)
   local __FUNC__ = 'cli.run'
   local pos_args_raw, named_args_raw = parse_args(params.args)
@@ -75,7 +78,7 @@ M.run = void(function(params)
   local func = pos_args_raw[1]
 
   if not func then
-    func = async.wrap(vim.ui.select, 3)(M.complete('', 'Gitsigns '), {})
+    func = select(M.complete('', 'Gitsigns '), {}) --[[@as string]]
   end
 
   local pos_args = vim.tbl_map(parse_to_lua, vim.list_slice(pos_args_raw, 2))
@@ -97,7 +100,7 @@ M.run = void(function(params)
   end
 
   for m, has_named in pairs(sources) do
-    local f = (m)[func]
+    local f = m[func]
     if type(f) == 'function' then
       -- Note functions here do not have named arguments
       print_nonnil(f(unpack(pos_args), has_named and named_args or nil))

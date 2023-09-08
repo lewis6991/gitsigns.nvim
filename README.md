@@ -266,23 +266,6 @@ As of 2022-09-01
 When viewing revisions of a file (via `:0Gclog` for example), Gitsigns will attach to the fugitive buffer with the base set to the commit immediately before the commit of that revision.
 This means the signs placed in the buffer reflect the changes introduced by that revision of the file.
 
-### [null-ls]
-
-Null-ls can provide code actions from Gitsigns. To setup:
-
-```lua
-local null_ls = require('null-ls')
-
-null_ls.setup {
-  sources = {
-    null_ls.builtins.code_actions.gitsigns,
-    ...
-  }
-}
-```
-
-Will enable `:lua vim.lsp.buf.code_action()` to retrieve code actions from Gitsigns.
-
 ### [trouble.nvim]
 
 If installed and enabled (via `config.trouble`; defaults to true if installed), `:Gitsigns setqflist` or `:Gitsigns seqloclist` will open Trouble instead of Neovim's built-in quickfix or location list windows.
@@ -301,7 +284,6 @@ If you are using lspsaga.nvim you can config `code_action.extend_gitsigns` (defa
 [coc-git]: https://github.com/neoclide/coc-git
 [diff-linematch]: https://github.com/neovim/neovim/pull/14537
 [luv]: https://github.com/luvit/luv/blob/master/docs.md
-[null-ls]: https://github.com/jose-elias-alvarez/null-ls.nvim
 [nvim-lua-guide]: https://github.com/nanotee/nvim-lua-guide
 [release]: https://github.com/lewis6991/gitsigns.nvim/releases
 [trouble.nvim]: https://github.com/folke/trouble.nvim

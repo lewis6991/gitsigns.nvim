@@ -1,6 +1,4 @@
-local void = require('gitsigns.async').void
-local awrap = require('gitsigns.async').wrap
-local scheduler = require('gitsigns.async').scheduler
+local async = require('gitsigns.async')
 
 local gs_cache = require('gitsigns.cache')
 local cache = gs_cache.cache
@@ -14,12 +12,10 @@ local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 local log = require('gitsigns.debug.log')
 local dprint = log.dprint
 local dprintf = log.dprintf
-local eprint = log.eprint
 
 local subprocess = require('gitsigns.subprocess')
 local util = require('gitsigns.util')
 local run_diff = require('gitsigns.diff')
-local uv = vim.loop
 
 local gs_hunks = require('gitsigns.hunks')
 
@@ -31,14 +27,6 @@ local signs_normal --- @type Gitsigns.Signs
 local signs_staged --- @type Gitsigns.Signs
 
 local M = {}
-
-local scheduler_if_buf_valid = awrap(function(buf, cb)
-  vim.schedule(function()
-    if vim.api.nvim_buf_is_valid(buf) then
-      cb()
-    end
-  end)
-end, 2)
 
 --- @param bufnr integer
 --- @param signs Gitsigns.Signs
@@ -74,12 +62,13 @@ end
 --- @param top integer
 --- @param bot integer
 --- @param clear boolean
---- @param untracked boolean
-local function apply_win_signs(bufnr, top, bot, clear, untracked)
+local function apply_win_signs(bufnr, top, bot, clear)
   local bcache = cache[bufnr]
   if not bcache then
     return
   end
+
+  local untracked = bcache.git_obj.object_name == nil
   apply_win_signs0(bufnr, signs_normal, bcache.hunks, top, bot, clear, untracked)
   if signs_staged then
     apply_win_signs0(bufnr, signs_staged, bcache.hunks_staged, top, bot, clear, false)
@@ -117,7 +106,7 @@ function M.on_lines(buf, first, last_orig, last_new)
     end
   end
 
-  M.update_debounced(buf, cache[buf])
+  M.update_debounced(buf)
 end
 
 local ns = api.nvim_create_namespace('gitsigns')
@@ -263,8 +252,9 @@ end
 --- @return string str
 --- @return {group:string, start:integer}[]? highlights
 local function build_lno_str(win, lnum, width)
-  local has_col, statuscol = pcall(api.nvim_get_option_value, 'statuscolumn', {win = win, scope = "local"})
-  if has_col and statuscol and statuscol ~= ""  then
+  local has_col, statuscol =
+    pcall(api.nvim_get_option_value, 'statuscolumn', { win = win, scope = 'local' })
+  if has_col and statuscol and statuscol ~= '' then
     local ok, data = pcall(api.nvim_eval_statusline, statuscol, {
       winid = win,
       use_statuscol_lnum = lnum,
@@ -274,7 +264,7 @@ local function build_lno_str(win, lnum, width)
       return data.str, data.highlights
     end
   end
-  return string.format('%'..width..'d', lnum)
+  return string.format('%' .. width .. 'd', lnum)
 end
 
 --- @param bufnr integer
@@ -286,7 +276,7 @@ function M.show_deleted_in_float(bufnr, nsd, hunk)
   local virt_lines = {} --- @type {[1]: string, [2]: string}[][]
   local textoff = vim.fn.getwininfo(cwin)[1].textoff --[[@as integer]]
   for i = 1, hunk.removed.count do
-    local sc  = build_lno_str(cwin, hunk.removed.start + i, textoff - 1)
+    local sc = build_lno_str(cwin, hunk.removed.start + i, textoff - 1)
     virt_lines[i] = { { sc, 'LineNr' } }
   end
 
@@ -316,7 +306,7 @@ function M.show_deleted_in_float(bufnr, nsd, hunk)
     height = hunk.removed.count,
     anchor = 'SW',
     bufpos = { hunk.added.start - bufpos_offset, 0 },
-    style = 'minimal'
+    style = 'minimal',
   })
 
   vim.bo[pbufnr].filetype = vim.bo[bufnr].filetype
@@ -404,6 +394,24 @@ local function update_show_deleted(bufnr)
   end
 end
 
+--- @param bufnr? integer
+--- @param cb function
+M.buf_check = async.wrap(function(bufnr, cb)
+  vim.schedule(function()
+    if bufnr then
+      if not api.nvim_buf_is_valid(bufnr) then
+        dprint('Buffer not valid, aborting')
+        return
+      end
+      if not cache[bufnr] then
+        dprint('Has detached, aborting')
+        return
+      end
+    end
+    cb()
+  end)
+end, 2)
+
 local update_cnt = 0
 
 --- Ensure updates cannot be interleaved.
@@ -411,36 +419,35 @@ local update_cnt = 0
 --- whilst another one is in progress. If this happens then schedule another
 --- update after the current one has completed.
 --- @param bufnr integer
---- @param bcache? Gitsigns.CacheEntry
-M.update = throttle_by_id(function(bufnr, bcache)
+M.update = throttle_by_id(function(bufnr)
   local __FUNC__ = 'update'
-  bcache = bcache or cache[bufnr]
-  if not bcache then
-    eprint('Cache for buffer ' .. bufnr .. ' was nil')
-    return
-  end
+  M.buf_check(bufnr)
+  local bcache = cache[bufnr]
   local old_hunks, old_hunks_staged = bcache.hunks, bcache.hunks_staged
   bcache.hunks, bcache.hunks_staged = nil, nil
 
-  scheduler_if_buf_valid(bufnr)
-  local buftext = util.buf_lines(bufnr)
   local git_obj = bcache.git_obj
 
   if not bcache.compare_text or config._refresh_staged_on_update then
     bcache.compare_text = git_obj:get_show_text(bcache:get_compare_rev())
+    M.buf_check(bufnr)
   end
 
+  local buftext = util.buf_lines(bufnr)
+
   bcache.hunks = run_diff(bcache.compare_text, buftext)
+  M.buf_check(bufnr)
 
   if config._signs_staged_enable then
     if not bcache.compare_text_head or config._refresh_staged_on_update then
-      bcache.compare_text_head = git_obj:get_show_text(bcache:get_staged_compare_rev())
+      local staged_compare_rev = bcache.commit and string.format('%s^', bcache.commit) or 'HEAD'
+      bcache.compare_text_head = git_obj:get_show_text(staged_compare_rev)
+      M.buf_check(bufnr)
     end
     local hunks_head = run_diff(bcache.compare_text_head, buftext)
+    M.buf_check(bufnr)
     bcache.hunks_staged = gs_hunks.filter_common(hunks_head, bcache.hunks)
   end
-
-  scheduler_if_buf_valid(bufnr)
 
   -- Note the decoration provider may have invalidated bcache.hunks at this
   -- point
@@ -451,7 +458,7 @@ M.update = throttle_by_id(function(bufnr, bcache)
   then
     -- Apply signs to the window. Other signs will be added by the decoration
     -- provider as they are drawn.
-    apply_win_signs(bufnr, vim.fn.line('w0'), vim.fn.line('w$'), true, git_obj.object_name == nil)
+    apply_win_signs(bufnr, vim.fn.line('w0'), vim.fn.line('w$'), true)
 
     update_show_deleted(bufnr)
     bcache.force_next_update = false
@@ -483,131 +490,6 @@ function M.detach(bufnr, keep_signs)
   end
 end
 
---- @param bufnr integer
---- @param bcache Gitsigns.CacheEntry
---- @param old_relpath string
-local function handle_moved(bufnr, bcache, old_relpath)
-  local git_obj = bcache.git_obj
-  local do_update = false
-
-  local new_name = git_obj:has_moved()
-  if new_name then
-    dprintf('File moved to %s', new_name)
-    git_obj.relpath = new_name
-    if not git_obj.orig_relpath then
-      git_obj.orig_relpath = old_relpath
-    end
-    do_update = true
-  elseif git_obj.orig_relpath then
-    local orig_file = git_obj.repo.toplevel .. util.path_sep .. git_obj.orig_relpath
-    if git_obj:file_info(orig_file).relpath then
-      dprintf('Moved file reset')
-      git_obj.relpath = git_obj.orig_relpath
-      git_obj.orig_relpath = nil
-      do_update = true
-    end
-  -- else
-    -- File removed from index, do nothing
-  end
-
-  if do_update then
-    git_obj.file = git_obj.repo.toplevel .. util.path_sep .. git_obj.relpath
-    bcache.file = git_obj.file
-    git_obj:update_file_info()
-    scheduler()
-
-    local bufexists = util.bufexists(bcache.file)
-    local old_name = api.nvim_buf_get_name(bufnr)
-
-    if not bufexists then
-      util.buf_rename(bufnr, bcache.file)
-    end
-
-    local msg = bufexists and 'Cannot rename' or 'Renamed'
-    dprintf('%s buffer %d from %s to %s', msg, bufnr, old_name, bcache.file)
-  end
-end
-
--- vim.inspect but on one line
---- @param x any
---- @return string
-local function inspect(x)
-  return vim.inspect(x, {indent = '', newline = ' '})
-end
-
-local watch_gitdir_handler = void(function(bufnr)
-  local bcache = cache[bufnr]
-
-  if not bcache then
-    -- Very occasionally an external git operation may cause the buffer to
-    -- detach and update the git dir simultaneously. When this happens this
-    -- handler will trigger but there will be no cache.
-    dprint('Has detached, aborting')
-    return
-  end
-
-  local git_obj = bcache.git_obj
-
-  git_obj.repo:update_abbrev_head()
-
-  scheduler()
-  Status:update(bufnr, { head = git_obj.repo.abbrev_head })
-
-  local was_tracked = git_obj.object_name ~= nil
-  local old_relpath = git_obj.relpath
-
-  git_obj:update_file_info()
-
-  if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
-    -- File was tracked but is no longer tracked. Must of been removed or
-    -- moved. Check if it was moved and switch to it.
-    handle_moved(bufnr, bcache, old_relpath)
-  end
-
-  bcache:invalidate()
-
-  M.update(bufnr, bcache)
-end)
-
---- @param bufnr integer
---- @param gitdir string
---- @return uv_fs_event_t?
-function M.watch_gitdir(bufnr, gitdir)
-  if not config.watch_gitdir.enable then
-    return
-  end
-
-  -- Setup debounce as we create the luv object so the debounce is independent
-  -- to each watcher
-  local watch_gitdir_handler_db = debounce_trailing(100, watch_gitdir_handler)
-
-  dprintf('Watching git dir')
-  local w = assert(uv.new_fs_event())
-  w:start(
-    gitdir,
-    {},
-    function(err, filename, events)
-      local __FUNC__ = 'watcher_cb'
-      if err then
-        dprintf('Git dir update error: %s', err)
-        return
-      end
-
-      local info = string.format("Git dir update: '%s' %s", filename, inspect(events))
-
-      if vim.endswith(filename, '.lock') then
-        dprintf("%s (ignoring)", info)
-        return
-      end
-
-      dprint(info)
-
-      watch_gitdir_handler_db(bufnr)
-    end
-  )
-  return w
-end
-
 function M.reset_signs()
   -- Remove all signs
   if signs_normal then
@@ -631,9 +513,7 @@ local function on_win(_cb, _winid, bufnr, topline, botline_guess)
   end
   local botline = math.min(botline_guess, api.nvim_buf_line_count(bufnr))
 
-  local untracked = bcache.git_obj.object_name == nil
-
-  apply_win_signs(bufnr, topline + 1, botline + 1, false, untracked)
+  apply_win_signs(bufnr, topline + 1, botline + 1, false)
 
   if not (config.word_diff and config.diff_opts.internal) then
     return false
@@ -661,7 +541,7 @@ function M.setup()
     signs_staged = Signs.new(config._signs_staged, 'staged')
   end
 
-  M.update_debounced = debounce_trailing(config.update_debounce, void(M.update))
+  M.update_debounced = debounce_trailing(config.update_debounce, async.void(M.update))
 end
 
 return M

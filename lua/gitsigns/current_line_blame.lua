@@ -1,8 +1,4 @@
-local a = require('gitsigns.async')
-local wrap = a.wrap
-local void = a.void
-local scheduler = a.scheduler
-
+local async = require('gitsigns.async')
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local util = require('gitsigns.util')
@@ -18,7 +14,7 @@ local timer = assert(uv.new_timer())
 
 local M = {}
 
-local wait_timer = wrap(uv.timer_start, 4)
+local wait_timer = async.wrap(uv.timer_start, 4)
 
 --- @param bufnr integer
 --- @param row integer
@@ -116,10 +112,81 @@ local function flatten_virt_text(virt_text)
   return table.concat(res)
 end
 
+local running = false
+
+--- @param bufnr integer
+--- @param lnum integer
+--- @param opts Gitsigns.CurrentLineBlameOpts
+--- @return Gitsigns.BlameInfo?
+local function run_blame(bufnr, lnum, opts)
+  local result = BlameCache:get(bufnr, lnum)
+  if result then
+    return result
+  end
+
+  if running then
+    return
+  end
+
+  running = true
+  local buftext = util.buf_lines(bufnr)
+  local bcache = cache[bufnr]
+  result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
+  BlameCache:add(bufnr, lnum, result)
+  running = false
+
+  return result
+end
+
+--- @param bufnr integer
+--- @param lnum integer
+--- @param blame_info Gitsigns.BlameInfo
+--- @param opts Gitsigns.CurrentLineBlameOpts
+local function handle_blame_info(bufnr, lnum, blame_info, opts)
+  local bcache = cache[bufnr]
+  if not bcache then
+    return
+  end
+  local virt_text ---@type {[1]: string, [2]: string}[]
+  local clb_formatter = blame_info.author == 'Not Committed Yet'
+      and config.current_line_blame_formatter_nc
+    or config.current_line_blame_formatter
+  if type(clb_formatter) == 'string' then
+    virt_text = {
+      {
+        expand_blame_format(clb_formatter, bcache.git_obj.repo.username, blame_info),
+        'GitSignsCurrentLineBlame',
+      },
+    }
+  else -- function
+    virt_text = clb_formatter(
+      bcache.git_obj.repo.username,
+      blame_info,
+      config.current_line_blame_formatter_opts
+    )
+  end
+
+  vim.b[bufnr].gitsigns_blame_line = flatten_virt_text(virt_text)
+
+  if opts.virt_text then
+    set_extmark(bufnr, lnum, {
+      virt_text = virt_text,
+      virt_text_pos = opts.virt_text_pos,
+      priority = opts.virt_text_priority,
+      hl_mode = 'combine',
+    })
+  end
+end
+
+--- @return integer lnum
+local function get_lnum()
+  return api.nvim_win_get_cursor(0)[1]
+end
+
 -- Update function, must be called in async context
-local update = void(function()
+local function update0()
   local bufnr = current_buf()
-  local lnum = api.nvim_win_get_cursor(0)[1]
+  local lnum = get_lnum()
 
   local old_lnum = get_extmark(bufnr)
   if old_lnum and lnum == old_lnum and BlameCache:get(bufnr, lnum) then
@@ -150,66 +217,32 @@ local update = void(function()
 
   -- Note because the same timer is re-used, this call has a debouncing effect.
   wait_timer(timer, opts.delay, 0)
-  scheduler()
+  async.scheduler()
 
   local bcache = cache[bufnr]
   if not bcache or not bcache.git_obj.object_name then
     return
   end
 
-  local result = BlameCache:get(bufnr, lnum)
-  if not result then
-    local buftext = util.buf_lines(bufnr)
-    result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
-    BlameCache:add(bufnr, lnum, result)
-    scheduler()
-  end
+  local blame_info = run_blame(bufnr, lnum, opts)
+  async.scheduler_if_buf_valid(bufnr)
 
-  local lnum1 = api.nvim_win_get_cursor(0)[1]
+  local lnum1 = get_lnum()
   if bufnr == current_buf() and lnum ~= lnum1 then
-    -- Cursor has moved during events; abort
+    -- Cursor has moved during events; abort and tr-trigger another update
+    -- since it's likely blame jobs where skipped
+    update0()
     return
   end
 
-  if not api.nvim_buf_is_loaded(bufnr) then
-    -- Buffer is no longer loaded; abort
-    return
+  vim.b[bufnr].gitsigns_blame_line_dict = blame_info
+
+  if blame_info then
+    handle_blame_info(bufnr, lnum, blame_info, opts)
   end
+end
 
-  vim.b[bufnr].gitsigns_blame_line_dict = result
-
-  if result then
-    local virt_text ---@type {[1]: string, [2]: string}[]
-    local clb_formatter = result.author == 'Not Committed Yet'
-        and config.current_line_blame_formatter_nc
-      or config.current_line_blame_formatter
-    if type(clb_formatter) == 'string' then
-      virt_text = {
-        {
-          expand_blame_format(clb_formatter, bcache.git_obj.repo.username, result),
-          'GitSignsCurrentLineBlame',
-        },
-      }
-    else -- function
-      virt_text = clb_formatter(
-        bcache.git_obj.repo.username,
-        result,
-        config.current_line_blame_formatter_opts
-      )
-    end
-
-    vim.b[bufnr].gitsigns_blame_line = flatten_virt_text(virt_text)
-
-    if opts.virt_text then
-      set_extmark(bufnr, lnum, {
-        virt_text = virt_text,
-        virt_text_pos = opts.virt_text_pos,
-        priority = opts.virt_text_priority,
-        hl_mode = 'combine',
-      })
-    end
-  end
-end)
+local update = async.void(update0)
 
 function M.setup()
   local group = api.nvim_create_augroup('gitsigns_blame', {})
@@ -221,9 +254,7 @@ function M.setup()
   if config.current_line_blame then
     api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' }, {
       group = group,
-      callback = function()
-        update()
-      end,
+      callback = update,
     })
 
     api.nvim_create_autocmd({ 'InsertEnter', 'FocusLost', 'BufLeave' }, {

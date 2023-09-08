@@ -69,7 +69,8 @@ local function parse_version(version)
   if parts[3] == 'GIT' then
     ret.patch = 0
   else
-    ret.patch = assert(tonumber(parts[3]))
+    local patch_ver = vim.split(parts[3], '-')
+    ret.patch = assert(tonumber(patch_ver[1]))
   end
 
   return ret
@@ -107,7 +108,7 @@ function M._set_version(version)
     args = { '--version' },
   })
 
-  local line = vim.split(stdout or '', '\n', {plain=true})[1]
+  local line = vim.split(stdout or '', '\n', { plain = true })[1]
   if not line then
     err("Unable to detect git version as 'git --version' failed to return anything")
     eprint(stderr)
@@ -119,8 +120,16 @@ function M._set_version(version)
   M.version = parse_version(parts[3])
 end
 
+--- @class Gitsigns.Git.JobSpec
+--- @field command? string
+--- @field cwd? string
+--- @field writer? string[] | string
+--- @field suppress_stderr? boolean
+--- @field raw? boolean Do not strip trailing newlines from stdout
+--- @field args? string[]
+
 --- @param args string[]
---- @param spec? Gitsigns.JobSpec
+--- @param spec? Gitsigns.Git.JobSpec
 --- @return string[] stdout, string? stderr
 local git_command = async.create(function(args, spec)
   if not M.version then
@@ -152,12 +161,14 @@ local git_command = async.create(function(args, spec)
     end
   end
 
-  local stdout_lines = vim.split(stdout or '', '\n', {plain=true})
+  local stdout_lines = vim.split(stdout or '', '\n', { plain = true })
 
-  -- If stdout ends with a newline, then remove the final empty string after
-  -- the split
-  if stdout_lines[#stdout_lines] == '' then
-    stdout_lines[#stdout_lines] = nil
+  if not spec.raw then
+    -- If stdout ends with a newline, then remove the final empty string after
+    -- the split
+    if stdout_lines[#stdout_lines] == '' then
+      stdout_lines[#stdout_lines] = nil
+    end
   end
 
   if log.verbose then
@@ -285,17 +296,19 @@ function M.get_repo_info(path, cmd, gitdir, toplevel)
     cwd = toplevel or path,
   })
 
-  --- @type Gitsigns.RepoInfo
-  local ret = {
-    toplevel = normalize_path(results[1]),
-    gitdir = normalize_path(results[2]),
-  }
-  ret.abbrev_head = process_abbrev_head(ret.gitdir, results[3], path, cmd)
-  if ret.gitdir and not has_abs_gd then
-    ret.gitdir = assert(uv.fs_realpath(ret.gitdir))
+  local toplevel_r = normalize_path(results[1])
+  local gitdir_r = normalize_path(results[2])
+
+  if gitdir_r and not has_abs_gd then
+    gitdir_r = assert(uv.fs_realpath(gitdir_r))
   end
-  ret.detached = ret.toplevel and ret.gitdir ~= ret.toplevel .. '/.git'
-  return ret
+
+  return {
+    toplevel = toplevel_r,
+    gitdir = gitdir_r,
+    abbrev_head = process_abbrev_head(gitdir_r, results[3], path, cmd),
+    detached = toplevel_r and gitdir_r ~= toplevel_r .. '/.git'
+  }
 end
 
 --------------------------------------------------------------------------------
@@ -304,7 +317,7 @@ end
 
 --- Run git command the with the objects gitdir and toplevel
 --- @param args string[]
---- @param spec? Gitsigns.JobSpec
+--- @param spec? Gitsigns.Git.JobSpec
 --- @return string[] stdout, string? stderr
 function Repo:command(args, spec)
   spec = spec or {}
@@ -387,7 +400,7 @@ end
 --- @param encoding? string
 --- @return string[] stdout, string? stderr
 function Repo:get_show_text(object, encoding)
-  local stdout, stderr = self:command({ 'show', object }, { suppress_stderr = true })
+  local stdout, stderr = self:command({ 'show', object }, { raw = true, suppress_stderr = true })
 
   if encoding and encoding ~= 'utf-8' and iconv_supported(encoding) then
     stdout[1] = strip_bom(stdout[1], encoding)
@@ -413,7 +426,9 @@ function Repo.new(dir, gitdir, toplevel)
 
   self.username = git_command({ 'config', 'user.name' })[1]
   local info = M.get_repo_info(dir, nil, gitdir, toplevel)
-  for k, v in pairs(info --[[@as table<string,any>]]) do
+  for k, v in
+    pairs(info --[[@as table<string,any>]])
+  do
     ---@diagnostic disable-next-line:no-unknown
     (self)[k] = v
   end
@@ -426,7 +441,9 @@ function Repo.new(dir, gitdir, toplevel)
     then
       M.get_repo_info(dir, 'yadm', gitdir, toplevel)
       local yadm_info = M.get_repo_info(dir, 'yadm', gitdir, toplevel)
-      for k, v in pairs(yadm_info --[[@as table<string,any>]]) do
+      for k, v in
+        pairs(yadm_info --[[@as table<string,any>]])
+      do
         ---@diagnostic disable-next-line:no-unknown
         (self)[k] = v
       end
@@ -442,7 +459,7 @@ end
 
 --- Run git command the with the objects gitdir and toplevel
 --- @param args string[]
---- @param spec? Gitsigns.JobSpec
+--- @param spec? Gitsigns.Git.JobSpec
 --- @return string[] stdout, string? stderr
 function Obj:command(args, spec)
   return self.repo:command(args, spec)
@@ -532,7 +549,8 @@ function Obj:get_show_text(revision)
 
   if not self.i_crlf and self.w_crlf then
     -- Add cr
-    for i = 1, #stdout do
+    -- Do not add cr to the newline at the end of file
+    for i = 1, #stdout - 1 do
       stdout[i] = stdout[i] .. '\r'
     end
   end
@@ -564,6 +582,13 @@ end
 --- @field previous_filename string
 --- @field previous_sha string
 --- @field filename string
+---
+--- Custom fields
+--- @field body? string[]
+--- @field hunk_no? integer
+--- @field num_hunks? integer
+--- @field hunk? string[]
+--- @field hunk_head? string
 
 --- @param lines string[]
 --- @param lnum integer
@@ -609,6 +634,7 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
   end
   local header = vim.split(table.remove(results, 1), ' ')
 
+  --- @diagnostic disable-next-line:missing-fields
   local ret = {} --- @type Gitsigns.BlameInfo
   ret.sha = header[1]
   ret.orig_lnum = tonumber(header[2]) --[[@as integer]]
@@ -632,7 +658,7 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
   -- The output given by "git blame" that attributes a line to contents
   -- taken from the file specified by the "--contents" option shows it
   -- differently from a line attributed to the working tree file.
-  if ret.author_mail == '<external.file>' then
+  if ret.author_mail == '<external.file>' or ret.author_mail == 'External file (--contents)' then
     ret = vim.tbl_extend('force', ret, not_committed)
   end
 
@@ -678,7 +704,7 @@ function Obj:stage_lines(lines)
   })
 end
 
---- @param hunks Gitsigns.Hunk.Hunk
+--- @param hunks Gitsigns.Hunk.Hunk[]
 --- @param invert? boolean
 function Obj.stage_hunks(self, hunks, invert)
   ensure_file_in_index(self)

@@ -13,7 +13,7 @@ local uv = vim.loop
 
 local M = {}
 
-local cwd_watcher ---@type uv_fs_event_t?
+local cwd_watcher ---@type uv.uv_fs_event_t?
 
 local update_cwd_head = void(function()
   local paths = vim.fs.find('.git', {
@@ -72,11 +72,14 @@ local update_cwd_head = void(function()
 
   local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 
-  local update_head = debounce_trailing(100, void(function()
-    local new_head = git.get_repo_info(cwd).abbrev_head
-    scheduler()
-    vim.g.gitsigns_head = new_head
-  end))
+  local update_head = debounce_trailing(
+    100,
+    void(function()
+      local new_head = git.get_repo_info(cwd).abbrev_head
+      scheduler()
+      vim.g.gitsigns_head = new_head
+    end)
+  )
 
   -- Watch .git/HEAD to detect branch changes
   cwd_watcher:start(
@@ -144,9 +147,8 @@ end
 --- Attributes: ~
 ---     {async}
 ---
---- Parameters: ~
----     {cfg} Table object containing configuration for
----     Gitsigns. See |gitsigns-usage| for more details.
+--- @param cfg table Configuration for Gitsigns.
+---     See |gitsigns-usage| for more details.
 M.setup = void(function(cfg)
   gs_config.build(cfg)
 

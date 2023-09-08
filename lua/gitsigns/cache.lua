@@ -1,7 +1,7 @@
 local config = require('gitsigns.config').config
 
 local M = {
-  CacheEntry = {}
+  CacheEntry = {},
 }
 
 -- Timer object watching the gitdir
@@ -17,7 +17,7 @@ local M = {
 --- @field hunks_staged?      Gitsigns.Hunk.Hunk[]
 ---
 --- @field staged_diffs       Gitsigns.Hunk.Hunk[]
---- @field gitdir_watcher?    uv_fs_event_t
+--- @field gitdir_watcher?    uv.uv_fs_event_t
 --- @field git_obj            Gitsigns.GitObj
 --- @field commit?            string
 local CacheEntry = M.CacheEntry
@@ -39,10 +39,6 @@ function CacheEntry:get_compare_rev(base)
 
   local stage = self.git_obj.has_conflicts and 1 or 0
   return string.format(':%d', stage)
-end
-
-function CacheEntry:get_staged_compare_rev()
-  return self.commit and string.format('%s^', self.commit) or 'HEAD'
 end
 
 function CacheEntry:get_rev_bufname(rev)

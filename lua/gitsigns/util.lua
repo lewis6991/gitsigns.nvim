@@ -41,11 +41,17 @@ M.path_sep = package.config:sub(1, 1)
 function M.buf_lines(bufnr)
   -- nvim_buf_get_lines strips carriage returns if fileformat==dos
   local buftext = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
   if vim.bo[bufnr].fileformat == 'dos' then
     for i = 1, #buftext do
       buftext[i] = buftext[i] .. '\r'
     end
   end
+
+  if vim.bo[bufnr].endofline then
+    buftext[#buftext + 1] = ''
+  end
+
   return buftext
 end
 
@@ -72,9 +78,11 @@ end
 --- @param lines string[]
 function M.set_lines(bufnr, start_row, end_row, lines)
   if vim.bo[bufnr].fileformat == 'dos' then
-    for i = 1, #lines do
-      lines[i] = lines[i]:gsub('\r$', '')
-    end
+    lines = M.strip_cr(lines)
+  end
+  if start_row == 0 and end_row == -1 and lines[#lines] == '' then
+    lines = vim.deepcopy(lines)
+    lines[#lines] = nil
   end
   vim.api.nvim_buf_set_lines(bufnr, start_row, end_row, false, lines)
 end
@@ -85,6 +93,19 @@ function M.tmpname()
     return os.tmpname()
   end
   return vim.fn.tempname()
+end
+
+--- @param time number
+--- @param divisor integer
+--- @param time_word string
+--- @return string
+local function to_relative_string(time, divisor, time_word)
+  local num = math.floor(time / divisor)
+  if num > 1 then
+    time_word = time_word .. 's'
+  end
+
+  return num .. ' ' .. time_word .. ' ago'
 end
 
 --- @param timestamp number
@@ -102,15 +123,6 @@ function M.get_relative_time(timestamp)
   local day_seconds = hour_seconds * 24
   local month_seconds = day_seconds * 30
   local year_seconds = month_seconds * 12
-
-  local to_relative_string = function(time, divisor, time_word)
-    local num = math.floor(time / divisor)
-    if num > 1 then
-      time_word = time_word .. 's'
-    end
-
-    return num .. ' ' .. time_word .. ' ago'
-  end
 
   if elapsed < minute_seconds then
     return to_relative_string(elapsed, 1, 'second')
@@ -132,7 +144,9 @@ end
 --- @return T[]
 function M.copy_array(x)
   local r = {}
+  --- @diagnostic disable-next-line:no-unknown
   for i, e in ipairs(x) do
+    --- @diagnostic disable-next-line:no-unknown
     r[i] = e
   end
   return r
@@ -156,6 +170,8 @@ function M.strip_cr(xs0)
   return xs
 end
 
+--- @param base? string
+--- @return string?
 function M.calc_base(base)
   if base and base:sub(1, 1):match('[~\\^]') then
     base = 'HEAD' .. base
@@ -165,6 +181,9 @@ end
 
 function M.emptytable()
   return setmetatable({}, {
+    ---@param t table<any,any>
+    ---@param k any
+    ---@return any
     __index = function(t, k)
       t[k] = {}
       return t[k]
@@ -180,7 +199,7 @@ local function expand_date(fmt, time)
 end
 
 ---@param fmt string
----@param info table
+---@param info table<string,any>
 ---@param reltime? boolean Use relative time as the default date format
 ---@return string
 function M.expand_format(fmt, info, reltime)
@@ -192,6 +211,7 @@ function M.expand_format(fmt, info, reltime)
     if not match then
       break
     end
+    --- @cast key string
 
     ret[#ret + 1], fmt = fmt:sub(1, scol - 1), fmt:sub(ecol + 1)
 

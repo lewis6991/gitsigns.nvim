@@ -1,9 +1,12 @@
 local api = vim.api
 
---- @class Gitsigns.StatusObj
---- @field added integer
---- @field removed integer
---- @field changed integer
+--- @class (exact) Gitsigns.StatusObj
+--- @field added? integer
+--- @field removed? integer
+--- @field changed? integer
+--- @field head? string
+--- @field root? string
+--- @field gitdir? string
 
 local M = {}
 

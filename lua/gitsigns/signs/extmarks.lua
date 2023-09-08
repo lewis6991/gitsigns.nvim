@@ -2,10 +2,15 @@ local api = vim.api
 
 local config = require('gitsigns.config').config
 
+--- @class Gitsigns.ExmarkSigns : Gitsigns.Signs
 local M = {}
 
 local group_base = 'gitsigns_extmark_signs_'
 
+--- @param cfg Gitsigns.SignConfig
+--- @param hls table<Gitsigns.SignType,Gitsigns.SignConfig>
+--- @param name string
+--- @return Gitsigns.ExmarkSigns
 function M._new(cfg, hls, name)
   local self = setmetatable({}, { __index = M })
   self.config = cfg
@@ -15,6 +20,9 @@ function M._new(cfg, hls, name)
   return self
 end
 
+--- @param buf integer
+--- @param last_orig? integer
+--- @param last_new? integer
 function M:on_lines(buf, _, last_orig, last_new)
   -- Remove extmarks on line deletions to mimic
   -- the behaviour of vim signs.
@@ -23,6 +31,9 @@ function M:on_lines(buf, _, last_orig, last_new)
   end
 end
 
+--- @param bufnr integer
+--- @param start_lnum? integer
+--- @param end_lnum? integer
 function M:remove(bufnr, start_lnum, end_lnum)
   if start_lnum then
     api.nvim_buf_clear_namespace(bufnr, self.ns, start_lnum - 1, end_lnum or start_lnum)
@@ -31,6 +42,8 @@ function M:remove(bufnr, start_lnum, end_lnum)
   end
 end
 
+---@param bufnr integer
+---@param signs Gitsigns.Sign[]
 function M:add(bufnr, signs)
   if not config.signcolumn and not config.numhl and not config.linehl then
     -- Don't place signs if it won't show anything
@@ -71,6 +84,10 @@ function M:add(bufnr, signs)
   end
 end
 
+---@param bufnr integer
+---@param start integer
+---@param last? integer
+---@return boolean
 function M:contains(bufnr, start, last)
   local marks = api.nvim_buf_get_extmarks(
     bufnr,

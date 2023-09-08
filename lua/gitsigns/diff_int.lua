@@ -7,12 +7,10 @@ local M = {}
 --- @alias Gitsigns.Region {[1]:integer, [2]:string, [3]:integer, [4]:integer}
 
 --- @alias Gitsigns.RawHunk {[1]:integer, [2]:integer, [3]:integer, [4]:integer}
+--- @alias Gitsigns.RawDifffn fun(a: string, b: string, algorithm?: string, indent_heuristic?: boolean, linematch?: integer): Gitsigns.RawHunk[]
 
---- @type Gitsigns.Difffn
-local run_diff_xdl = function(fa, fb, algorithm, indent_heuristic, linematch)
-  local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n') .. '\n'
-  local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n') .. '\n'
-
+--- @type Gitsigns.RawDifffn
+local run_diff_xdl = function(a, b, algorithm, indent_heuristic, linematch)
   return vim.diff(a, b, {
     result_type = 'indices',
     algorithm = algorithm,
@@ -21,35 +19,37 @@ local run_diff_xdl = function(fa, fb, algorithm, indent_heuristic, linematch)
   }) --[[@as Gitsigns.RawHunk[] ]]
 end
 
---- @type Gitsigns.Difffn
+--- @type Gitsigns.RawDifffn
 local run_diff_xdl_async = async.wrap(
-  --- @param fa string[]
-  --- @param fb string[]
+  --- @param a string
+  --- @param b string
   --- @param algorithm? string
   --- @param indent_heuristic? boolean
   --- @param linematch? integer
   --- @param callback fun(hunks: Gitsigns.RawHunk[])
-  function(fa, fb, algorithm, indent_heuristic, linematch, callback)
-    local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n') .. '\n'
-    local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n') .. '\n'
-
+  function(a, b, algorithm, indent_heuristic, linematch, callback)
     vim.loop
       .new_work(
-      --- @param a0 string
-      --- @param b0 string
-      --- @param algorithm0 string
-      --- @param indent_heuristic0 integer
-      --- @param linematch0 integer
-      function(a0, b0, algorithm0, indent_heuristic0, linematch0)
-        return vim.mpack.encode(vim.diff(a0, b0, {
-          result_type = 'indices',
-          algorithm = algorithm0,
-          indent_heuristic = indent_heuristic0,
-          linematch = linematch0,
-        }))
-      end, function(r)
-        callback(vim.mpack.decode(r --[[@as string]])  --[[@as Gitsigns.RawHunk[] ]])
-      end)
+        --- @param a0 string
+        --- @param b0 string
+        --- @param algorithm0 string
+        --- @param indent_heuristic0 integer
+        --- @param linematch0 integer
+        --- @return string
+        function(a0, b0, algorithm0, indent_heuristic0, linematch0)
+          --- @diagnostic disable-next-line:return-type-mismatch
+          return vim.mpack.encode(vim.diff(a0, b0, {
+            result_type = 'indices',
+            algorithm = algorithm0,
+            indent_heuristic = indent_heuristic0,
+            linematch = linematch0,
+          }))
+        end,
+        --- @param r string
+        function(r)
+          callback(vim.mpack.decode(r) --[[@as Gitsigns.RawHunk[] ]])
+        end
+      )
       :queue(a, b, algorithm, indent_heuristic, linematch)
   end,
   6
@@ -61,15 +61,18 @@ local run_diff_xdl_async = async.wrap(
 --- @param indent_heuristic? boolean
 --- @param linematch? integer
 --- @return Gitsigns.Hunk.Hunk[]
-M.run_diff = async.void(function(fa, fb, diff_algo, indent_heuristic, linematch)
-  local run_diff0 --- @type Gitsigns.Difffn
+function M.run_diff(fa, fb, diff_algo, indent_heuristic, linematch)
+  local run_diff0 --- @type Gitsigns.RawDifffn
   if config._threaded_diff and vim.is_thread then
     run_diff0 = run_diff_xdl_async
   else
     run_diff0 = run_diff_xdl
   end
 
-  local results = run_diff0(fa, fb, diff_algo, indent_heuristic, linematch)
+  local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n')
+  local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n')
+
+  local results = run_diff0(a, b, diff_algo, indent_heuristic, linematch)
 
   local hunks = {} --- @type Gitsigns.Hunk.Hunk[]
   for _, r in ipairs(results) do
@@ -89,7 +92,7 @@ M.run_diff = async.void(function(fa, fb, diff_algo, indent_heuristic, linematch)
   end
 
   return hunks
-end)
+end
 
 local gaps_between_regions = 5
 
@@ -131,7 +134,8 @@ function M.run_word_diff(removed, added)
 
   for i = 1, #removed do
     -- pair lines by position
-    local a, b = vim.split(removed[i], ''), vim.split(added[i], '')
+    local a = table.concat(vim.split(removed[i], ''), '\n')
+    local b = table.concat(vim.split(added[i], ''), '\n')
 
     local hunks = {} --- @type Gitsigns.Hunk.Hunk[]
     for _, r in ipairs(run_diff_xdl(a, b)) do

@@ -121,7 +121,7 @@ end
 --- @param line string
 --- @return Gitsigns.Hunk.Hunk
 function M.parse_diff_line(line)
-  local diffkey = vim.trim(vim.split(line, '@@', {plain=true})[2])
+  local diffkey = vim.trim(vim.split(line, '@@', { plain = true })[2])
 
   -- diffKey: "-xx,n +yy"
   -- pre: {xx, n}, now: {yy}
@@ -169,7 +169,10 @@ end
 --- @param untracked boolean
 --- @return Gitsigns.Sign[]
 function M.calc_signs(hunk, min_lnum, max_lnum, untracked)
-  assert(not untracked or hunk.type == 'add')
+  assert(
+    not untracked or hunk.type == 'add',
+    string.format('Invalid hunk with untracked=%s hunk="%s"', untracked, hunk.head)
+  )
   min_lnum = min_lnum or 1
   max_lnum = max_lnum or math.huge
   local start, added, removed = hunk.added.start, hunk.added.count, hunk.removed.count
@@ -347,6 +350,7 @@ function M.compare_heads(a, b)
     return true
   end
   for i, ah in ipairs(a or {}) do
+    --- @diagnostic disable-next-line:need-check-nil
     if b[i].head ~= ah.head then
       return true
     end
