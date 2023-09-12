@@ -2,41 +2,17 @@ local async = require('gitsigns.async')
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local util = require('gitsigns.util')
-local uv = vim.loop
 
 local api = vim.api
 
-local current_buf = api.nvim_get_current_buf
+local debounce = require('gitsigns.debounce')
 
 local namespace = api.nvim_create_namespace('gitsigns_blame')
 
-local timer = assert(uv.new_timer())
-
 local M = {}
 
-local wait_timer = async.wrap(uv.timer_start, 4)
-
 --- @param bufnr integer
---- @param row integer
---- @param opts? table
-local function set_extmark(bufnr, row, opts)
-  opts = opts or {}
-  opts.id = 1
-  api.nvim_buf_set_extmark(bufnr, namespace, row - 1, 0, opts)
-end
-
---- @param bufnr integer
---- @return integer? id
-local function get_extmark(bufnr)
-  local pos = api.nvim_buf_get_extmark_by_id(bufnr, namespace, 1, {})
-  if pos[1] then
-    return pos[1] + 1
-  end
-end
-
---- @param bufnr? integer
 local function reset(bufnr)
-  bufnr = bufnr or current_buf()
   if not api.nvim_buf_is_valid(bufnr) then
     return
   end
@@ -112,8 +88,6 @@ local function flatten_virt_text(virt_text)
   return table.concat(res)
 end
 
-local running = false
-
 --- @param bufnr integer
 --- @param lnum integer
 --- @param opts Gitsigns.CurrentLineBlameOpts
@@ -124,16 +98,10 @@ local function run_blame(bufnr, lnum, opts)
     return result
   end
 
-  if running then
-    return
-  end
-
-  running = true
   local buftext = util.buf_lines(bufnr)
   local bcache = cache[bufnr]
   result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
   BlameCache:add(bufnr, lnum, result)
-  running = false
 
   return result
 end
@@ -143,10 +111,9 @@ end
 --- @param blame_info Gitsigns.BlameInfo
 --- @param opts Gitsigns.CurrentLineBlameOpts
 local function handle_blame_info(bufnr, lnum, blame_info, opts)
-  local bcache = cache[bufnr]
-  if not bcache then
-    return
-  end
+  vim.b[bufnr].gitsigns_blame_line_dict = blame_info
+
+  local bcache = assert(cache[bufnr])
   local virt_text ---@type {[1]: string, [2]: string}[]
   local clb_formatter = blame_info.author == 'Not Committed Yet'
       and config.current_line_blame_formatter_nc
@@ -169,7 +136,8 @@ local function handle_blame_info(bufnr, lnum, blame_info, opts)
   vim.b[bufnr].gitsigns_blame_line = flatten_virt_text(virt_text)
 
   if opts.virt_text then
-    set_extmark(bufnr, lnum, {
+    api.nvim_buf_set_extmark(bufnr, namespace, lnum - 1, 0, {
+      id = 1,
       virt_text = virt_text,
       virt_text_pos = opts.virt_text_pos,
       priority = opts.virt_text_priority,
@@ -178,74 +146,82 @@ local function handle_blame_info(bufnr, lnum, blame_info, opts)
   end
 end
 
+--- @param winid integer
 --- @return integer lnum
-local function get_lnum()
-  return api.nvim_win_get_cursor(0)[1]
+local function get_lnum(winid)
+  return api.nvim_win_get_cursor(winid)[1]
 end
 
--- Update function, must be called in async context
-local function update0()
-  local bufnr = current_buf()
-  local lnum = get_lnum()
+--- @param winid integer
+--- @param lnum integer
+--- @return boolean
+local function foldclosed(winid, lnum)
+  ---@return boolean
+  return api.nvim_win_call(winid, function()
+    return vim.fn.foldclosed(lnum) ~= -1
+  end)
+end
 
-  local old_lnum = get_extmark(bufnr)
-  if old_lnum and lnum == old_lnum and BlameCache:get(bufnr, lnum) then
-    -- Don't update if on the same line and we already have results
+---@return boolean
+local function insert_mode()
+  return api.nvim_get_mode().mode == 'i'
+end
+
+--- Update function, must be called in async context
+--- @param bufnr integer
+local function update0(bufnr)
+  async.scheduler_if_buf_valid(bufnr)
+
+  if insert_mode() then
     return
   end
 
-  if api.nvim_get_mode().mode == 'i' then
-    reset(bufnr)
+  local winid = vim.fn.bufwinid(bufnr)
+  if winid == -1 then
     return
   end
 
-  -- Set an empty extmark to save the line number.
-  -- This will also clear virt_text.
-  -- Only do this if there was already an extmark to avoid clearing the intro
-  -- text.
-  if get_extmark(bufnr) then
-    reset(bufnr)
-    set_extmark(bufnr, lnum)
-  end
+  local lnum = get_lnum(winid)
 
   -- Can't show extmarks on folded lines so skip
-  if vim.fn.foldclosed(lnum) ~= -1 then
+  if foldclosed(winid, lnum) then
     return
   end
-
-  local opts = config.current_line_blame_opts
-
-  -- Note because the same timer is re-used, this call has a debouncing effect.
-  wait_timer(timer, opts.delay, 0)
-  async.scheduler()
 
   local bcache = cache[bufnr]
   if not bcache or not bcache.git_obj.object_name then
     return
   end
 
-  local blame_info = run_blame(bufnr, lnum, opts)
-  async.scheduler_if_buf_valid(bufnr)
+  local opts = config.current_line_blame_opts
 
-  local lnum1 = get_lnum()
-  if bufnr == current_buf() and lnum ~= lnum1 then
-    -- Cursor has moved during events; abort and tr-trigger another update
-    -- since it's likely blame jobs where skipped
-    update0()
+  local blame_info = run_blame(bufnr, lnum, opts)
+
+  if not blame_info then
     return
   end
 
-  vim.b[bufnr].gitsigns_blame_line_dict = blame_info
+  async.scheduler_if_buf_valid(bufnr)
 
-  if blame_info then
-    handle_blame_info(bufnr, lnum, blame_info, opts)
+  if lnum ~= get_lnum(winid) then
+    -- Cursor has moved during events; abort and tr-trigger another update
+    update0(bufnr)
+    return
   end
+
+  handle_blame_info(bufnr, lnum, blame_info, opts)
 end
 
-local update = async.void(update0)
+local update = async.void(debounce.throttle_by_id(update0))
+
+--- @type fun(bufnr: integer)
+local update_debounced
 
 function M.setup()
   local group = api.nvim_create_augroup('gitsigns_blame', {})
+
+  local opts = config.current_line_blame_opts
+  update_debounced = debounce.debounce_trailing(opts.delay, update)
 
   for k, _ in pairs(cache) do
     reset(k)
@@ -254,19 +230,20 @@ function M.setup()
   if config.current_line_blame then
     api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' }, {
       group = group,
-      callback = update,
+      callback = function(args)
+        reset(args.buf)
+        update_debounced(args.buf)
+      end
     })
 
     api.nvim_create_autocmd({ 'InsertEnter', 'FocusLost', 'BufLeave' }, {
       group = group,
-      callback = function()
-        reset()
+      callback = function(args)
+        reset(args.buf)
       end,
     })
 
-    -- Call via vim.schedule to avoid the debounce timer killing the async
-    -- coroutine
-    vim.schedule(update)
+    update_debounced(api.nvim_get_current_buf())
   end
 end
 
