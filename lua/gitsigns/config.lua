@@ -442,15 +442,15 @@ M.schema = {
   count_chars = {
     type = 'table',
     default = {
-      [1] = '1', -- '₁',
-      [2] = '2', -- '₂',
-      [3] = '3', -- '₃',
-      [4] = '4', -- '₄',
-      [5] = '5', -- '₅',
-      [6] = '6', -- '₆',
-      [7] = '7', -- '₇',
-      [8] = '8', -- '₈',
-      [9] = '9', -- '₉',
+      [1] = '1',   -- '₁',
+      [2] = '2',   -- '₂',
+      [3] = '3',   -- '₃',
+      [4] = '4',   -- '₄',
+      [5] = '5',   -- '₅',
+      [6] = '6',   -- '₆',
+      [7] = '7',   -- '₇',
+      [8] = '8',   -- '₈',
+      [9] = '9',   -- '₉',
       ['+'] = '>', -- '₊',
     },
     description = [[
@@ -855,7 +855,7 @@ local function handle_deprecated(cfg)
   end
 end
 
---- @param user_config Gitsigns.Config
+--- @param user_config Gitsigns.Config|nil
 function M.build(user_config)
   user_config = user_config or {}
 

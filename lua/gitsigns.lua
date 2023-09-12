@@ -154,7 +154,7 @@ end
 --- Attributes: ~
 ---     {async}
 ---
---- @param cfg table Configuration for Gitsigns.
+--- @param cfg table|nil Configuration for Gitsigns.
 ---     See |gitsigns-usage| for more details.
 M.setup = void(function(cfg)
   gs_config.build(cfg)
