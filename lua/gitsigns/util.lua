@@ -24,14 +24,21 @@ function M.dirname(file)
   return file:match(string.format('^(.+)%s[^%s]+', M.path_sep, M.path_sep))
 end
 
---- @param file string
+--- @param path string
+--- @param opts {raw: boolean}?
 --- @return string[]
-function M.file_lines(file)
-  local text = {} --- @type string[]
-  for line in io.lines(file) do
-    text[#text + 1] = line
+function M.file_lines(path, opts)
+  opts = opts or {}
+  local file = assert(io.open(path))
+  local contents = file:read('*a')
+  local lines = vim.split(contents, '\n', { plain = true })
+  if not opts.raw then
+    -- If contents ends with a newline, then remove the final empty string after the split
+    if lines[#lines] == '' then
+      lines[#lines] = nil
+    end
   end
-  return text
+  return lines
 end
 
 M.path_sep = package.config:sub(1, 1)
