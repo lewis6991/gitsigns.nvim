@@ -7,6 +7,7 @@ local M = {
 -- Timer object watching the gitdir
 
 --- @class Gitsigns.CacheEntry
+--- @field bufnr              integer
 --- @field file               string
 --- @field base?              string
 --- @field compare_text?      string[]
@@ -17,7 +18,6 @@ local M = {
 --- @field hunks_staged?      Gitsigns.Hunk.Hunk[]
 ---
 --- @field staged_diffs       Gitsigns.Hunk.Hunk[]
---- @field gitdir_watcher?    uv.uv_fs_event_t
 --- @field git_obj            Gitsigns.GitObj
 --- @field commit?            string
 local CacheEntry = M.CacheEntry
@@ -54,17 +54,17 @@ function CacheEntry:invalidate()
 end
 
 --- @param o Gitsigns.CacheEntry
+--- @param gitdir_update_handler function
 --- @return Gitsigns.CacheEntry
-function CacheEntry.new(o)
+function CacheEntry.new(o, gitdir_update_handler)
   o.staged_diffs = o.staged_diffs or {}
+  o.git_obj.repo.callbacks[o.bufnr] = gitdir_update_handler
   return setmetatable(o, { __index = CacheEntry })
 end
 
 function CacheEntry:destroy()
-  local w = self.gitdir_watcher
-  if w and not w:is_closing() then
-    w:close()
-  end
+  local repo = self.git_obj.repo
+  repo.callbacks[self.bufnr] = nil
 end
 
 ---@type table<integer,Gitsigns.CacheEntry>

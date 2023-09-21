@@ -160,6 +160,11 @@ function M.create(func, argc)
   end
 end
 
+---@param func function
+M.run = function(func)
+  run(func)
+end
+
 ---Use this to create a function which executes in an async context but
 ---called from a non-async context. Inherently this cannot return anything
 ---since it is non-blocking

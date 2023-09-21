@@ -337,16 +337,14 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   end
 
   cache[cbuf] = CacheEntry.new({
+    bufnr = cbuf,
     base = ctx and ctx.base or config.base,
     file = file,
     commit = commit,
     git_obj = git_obj,
-  })
-
-  if config.watch_gitdir.enable then
-    local watcher = require('gitsigns.watcher')
-    cache[cbuf].gitdir_watcher = watcher.watch_gitdir(cbuf, repo.gitdir)
-  end
+  }, function()
+    manager.gitdir_update(cbuf)
+  end)
 
   if not api.nvim_buf_is_loaded(cbuf) then
     dprint('Un-loaded buffer')
