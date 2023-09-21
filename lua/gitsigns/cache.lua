@@ -7,6 +7,7 @@ local M = {
 -- Timer object watching the gitdir
 
 --- @class Gitsigns.CacheEntry
+--- @field bufnr              integer
 --- @field file               string
 --- @field base?              string
 --- @field compare_text?      string[]

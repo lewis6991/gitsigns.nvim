@@ -14,6 +14,7 @@ local uv = vim.loop
 local startswith = vim.startswith
 
 local dprint = require('gitsigns.debug.log').dprint
+local dprintf = require('gitsigns.debug.log').dprintf
 local eprint = require('gitsigns.debug.log').eprint
 local err = require('gitsigns.message').error
 
@@ -564,13 +565,7 @@ Obj.unstage_file = function(self)
   self:command({ 'reset', self.file })
 end
 
---- @class Gitsigns.BlameInfo
---- -- Info in header
---- @field sha string
---- @field abbrev_sha string
---- @field orig_lnum integer
---- @field final_lnum integer
---- Porcelain fields
+--- @class Gitsigns.CommitInfo
 --- @field author string
 --- @field author_mail string
 --- @field author_time integer
@@ -580,46 +575,57 @@ end
 --- @field committer_time integer
 --- @field committer_tz string
 --- @field summary string
---- @field previous string
---- @field previous_filename string
---- @field previous_sha string
---- @field filename string
----
---- Custom fields
+--- @field sha string
+--- @field abbrev_sha string
+--- @field boundary? true
+
+--- @class Gitsigns.BlameInfoPublic: Gitsigns.BlameInfo, Gitsigns.CommitInfo
 --- @field body? string[]
 --- @field hunk_no? integer
 --- @field num_hunks? integer
 --- @field hunk? string[]
 --- @field hunk_head? string
 
---- @param lines string[]
---- @param lnum integer
---- @param ignore_whitespace boolean
---- @return Gitsigns.BlameInfo?
-function Obj:run_blame(lines, lnum, ignore_whitespace)
-  local not_committed = {
-    author = 'Not Committed Yet',
-    ['author_mail'] = '<not.committed.yet>',
-    committer = 'Not Committed Yet',
-    ['committer_mail'] = '<not.committed.yet>',
-  }
+--- @class Gitsigns.BlameInfo
+--- @field orig_lnum integer
+--- @field final_lnum integer
+--- @field commit Gitsigns.CommitInfo
+--- @field filename string
+--- @field previous_filename? string
+--- @field previous_sha? string
 
+local NOT_COMMITTED = {
+  author = 'Not Committed Yet',
+  ['author_mail'] = '<not.committed.yet>',
+  committer = 'Not Committed Yet',
+  ['committer_mail'] = '<not.committed.yet>',
+}
+
+---@param x any
+---@return integer
+local function asinteger(x)
+  return assert(tonumber(x))
+end
+
+--- @param lines string[]
+--- @param lnum? integer
+--- @param ignore_whitespace? boolean
+--- @return table<integer,Gitsigns.BlameInfo?>?
+function Obj:run_blame(lines, lnum, ignore_whitespace)
   if not self.object_name or self.repo.abbrev_head == '' then
     -- As we support attaching to untracked files we need to return something if
     -- the file isn't isn't tracked in git.
     -- If abbrev_head is empty, then assume the repo has no commits
-    return not_committed
+    return NOT_COMMITTED
   end
 
-  local args = {
-    'blame',
-    '--contents',
-    '-',
-    '-L',
-    lnum .. ',+1',
-    '--line-porcelain',
-    self.file,
-  }
+  local args = { 'blame', '--contents', '-', '--incremental' }
+
+  if lnum then
+    vim.list_extend(args, { '-L', lnum..',+1' })
+  end
+
+  args[#args+1] = self.file
 
   if ignore_whitespace then
     args[#args + 1] = '-w'
@@ -634,34 +640,85 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
   if #results == 0 then
     return
   end
-  local header = vim.split(table.remove(results, 1), ' ')
 
-  --- @diagnostic disable-next-line:missing-fields
-  local ret = {} --- @type Gitsigns.BlameInfo
-  ret.sha = header[1]
-  ret.orig_lnum = tonumber(header[2]) --[[@as integer]]
-  ret.final_lnum = tonumber(header[3]) --[[@as integer]]
-  ret.abbrev_sha = string.sub(ret.sha, 1, 8)
-  for _, l in ipairs(results) do
-    if not startswith(l, '\t') then
-      local cols = vim.split(l, ' ')
-      --- @type string
-      local key = table.remove(cols, 1):gsub('-', '_')
-      --- @diagnostic disable-next-line:no-unknown
-      ret[key] = table.concat(cols, ' ')
-      if key == 'previous' then
-        ret.previous_sha = cols[1]
-        ret.previous_filename = cols[2]
+  local ret = {} --- @type Gitsigns.BlameInfo[]
+  local commits = {} --- @type table<string,Gitsigns.CommitInfo>
+  local i = 1
+
+  while i <= #results do
+    --- @param pat? string
+    --- @return string
+    local function get(pat)
+      local l = assert(results[i])
+      i = i + 1
+      if pat then
+        return l:match(pat)
       end
+      return l
     end
-  end
 
-  -- New in git 2.41:
-  -- The output given by "git blame" that attributes a line to contents
-  -- taken from the file specified by the "--contents" option shows it
-  -- differently from a line attributed to the working tree file.
-  if ret.author_mail == '<external.file>' or ret.author_mail == 'External file (--contents)' then
-    ret = vim.tbl_extend('force', ret, not_committed)
+    local function peek(pat)
+      local l = results[i]
+      if l and pat then
+        return l:match(pat)
+      end
+      return l
+    end
+
+    local sha, orig_lnum_str, final_lnum_str, size_str = get('(%x+) (%d+) (%d+) (%d+)')
+    local orig_lnum = asinteger(orig_lnum_str)
+    local final_lnum = asinteger(final_lnum_str)
+    local size = asinteger(size_str)
+
+    if peek():match('^author ') then
+      --- @type table<string,string|true>
+      local commit = {
+        sha = sha,
+        abbrev_sha = sha:sub(1, 8),
+      }
+
+      -- filename terminates the entry
+      while peek() and not peek():match('^filename ') do
+        local l = get()
+        local key, value = l:match('^([^%s]+) (.*)')
+        if key then
+          key = key:gsub('%-', '_') --- @type string
+          commit[key] = value
+        else
+          commit[l] = true
+          if l ~= 'boundary' then
+            dprintf("Unknown tag: '%s'", l)
+          end
+        end
+      end
+
+      -- New in git 2.41:
+      -- The output given by "git blame" that attributes a line to contents
+      -- taken from the file specified by the "--contents" option shows it
+      -- differently from a line attributed to the working tree file.
+      if commit.author_mail == '<external.file>' or commit.author_mail == 'External file (--contents)' then
+        commit = vim.tbl_extend('force', commit, NOT_COMMITTED)
+      end
+      commits[sha] = commit
+    end
+
+    local previous_sha, previous_filename = peek():match('^previous (%x+) (.*)')
+    if previous_sha then
+      get()
+    end
+
+    local filename = assert(get():match('^filename (.*)'))
+
+    for j = 0, size - 1 do
+      ret[final_lnum + j] = {
+        final_lnum = final_lnum + j,
+        orig_lnum = orig_lnum + j,
+        commit = commits[sha],
+        filename = filename,
+        previous_filename = previous_filename,
+        previous_sha = previous_filename
+      }
+    end
   end
 
   return ret

@@ -20,52 +20,12 @@ local function reset(bufnr)
   vim.b[bufnr].gitsigns_blame_line_dict = nil
 end
 
--- TODO: expose as config
-local max_cache_size = 1000
-
---- @class Gitsigns.BlameCache
---- @field cache table<integer,Gitsigns.BlameInfo>
---- @field size integer
+--- @class (exact) Gitsigns.BlameCache
+--- @field cache Gitsigns.BlameInfo[]?
 --- @field tick integer
 
-local BlameCache = {}
-
 --- @type table<integer,Gitsigns.BlameCache>
-BlameCache.contents = {}
-
---- @param bufnr integer
---- @param lnum integer
---- @param x? Gitsigns.BlameInfo
-function BlameCache:add(bufnr, lnum, x)
-  if not x then
-    return
-  end
-  if not config._blame_cache then
-    return
-  end
-  local scache = self.contents[bufnr]
-  if scache.size <= max_cache_size then
-    scache.cache[lnum] = x
-    scache.size = scache.size + 1
-  end
-end
-
---- @param bufnr integer
---- @param lnum integer
---- @return Gitsigns.BlameInfo?
-function BlameCache:get(bufnr, lnum)
-  if not config._blame_cache then
-    return
-  end
-
-  -- init and invalidate
-  local tick = vim.b[bufnr].changedtick
-  if not self.contents[bufnr] or self.contents[bufnr].tick ~= tick then
-    self.contents[bufnr] = { tick = tick, cache = {}, size = 0 }
-  end
-
-  return self.contents[bufnr].cache[lnum]
-end
+local blame_cache = {}
 
 --- @param fmt string
 --- @param name string
@@ -93,17 +53,29 @@ end
 --- @param opts Gitsigns.CurrentLineBlameOpts
 --- @return Gitsigns.BlameInfo?
 local function run_blame(bufnr, lnum, opts)
-  local result = BlameCache:get(bufnr, lnum)
+  -- init and invalidate
+  local tick = vim.b[bufnr].changedtick
+  if not blame_cache[bufnr] or blame_cache[bufnr].tick ~= tick then
+    blame_cache[bufnr] = { tick = tick }
+  end
+
+  local result = blame_cache[bufnr].cache
+
   if result then
-    return result
+    return result[lnum]
   end
 
   local buftext = util.buf_lines(bufnr)
   local bcache = cache[bufnr]
-  result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
-  BlameCache:add(bufnr, lnum, result)
+  result = bcache.git_obj:run_blame(buftext, nil, opts.ignore_whitespace)
 
-  return result
+  if not result then
+    return
+  end
+
+  blame_cache[bufnr].cache = result
+
+  return result[lnum]
 end
 
 --- @param bufnr integer
@@ -111,6 +83,8 @@ end
 --- @param blame_info Gitsigns.BlameInfo
 --- @param opts Gitsigns.CurrentLineBlameOpts
 local function handle_blame_info(bufnr, lnum, blame_info, opts)
+  blame_info = util.convert_blame_info(blame_info)
+
   vim.b[bufnr].gitsigns_blame_line_dict = blame_info
 
   local bcache = assert(cache[bufnr])

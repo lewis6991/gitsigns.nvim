@@ -250,4 +250,13 @@ function M.bufexists(buf)
   return vim.fn.bufexists(buf) == 1
 end
 
+--- @param x Gitsigns.BlameInfo
+--- @return Gitsigns.BlameInfoPublic
+function M.convert_blame_info(x)
+  --- @type Gitsigns.BlameInfoPublic
+  local ret = vim.tbl_extend('error', x, x.commit)
+  ret.commit = nil
+  return ret
+end
+
 return M
