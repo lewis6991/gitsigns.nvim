@@ -658,6 +658,7 @@ M.schema = {
                          • `summary`: string
                          • `previous`: string
                          • `filename`: string
+                         • `boundary`: true?
 
                        Note that the keys map onto the output of:
                          `git blame --line-porcelain`

@@ -808,12 +808,12 @@ M.get_hunks = function(bufnr)
 end
 
 --- @param repo Gitsigns.Repo
---- @param info Gitsigns.BlameInfo
+--- @param info Gitsigns.BlameInfoPublic
 --- @return Gitsigns.Hunk.Hunk?, integer?, integer
 local function get_blame_hunk(repo, info)
   local a = {}
   -- If no previous so sha of blame added the file
-  if info.previous then
+  if info.previous_sha and info.previous_filename then
     a = repo:get_show_text(info.previous_sha .. ':' .. info.previous_filename)
   end
   local b = repo:get_show_text(info.sha .. ':' .. info.filename)
@@ -884,12 +884,14 @@ M.blame_line = async.void(function(opts)
   local buftext = util.buf_lines(bufnr)
   local fileformat = vim.bo[bufnr].fileformat
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
+  local results = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
   pcall(function()
     loading:close()
   end)
 
-  assert(result)
+  assert(results and results[lnum])
+
+  local result = util.convert_blame_info(results[lnum])
 
   local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
 

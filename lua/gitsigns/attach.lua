@@ -337,6 +337,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   end
 
   cache[cbuf] = CacheEntry.new({
+    bufnr = cbuf,
     base = ctx and ctx.base or config.base,
     file = file,
     commit = commit,
