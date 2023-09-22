@@ -927,7 +927,7 @@ end
 --- Attributes: ~
 ---     {async}
 ---
---- Examples: >
+--- Examples: >vim
 ---   " Change base to 1 commit behind head
 ---   :lua require('gitsigns').change_base('HEAD~1')
 ---
@@ -995,7 +995,7 @@ end
 --- If {base} is the index, then the opened buffer is editable and
 --- any written changes will update the index accordingly.
 ---
---- Examples: >
+--- Examples: >vim
 ---   " Diff against the index
 ---   :Gitsigns diffthis
 ---
@@ -1064,7 +1064,7 @@ CP.diffthis = complete_heads
 --- If {base} is the index, then the opened buffer is editable and
 --- any written changes will update the index accordingly.
 ---
---- Examples: >
+--- Examples: >vim
 ---   " View the index version of the file
 ---   :Gitsigns show
 ---

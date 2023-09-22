@@ -32,7 +32,7 @@ For basic setup with all batteries included:
 
 Configuration can be passed to the setup function. Here is an example with most
 of the default settings:
->
+>lua
 {{SETUP}}
 <
 
