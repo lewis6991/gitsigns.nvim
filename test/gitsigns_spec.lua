@@ -95,7 +95,7 @@ describe('gitsigns', function()
 
     check {
       status = {head='', added=18, changed=0, removed=0},
-      signs = {untracked=8}
+      signs = {untracked=nvim_ver == 10 and 7 or 8}
     }
 
     git{"add", test_file}
