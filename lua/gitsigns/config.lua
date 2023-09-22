@@ -245,7 +245,7 @@ M.schema = {
       If normal attaching fails, then each entry in the table is attempted
       with the work tree details set.
 
-      Example: >
+      Example: >lua
         worktrees = {
           {
             toplevel = vim.env.HOME,
@@ -265,7 +265,7 @@ M.schema = {
       This callback must call its callback argument. The callback argument can
       accept an optional table argument with the keys: 'gitdir' and 'toplevel'.
 
-      Example: >
+      Example: >lua
       on_attach_pre = function(bufnr, callback)
         ...
         callback {
@@ -286,7 +286,7 @@ M.schema = {
 
       This callback can return `false` to prevent attaching to the buffer.
 
-      Example: >
+      Example: >lua
         on_attach = function(bufnr)
           if vim.api.nvim_buf_get_name(bufnr):match(<PATTERN>) then
             -- Don't attach to specific buffers whose name matches a pattern

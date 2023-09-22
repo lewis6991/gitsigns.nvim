@@ -32,7 +32,7 @@ For basic setup with all batteries included:
 
 Configuration can be passed to the setup function. Here is an example with most
 of the default settings:
->
+>lua
     require('gitsigns').setup {
       signs = {
         add          = { text = '│' },
@@ -98,7 +98,7 @@ setup({cfg})                                                *gitsigns.setup()*
                     {async}
 
                 Parameters: ~
-                    {cfg} (table):  Configuration for Gitsigns.
+                    {cfg} (table|nil):  Configuration for Gitsigns.
                           See |gitsigns-usage| for more details.
 
 attach({bufnr}, {ctx})                                     *gitsigns.attach()*
@@ -200,7 +200,7 @@ show({revision})                                             *gitsigns.show()*
                 If {base} is the index, then the opened buffer is editable and
                 any written changes will update the index accordingly.
 
-                Examples: >
+                Examples: >vim
                   " View the index version of the file
                   :Gitsigns show
 
@@ -221,7 +221,7 @@ diffthis({base}, {opts})                                 *gitsigns.diffthis()*
                 If {base} is the index, then the opened buffer is editable and
                 any written changes will update the index accordingly.
 
-                Examples: >
+                Examples: >vim
                   " Diff against the index
                   :Gitsigns diffthis
 
@@ -261,7 +261,7 @@ change_base({base}, {global})                         *gitsigns.change_base()*
                 Attributes: ~
                     {async}
 
-                Examples: >
+                Examples: >vim
                   " Change base to 1 commit behind head
                   :lua require('gitsigns').change_base('HEAD~1')
 
@@ -537,7 +537,7 @@ worktrees                                          *gitsigns-config-worktrees*
       If normal attaching fails, then each entry in the table is attempted
       with the work tree details set.
 
-      Example: >
+      Example: >lua
         worktrees = {
           {
             toplevel = vim.env.HOME,
@@ -553,7 +553,7 @@ on_attach                                          *gitsigns-config-on_attach*
 
       This callback can return `false` to prevent attaching to the buffer.
 
-      Example: >
+      Example: >lua
         on_attach = function(bufnr)
           if vim.api.nvim_buf_get_name(bufnr):match(<PATTERN>) then
             -- Don't attach to specific buffers whose name matches a pattern
