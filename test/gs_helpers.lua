@@ -201,10 +201,9 @@ function M.match_debug_messages(spec)
   end)
 end
 
-function M.setup_gitsigns(config, extra)
-  extra = extra or ''
+function M.setup_gitsigns(config, on_attach)
   exec_lua([[
-      local config = ...
+      local config, on_attach = ...
       if config and config.on_attach then
         local maps = config.on_attach
         config.on_attach = function(bufnr)
@@ -213,9 +212,13 @@ function M.setup_gitsigns(config, extra)
           end
         end
       end
-    ]]..extra..[[
+      if on_attach then
+        config.on_attach = function()
+          return false
+        end
+      end
       require('gitsigns').setup(...)
-    ]], config)
+    ]], config, on_attach)
   M.expectf(function()
     return exec_lua[[return require'gitsigns'._setup_done == true]]
   end)
