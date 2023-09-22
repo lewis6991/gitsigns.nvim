@@ -1105,7 +1105,7 @@ local function hunks_to_qflist(buf_or_filename, hunks, qflist)
   end
 end
 
----@param target 'all'|'attached'|integer
+---@param target? 'all'|'attached'|integer
 ---@return table[]?
 local function buildqflist(target)
   target = target or current_buf()
@@ -1160,7 +1160,7 @@ end
 --- Attributes: ~
 ---     {async}
 ---
---- @param target integer|string
+--- @param target? integer|string
 ---     Specifies which files hunks are collected from.
 ---     Possible values.
 ---     • [integer]: The buffer with the matching buffer
@@ -1197,7 +1197,7 @@ M.setqflist = async.void(function(target, opts)
       if config.trouble then
         require('trouble').open('loclist')
       else
-        vim.cmd([[lopen]])
+        vim.cmd.lopen()
       end
     end
   else
@@ -1206,11 +1206,16 @@ M.setqflist = async.void(function(target, opts)
       if config.trouble then
         require('trouble').open('quickfix')
       else
-        vim.cmd([[copen]])
+        vim.cmd.copen()
       end
     end
   end
 end)
+
+C.setqflist = function(args, _)
+  local target = tonumber(args[2]) or args[2]
+  M.setqflist(target, args)
+end
 
 --- Populate the location list with hunks. Automatically opens the
 --- location list window.
@@ -1220,14 +1225,19 @@ end)
 --- Attributes: ~
 ---     {async}
 ---
---- @param nr integer Window number or the |window-ID|.
+--- @param nr? integer Window number or the |window-ID|.
 ---     `0` for the current window (default).
---- @param target integer|string See |gitsigns.setqflist()|.
+--- @param target? integer|string See |gitsigns.setqflist()|.
 M.setloclist = function(nr, target)
   M.setqflist(target, {
     nr = nr,
     use_location_list = true,
   })
+end
+
+C.setloclist = function(args, _)
+  local target = tonumber(args[2]) or args[2]
+  M.setloclist(tonumber(args[1]), target)
 end
 
 --- Get all the available line specific actions for the current
