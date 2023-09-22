@@ -29,7 +29,7 @@ local blame_cache = {}
 
 --- @param fmt string
 --- @param name string
---- @param info Gitsigns.BlameInfo
+--- @param info Gitsigns.BlameInfoPublic
 --- @return string
 local function expand_blame_format(fmt, name, info)
   if info.author == name then
@@ -78,6 +78,56 @@ local function run_blame(bufnr, lnum, opts)
   return result[lnum]
 end
 
+--- @param winid integer
+--- @return integer
+local function win_width(winid)
+  winid = winid or api.nvim_get_current_win()
+  local wininfo = vim.fn.getwininfo(winid)[1]
+  local textoff = wininfo and wininfo.textoff or 0
+  return api.nvim_win_get_width(winid) - textoff
+end
+
+--- @param bufnr integer
+--- @param lnum integer
+--- @return integer
+local function line_len(bufnr, lnum)
+  return #api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, true)[1]
+end
+
+--- @param fmt string
+--- @return Gitsigns.CurrentLineBlameFmtFun
+local function default_formatter(fmt)
+  return function(username, blame_info, _opts)
+    return {
+      {
+        expand_blame_format(fmt, username, blame_info),
+        'GitSignsCurrentLineBlame',
+      },
+    }
+  end
+end
+
+---@param bufnr integer
+---@param blame_info Gitsigns.BlameInfoPublic
+---@return {[1]: string, [2]:string}[]
+local function get_blame_virt_text(bufnr, blame_info)
+  local git_obj = assert(cache[bufnr]).git_obj
+
+  local clb_formatter = blame_info.author == 'Not Committed Yet'
+      and config.current_line_blame_formatter_nc
+    or config.current_line_blame_formatter
+
+  if type(clb_formatter) == 'string' then
+    clb_formatter = default_formatter(clb_formatter)
+  end
+
+  return clb_formatter(
+    git_obj.repo.username,
+    blame_info,
+    config.current_line_blame_formatter_opts
+  )
+end
+
 --- @param bufnr integer
 --- @param lnum integer
 --- @param blame_info Gitsigns.BlameInfo
@@ -85,35 +135,23 @@ end
 local function handle_blame_info(bufnr, lnum, blame_info, opts)
   blame_info = util.convert_blame_info(blame_info)
 
+  local virt_text = get_blame_virt_text(bufnr, blame_info)
+  local virt_text_str = flatten_virt_text(virt_text)
+
   vim.b[bufnr].gitsigns_blame_line_dict = blame_info
-
-  local bcache = assert(cache[bufnr])
-  local virt_text ---@type {[1]: string, [2]: string}[]
-  local clb_formatter = blame_info.author == 'Not Committed Yet'
-      and config.current_line_blame_formatter_nc
-    or config.current_line_blame_formatter
-  if type(clb_formatter) == 'string' then
-    virt_text = {
-      {
-        expand_blame_format(clb_formatter, bcache.git_obj.repo.username, blame_info),
-        'GitSignsCurrentLineBlame',
-      },
-    }
-  else -- function
-    virt_text = clb_formatter(
-      bcache.git_obj.repo.username,
-      blame_info,
-      config.current_line_blame_formatter_opts
-    )
-  end
-
-  vim.b[bufnr].gitsigns_blame_line = flatten_virt_text(virt_text)
+  vim.b[bufnr].gitsigns_blame_line = virt_text_str
 
   if opts.virt_text then
+    local virt_text_pos = opts.virt_text_pos
+    if virt_text_pos == 'right_align' then
+      if #virt_text_str > (win_width(0) - line_len(bufnr, lnum)) then
+        virt_text_pos = 'eol'
+      end
+    end
     api.nvim_buf_set_extmark(bufnr, namespace, lnum - 1, 0, {
       id = 1,
       virt_text = virt_text,
-      virt_text_pos = opts.virt_text_pos,
+      virt_text_pos = virt_text_pos,
       priority = opts.virt_text_priority,
       hl_mode = 'combine',
     })
@@ -207,7 +245,7 @@ function M.setup()
       callback = function(args)
         reset(args.buf)
         update_debounced(args.buf)
-      end
+      end,
     })
 
     api.nvim_create_autocmd({ 'InsertEnter', 'FocusLost', 'BufLeave' }, {
