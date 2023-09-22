@@ -17,6 +17,7 @@ local dprint = require('gitsigns.debug.log').dprint
 local dprintf = require('gitsigns.debug.log').dprintf
 local eprint = require('gitsigns.debug.log').eprint
 local err = require('gitsigns.message').error
+local error_once = require('gitsigns.message').error_once
 
 local M = {}
 
@@ -636,7 +637,12 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
     vim.list_extend(args, { '--ignore-revs-file', ignore_file })
   end
 
-  local results = self:command(args, { writer = lines })
+  local results, stderr = self:command(args, { writer = lines, suppress_stderr = true })
+  if stderr then
+    error_once('Error running git-blame: '.. stderr)
+    return
+  end
+
   if #results == 0 then
     return
   end
