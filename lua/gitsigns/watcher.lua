@@ -60,35 +60,39 @@ local function handle_moved(bufnr, old_relpath)
 end
 
 --- @param bufnr integer
-local handler = debounce_trailing(200, async.void(function(bufnr)
-  local __FUNC__ = 'watcher_handler'
-  buf_check(bufnr)
-
-  local git_obj = cache[bufnr].git_obj
-
-  git_obj.repo:update_abbrev_head()
-
-  buf_check(bufnr)
-
-  Status:update(bufnr, { head = git_obj.repo.abbrev_head })
-
-  local was_tracked = git_obj.object_name ~= nil
-  local old_relpath = git_obj.relpath
-
-  git_obj:update_file_info()
-  buf_check(bufnr)
-
-  if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
-    -- File was tracked but is no longer tracked. Must of been removed or
-    -- moved. Check if it was moved and switch to it.
-    handle_moved(bufnr, old_relpath)
+local handler = debounce_trailing(
+  200,
+  async.void(function(bufnr)
+    local __FUNC__ = 'watcher_handler'
     buf_check(bufnr)
-  end
 
-  cache[bufnr]:invalidate()
+    local git_obj = cache[bufnr].git_obj
 
-  require('gitsigns.manager').update(bufnr)
-end), 1)
+    git_obj.repo:update_abbrev_head()
+
+    buf_check(bufnr)
+
+    Status:update(bufnr, { head = git_obj.repo.abbrev_head })
+
+    local was_tracked = git_obj.object_name ~= nil
+    local old_relpath = git_obj.relpath
+
+    git_obj:update_file_info()
+    buf_check(bufnr)
+
+    if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
+      -- File was tracked but is no longer tracked. Must of been removed or
+      -- moved. Check if it was moved and switch to it.
+      handle_moved(bufnr, old_relpath)
+      buf_check(bufnr)
+    end
+
+    cache[bufnr]:invalidate()
+
+    require('gitsigns.manager').update(bufnr)
+  end),
+  1
+)
 
 -- vim.inspect but on one line
 --- @param x any
@@ -101,7 +105,7 @@ local M = {}
 
 local WATCH_IGNORE = {
   ORIG_HEAD = true,
-  FETCH_HEAD = true
+  FETCH_HEAD = true,
 }
 
 --- @param bufnr integer

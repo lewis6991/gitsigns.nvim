@@ -311,7 +311,7 @@ function M.get_repo_info(path, cmd, gitdir, toplevel)
     toplevel = toplevel_r,
     gitdir = gitdir_r,
     abbrev_head = process_abbrev_head(gitdir_r, results[3], path, cmd),
-    detached = toplevel_r and gitdir_r ~= toplevel_r .. '/.git'
+    detached = toplevel_r and gitdir_r ~= toplevel_r .. '/.git',
   }
 end
 
@@ -623,10 +623,10 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
   local args = { 'blame', '--contents', '-', '--incremental' }
 
   if lnum then
-    vim.list_extend(args, { '-L', lnum..',+1' })
+    vim.list_extend(args, { '-L', lnum .. ',+1' })
   end
 
-  args[#args+1] = self.file
+  args[#args + 1] = self.file
 
   if ignore_whitespace then
     args[#args + 1] = '-w'
@@ -639,7 +639,7 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
 
   local results, stderr = self:command(args, { writer = lines, suppress_stderr = true })
   if stderr then
-    error_once('Error running git-blame: '.. stderr)
+    error_once('Error running git-blame: ' .. stderr)
     return
   end
 
@@ -702,7 +702,10 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
       -- The output given by "git blame" that attributes a line to contents
       -- taken from the file specified by the "--contents" option shows it
       -- differently from a line attributed to the working tree file.
-      if commit.author_mail == '<external.file>' or commit.author_mail == 'External file (--contents)' then
+      if
+        commit.author_mail == '<external.file>'
+        or commit.author_mail == 'External file (--contents)'
+      then
         commit = vim.tbl_extend('force', commit, NOT_COMMITTED)
       end
       commits[sha] = commit
@@ -722,7 +725,7 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
         commit = commits[sha],
         filename = filename,
         previous_filename = previous_filename,
-        previous_sha = previous_filename
+        previous_sha = previous_filename,
       }
     end
   end

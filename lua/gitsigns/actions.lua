@@ -47,14 +47,14 @@ local function complete_heads(arglead)
   --- @type string[]
   local all =
     vim.fn.systemlist({ 'git', 'rev-parse', '--symbolic', '--branches', '--tags', '--remotes' })
-    return vim.tbl_filter(
-      --- @param x string
-      --- @return boolean
-      function(x)
-        return vim.startswith(x, arglead)
-      end,
-      all
-    )
+  return vim.tbl_filter(
+    --- @param x string
+    --- @return boolean
+    function(x)
+      return vim.startswith(x, arglead)
+    end,
+    all
+  )
 end
 
 --- Toggle |gitsigns-config-signbooleancolumn|
@@ -447,7 +447,7 @@ end)
 --- @param word string
 --- @return boolean
 local function findword(x, word)
-  return string.find(x, '%f[%w_]'..word..'%f[^%w_]') ~= nil
+  return string.find(x, '%f[%w_]' .. word .. '%f[^%w_]') ~= nil
 end
 
 --- @param opts? Gitsigns.NavOpts
@@ -1261,7 +1261,7 @@ M.get_actions = function()
       'stage_hunk',
       'reset_hunk',
       'preview_hunk',
-      'select_hunk'
+      'select_hunk',
     })
   else
     actions_l[#actions_l + 1] = 'blame_line'
@@ -1279,7 +1279,9 @@ M.get_actions = function()
   return actions
 end
 
-for name, f in pairs(M --[[@as table<string,function>]]) do
+for name, f in
+  pairs(M --[[@as table<string,function>]])
+do
   if vim.startswith(name, 'toggle') then
     C[name] = function(args)
       f(args[1])

@@ -110,7 +110,7 @@ M.config = setmetatable({}, {
       end
     end
     return rawget(t, k)
-  end
+  end,
 })
 
 --- @type table<string,Gitsigns.SchemaElem>
@@ -442,15 +442,15 @@ M.schema = {
   count_chars = {
     type = 'table',
     default = {
-      [1] = '1',   -- '₁',
-      [2] = '2',   -- '₂',
-      [3] = '3',   -- '₃',
-      [4] = '4',   -- '₄',
-      [5] = '5',   -- '₅',
-      [6] = '6',   -- '₆',
-      [7] = '7',   -- '₇',
-      [8] = '8',   -- '₈',
-      [9] = '9',   -- '₉',
+      [1] = '1', -- '₁',
+      [2] = '2', -- '₂',
+      [3] = '3', -- '₃',
+      [4] = '4', -- '₄',
+      [5] = '5', -- '₅',
+      [6] = '6', -- '₆',
+      [7] = '7', -- '₇',
+      [8] = '8', -- '₈',
+      [9] = '9', -- '₉',
       ['+'] = '>', -- '₊',
     },
     description = [[
@@ -722,7 +722,7 @@ M.schema = {
   },
 
   _test_mode = {
-    description = "Enable test mode",
+    description = 'Enable test mode',
     type = 'boolean',
     default = false,
   },

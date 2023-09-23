@@ -121,11 +121,7 @@ local function get_blame_virt_text(bufnr, blame_info)
     clb_formatter = default_formatter(clb_formatter)
   end
 
-  return clb_formatter(
-    git_obj.repo.username,
-    blame_info,
-    config.current_line_blame_formatter_opts
-  )
+  return clb_formatter(git_obj.repo.username, blame_info, config.current_line_blame_formatter_opts)
 end
 
 --- @param bufnr integer
