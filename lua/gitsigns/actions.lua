@@ -579,6 +579,10 @@ M.next_hunk = function(opts)
   nav_hunk(opts, true)
 end
 
+C.next_hunk = function(args, _)
+  M.next_hunk(args)
+end
+
 --- Jump to the previous hunk in the current buffer. If a hunk preview
 --- (popup or inline) was previously opened, it will be re-opened
 --- at the previous hunk.
@@ -587,6 +591,10 @@ end
 ---     See |gitsigns.next_hunk()|.
 M.prev_hunk = function(opts)
   nav_hunk(opts, false)
+end
+
+C.prev_hunk = function(args, _)
+  M.prev_hunk(args)
 end
 
 --- @param fmt {[1]: string, [2]: string}[][]
@@ -914,6 +922,10 @@ M.blame_line = async.void(function(opts)
 
   popup.create(lines_format(blame_fmt, result), config.preview_config, 'blame')
 end)
+
+C.blame_line = function(args, _)
+  M.blame_line(args)
+end
 
 local function update_buf_base(buf, bcache, base)
   bcache.base = base
