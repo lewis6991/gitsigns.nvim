@@ -725,6 +725,12 @@ local function clear_preview_inline(bufnr)
   api.nvim_buf_clear_namespace(bufnr, ns_inline, 0, -1)
 end
 
+--- @param keys string
+local function feedkeys(keys)
+  local cy = api.nvim_replace_termcodes(keys, true, false, true)
+  api.nvim_feedkeys(cy, 'n', false)
+end
+
 --- Preview the hunk at the cursor position inline in the buffer.
 M.preview_hunk_inline = function()
   local bufnr = current_buf()
@@ -759,12 +765,10 @@ M.preview_hunk_inline = function()
     once = true,
   })
 
-  -- Virtual lines will be hidden if cursor is on the top row, so automatically
-  -- scroll the viewport.
-  if api.nvim_win_get_cursor(0)[1] == 1 then
-    local keys = hunk.removed.count .. '<C-y>'
-    local cy = api.nvim_replace_termcodes(keys, true, false, true)
-    api.nvim_feedkeys(cy, 'n', false)
+  -- Virtual lines will be hidden if they are placed on the top row, so
+  -- automatically scroll the viewport.
+  if hunk.added.start <= 1 then
+    feedkeys(hunk.removed.count .. '<C-y>')
   end
 end
 
