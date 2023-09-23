@@ -25,11 +25,3 @@ To run the testsuite:
 make test
 ```
 
-## LSP
-
-Gitsigns maintains its own `.luarc.json`, however it depends on certain environment variables to be defined.
-
-- `$NVIM_TYPES_DIR`: should point to a local copy of [folke/neodev.nvim/types](https://github.com/folke/neodev.nvim/tree/main/types/nightly)
-
-- `$NVIM_RUNTIME`: This can be found by running `echo $VIMRUNTIME` in Nvim.
-
