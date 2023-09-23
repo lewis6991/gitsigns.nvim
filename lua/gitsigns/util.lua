@@ -49,13 +49,19 @@ function M.buf_lines(bufnr)
   -- nvim_buf_get_lines strips carriage returns if fileformat==dos
   local buftext = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-  if vim.bo[bufnr].fileformat == 'dos' then
-    for i = 1, #buftext do
+  local dos = vim.bo[bufnr].fileformat == 'dos'
+
+  if dos then
+    for i = 1, #buftext - 1 do
       buftext[i] = buftext[i] .. '\r'
     end
   end
 
   if vim.bo[bufnr].endofline then
+    -- Add CR to the last line
+    if dos then
+      buftext[#buftext] = buftext[#buftext] .. '\r'
+    end
     buftext[#buftext + 1] = ''
   end
 

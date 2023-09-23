@@ -69,8 +69,8 @@ function M.run_diff(fa, fb, diff_algo, indent_heuristic, linematch)
     run_diff0 = run_diff_xdl
   end
 
-  local a = vim.tbl_isempty(fa) and '' or table.concat(fa, '\n')
-  local b = vim.tbl_isempty(fb) and '' or table.concat(fb, '\n')
+  local a = table.concat(fa, '\n')
+  local b = table.concat(fb, '\n')
 
   local results = run_diff0(a, b, diff_algo, indent_heuristic, linematch)
 
