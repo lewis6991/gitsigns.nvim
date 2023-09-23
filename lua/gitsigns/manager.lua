@@ -322,6 +322,8 @@ function M.show_deleted_in_float(bufnr, nsd, hunk)
     vim.cmd('normal ' .. vim.api.nvim_replace_termcodes('z<CR>', true, false, true))
   end)
 
+  local last_lnum = api.nvim_buf_line_count(bufnr)
+
   -- Apply highlights
 
   for i = hunk.removed.start, hunk.removed.start + hunk.removed.count do
@@ -329,6 +331,7 @@ function M.show_deleted_in_float(bufnr, nsd, hunk)
       hl_group = 'GitSignsDeleteVirtLn',
       hl_eol = true,
       end_row = i,
+      strict = i == last_lnum,
       priority = 1000,
     })
   end
@@ -372,8 +375,13 @@ function M.show_added(bufnr, nsw, hunk)
 
   for _, region in ipairs(added_regions) do
     local offset, rtype, scol, ecol = region[1] - 1, region[2], region[3] - 1, region[4] - 1
+
+    -- Special case to handle cr at eol in buffer but not in show text
+    local cr_at_eol_change = rtype == 'change' and vim.endswith(hunk.added.lines[offset + 1], '\r')
+
     api.nvim_buf_set_extmark(bufnr, nsw, start_row + offset, scol, {
       end_col = ecol,
+      strict = not cr_at_eol_change,
       hl_group = rtype == 'add' and 'GitSignsAddInline'
         or rtype == 'change' and 'GitSignsChangeInline'
         or 'GitSignsDeleteInline',
