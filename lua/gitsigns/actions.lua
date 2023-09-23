@@ -1105,7 +1105,7 @@ local function hunks_to_qflist(buf_or_filename, hunks, qflist)
   end
 end
 
----@param target? 'all'|'attached'|integer
+---@param target 'all'|'attached'|integer|nil
 ---@return table[]?
 local function buildqflist(target)
   target = target or current_buf()
@@ -1160,7 +1160,7 @@ end
 --- Attributes: ~
 ---     {async}
 ---
---- @param target? integer|string
+--- @param target integer|string
 ---     Specifies which files hunks are collected from.
 ---     Possible values.
 ---     • [integer]: The buffer with the matching buffer
@@ -1225,9 +1225,9 @@ end
 --- Attributes: ~
 ---     {async}
 ---
---- @param nr? integer Window number or the |window-ID|.
+--- @param nr integer Window number or the |window-ID|.
 ---     `0` for the current window (default).
---- @param target? integer|string See |gitsigns.setqflist()|.
+--- @param target integer|string See |gitsigns.setqflist()|.
 M.setloclist = function(nr, target)
   M.setqflist(target, {
     nr = nr,

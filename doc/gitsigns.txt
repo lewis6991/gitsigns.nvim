@@ -98,7 +98,7 @@ setup({cfg})                                                *gitsigns.setup()*
                     {async}
 
                 Parameters: ~
-                    {cfg} (table|nil):  Configuration for Gitsigns.
+                    {cfg} (table|nil): Configuration for Gitsigns.
                           See |gitsigns-usage| for more details.
 
 attach({bufnr}, {ctx})                                     *gitsigns.attach()*
@@ -108,8 +108,8 @@ attach({bufnr}, {ctx})                                     *gitsigns.attach()*
                     {async}
 
                 Parameters: ~
-                    {bufnr} (integer):  Buffer number
-                    {ctx}   (table|nil): 
+                    {bufnr} (integer): Buffer number
+                    {ctx}   (table|nil):
                             Git context data that may optionally be used to attach to any
                             buffer that represents a real git object.
                             • {file}: (string)
@@ -130,7 +130,7 @@ detach({bufnr})                                            *gitsigns.detach()*
                 provided then the current buffer is used.
 
                 Parameters: ~
-                    {bufnr} (integer):  Buffer number
+                    {bufnr} (integer): Buffer number
 
 detach_all()                                           *gitsigns.detach_all()*
                 Detach Gitsigns from all buffers it is attached to.
@@ -147,7 +147,7 @@ get_actions()                                         *gitsigns.get_actions()*
 
 
                 Returns: ~
-                    (table|nil):  Dictionary of action name to function which when called
+                    (table|nil): Dictionary of action name to function which when called
                     performs action.
 
 setloclist({nr}, {target})                             *gitsigns.setloclist()*
@@ -160,9 +160,9 @@ setloclist({nr}, {target})                             *gitsigns.setloclist()*
                     {async}
 
                 Parameters: ~
-                    {nr}     (integer):  Window number or the |window-ID|.
+                    {nr}     (integer): Window number or the |window-ID|.
                              `0` for the current window (default).
-                    {target} (integer|string):  See |gitsigns.setqflist()|.
+                    {target} (integer|string): See |gitsigns.setqflist()|.
 
 setqflist({target}, {opts})                             *gitsigns.setqflist()*
                 Populate the quickfix list with hunks. Automatically opens the
@@ -172,7 +172,7 @@ setqflist({target}, {opts})                             *gitsigns.setqflist()*
                     {async}
 
                 Parameters: ~
-                    {target} (integer|string): 
+                    {target} (integer|string):
                              Specifies which files hunks are collected from.
                              Possible values.
                              • [integer]: The buffer with the matching buffer
@@ -181,7 +181,7 @@ setqflist({target}, {opts})                             *gitsigns.setqflist()*
                              • `"all"`: All modified files for each git
                                directory of all attached buffers in addition
                                to the current working directory.
-                    {opts}   (table|nil):  Additional options:
+                    {opts}   (table|nil): Additional options:
                              • {use_location_list}: (boolean)
                                Populate the location list instead of the
                                quickfix list. Default to `false`.
@@ -236,8 +236,8 @@ diffthis({base}, {opts})                                 *gitsigns.diffthis()*
                     {async}
 
                 Parameters: ~
-                    {base} (string|nil):  Revision to diff against. Defaults to index.
-                    {opts} (table|nil):  Additional options:
+                    {base} (string|nil): Revision to diff against. Defaults to index.
+                    {opts} (table|nil): Additional options:
                            • {vertical}: {boolean}. Split window vertically. Defaults to
                              config.diff_opts.vertical. If running via command line, then
                              this is taken from the command modifiers.
@@ -284,8 +284,8 @@ change_base({base}, {global})                         *gitsigns.change_base()*
                 |gitsigns-revision|.
 
                 Parameters: ~
-                    {base}   (string|nil):  The object/revision to diff against.
-                    {global} (boolean|nil):  Change the base of all buffers.
+                    {base}   (string|nil): The object/revision to diff against.
+                    {global} (boolean|nil): Change the base of all buffers.
 
 blame_line({opts})                                     *gitsigns.blame_line()*
                 Run git blame on the current line and show the results in a
@@ -296,7 +296,7 @@ blame_line({opts})                                     *gitsigns.blame_line()*
                     {async}
 
                 Parameters: ~
-                    {opts} (table|nil):  Additional options:
+                    {opts} (table|nil): Additional options:
                            • {full}: (boolean)
                              Display full commit message with hunk.
                            • {ignore_whitespace}: (boolean)
@@ -306,11 +306,11 @@ get_hunks({bufnr})                                      *gitsigns.get_hunks()*
                 Get hunk array for specified buffer.
 
                 Parameters: ~
-                    {bufnr} (integer):  Buffer number, if not provided (or 0)
+                    {bufnr} (integer): Buffer number, if not provided (or 0)
                             will use current buffer.
 
                 Returns: ~
-                    (table|nil):  Array of hunk objects.
+                    (table|nil): Array of hunk objects.
                     Each hunk object has keys:
                         • `"type"`: String with possible values: "add", "change",
                           "delete"
@@ -350,7 +350,7 @@ next_hunk({opts})                                       *gitsigns.next_hunk()*
                 at the next hunk.
 
                 Parameters: ~
-                    {opts} (table|nil):  Configuration table. Keys:
+                    {opts} (table|nil): Configuration table. Keys:
                            • {wrap}: (boolean)
                              Whether to loop around file or not. Defaults
                              to the value 'wrapscan'
@@ -402,11 +402,11 @@ reset_hunk({range}, {opts})                            *gitsigns.reset_hunk()*
                 hunk, only the lines within the range will be reset.
 
                 Parameters: ~
-                    {range} (table|nil):  List-like table of two integers making
+                    {range} (table|nil): List-like table of two integers making
                             up the line range from which you want to reset the hunks.
                             If running via command line, then this is taken from the
                             command modifiers.
-                    {opts}  (table|nil):  Additional options:
+                    {opts}  (table|nil): Additional options:
                             • {greedy}: (boolean)
                               Stage all contiguous hunks. Only useful if 'diff_opts'
                               contains `linematch`. Defaults to `true`.
@@ -422,11 +422,11 @@ stage_hunk({range}, {opts})                            *gitsigns.stage_hunk()*
                     {async}
 
                 Parameters: ~
-                    {range} (table|nil):  List-like table of two integers making
+                    {range} (table|nil): List-like table of two integers making
                             up the line range from which you want to stage the hunks.
                             If running via command line, then this is taken from the
                             command modifiers.
-                    {opts}  (table|nil):  Additional options:
+                    {opts}  (table|nil): Additional options:
                             • {greedy}: (boolean)
                               Stage all contiguous hunks. Only useful if 'diff_opts'
                               contains `linematch`. Defaults to `true`.
@@ -435,62 +435,62 @@ toggle_deleted({value})                            *gitsigns.toggle_deleted()*
                 Toggle |gitsigns-config-show_deleted|
 
                 Parameters: ~
-                    {value} (boolean|nil):  Value to set toggle. If `nil`
+                    {value} (boolean|nil): Value to set toggle. If `nil`
                             the toggle value is inverted.
 
                 Returns: ~
-                    (boolean):  Current value of |gitsigns-config-show_deleted|
+                    (boolean): Current value of |gitsigns-config-show_deleted|
 
 toggle_current_line_blame({value})      *gitsigns.toggle_current_line_blame()*
                 Toggle |gitsigns-config-current_line_blame|
 
                 Parameters: ~
-                    {value} (boolean|nil):  Value to set toggle. If `nil`
+                    {value} (boolean|nil): Value to set toggle. If `nil`
                             the toggle value is inverted.
 
                 Returns: ~
-                    (boolean):  Current value of |gitsigns-config-current_line_blame|
+                    (boolean): Current value of |gitsigns-config-current_line_blame|
 
 toggle_word_diff({value})                        *gitsigns.toggle_word_diff()*
                 Toggle |gitsigns-config-word_diff|
 
                 Parameters: ~
-                    {value} (boolean|nil):  Value to set toggle. If `nil`
+                    {value} (boolean|nil): Value to set toggle. If `nil`
                             the toggle value is inverted.
 
                 Returns: ~
-                    (boolean):  Current value of |gitsigns-config-word_diff|
+                    (boolean): Current value of |gitsigns-config-word_diff|
 
 toggle_linehl({value})                              *gitsigns.toggle_linehl()*
                 Toggle |gitsigns-config-linehl|
 
                 Parameters: ~
-                    {value} (boolean|nil):  Value to set toggle. If `nil`
+                    {value} (boolean|nil): Value to set toggle. If `nil`
                             the toggle value is inverted.
 
                 Returns: ~
-                    (boolean):  Current value of |gitsigns-config-linehl|
+                    (boolean): Current value of |gitsigns-config-linehl|
 
 toggle_numhl({value})                                *gitsigns.toggle_numhl()*
                 Toggle |gitsigns-config-numhl|
 
                 Parameters: ~
-                    {value} (boolean|nil):  Value to set toggle. If `nil`
+                    {value} (boolean|nil): Value to set toggle. If `nil`
                                 the toggle value is inverted.
 
 
                 Returns: ~
-                    (boolean):  Current value of |gitsigns-config-numhl|
+                    (boolean): Current value of |gitsigns-config-numhl|
 
 toggle_signs({value})                                *gitsigns.toggle_signs()*
                 Toggle |gitsigns-config-signbooleancolumn|
 
                 Parameters: ~
-                    {value} (boolean|nil):  Value to set toggle. If `nil`
+                    {value} (boolean|nil): Value to set toggle. If `nil`
                             the toggle value is inverted.
 
                 Returns: ~
-                    (boolean):  Current value of |gitsigns-config-signcolumn|
+                    (boolean): Current value of |gitsigns-config-signcolumn|
 
 
 ==============================================================================
