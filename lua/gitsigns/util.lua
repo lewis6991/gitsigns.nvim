@@ -43,6 +43,41 @@ end
 
 M.path_sep = package.config:sub(1, 1)
 
+--- @param ... integer
+--- @return string
+local function make_bom(...)
+  local r = {}
+  ---@diagnostic disable-next-line:no-unknown
+  for i, a in ipairs({ ... }) do
+    ---@diagnostic disable-next-line:no-unknown
+    r[i] = string.char(a)
+  end
+  return table.concat(r)
+end
+
+local BOM_TABLE = {
+  ['utf-8'] = make_bom(0xef, 0xbb, 0xbf),
+  ['utf-16le'] = make_bom(0xff, 0xfe),
+  ['utf-16'] = make_bom(0xfe, 0xff),
+  ['utf-16be'] = make_bom(0xfe, 0xff),
+  ['utf-32le'] = make_bom(0xff, 0xfe, 0x00, 0x00),
+  ['utf-32'] = make_bom(0xff, 0xfe, 0x00, 0x00),
+  ['utf-32be'] = make_bom(0x00, 0x00, 0xfe, 0xff),
+  ['utf-7'] = make_bom(0x2b, 0x2f, 0x76),
+  ['utf-1'] = make_bom(0xf7, 0x54, 0x4c),
+}
+
+---@param x string
+---@param encoding string
+---@return string
+local function add_bom(x, encoding)
+  local bom = BOM_TABLE[encoding]
+  if bom then
+    return bom .. x
+  end
+  return x
+end
+
 --- @param bufnr integer
 --- @return string[]
 function M.buf_lines(bufnr)
@@ -63,6 +98,10 @@ function M.buf_lines(bufnr)
       buftext[#buftext] = buftext[#buftext] .. '\r'
     end
     buftext[#buftext + 1] = ''
+  end
+
+  if vim.bo[bufnr].bomb then
+    buftext[1] = add_bom(buftext[1], vim.bo[bufnr].fileencoding)
   end
 
   return buftext

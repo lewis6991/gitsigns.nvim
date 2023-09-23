@@ -355,38 +355,6 @@ function Repo:files_changed()
   return ret
 end
 
---- @param ... integer
---- @return string
-local function make_bom(...)
-  local r = {}
-  ---@diagnostic disable-next-line:no-unknown
-  for i, a in ipairs({ ... }) do
-    ---@diagnostic disable-next-line:no-unknown
-    r[i] = string.char(a)
-  end
-  return table.concat(r)
-end
-
-local BOM_TABLE = {
-  ['utf-8'] = make_bom(0xef, 0xbb, 0xbf),
-  ['utf-16le'] = make_bom(0xff, 0xfe),
-  ['utf-16'] = make_bom(0xfe, 0xff),
-  ['utf-16be'] = make_bom(0xfe, 0xff),
-  ['utf-32le'] = make_bom(0xff, 0xfe, 0x00, 0x00),
-  ['utf-32'] = make_bom(0xff, 0xfe, 0x00, 0x00),
-  ['utf-32be'] = make_bom(0x00, 0x00, 0xfe, 0xff),
-  ['utf-7'] = make_bom(0x2b, 0x2f, 0x76),
-  ['utf-1'] = make_bom(0xf7, 0x54, 0x4c),
-}
-
-local function strip_bom(x, encoding)
-  local bom = BOM_TABLE[encoding]
-  if bom and vim.startswith(x, bom) then
-    return x:sub(bom:len() + 1)
-  end
-  return x
-end
-
 --- @param encoding string
 --- @return boolean
 local function iconv_supported(encoding)
@@ -407,7 +375,6 @@ function Repo:get_show_text(object, encoding)
   local stdout, stderr = self:command({ 'show', object }, { raw = true, suppress_stderr = true })
 
   if encoding and encoding ~= 'utf-8' and iconv_supported(encoding) then
-    stdout[1] = strip_bom(stdout[1], encoding)
     for i, l in ipairs(stdout) do
       --- @diagnostic disable-next-line:param-type-mismatch
       stdout[i] = vim.iconv(l, encoding, 'utf-8')
