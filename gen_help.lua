@@ -220,7 +220,7 @@ local function render_param_or_return(name, ty, desc, name_pad)
   local r = {} --- @type string[]
 
   local desc1 = desc[1] == '' and '' or ' ' .. desc[1]
-  r[#r + 1] = string.format('    %s(%s): %s', name_str, ty, desc1)
+  r[#r + 1] = string.format('    %s(%s):%s', name_str, ty, desc1)
 
   local remain_desc = trim_lines(vim.list_slice(desc, 2))
   for _, d in ipairs(remain_desc) do

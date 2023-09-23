@@ -21,7 +21,7 @@ jobs:
       matrix:
         neovim_branch:
           - 'v0.8.3'
-          - 'v0.9.1'
+          - 'v0.9.2'
           - 'nightly'
 
     env:
@@ -42,3 +42,27 @@ jobs:
 
       - name: Run Test
         run: make test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download stylua
+        run: make stylua
+
+      - name: Lint
+        run: make stylua-check
+
+  doc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download Nvim
+        run: make nvim
+
+      - name: Doc Check
+        run: make doc-check

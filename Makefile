@@ -7,10 +7,14 @@ NVIM_RUNNER_VERSION := v0.9.1
 NVIM_TEST_VERSION ?= v0.9.1
 
 ifeq ($(shell uname -s),Darwin)
-    NVIM_PLATFORM ?= macos
+    UNAME ?= MACOS
 else
-    NVIM_PLATFORM ?= linux64
+    UNAME ?= LINUX
 endif
+
+NVIM_PLATFORM_MACOS := macos
+NVIM_PLATFORM_LINUX := linux64
+NVIM_PLATFORM ?= $(NVIM_PLATFORM_$(UNAME))
 
 NVIM_URL := https://github.com/neovim/neovim/releases/download
 
@@ -60,9 +64,38 @@ test: $(NVIM_RUNNER) $(NVIM_TEST) .luarocks/bin/busted
 	-@stty sane
 
 .PHONY: gen_help
-gen_help:
-	@./gen_help.lua
+gen_help: $(NVIM_RUNNER)
+	@$(NVIM_RUNNER)/bin/nvim -l ./gen_help.lua
 	@echo Updated help
 
+STYLUA_PLATFORM_MACOS := macos-aarch64
+STYLUA_PLATFORM_LINUX := linux-x86_64
+STYLUA_PLATFORM := $(STYLUA_PLATFORM_$(UNAME))
+
+STYLUA_VERSION := v0.18.2
+STYLUA_ZIP := stylua-$(STYLUA_PLATFORM).zip
+STYLUA_URL_BASE := https://github.com/JohnnyMorganz/StyLua/releases/download
+STYLUA_URL := $(STYLUA_URL_BASE)/$(STYLUA_VERSION)/$(STYLUA_ZIP)
+
+.INTERMEDIATE: $(STYLUA_ZIP)
+$(STYLUA_ZIP):
+	wget $(STYLUA_URL)
+
+stylua: $(STYLUA_ZIP)
+	unzip $<
+
+.PHONY: stylua-check
+stylua-check: stylua
+	./stylua --check lua/**/*.lua
+
+.PHONY: stylua-run
+stylua-run: stylua
+	./stylua lua/**/*.lua lua/*.lua
+
 .PHONY: build
-build: gen_help
+build: gen_help stylua-run
+
+.PHONY: doc-check
+doc-check: gen_help
+	git diff --exit-code -- doc
+
