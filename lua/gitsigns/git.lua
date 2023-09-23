@@ -651,7 +651,7 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
       }
 
       -- filename terminates the entry
-      while peek() and not peek():match('^filename ') do
+      while peek() and not (peek():match('^filename ') or peek():match('^previous ')) do
         local l = get()
         local key, value = l:match('^([^%s]+) (.*)')
         if key then
@@ -692,7 +692,7 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
         commit = commits[sha],
         filename = filename,
         previous_filename = previous_filename,
-        previous_sha = previous_filename,
+        previous_sha = previous_sha,
       }
     end
   end
