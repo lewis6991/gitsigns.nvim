@@ -910,7 +910,10 @@ M.blame_line = async.void(function(opts)
   local blame_fmt = create_blame_fmt(is_committed, opts.full)
 
   if is_committed and opts.full then
-    local body = bcache.git_obj:command({ 'show', '-s', '--format=%B', result.sha })
+    local body = bcache.git_obj:command(
+      { 'show', '-s', '--format=%B', result.sha },
+      { text = true }
+    )
     local hunk, hunk_no, num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
     assert(hunk and hunk_no and num_hunks)
 

@@ -130,6 +130,7 @@ end
 --- @field writer? string[] | string
 --- @field suppress_stderr? boolean
 --- @field raw? boolean Do not strip trailing newlines from stdout
+--- @field text? boolean Convert CRLF to LF
 --- @field args? string[]
 
 --- @param args string[]
@@ -163,6 +164,10 @@ local git_command = async.create(function(args, spec)
       local cmd_str = table.concat({ spec.command, unpack(args) }, ' ')
       log.eprintf("Received stderr when running command\n'%s':\n%s", cmd_str, stderr)
     end
+  end
+
+  if stdout and spec.text then
+    stdout = stdout:gsub('\r\n', '\n')
   end
 
   local stdout_lines = vim.split(stdout or '', '\n', { plain = true })
