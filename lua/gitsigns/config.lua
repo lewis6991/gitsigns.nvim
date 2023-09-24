@@ -70,7 +70,6 @@
 --- @field trouble boolean
 --- -- Undocumented
 --- @field _refresh_staged_on_update boolean
---- @field _blame_cache boolean
 --- @field _threaded_diff boolean
 --- @field _inline2 boolean
 --- @field _extmark_signs boolean
@@ -757,14 +756,6 @@ M.schema = {
       Always refresh the staged file on each update. Disabling this will cause
       the staged file to only be refreshed when an update to the index is
       detected.
-    ]],
-  },
-
-  _blame_cache = {
-    type = 'boolean',
-    default = true,
-    description = [[
-      Cache blame results for current_line_blame
     ]],
   },
 

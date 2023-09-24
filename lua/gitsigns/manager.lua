@@ -75,6 +75,28 @@ local function apply_win_signs(bufnr, top, bot, clear)
   end
 end
 
+--- @param blame table<integer,Gitsigns.BlameInfo?>?
+--- @param first integer
+--- @param last_orig integer
+--- @param last_new integer
+local function on_lines_blame(blame, first, last_orig, last_new)
+  if not blame then
+    return
+  end
+
+  if last_new ~= last_orig then
+    if last_new < last_orig then
+      util.list_remove(blame, last_new, last_orig)
+    else
+      util.list_insert(blame, last_orig, last_new)
+    end
+  end
+
+  for i = math.min(first + 1, last_new), math.max(first + 1, last_new) do
+    blame[i] = nil
+  end
+end
+
 --- @param buf integer
 --- @param first integer
 --- @param last_orig integer
@@ -86,6 +108,8 @@ function M.on_lines(buf, first, last_orig, last_new)
     dprint('Cache for buffer was nil. Detaching')
     return true
   end
+
+  on_lines_blame(bcache.blame, first, last_orig, last_new)
 
   signs_normal:on_lines(buf, first, last_orig, last_new)
   if signs_staged then
