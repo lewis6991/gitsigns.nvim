@@ -87,7 +87,7 @@ local handler = debounce_trailing(
       buf_check(bufnr)
     end
 
-    cache[bufnr]:invalidate()
+    cache[bufnr]:invalidate(true)
 
     require('gitsigns.manager').update(bufnr)
   end),

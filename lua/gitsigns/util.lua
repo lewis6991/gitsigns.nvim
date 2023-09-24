@@ -191,19 +191,6 @@ function M.get_relative_time(timestamp)
   end
 end
 
---- @generic T
---- @param x T[]
---- @return T[]
-function M.copy_array(x)
-  local r = {}
-  --- @diagnostic disable-next-line:no-unknown
-  for i, e in ipairs(x) do
-    --- @diagnostic disable-next-line:no-unknown
-    r[i] = e
-  end
-  return r
-end
-
 --- Strip '\r' from the EOL of each line only if all lines end with '\r'
 --- @param xs0 string[]
 --- @return string[]
@@ -302,6 +289,51 @@ function M.convert_blame_info(x)
   local ret = vim.tbl_extend('error', x, x.commit)
   ret.commit = nil
   return ret
+end
+
+--- Efficiently remove items from middle of a list a list.
+---
+--- Calling table.remove() in a loop will re-index the tail of the table on
+--- every iteration, instead this function will re-index  the table exactly
+--- once.
+---
+--- Based on https://stackoverflow.com/questions/12394841/safely-remove-items-from-an-array-table-while-iterating/53038524#53038524
+---
+---@param t any[]
+---@param first integer
+---@param last integer
+function M.list_remove(t, first, last)
+  local n = #t
+  for i = 0, n - first do
+    t[first + i] = t[last + 1 + i]
+    t[last + 1 + i] = nil
+  end
+end
+
+--- Efficiently insert items into the middle of a list.
+---
+--- Calling table.insert() in a loop will re-index the tail of the table on
+--- every iteration, instead this function will re-index  the table exactly
+--- once.
+---
+--- Based on https://stackoverflow.com/questions/12394841/safely-remove-items-from-an-array-table-while-iterating/53038524#53038524
+---
+---@param t any[]
+---@param first integer
+---@param last integer
+---@param v any
+function M.list_insert(t, first, last, v)
+  local n = #t
+
+  -- Shift table forward
+  for i = n - first, 0, -1 do
+    t[last + 1 + i] = t[first + i]
+  end
+
+  -- Fill in new values
+  for i = first, last do
+    t[i] = v
+  end
 end
 
 return M

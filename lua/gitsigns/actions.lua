@@ -288,7 +288,7 @@ M.stage_hunk = mk_repeatable(async.void(function(range, opts)
 
   table.insert(bcache.staged_diffs, hunk)
 
-  bcache:invalidate()
+  bcache:invalidate(true)
   update(bufnr)
 end))
 
@@ -371,7 +371,7 @@ M.undo_stage_hunk = async.void(function()
   end
 
   bcache.git_obj:stage_hunks({ hunk }, true)
-  bcache:invalidate()
+  bcache:invalidate(true)
   update(bufnr)
 end)
 
@@ -389,7 +389,7 @@ M.stage_buffer = async.void(function()
 
   -- Only process files with existing hunks
   local hunks = bcache.hunks
-  if #hunks == 0 then
+  if not hunks or #hunks == 0 then
     print('No unstaged changes in file to stage')
     return
   end
@@ -405,7 +405,7 @@ M.stage_buffer = async.void(function()
     table.insert(bcache.staged_diffs, hunk)
   end
 
-  bcache:invalidate()
+  bcache:invalidate(true)
   update(bufnr)
 end)
 
@@ -432,7 +432,7 @@ M.reset_buffer_index = async.void(function()
 
   bcache.git_obj:unstage_file()
 
-  bcache:invalidate()
+  bcache:invalidate(true)
   update(bufnr)
 end)
 
@@ -893,17 +893,16 @@ M.blame_line = async.void(function(opts)
   end, 1000)
 
   async.scheduler_if_buf_valid()
-  local buftext = util.buf_lines(bufnr)
   local fileformat = vim.bo[bufnr].fileformat
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local results = bcache.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)
+  local result = bcache:get_blame(lnum, opts)
   pcall(function()
     loading:close()
   end)
 
-  assert(results and results[lnum])
+  assert(result)
 
-  local result = util.convert_blame_info(results[lnum])
+  result = util.convert_blame_info(result)
 
   local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
 
@@ -934,10 +933,12 @@ C.blame_line = function(args, _)
   M.blame_line(args)
 end
 
-local function update_buf_base(buf, bcache, base)
+---@param bcache Gitsigns.CacheEntry
+---@param base string?
+local function update_buf_base(bcache, base)
   bcache.base = base
-  bcache:invalidate()
-  update(buf)
+  bcache:invalidate(true)
+  update(bcache.bufnr)
 end
 
 --- Change the base revision to diff against. If {base} is not
@@ -978,8 +979,8 @@ M.change_base = async.void(function(base, global)
   if global then
     config.base = base
 
-    for bufnr, bcache in pairs(cache) do
-      update_buf_base(bufnr, bcache, base)
+    for _, bcache in pairs(cache) do
+      update_buf_base(bcache, base)
     end
   else
     local bufnr = current_buf()
@@ -988,7 +989,7 @@ M.change_base = async.void(function(base, global)
       return
     end
 
-    update_buf_base(bufnr, bcache, base)
+    update_buf_base(bcache, base)
   end
 end)
 
@@ -1317,7 +1318,7 @@ M.refresh = async.void(function()
   require('gitsigns.highlight').setup_highlights()
   require('gitsigns.current_line_blame').setup()
   for k, v in pairs(cache) do
-    v:invalidate()
+    v:invalidate(true)
     manager.update(k)
   end
 end)

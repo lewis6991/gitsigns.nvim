@@ -20,13 +20,6 @@ local function reset(bufnr)
   vim.b[bufnr].gitsigns_blame_line_dict = nil
 end
 
---- @class (exact) Gitsigns.BlameCache
---- @field cache Gitsigns.BlameInfo[]?
---- @field tick integer
-
---- @type table<integer,Gitsigns.BlameCache>
-local blame_cache = {}
-
 --- @param fmt string
 --- @param name string
 --- @param info Gitsigns.BlameInfoPublic
@@ -46,36 +39,6 @@ local function flatten_virt_text(virt_text)
     res[#res + 1] = part[1]
   end
   return table.concat(res)
-end
-
---- @param bufnr integer
---- @param lnum integer
---- @param opts Gitsigns.CurrentLineBlameOpts
---- @return Gitsigns.BlameInfo?
-local function run_blame(bufnr, lnum, opts)
-  -- init and invalidate
-  local tick = vim.b[bufnr].changedtick
-  if not blame_cache[bufnr] or blame_cache[bufnr].tick ~= tick then
-    blame_cache[bufnr] = { tick = tick }
-  end
-
-  local result = blame_cache[bufnr].cache
-
-  if result then
-    return result[lnum]
-  end
-
-  local buftext = util.buf_lines(bufnr)
-  local bcache = cache[bufnr]
-  result = bcache.git_obj:run_blame(buftext, nil, opts.ignore_whitespace)
-
-  if not result then
-    return
-  end
-
-  blame_cache[bufnr].cache = result
-
-  return result[lnum]
 end
 
 --- @param winid integer
@@ -203,13 +166,11 @@ local function update0(bufnr)
 
   local opts = config.current_line_blame_opts
 
-  local blame_info = run_blame(bufnr, lnum, opts)
+  local blame_info = bcache:get_blame(lnum, opts)
 
   if not blame_info then
     return
   end
-
-  async.scheduler_if_buf_valid(bufnr)
 
   if lnum ~= get_lnum(winid) then
     -- Cursor has moved during events; abort and tr-trigger another update

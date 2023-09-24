@@ -10,7 +10,6 @@ local hl = require('gitsigns.highlight')
 
 local gs_cache = require('gitsigns.cache')
 local cache = gs_cache.cache
-local CacheEntry = gs_cache.CacheEntry
 local Status = require('gitsigns.status')
 
 local gs_config = require('gitsigns.config')
@@ -111,6 +110,7 @@ end
 --- @param bufnr integer
 local function on_reload(_, bufnr)
   local __FUNC__ = 'on_reload'
+  cache[bufnr]:invalidate()
   dprint('Reload')
   manager.update_debounced(bufnr)
 end
@@ -336,7 +336,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     return
   end
 
-  cache[cbuf] = CacheEntry.new({
+  cache[cbuf] = gs_cache.new({
     bufnr = cbuf,
     base = ctx and ctx.base or config.base,
     file = file,

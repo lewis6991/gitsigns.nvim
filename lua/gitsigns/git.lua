@@ -8,8 +8,6 @@ local subprocess = require('gitsigns.subprocess')
 local gs_config = require('gitsigns.config')
 local config = gs_config.config
 
-local gs_hunks = require('gitsigns.hunks')
-
 local uv = vim.loop
 local startswith = vim.startswith
 
@@ -569,10 +567,29 @@ end
 
 local NOT_COMMITTED = {
   author = 'Not Committed Yet',
-  ['author_mail'] = '<not.committed.yet>',
+  author_mail = '<not.committed.yet>',
   committer = 'Not Committed Yet',
-  ['committer_mail'] = '<not.committed.yet>',
+  committer_mail = '<not.committed.yet>',
 }
+
+--- @param file string
+--- @return Gitsigns.CommitInfo
+function M.not_commited(file)
+  local time = os.time()
+  return {
+    sha = string.rep('0', 40),
+    abbrev_sha = string.rep('0', 8),
+    author = 'Not Committed Yet',
+    author_mail = '<not.committed.yet>',
+    author_tz = '+0000',
+    author_time = time,
+    committer = 'Not Committed Yet',
+    committer_time = time,
+    committer_mail = '<not.committed.yet>',
+    committer_tz = '+0000',
+    summary = 'Version of ' .. file,
+  }
+end
 
 ---@param x any
 ---@return integer
@@ -585,11 +602,22 @@ end
 --- @param ignore_whitespace? boolean
 --- @return table<integer,Gitsigns.BlameInfo?>?
 function Obj:run_blame(lines, lnum, ignore_whitespace)
+  local ret = {} --- @type table<integer,Gitsigns.BlameInfo>
+
   if not self.object_name or self.repo.abbrev_head == '' then
     -- As we support attaching to untracked files we need to return something if
     -- the file isn't isn't tracked in git.
     -- If abbrev_head is empty, then assume the repo has no commits
-    return NOT_COMMITTED
+    local commit = M.not_commited(self.file)
+    for i in ipairs(lines) do
+      ret[i] = {
+        orig_lnum = 0,
+        final_lnum = i,
+        commit = commit,
+        filename = self.file,
+      }
+    end
+    return ret
   end
 
   local args = { 'blame', '--contents', '-', '--incremental' }
@@ -619,7 +647,6 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
     return
   end
 
-  local ret = {} --- @type Gitsigns.BlameInfo[]
   local commits = {} --- @type table<string,Gitsigns.CommitInfo>
   local i = 1
 
@@ -660,6 +687,9 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
         local l = get()
         local key, value = l:match('^([^%s]+) (.*)')
         if key then
+          if vim.endswith(key, '_time') then
+            value = tonumber(value)
+          end
           key = key:gsub('%-', '_') --- @type string
           commit[key] = value
         else
@@ -748,6 +778,8 @@ end
 --- @param invert? boolean
 function Obj.stage_hunks(self, hunks, invert)
   ensure_file_in_index(self)
+
+  local gs_hunks = require('gitsigns.hunks')
 
   local patch = gs_hunks.create_patch(self.relpath, hunks, self.mode_bits, invert)
 
