@@ -13,7 +13,7 @@ local log = require('gitsigns.debug.log')
 local dprint = log.dprint
 local dprintf = log.dprintf
 
-local subprocess = require('gitsigns.subprocess')
+local system = require('gitsigns.system')
 local util = require('gitsigns.util')
 local run_diff = require('gitsigns.diff')
 
@@ -512,7 +512,7 @@ M.update = throttle_by_id(function(bufnr)
 
   update_cnt = update_cnt + 1
 
-  dprintf('updates: %s, jobs: %s', update_cnt, subprocess.job_cnt)
+  dprintf('updates: %s, jobs: %s', update_cnt, system.job_cnt)
 end, true)
 
 --- @param bufnr integer

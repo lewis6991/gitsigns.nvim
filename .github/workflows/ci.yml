@@ -7,6 +7,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   commit_lint:
     runs-on: ubuntu-latest
@@ -16,6 +20,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     strategy:
       matrix:
@@ -39,6 +44,9 @@ jobs:
 
       - name: Download Nvim
         run: make nvim
+
+      - name: Download Busted
+        run: make busted
 
       - name: Run Test
         run: make test
