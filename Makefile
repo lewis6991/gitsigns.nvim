@@ -51,6 +51,9 @@ LUAROCKS := luarocks --lua-version=5.1 --tree .luarocks
 .luarocks/bin/busted:
 	$(LUAROCKS) install busted
 
+.PHONY: busted
+busted: .luarocks/bin/busted
+
 .PHONY: test
 test: $(NVIM_RUNNER) $(NVIM_TEST) .luarocks/bin/busted
 	eval $$($(LUAROCKS) path) && $(NVIM_RUNNER)/bin/nvim -ll test/busted/runner.lua -v \

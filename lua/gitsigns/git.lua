@@ -3,7 +3,7 @@ local scheduler = require('gitsigns.async').scheduler
 
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
-local subprocess = require('gitsigns.subprocess')
+local system = require('gitsigns.system').system
 
 local gs_config = require('gitsigns.config')
 local config = gs_config.config
@@ -18,6 +18,9 @@ local err = require('gitsigns.message').error
 local error_once = require('gitsigns.message').error_once
 
 local M = {}
+
+--- @type fun(cmd: string[], opts?: SystemOpts): vim.SystemCompleted
+local asystem = async.wrap(system, 3)
 
 --- @param file string
 --- @return boolean
@@ -104,16 +107,15 @@ function M._set_version(version)
     return
   end
 
-  --- @type integer, integer, string?, string?
-  local _, _, stdout, stderr = async.wait(2, subprocess.run_job, {
-    command = 'git',
-    args = { '--version' },
-  })
+  --- @type vim.SystemCompleted
+  local obj = asystem({ 'git', '--version' })
+
+  local stdout = obj.stdout
 
   local line = vim.split(stdout or '', '\n', { plain = true })[1]
   if not line then
     err("Unable to detect git version as 'git --version' failed to return anything")
-    eprint(stderr)
+    eprint(obj.stderr)
     return
   end
   assert(type(line) == 'string', 'Unexpected output: ' .. line)
@@ -122,14 +124,9 @@ function M._set_version(version)
   M.version = parse_version(parts[3])
 end
 
---- @class Gitsigns.Git.JobSpec
+--- @class Gitsigns.Git.JobSpec : SystemOpts
 --- @field command? string
---- @field cwd? string
---- @field writer? string[] | string
---- @field suppress_stderr? boolean
---- @field raw? boolean Do not strip trailing newlines from stdout
---- @field text? boolean Convert CRLF to LF
---- @field args? string[]
+--- @field ignore_error? boolean
 
 --- @param args string[]
 --- @param spec? Gitsigns.Git.JobSpec
@@ -138,39 +135,35 @@ local git_command = async.create(function(args, spec)
   if not M.version then
     M._set_version(config._git_version)
   end
+
   spec = spec or {}
-  spec.command = spec.command or 'git'
-  spec.args = spec.command == 'git'
-      and {
-        '--no-pager',
-        '--literal-pathspecs',
-        '-c',
-        'gc.auto=0', -- Disable auto-packing which emits messages to stderr
-        unpack(args),
-      }
-    or args
 
-  if not spec.cwd and not uv.cwd() then
-    spec.cwd = vim.env.HOME
+  local cmd = {
+    spec.command or 'git',
+    '--no-pager',
+    '--literal-pathspecs',
+    '-c',
+    'gc.auto=0', -- Disable auto-packing which emits messages to stderr
+    unpack(args),
+  }
+
+  if spec.text == nil then
+    spec.text = true
   end
 
-  --- @type integer, integer, string?, string?
-  local _, _, stdout, stderr = async.wait(2, subprocess.run_job, spec)
+  --- @type vim.SystemCompleted
+  local obj = asystem(cmd, spec)
+  local stdout = obj.stdout
+  local stderr = obj.stderr
 
-  if not spec.suppress_stderr then
-    if stderr then
-      local cmd_str = table.concat({ spec.command, unpack(args) }, ' ')
-      log.eprintf("Received stderr when running command\n'%s':\n%s", cmd_str, stderr)
-    end
-  end
-
-  if stdout and spec.text then
-    stdout = stdout:gsub('\r\n', '\n')
+  if not spec.ignore_error and obj.code > 0 then
+    local cmd_str = table.concat(cmd, ' ')
+    log.eprintf("Received exit code %d when running command\n'%s':\n%s", obj.code, cmd_str, stderr)
   end
 
   local stdout_lines = vim.split(stdout or '', '\n', { plain = true })
 
-  if not spec.raw then
+  if spec.text then
     -- If stdout ends with a newline, then remove the final empty string after
     -- the split
     if stdout_lines[#stdout_lines] == '' then
@@ -183,6 +176,10 @@ local git_command = async.create(function(args, spec)
     for i = 1, math.min(10, #stdout_lines) do
       log.vprintf('\t%s', stdout_lines[i])
     end
+  end
+
+  if stderr == '' then
+    stderr = nil
   end
 
   return stdout_lines, stderr
@@ -205,6 +202,9 @@ function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
     '--unified=0',
     file_cmp,
     file_buf,
+  }, {
+    -- git-diff implies --exit-code
+    ignore_error = true,
   })
 end
 
@@ -220,7 +220,7 @@ local function process_abbrev_head(gitdir, head_str, path, cmd)
   if head_str == 'HEAD' then
     local short_sha = git_command({ 'rev-parse', '--short', 'HEAD' }, {
       command = cmd or 'git',
-      suppress_stderr = true,
+      ignore_error = true,
       cwd = path,
     })[1] or ''
     if log.debug_mode and short_sha ~= '' then
@@ -243,7 +243,9 @@ local cygpath_convert ---@type fun(path: string): string
 
 if has_cygpath then
   cygpath_convert = function(path)
-    return git_command({ '-aw', path }, { command = 'cygpath' })[1]
+    --- @type vim.SystemCompleted
+    local obj = asystem({ 'cygpath', '-aw', path })
+    return obj.stdout
   end
 end
 
@@ -298,8 +300,8 @@ function M.get_repo_info(path, cmd, gitdir, toplevel)
   })
 
   local results = git_command(args, {
-    command = cmd or 'git',
-    suppress_stderr = true,
+    command = cmd,
+    ignore_error = true,
     cwd = toplevel or path,
   })
 
@@ -375,7 +377,7 @@ end
 --- @param encoding? string
 --- @return string[] stdout, string? stderr
 function Repo:get_show_text(object, encoding)
-  local stdout, stderr = self:command({ 'show', object }, { raw = true, suppress_stderr = true })
+  local stdout, stderr = self:command({ 'show', object }, { text = false, ignore_error = true })
 
   if encoding and encoding ~= 'utf-8' and iconv_supported(encoding) then
     for i, l in ipairs(stdout) do
@@ -398,7 +400,7 @@ end
 function Repo.new(dir, gitdir, toplevel)
   local self = setmetatable({}, { __index = Repo })
 
-  self.username = git_command({ 'config', 'user.name' })[1]
+  self.username = git_command({ 'config', 'user.name' }, { ignore_error = true })[1]
   local info = M.get_repo_info(dir, nil, gitdir, toplevel)
   for k, v in
     pairs(info --[[@as table<string,any>]])
@@ -479,10 +481,10 @@ function Obj:file_info(file, silent)
     '--exclude-standard',
     '--eol',
     file or self.file,
-  }, { suppress_stderr = true })
+  }, { ignore_error = true })
 
   if stderr and not silent then
-    -- Suppress_stderr for the cases when we run:
+    -- ignore_error for the cases when we run:
     --    git ls-files --others exists/nonexist
     if not stderr:match('^warning: could not open directory .*: No such file or directory') then
       log.eprint(stderr)
@@ -637,7 +639,7 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
     vim.list_extend(args, { '--ignore-revs-file', ignore_file })
   end
 
-  local results, stderr = self:command(args, { writer = lines, suppress_stderr = true })
+  local results, stderr = self:command(args, { stdin = lines, ignore_error = true })
   if stderr then
     error_once('Error running git-blame: ' .. stderr)
     return
@@ -763,7 +765,7 @@ function Obj:stage_lines(lines)
     '--path',
     self.relpath,
     '--stdin',
-  }, { writer = lines })
+  }, { stdin = lines })
 
   local new_object = stdout[1]
 
@@ -797,7 +799,7 @@ function Obj.stage_hunks(self, hunks, invert)
     '--unidiff-zero',
     '-',
   }, {
-    writer = patch,
+    stdin = patch,
   })
 end
 
