@@ -1,23 +1,31 @@
-local uv = require('luv')
+local uv = vim.loop
 
-local ChildProcessStream = {}
-ChildProcessStream.__index = ChildProcessStream
+--- @class ProcessStream
+--- @field _proc uv.uv_process_t
+--- @field _pid integer
+--- @field _child_stdin uv.uv_pipe_t
+--- @field _child_stdout uv.uv_pipe_t
+--- @field _exiting boolean
+--- @field signal integer
+--- @field status integer
+local ProcessStream = {}
 
-function ChildProcessStream.spawn(argv, env, io_extra)
+--- @param argv string[]
+--- @return ProcessStream
+function ProcessStream.spawn(argv)
+  --- @type ProcessStream
   local self = setmetatable({
     _child_stdin = uv.new_pipe(false);
     _child_stdout = uv.new_pipe(false);
     _exiting = false;
-  }, ChildProcessStream)
-  local prog = argv[1]
-  local args = {}
-  for i = 2, #argv do
-    args[#args + 1] = argv[i]
-  end
+  }, { __index = ProcessStream })
+
+  local prog, args = argv[1], vim.list_slice(argv, 2)
+
+  --- @diagnostic disable-next-line:missing-fields
   self._proc, self._pid = uv.spawn(prog, {
-    stdio = {self._child_stdin, self._child_stdout, 2, io_extra},
+    stdio = {self._child_stdin, self._child_stdout, 2},
     args = args,
-    env = env,
   }, function(status, signal)
     self.status = status
     self.signal = signal
@@ -31,11 +39,11 @@ function ChildProcessStream.spawn(argv, env, io_extra)
   return self
 end
 
-function ChildProcessStream:write(data)
+function ProcessStream:write(data)
   self._child_stdin:write(data)
 end
 
-function ChildProcessStream:read_start(cb)
+function ProcessStream:read_start(cb)
   self._child_stdout:read_start(function(err, chunk)
     if err then
       error(err)
@@ -44,11 +52,14 @@ function ChildProcessStream:read_start(cb)
   end)
 end
 
-function ChildProcessStream:read_stop()
+function ProcessStream:read_stop()
   self._child_stdout:read_stop()
 end
 
-function ChildProcessStream:close(signal)
+--- @param signal string
+--- @return integer?
+--- @return integer?
+function ProcessStream:close(signal)
   if self._closed then
     return
   end
@@ -65,6 +76,4 @@ function ChildProcessStream:close(signal)
   return self.status, self.signal
 end
 
-return {
-  ChildProcessStream = ChildProcessStream;
-}
+return ProcessStream

@@ -1,8 +1,7 @@
 local assert = require('luassert')
 local luv = vim.loop
 local Session = require('test.client.session')
-local uv_stream = require('test.client.uv_stream')
-local ChildProcessStream = uv_stream.ChildProcessStream
+local ProcessStream = require('test.client.uv_stream')
 
 assert:set_parameter('TableFormatLevel', 100)
 
@@ -264,6 +263,9 @@ local function request(method, ...)
   return rv
 end
 
+--- @param lsession NvimSession
+--- @param ... any
+--- @return string
 local function call_and_stop_on_error(lsession, ...)
   local status, result = Session.safe_pcall(...)
   if not status then
@@ -280,8 +282,8 @@ end
 --- @param timeout integer
 --- @return unknown
 function M.run_session(lsession, request_cb, notification_cb, timeout)
-  local on_request --- @type fun()
-  local on_notification --- @type fun()
+  local on_request --- @type function
+  local on_notification --- @type function
 
   if request_cb then
     function on_request(method, args)
@@ -384,7 +386,7 @@ end
 --- Starts a new global Nvim session.
 function M.clear()
   check_close()
-  local child_stream = ChildProcessStream.spawn(nvim_argv)
+  local child_stream = ProcessStream.spawn(nvim_argv)
   session = Session.new(child_stream)
 end
 
@@ -400,6 +402,9 @@ end
 
 function M.create_callindex(func)
   return setmetatable({}, {
+    --- @param tbl table<string,function>
+    --- @param arg1 string
+    --- @return function
     __index = function(tbl, arg1)
       local ret = function(...)
         return func(arg1, ...)

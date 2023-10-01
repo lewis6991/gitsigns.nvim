@@ -29,7 +29,7 @@ end
 
 local function coroutine_exec(func, ...)
   local args = {...}
-  local on_complete
+  local on_complete --- @type function?
 
   if #args > 0 and type(args[#args]) == 'function' then
     -- completion callback
@@ -151,7 +151,10 @@ function Session:close(signal)
 end
 
 --- @param method string
+--- @param args any[]
+--- @return any
 function Session:_yielding_request(method, args)
+  --- @param co thread
   return coroutine.yield(function(co)
     self._msgpack_rpc_stream:write(method, args, function(err, result)
       resume(co, err, result)

@@ -1,4 +1,18 @@
-local mpack = require('mpack')
+--- @class vim.mpack.session
+--- @field receive function
+
+--- @class vim.mpack.Packer
+
+--- @class vim.mpack.Unacker
+
+--- @class vim.mpack
+--- @field encode fun(obj: any): string
+--- @field decode fun(obj: string): any
+--- @field Packer fun(opts): vim.mpack.Packer
+--- @field Session fun(opts): vim.mpack.session
+--- @field Unpacker fun(opts): vim.mpack.Unacker
+--- @field NIL userdata vim.NIL
+local mpack = vim.mpack
 
 -- temporary hack to be able to manipulate buffer/window/tabpage
 local Buffer = {}
@@ -30,21 +44,27 @@ function Response.new(msgpack_rpc_stream, request_id)
 end
 
 function Response:send(value, is_error)
-  local data = self._msgpack_rpc_stream._session:reply(self._request_id)
+  --- @type string[]
+  local data = { self._msgpack_rpc_stream._session:reply(self._request_id) }
   if is_error then
-    data = data .. self._msgpack_rpc_stream._pack(value)
-    data = data .. self._msgpack_rpc_stream._pack(mpack.NIL)
+    data[#data+1] = self._msgpack_rpc_stream._pack(value)
+    data[#data+1] = self._msgpack_rpc_stream._pack(mpack.NIL)
   else
-    data = data .. self._msgpack_rpc_stream._pack(mpack.NIL)
-    data = data .. self._msgpack_rpc_stream._pack(value)
+    data[#data+1] = self._msgpack_rpc_stream._pack(mpack.NIL)
+    data[#data+1] = self._msgpack_rpc_stream._pack(value)
   end
-  self._msgpack_rpc_stream._stream:write(data)
+  self._msgpack_rpc_stream._stream:write(table.concat(data))
 end
 
 --- @class MsgpackRpcStream
+--- @field _stream ProcessStream
+--- @field _session unknown
+--- @field _pack unknown
 local MsgpackRpcStream = {}
 MsgpackRpcStream.__index = MsgpackRpcStream
 
+--- @param stream ProcessStream
+--- @return MsgpackRpcStream
 function MsgpackRpcStream.new(stream)
   return setmetatable({
     _stream = stream,
@@ -68,16 +88,18 @@ function MsgpackRpcStream.new(stream)
 end
 
 function MsgpackRpcStream:write(method, args, response_cb)
-  local data
+  local data --- @type string[]
   if response_cb then
     assert(type(response_cb) == 'function')
-    data = self._session:request(response_cb)
+    data = { self._session:request(response_cb) }
   else
-    data = self._session:notify()
+    data = { self._session:notify() }
   end
 
-  data = data ..  self._pack(method) ..  self._pack(args)
-  self._stream:write(data)
+  data[#data+1] = self._pack(method)
+  data[#data+1] = self._pack(args)
+
+  self._stream:write(table.concat(data))
 end
 
 function MsgpackRpcStream:read_start(request_cb, notification_cb, eof_cb)
@@ -85,16 +107,20 @@ function MsgpackRpcStream:read_start(request_cb, notification_cb, eof_cb)
     if not data then
       return eof_cb()
     end
-    local type, id_or_cb, method_or_error, args_or_result
+
+    local type --- @type 'request'|'notification'|'response'
+    local id_or_cb --- @type integer|function
+    local method_or_error --- @type string?
+    local args_or_result --- @type any
     local pos = 1
     local len = #data
+
     while pos <= len do
       type, id_or_cb, method_or_error, args_or_result, pos =
         self._session:receive(data, pos)
       if type == 'request' or type == 'notification' then
         if type == 'request' then
-          request_cb(method_or_error, args_or_result, Response.new(self,
-                                                                   id_or_cb))
+          request_cb(method_or_error, args_or_result, Response.new(self, id_or_cb))
         else
           notification_cb(method_or_error, args_or_result)
         end
