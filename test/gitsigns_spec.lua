@@ -35,8 +35,8 @@ local eq              = helpers.eq
 helpers.env()
 
 describe('gitsigns', function()
-  local screen
-  local config
+  local screen --- @type NvimScreen
+  local config --- @type table
 
   before_each(function()
     clear()
