@@ -19,6 +19,7 @@ local edit            = helpers.edit
 local cleanup         = helpers.cleanup
 local test_file       = helpers.test_file
 local git             = helpers.git
+local gitm            = helpers.gitm
 local scratch         = helpers.scratch
 local newfile         = helpers.newfile
 local match_dag       = helpers.match_dag
@@ -254,8 +255,11 @@ describe('gitsigns', function()
       else
         system("printf 'This\nis\na\nwindows\nfile\n' > "..newfile)
       end
-      git{'add', newfile}
-      git{"commit", "-m", "commit on main"}
+
+      gitm {
+        {'add', newfile},
+        {"commit", "-m", "commit on main"}
+      }
 
       edit(newfile)
       feed('gg')
@@ -337,8 +341,10 @@ describe('gitsigns', function()
       feed('oEDIT<esc>')
       command('write')
 
-      git{'add', test_file}
-      git{"commit", "-m", "commit on main"}
+      gitm {
+        {'add', test_file},
+        {"commit", "-m", "commit on main"}
+      }
 
       -- Don't setup gitsigns until the repo has two commits
       setup_gitsigns(config)
@@ -552,21 +558,25 @@ describe('gitsigns', function()
         check{ status = {head='master', added=0, changed=1, removed=0} }
         command("write")
         command("bdelete")
-        git{'add', test_file}
-        git{"commit", "-m", "commit on main"}
+        gitm{
+          {'add', test_file},
+          {"commit", "-m", "commit on main"},
 
-        -- Create a branch, remove last commit, edit file again
-        git{'checkout', '-B', 'abranch'}
-        git{'reset', '--hard', 'HEAD~1'}
+          -- Create a branch, remove last commit, edit file again
+          {'checkout', '-B', 'abranch'},
+          {'reset', '--hard', 'HEAD~1'}
+        }
         edit(test_file)
         check{ status = {head='abranch', added=0, changed=0, removed=0} }
         feed('idiff')
         check{ status = {head='abranch', added=0, changed=1, removed=0} }
         command("write")
         command("bdelete")
-        git{'add', test_file}
-        git{"commit", "-m", "commit on branch"}
-        git{"rebase", "master"}
+        gitm{
+          {'add', test_file},
+          {"commit", "-m", "commit on branch"},
+          {"rebase", "master"}
+        }
 
         -- test_file should have a conflict
         edit(test_file)
@@ -678,8 +688,11 @@ describe('gitsigns', function()
     local uni_filename = scratch..'/föobær'
 
     write_to_file(uni_filename, {'Lorem ipsum'})
-    git{"add", uni_filename}
-    git{"commit", "-m", "another commit"}
+
+    gitm{
+      {"add", uni_filename},
+      {"commit", "-m", "another commit"}
+    }
 
     edit(uni_filename)
 
