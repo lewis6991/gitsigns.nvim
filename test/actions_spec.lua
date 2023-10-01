@@ -112,8 +112,12 @@ describe('actions', function()
   end)
 
   describe('staging partial hunks', function()
-    before_each(function()
+    setup(function()
       setup_test_repo{test_file_text={'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'}}
+    end)
+
+    before_each(function()
+      helpers.git{"reset", '--hard'}
       edit(test_file)
     end)
 

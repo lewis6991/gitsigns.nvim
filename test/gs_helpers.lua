@@ -75,6 +75,7 @@ function M.setup_git()
   M.git{'config', 'init.defaultBranch', 'master'}
 end
 
+---@param opts? {test_file_text?: string[], no_add?: boolean}
 function M.setup_test_repo(opts)
   local text = opts and opts.test_file_text or test_file_text
   M.cleanup()
