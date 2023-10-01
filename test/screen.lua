@@ -88,6 +88,7 @@ local function isempty(v)
   return type(v) == 'table' and next(v) == nil
 end
 
+--- @class NvimScreen
 local Screen = {}
 Screen.__index = Screen
 

@@ -1,11 +1,11 @@
-local uv = require('luv')
+local uv = vim.loop
 local MsgpackRpcStream = require('test.client.msgpack_rpc_stream')
 
---- @class Session
+--- @class NvimSession
 --- @field private _msgpack_rpc_stream MsgpackRpcStream
 --- @field private _pending_messages string[]
---- @field private _prepare uv_prepare_t
---- @field private _timer uv_timer_t
+--- @field private _prepare uv.uv_prepare_t
+--- @field private _timer uv.uv_timer_t
 --- @field private _is_running boolean
 local Session = {}
 Session.__index = Session
@@ -57,7 +57,17 @@ function Session.new(stream)
   }, Session)
 end
 
+--- @param timeout integer
+--- @return string
 function Session:next_message(timeout)
+  if self._is_running then
+    error('Event loop already running')
+  end
+
+  if #self._pending_messages > 0 then
+    return table.remove(self._pending_messages, 1)
+  end
+
   local function on_request(method, args, response)
     table.insert(self._pending_messages, {'request', method, args, response})
     uv.stop()
@@ -66,14 +76,6 @@ function Session:next_message(timeout)
   local function on_notification(method, args)
     table.insert(self._pending_messages, {'notification', method, args})
     uv.stop()
-  end
-
-  if self._is_running then
-    error('Event loop already running')
-  end
-
-  if #self._pending_messages > 0 then
-    return table.remove(self._pending_messages, 1)
   end
 
   self:_run(on_request, on_notification, timeout)
@@ -100,6 +102,10 @@ function Session:request(method, ...)
   return true, result
 end
 
+---@param request_cb fun()?
+---@param notification_cb fun()?
+---@param setup_cb fun()?
+---@param timeout integer?
 function Session:run(request_cb, notification_cb, setup_cb, timeout)
   local function on_request(method, args, response)
     coroutine_exec(request_cb, method, args, function(status, result, flag)
