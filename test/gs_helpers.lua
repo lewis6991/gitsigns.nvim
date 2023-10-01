@@ -42,10 +42,23 @@ local test_file_text = {
   'content', 'doesn\'t', 'matter,', 'it', 'just', 'needs', 'to', 'be', 'static.'
 }
 
-function M.git(args)
-  exec_lua("vim.loop.sleep(20)")
+--- Run a git command
+function M.gitf(args)
   system{"git", "-C", M.scratch, unpack(args)}
-  exec_lua("vim.loop.sleep(20)")
+end
+
+--- @param cmds string[][]
+function M.gitm(cmds)
+  for _, cmd in ipairs(cmds) do
+    M.gitf(cmd)
+  end
+  helpers.sleep(10)
+end
+
+--- Run a git command and add a delay
+function M.git(args)
+  M.gitf(args)
+  helpers.sleep(10)
 end
 
 function M.cleanup()
@@ -53,26 +66,26 @@ function M.cleanup()
 end
 
 function M.setup_git()
-  M.git{"init", '-b', 'master'}
+  M.gitf{"init", '-b', 'master'}
 
   -- Always force color to test settings don't interfere with gitsigns systems
   -- commands (addresses #23)
-  M.git{'config', 'color.branch'     , 'always'}
-  M.git{'config', 'color.ui'         , 'always'}
-  M.git{'config', 'color.diff'       , 'always'}
-  M.git{'config', 'color.interactive', 'always'}
-  M.git{'config', 'color.status'     , 'always'}
-  M.git{'config', 'color.grep'       , 'always'}
-  M.git{'config', 'color.pager'      , 'true'}
-  M.git{'config', 'color.decorate'   , 'always'}
-  M.git{'config', 'color.showbranch' , 'always'}
+  M.gitf{'config', 'color.branch'     , 'always'}
+  M.gitf{'config', 'color.ui'         , 'always'}
+  M.gitf{'config', 'color.diff'       , 'always'}
+  M.gitf{'config', 'color.interactive', 'always'}
+  M.gitf{'config', 'color.status'     , 'always'}
+  M.gitf{'config', 'color.grep'       , 'always'}
+  M.gitf{'config', 'color.pager'      , 'true'}
+  M.gitf{'config', 'color.decorate'   , 'always'}
+  M.gitf{'config', 'color.showbranch' , 'always'}
 
-  M.git{'config', 'merge.conflictStyle', 'merge'}
+  M.gitf{'config', 'merge.conflictStyle', 'merge'}
 
-  M.git{'config', 'user.email', 'tester@com.com'}
-  M.git{'config', 'user.name' , 'tester'}
+  M.gitf{'config', 'user.email', 'tester@com.com'}
+  M.gitf{'config', 'user.name' , 'tester'}
 
-  M.git{'config', 'init.defaultBranch', 'master'}
+  M.gitf{'config', 'init.defaultBranch', 'master'}
 end
 
 ---@param opts? {test_file_text?: string[], no_add?: boolean}
@@ -84,9 +97,10 @@ function M.setup_test_repo(opts)
   system{"touch", M.test_file}
   M.write_to_file(M.test_file, text)
   if not (opts and opts.no_add) then
-    M.git{"add", M.test_file}
-    M.git{"commit", "-m", "init commit"}
+    M.gitf{"add", M.test_file}
+    M.gitf{"commit", "-m", "init commit"}
   end
+  helpers.sleep(20)
 end
 
 function M.expectf(cond, interval)
