@@ -1,17 +1,22 @@
---- @class Gitsigns.SchemaElem
+--- @class (exact) Gitsigns.SchemaElem
 --- @field type string|string[]
+--- @field refresh? fun(cb: fun()) Function to refresh the config value
 --- @field deep_extend? boolean
 --- @field default any
 --- @field deprecated? boolean|{new_field:string,message:string,hard:boolean}
 --- @field default_help? string
 --- @field description string
 
---- @class Gitsigns.DiffOpts
+--- @class (exact) Gitsigns.DiffOpts
 --- @field algorithm string
 --- @field internal boolean
 --- @field indent_heuristic boolean
 --- @field vertical boolean
---- @field linematch integer
+--- @field linematch? integer
+--- @field ignore_whitespace_change? true
+--- @field ignore_whitespace? true
+--- @field ignore_whitespace_change_at_eol? true
+--- @field ignore_blank_lines? true
 
 --- @class Gitsigns.SignConfig
 --- @field show_count boolean
@@ -99,15 +104,59 @@ local function resolve_default(v)
   end
 end
 
+--- @return Gitsigns.DiffOpts
+local function parse_diffopt()
+  --- @type Gitsigns.DiffOpts
+  local r = {
+    algorithm = 'myers',
+    internal = false,
+    indent_heuristic = false,
+    vertical = true,
+  }
+
+  local optmap = {
+    ['indent-heuristic'] = 'indent_heuristic',
+    internal = 'internal',
+    iwhite = 'ignore_whitespace_change',
+    iblank = 'ignore_blank_lines',
+    iwhiteeol = 'ignore_whitespace_change_at_eol',
+    iwhiteall = 'ignore_whitespace',
+  }
+
+  local diffopt = vim.opt.diffopt:get() --[[@as string[] ]]
+  for _, o in ipairs(diffopt) do
+    if optmap[o] then
+      r[optmap[o]] = true
+    elseif o == 'horizontal' then
+      r.vertical = false
+    elseif vim.startswith(o, 'algorithm:') then
+      r.algorithm = string.sub(o, ('algorithm:'):len() + 1)
+    elseif vim.startswith(o, 'linematch:') then
+      r.linematch = tonumber(string.sub(o, ('linematch:'):len() + 1))
+    end
+  end
+
+  return r
+end
+
 --- @type Gitsigns.Config
 M.config = setmetatable({}, {
   __index = function(t, k)
     if rawget(t, k) == nil then
       local field = M.schema[k]
-      if field then
-        rawset(t, k, resolve_default(field))
+      if not field then
+        return
+      end
+
+      rawset(t, k, resolve_default(field))
+
+      if field.refresh then
+        field.refresh(function()
+          rawset(t, k, resolve_default(field))
+        end)
       end
     end
+
     return rawget(t, k)
   end,
 })
@@ -377,35 +426,18 @@ M.schema = {
   diff_opts = {
     type = 'table',
     deep_extend = true,
-    default = function()
-      local r = {
-        algorithm = 'myers',
-        internal = false,
-        indent_heuristic = false,
-        vertical = true,
-        linematch = nil,
-      }
-      local diffopt = vim.opt.diffopt:get() --[[@as string[] ]]
-      for _, o in ipairs(diffopt) do
-        if o == 'indent-heuristic' then
-          r.indent_heuristic = true
-        elseif o == 'internal' then
-          if vim.diff then
-            r.internal = true
-          end
-        elseif o == 'horizontal' then
-          r.vertical = false
-        elseif vim.startswith(o, 'algorithm:') then
-          r.algorithm = string.sub(o, ('algorithm:'):len() + 1)
-        elseif vim.startswith(o, 'linematch:') then
-          r.linematch = tonumber(string.sub(o, ('linematch:'):len() + 1))
-        end
-      end
-      return r
+    refresh = function(callback)
+      vim.api.nvim_create_autocmd('OptionSet', {
+        group = vim.api.nvim_create_augroup('gitsigns.config.diff_opts', {}),
+        pattern = 'diffopt',
+        callback = callback,
+      })
     end,
+    default = parse_diffopt,
     default_help = "derived from 'diffopt'",
     description = [[
-      Diff options.
+      Diff options. If the default value is used, then changes to 'diffopt' are
+      automatically applied.
 
       Fields: ~
         • algorithm: string
@@ -425,6 +457,16 @@ M.schema = {
         • linematch: integer
             Enable second-stage diff on hunks to align lines.
             Requires `internal=true`.
+       • ignore_blank_lines: boolean
+            Ignore changes where lines are blank.
+       • ignore_whitespace_change: boolean
+            Ignore changes in amount of white space.
+            It should ignore adding trailing white space,
+            but not leading white space.
+       • ignore_whitespace: boolean
+           Ignore all white space changes.
+       • ignore_whitespace_change_at_eol: boolean
+            Ignore white space changes at end of line.
     ]],
   },
 
@@ -847,6 +889,20 @@ local function handle_deprecated(cfg)
   end
 end
 
+--- @param k string
+--- @param v Gitsigns.SchemaElem
+--- @param user_val any
+local function build_field(k, v, user_val)
+  local config = M.config --[[@as table<string,any>]]
+
+  if v.deep_extend then
+    local d = resolve_default(v)
+    config[k] = vim.tbl_deep_extend('force', d, user_val)
+  else
+    config[k] = user_val
+  end
+end
+
 --- @param user_config Gitsigns.Config|nil
 function M.build(user_config)
   user_config = user_config or {}
@@ -855,14 +911,13 @@ function M.build(user_config)
 
   validate_config(user_config)
 
-  local config = M.config --[[@as table<string,any>]]
   for k, v in pairs(M.schema) do
     if user_config[k] ~= nil then
-      if v.deep_extend then
-        local d = resolve_default(v)
-        config[k] = vim.tbl_deep_extend('force', d, user_config[k])
-      else
-        config[k] = user_config[k]
+      build_field(k, v, user_config[k])
+      if v.refresh then
+        v.refresh(function()
+          build_field(k, v, user_config[k])
+        end)
       end
     end
   end

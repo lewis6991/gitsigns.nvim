@@ -7,14 +7,19 @@ local M = {}
 --- @alias Gitsigns.Region {[1]:integer, [2]:string, [3]:integer, [4]:integer}
 
 --- @alias Gitsigns.RawHunk {[1]:integer, [2]:integer, [3]:integer, [4]:integer}
---- @alias Gitsigns.RawDifffn fun(a: string, b: string, algorithm?: string, indent_heuristic?: boolean, linematch?: integer): Gitsigns.RawHunk[]
+--- @alias Gitsigns.RawDifffn fun(a: string, b: string, linematch?: integer): Gitsigns.RawHunk[]
 
 --- @type Gitsigns.RawDifffn
-local run_diff_xdl = function(a, b, algorithm, indent_heuristic, linematch)
+local run_diff_xdl = function(a, b, linematch)
+  local opts = config.diff_opts
   return vim.diff(a, b, {
     result_type = 'indices',
-    algorithm = algorithm,
-    indent_heuristic = indent_heuristic,
+    algorithm = opts.algorithm,
+    indent_heuristic = opts.indent_heuristic,
+    ignore_whitespace = opts.ignore_whitespace,
+    ignore_whitespace_change = opts.ignore_whitespace_change,
+    ignore_whitespace_change_at_eol = opts.ignore_whitespace_change_at_eol,
+    ignore_blank_lines = opts.ignore_blank_lines,
     linematch = linematch,
   }) --[[@as Gitsigns.RawHunk[] ]]
 end
@@ -23,26 +28,43 @@ end
 local run_diff_xdl_async = async.wrap(
   --- @param a string
   --- @param b string
-  --- @param algorithm? string
-  --- @param indent_heuristic? boolean
   --- @param linematch? integer
   --- @param callback fun(hunks: Gitsigns.RawHunk[])
-  function(a, b, algorithm, indent_heuristic, linematch, callback)
+  function(a, b, linematch, callback)
+    local opts = config.diff_opts
+    local function toflag(f, pos)
+      return f and bit.lshift(1, pos) or 0
+    end
+
+    local flags = toflag(opts.indent_heuristic, 0)
+      + toflag(opts.ignore_whitespace, 1)
+      + toflag(opts.ignore_whitespace_change, 2)
+      + toflag(opts.ignore_whitespace_change_at_eol, 3)
+      + toflag(opts.ignore_blank_lines, 4)
+
     vim.loop
       .new_work(
         --- @param a0 string
         --- @param b0 string
-        --- @param algorithm0 string
-        --- @param indent_heuristic0 integer
+        --- @param algorithm string
+        --- @param flags0 integer
         --- @param linematch0 integer
         --- @return string
-        function(a0, b0, algorithm0, indent_heuristic0, linematch0)
+        function(a0, b0, algorithm, flags0, linematch0)
+          local function flagval(pos)
+            return bit.band(flags0, bit.lshift(1, pos)) ~= 0
+          end
+
           --- @diagnostic disable-next-line:return-type-mismatch
           return vim.mpack.encode(vim.diff(a0, b0, {
             result_type = 'indices',
-            algorithm = algorithm0,
-            indent_heuristic = indent_heuristic0,
+            algorithm = algorithm,
             linematch = linematch0,
+            indent_heuristic = flagval(0),
+            ignore_whitespace = flagval(1),
+            ignore_whitespace_change = flagval(2),
+            ignore_whitespace_change_at_eol = flagval(3),
+            ignore_blank_lines = flagval(4),
           }))
         end,
         --- @param r string
@@ -50,18 +72,16 @@ local run_diff_xdl_async = async.wrap(
           callback(vim.mpack.decode(r) --[[@as Gitsigns.RawHunk[] ]])
         end
       )
-      :queue(a, b, algorithm, indent_heuristic, linematch)
+      :queue(a, b, opts.algorithm, flags, linematch)
   end,
-  6
+  4
 )
 
 --- @param fa string[]
 --- @param fb string[]
---- @param diff_algo? string
---- @param indent_heuristic? boolean
 --- @param linematch? integer
 --- @return Gitsigns.Hunk.Hunk[]
-function M.run_diff(fa, fb, diff_algo, indent_heuristic, linematch)
+function M.run_diff(fa, fb, linematch)
   local run_diff0 --- @type Gitsigns.RawDifffn
   if config._threaded_diff and vim.is_thread then
     run_diff0 = run_diff_xdl_async
@@ -72,7 +92,7 @@ function M.run_diff(fa, fb, diff_algo, indent_heuristic, linematch)
   local a = table.concat(fa, '\n')
   local b = table.concat(fb, '\n')
 
-  local results = run_diff0(a, b, diff_algo, indent_heuristic, linematch)
+  local results = run_diff0(a, b, linematch)
 
   local hunks = {} --- @type Gitsigns.Hunk.Hunk[]
   for _, r in ipairs(results) do
