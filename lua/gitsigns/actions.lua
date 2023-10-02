@@ -281,6 +281,7 @@ M.stage_hunk = mk_repeatable(async.void(function(range, opts)
   end
 
   if not hunk then
+    api.nvim_echo({ { 'No hunk to stage', 'WarningMsg' } }, false, {})
     return
   end
 
@@ -294,6 +295,20 @@ end))
 
 C.stage_hunk = function(_, params)
   M.stage_hunk(get_range(params))
+end
+
+--- @param bufnr integer
+--- @param hunk Gitsigns.Hunk.Hunk
+local function reset_hunk(bufnr, hunk)
+  local lstart, lend ---@type integer, integer
+  if hunk.type == 'delete' then
+    lstart = hunk.added.start
+    lend = hunk.added.start
+  else
+    lstart = hunk.added.start - 1
+    lend = hunk.added.start - 1 + hunk.added.count
+  end
+  util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
 end
 
 --- Reset the lines of the hunk at the cursor position, or all
@@ -321,18 +336,11 @@ M.reset_hunk = mk_repeatable(async.void(function(range, opts)
   local hunk = get_hunk(bufnr, range, opts.greedy ~= false, false)
 
   if not hunk then
+    api.nvim_echo({ { 'No hunk to reset', 'WarningMsg' } }, false, {})
     return
   end
 
-  local lstart, lend ---@type integer, integer
-  if hunk.type == 'delete' then
-    lstart = hunk.added.start
-    lend = hunk.added.start
-  else
-    lstart = hunk.added.start - 1
-    lend = hunk.added.start - 1 + hunk.added.count
-  end
-  util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
+  reset_hunk(bufnr, hunk)
 end))
 
 C.reset_hunk = function(_, params)
@@ -347,7 +355,15 @@ M.reset_buffer = function()
     return
   end
 
-  util.set_lines(bufnr, 0, -1, bcache.compare_text)
+  local hunks = bcache.hunks
+  if not hunks or #hunks == 0 then
+    api.nvim_echo({ { 'No unstaged changes in the buffer to reset', 'WarningMsg' } }, false, {})
+    return
+  end
+
+  for i = #hunks, 1, -1 do
+    reset_hunk(bufnr, hunks[i])
+  end
 end
 
 --- Undo the last call of stage_hunk().
