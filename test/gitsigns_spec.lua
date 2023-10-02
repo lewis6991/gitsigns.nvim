@@ -557,7 +557,7 @@ describe('gitsigns', function()
         feed('iedit')
         check{ status = {head='master', added=0, changed=1, removed=0} }
         command("write")
-        command("bdelete")
+        command("bwipe")
         gitm{
           {'add', test_file},
           {"commit", "-m", "commit on main"},
@@ -571,7 +571,7 @@ describe('gitsigns', function()
         feed('idiff')
         check{ status = {head='abranch', added=0, changed=1, removed=0} }
         command("write")
-        command("bdelete")
+        command("bwipe")
         gitm{
           {'add', test_file},
           {"commit", "-m", "commit on branch"},

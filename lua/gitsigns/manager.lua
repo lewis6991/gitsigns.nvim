@@ -465,8 +465,12 @@ M.update = throttle_by_id(function(bufnr)
 
   local git_obj = bcache.git_obj
 
-  if not bcache.compare_text or config._refresh_staged_on_update then
-    bcache.compare_text = git_obj:get_show_text(bcache:get_compare_rev())
+  local compare_rev = bcache:get_compare_rev()
+
+  local file_mode = compare_rev == 'FILE'
+
+  if not bcache.compare_text or config._refresh_staged_on_update or file_mode then
+    bcache.compare_text = git_obj:get_show_text(compare_rev)
     M.buf_check(bufnr, true)
   end
 
@@ -475,7 +479,7 @@ M.update = throttle_by_id(function(bufnr)
   bcache.hunks = run_diff(bcache.compare_text, buftext)
   M.buf_check(bufnr)
 
-  if config._signs_staged_enable then
+  if config._signs_staged_enable and not file_mode then
     if not bcache.compare_text_head or config._refresh_staged_on_update then
       local staged_compare_rev = bcache.commit and string.format('%s^', bcache.commit) or 'HEAD'
       bcache.compare_text_head = git_obj:get_show_text(staged_compare_rev)
