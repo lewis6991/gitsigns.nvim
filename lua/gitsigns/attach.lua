@@ -118,6 +118,10 @@ end
 --- @param _ 'detach'
 --- @param bufnr integer
 local function on_detach(_, bufnr)
+  api.nvim_clear_autocmds({
+    group = 'gitsigns',
+    buffer = bufnr,
+  })
   M.detach(bufnr, true)
 end
 
@@ -360,6 +364,14 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     on_lines = on_lines,
     on_reload = on_reload,
     on_detach = on_detach,
+  })
+
+  api.nvim_create_autocmd('BufWrite', {
+    group = 'gitsigns',
+    buffer = cbuf,
+    callback = function()
+      manager.update_debounced(cbuf)
+    end,
   })
 
   -- Initial update
