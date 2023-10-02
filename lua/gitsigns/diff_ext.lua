@@ -1,3 +1,4 @@
+local config = require('gitsigns.config').config
 local git_diff = require('gitsigns.git').diff
 
 local gs_hunks = require('gitsigns.hunks')
@@ -24,10 +25,8 @@ end
 --- @async
 --- @param text_cmp string[]
 --- @param text_buf string[]
---- @param diff_algo string
---- @param indent_heuristic? boolean
 --- @return Gitsigns.Hunk.Hunk[]
-function M.run_diff(text_cmp, text_buf, diff_algo, indent_heuristic)
+function M.run_diff(text_cmp, text_buf)
   local results = {} --- @type Gitsigns.Hunk.Hunk[]
 
   -- tmpname must not be called in a callback
@@ -57,7 +56,8 @@ function M.run_diff(text_cmp, text_buf, diff_algo, indent_heuristic)
   -- We can safely ignore the warning, we turn it off by passing the '-c
   -- "core.safecrlf=false"' argument to git-diff.
 
-  local out = git_diff(file_cmp, file_buf, indent_heuristic, diff_algo)
+  local opts = config.diff_opts
+  local out = git_diff(file_cmp, file_buf, opts.indent_heuristic, opts.algorithm)
 
   for _, line in ipairs(out) do
     if vim.startswith(line, '@@') then

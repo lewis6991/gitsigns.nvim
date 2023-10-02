@@ -626,7 +626,8 @@ show_deleted                                    *gitsigns-config-show_deleted*
 diff_opts                                          *gitsigns-config-diff_opts*
       Type: `table[extended]`, Default: derived from 'diffopt'
 
-      Diff options.
+      Diff options. If the default value is used, then changes to 'diffopt' are
+      automatically applied.
 
       Fields: ~
         • algorithm: string
@@ -646,6 +647,16 @@ diff_opts                                          *gitsigns-config-diff_opts*
         • linematch: integer
             Enable second-stage diff on hunks to align lines.
             Requires `internal=true`.
+       • ignore_blank_lines: boolean
+            Ignore changes where lines are blank.
+       • ignore_whitespace_change: boolean
+            Ignore changes in amount of white space.
+            It should ignore adding trailing white space,
+            but not leading white space.
+       • ignore_whitespace: boolean
+           Ignore all white space changes.
+       • ignore_whitespace_change_at_eol: boolean
+            Ignore white space changes at end of line.
 
 base                                                    *gitsigns-config-base*
       Type: `string`, Default: index
