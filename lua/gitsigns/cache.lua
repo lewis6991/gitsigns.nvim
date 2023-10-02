@@ -83,16 +83,23 @@ function CacheEntry:wait_for_hunks()
   end
 end
 
+-- If a file contains has up to this amount of lines, then
+-- always blame the whole file, otherwise only blame one line
+-- at a time.
+local BLAME_THRESHOLD_LEN = 1000000
+
 --- @private
+--- @param lnum integer
 --- @param opts Gitsigns.CurrentLineBlameOpts
 --- @return table<integer,Gitsigns.BlameInfo?>?
-function CacheEntry:run_blame(opts)
+function CacheEntry:run_blame(lnum, opts)
   local blame_cache --- @type table<integer,Gitsigns.BlameInfo?>?
   repeat
     local buftext = util.buf_lines(self.bufnr)
     local tick = vim.b[self.bufnr].changedtick
+    local lnum0 = #buftext > BLAME_THRESHOLD_LEN and lnum or nil
     -- TODO(lewis6991): Cancel blame on changedtick
-    blame_cache = self.git_obj:run_blame(buftext, nil, opts.ignore_whitespace)
+    blame_cache = self.git_obj:run_blame(buftext, lnum0, opts.ignore_whitespace)
     async.scheduler_if_buf_valid(self.bufnr)
   until vim.b[self.bufnr].changedtick == tick
   return blame_cache
@@ -127,7 +134,7 @@ function CacheEntry:get_blame(lnum, opts)
       blame_cache[lnum] = get_blame_nc(self.git_obj.relpath, lnum)
     else
       -- Refresh cache
-      blame_cache = self:run_blame(opts)
+      blame_cache = self:run_blame(lnum, opts)
     end
     self.blame = blame_cache
   end
