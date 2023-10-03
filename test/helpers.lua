@@ -388,6 +388,19 @@ function M.clear()
   check_close()
   local child_stream = ProcessStream.spawn(nvim_argv)
   session = Session.new(child_stream)
+
+  local status, info = session:request('nvim_get_api_info')
+  assert(status)
+
+  assert(session:request('nvim_exec_lua', [[
+    local channel = ...
+    local orig_error = error
+
+    function error(...)
+      vim.rpcnotify(channel, 'nvim_error_event', debug.traceback(), ...)
+      return orig_error(...)
+    end
+    ]], {info[1]}))
 end
 
 ---@param ... string
