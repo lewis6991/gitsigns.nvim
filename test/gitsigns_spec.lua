@@ -34,7 +34,7 @@ local eq              = helpers.eq
 
 helpers.env()
 
-describe('gitsigns', function()
+describe('gitsigns (with screen)', function()
   local screen --- @type NvimScreen
   local config --- @type table
 
@@ -737,6 +737,47 @@ describe('gitsigns', function()
 
     check_screen()
 
+  end)
+
+end)
+
+describe('gitsigns', function()
+  local config --- @type table
+
+  before_each(function()
+    clear()
+
+    -- Make gitisigns available
+    exec_lua('package.path = ...', package.path)
+    config = vim.deepcopy(test_config)
+    command('cd '..system{"dirname", os.tmpname()})
+  end)
+
+  after_each(function()
+    cleanup()
+  end)
+
+  it('handle #888', function()
+    setup_test_repo()
+
+    local path1 = scratch..'/cargo.toml'
+    local subdir = scratch..'/subdir'
+    local path2 = subdir..'/cargo.toml'
+
+    write_to_file(path1, {'some text'})
+    git{'add', path1}
+    git{'commit', '-m', 'add cargo'}
+
+    -- move file and stage move
+    system{'mkdir', subdir}
+    system{'mv', path1, path2}
+    git{'add', path1, path2}
+
+    config.base = 'HEAD'
+    setup_gitsigns(config)
+    edit(path1)
+    command("write")
+    helpers.sleep(100)
   end)
 
 end)

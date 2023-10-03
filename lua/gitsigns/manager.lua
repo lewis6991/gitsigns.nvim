@@ -68,7 +68,7 @@ local function apply_win_signs(bufnr, top, bot, clear)
     return
   end
 
-  local untracked = bcache.git_obj.object_name == nil and bcache.base ~= 'FILE'
+  local untracked = bcache.git_obj.object_name == nil and not bcache.base
   apply_win_signs0(bufnr, signs_normal, bcache.hunks, top, bot, clear, untracked)
   if signs_staged then
     apply_win_signs0(bufnr, signs_staged, bcache.hunks_staged, top, bot, clear, false)

@@ -88,7 +88,9 @@ function M.setup_git()
   M.gitf{'config', 'init.defaultBranch', 'master'}
 end
 
----@param opts? {test_file_text?: string[], no_add?: boolean}
+--- Setup a basic git repository in directory `helpers.scratch` with a single file
+--- `helpers.test_file` committed.
+--- @param opts? {test_file_text?: string[], no_add?: boolean}
 function M.setup_test_repo(opts)
   local text = opts and opts.test_file_text or test_file_text
   M.cleanup()
@@ -122,6 +124,8 @@ function M.edit(path)
   helpers.command("edit " .. path)
 end
 
+--- @param path string
+--- @param text string[]
 function M.write_to_file(path, text)
   local f = assert(io.open(path, 'wb'))
   for _, l in ipairs(text) do
@@ -232,7 +236,7 @@ function M.setup_gitsigns(config, on_attach)
           return false
         end
       end
-      require('gitsigns').setup(...)
+      require('gitsigns').setup(config)
     ]], config, on_attach)
   M.expectf(function()
     return exec_lua[[return require'gitsigns'._setup_done == true]]
