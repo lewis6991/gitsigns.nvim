@@ -613,11 +613,10 @@ C.prev_hunk = function(args, _)
   M.prev_hunk(args)
 end
 
---- @param fmt {[1]: string, [2]: string}[][]
+--- @param fmt Gitsigns.LineSpec
 --- @param info table
---- @return {[1]: string, [2]: string}[][]
+--- @return Gitsigns.LineSpec
 local function lines_format(fmt, info)
-  --- @type {[1]: string, [2]: string}[][]
   local ret = vim.deepcopy(fmt)
 
   for _, line in ipairs(ret) do
@@ -630,68 +629,59 @@ local function lines_format(fmt, info)
 end
 
 --- @param hunk Gitsigns.Hunk.Hunk
---- @param hl string
---- @return table[]
-local function hlmarks_for_hunk(hunk, hl)
-  local hls = {} --- @type table[]
+--- @param fileformat string
+--- @return Gitsigns.LineSpec
+local function linespec_for_hunk(hunk, fileformat)
+  local hls = {} --- @type Gitsigns.LineSpec
 
-  local removed, added = hunk.removed, hunk.added
+  local removed, added = hunk.removed.lines, hunk.added.lines
 
-  if hl then
-    hls[#hls + 1] = {
-      hl_group = hl,
-      start_row = 0,
-      end_row = removed.count + added.count,
-    }
+  for _, spec in ipairs({
+    { sym = '-', lines = removed, hl = 'GitSignsDeletePreview' },
+    { sym = '+', lines = added, hl = 'GitSignsAddPreview' },
+  }) do
+    for _, l in ipairs(spec.lines) do
+      if fileformat == 'dos' then
+        l = l:gsub('\r$', '') --[[@as string]]
+      end
+      hls[#hls + 1] = {
+        {
+          spec.sym .. l,
+          {
+            {
+              hl_group = spec.hl,
+              end_row = 1, -- Highlight whole line
+            },
+          },
+        },
+      }
+    end
   end
-
-  hls[#hls + 1] = {
-    hl_group = 'GitSignsDeletePreview',
-    start_row = 0,
-    end_row = removed.count,
-  }
-
-  hls[#hls + 1] = {
-    hl_group = 'GitSignsAddPreview',
-    start_row = removed.count,
-    end_row = removed.count + added.count,
-  }
 
   if config.diff_opts.internal then
     local removed_regions, added_regions =
-      require('gitsigns.diff_int').run_word_diff(removed.lines, added.lines)
+      require('gitsigns.diff_int').run_word_diff(removed, added)
+
     for _, region in ipairs(removed_regions) do
-      hls[#hls + 1] = {
+      local i = region[1]
+      table.insert(hls[i][1][2], {
         hl_group = 'GitSignsDeleteInline',
-        start_row = region[1] - 1,
         start_col = region[3],
         end_col = region[4],
-      }
+      })
     end
+
     for _, region in ipairs(added_regions) do
-      hls[#hls + 1] = {
+      local i = hunk.removed.count + region[1]
+      table.insert(hls[i][1][2], {
         hl_group = 'GitSignsAddInline',
-        start_row = region[1] + removed.count - 1,
         start_col = region[3],
         end_col = region[4],
-      }
+      })
     end
   end
 
   return hls
-end
-
---- @param fmt {[1]: string, [2]: string|Gitsigns.HlMark[]}[][]
---- @param hunk Gitsigns.Hunk.Hunk
-local function insert_hunk_hlmarks(fmt, hunk)
-  for _, line in ipairs(fmt) do
-    for _, s in ipairs(line) do
-      local hl = s[2]
-      if s[1] == '<hunk>' and type(hl) == 'string' then
-        s[2] = hlmarks_for_hunk(hunk, hl)
-      end
-    end
-  end
 end
 
 local function noautocmd(f)
@@ -721,17 +711,14 @@ M.preview_hunk = noautocmd(function()
     return
   end
 
-  local lines_fmt = {
+  local preview_linespec = {
     { { 'Hunk <hunk_no> of <num_hunks>', 'Title' } },
-    { { '<hunk>', 'NormalFloat' } },
+    unpack(linespec_for_hunk(hunk, vim.bo[bufnr].fileformat)),
   }
 
-  insert_hunk_hlmarks(lines_fmt, hunk)
-
-  local lines_spec = lines_format(lines_fmt, {
+  local lines_spec = lines_format(preview_linespec, {
     hunk_no = index,
     num_hunks = #cache[bufnr].hunks,
-    hunk = Hunks.patch_lines(hunk, vim.bo[bufnr].fileformat),
   })
 
   popup.create(lines_spec, config.preview_config, 'hunk')
@@ -850,6 +837,9 @@ local function get_blame_hunk(repo, info)
   return hunk, i, #hunks
 end
 
+--- @param is_committed boolean
+--- @param full boolean
+--- @return {[1]: string, [2]: string}[][]
 local function create_blame_fmt(is_committed, full)
   if not is_committed then
     return {
@@ -857,25 +847,14 @@ local function create_blame_fmt(is_committed, full)
     }
   end
 
-  local header = {
-    { '<abbrev_sha> ', 'Directory' },
-    { '<author> ', 'MoreMsg' },
-    { '(<author_time:%Y-%m-%d %H:%M>)', 'Label' },
-    { ':', 'NormalFloat' },
-  }
-
-  if full then
-    return {
-      header,
-      { { '<body>', 'NormalFloat' } },
-      { { 'Hunk <hunk_no> of <num_hunks>', 'Title' }, { ' <hunk_head>', 'LineNr' } },
-      { { '<hunk>', 'NormalFloat' } },
-    }
-  end
-
   return {
-    header,
-    { { '<summary>', 'NormalFloat' } },
+    {
+      { '<abbrev_sha> ', 'Directory' },
+      { '<author> ', 'MoreMsg' },
+      { '(<author_time:%Y-%m-%d %H:%M>)', 'Label' },
+      { ':', 'NormalFloat' },
+    },
+    { { full and '<body>' or '<summary>', 'NormalFloat' } },
   }
 end
 
@@ -922,7 +901,7 @@ M.blame_line = async.void(function(opts)
 
   local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
 
-  local blame_fmt = create_blame_fmt(is_committed, opts.full)
+  local blame_linespec = create_blame_fmt(is_committed, opts.full)
 
   if is_committed and opts.full then
     local body = bcache.git_obj:command(
@@ -935,14 +914,17 @@ M.blame_line = async.void(function(opts)
     result.hunk_no = hunk_no
     result.body = body
     result.num_hunks = num_hunks
-    result.hunk = Hunks.patch_lines(hunk, fileformat)
     result.hunk_head = hunk.head
-    insert_hunk_hlmarks(blame_fmt, hunk)
+
+    vim.list_extend(blame_linespec, {
+      { { 'Hunk <hunk_no> of <num_hunks>', 'Title' }, { ' <hunk_head>', 'LineNr' } },
+      unpack(linespec_for_hunk(hunk, fileformat)),
+    })
   end
 
   async.scheduler_if_buf_valid(bufnr)
 
-  popup.create(lines_format(blame_fmt, result), config.preview_config, 'blame')
+  popup.create(lines_format(blame_linespec, result), config.preview_config, 'blame')
 end)
 
 C.blame_line = function(args, _)
