@@ -147,8 +147,9 @@ local function update0(bufnr)
     return
   end
 
-  local winid = vim.fn.bufwinid(bufnr)
-  if winid == -1 then
+  local winid = api.nvim_get_current_win()
+
+  if bufnr ~= api.nvim_win_get_buf(winid) then
     return
   end
 
