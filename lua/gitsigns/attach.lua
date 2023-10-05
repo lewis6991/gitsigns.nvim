@@ -25,7 +25,7 @@ local uv = vim.loop
 
 local M = {}
 
-local vimgrep_running = false
+local attach_disabled = false
 
 --- @param name string
 --- @return string? buffer
@@ -196,7 +196,7 @@ function M._setup()
     group = 'gitsigns',
     pattern = '*vimgrep*',
     callback = function()
-      vimgrep_running = true
+      attach_disabled = true
     end,
   })
 
@@ -204,7 +204,7 @@ function M._setup()
     group = 'gitsigns',
     pattern = '*vimgrep*',
     callback = function()
-      vimgrep_running = false
+      attach_disabled = false
     end,
   })
 
@@ -234,7 +234,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   M._setup()
 
-  if vimgrep_running then
+  if attach_disabled then
     dprint('attaching is disabled')
     return
   end
