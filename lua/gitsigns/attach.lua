@@ -184,7 +184,7 @@ function M._setup()
 
   api.nvim_create_autocmd('OptionSet', {
     group = 'gitsigns',
-    pattern = 'fileformat',
+    pattern = { 'fileformat', 'bomb', 'eol' },
     callback = function()
       require('gitsigns.actions').refresh()
     end,
