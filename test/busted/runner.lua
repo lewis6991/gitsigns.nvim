@@ -1,1 +1,1 @@
-require 'busted.runner'({ standalone = false })
+require('busted.runner')({ standalone = false })

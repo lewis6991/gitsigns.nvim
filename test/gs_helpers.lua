@@ -1,4 +1,4 @@
-local helpers = require'test.helpers'
+local helpers = require('test.helpers')
 
 local timeout = 8000
 
@@ -10,10 +10,10 @@ local eq = helpers.eq
 local get_buf_var = helpers.curbufmeths.get_var
 local system = helpers.funcs.system
 
-M.scratch   = os.getenv('PJ_ROOT')..'/scratch'
-M.gitdir    = M.scratch..'/.git'
-M.test_file = M.scratch..'/dummy.txt'
-M.newfile   = M.scratch.."/newfile.txt"
+M.scratch = os.getenv('PJ_ROOT') .. '/scratch'
+M.gitdir = M.scratch .. '/.git'
+M.test_file = M.scratch .. '/dummy.txt'
+M.newfile = M.scratch .. '/newfile.txt'
 
 local extmark_signs = os.getenv('NVIM_TEST_VERSION') ~= 'v0.8.3'
 
@@ -21,33 +21,49 @@ M.test_config = {
   debug_mode = true,
   _test_mode = true,
   signs = {
-    add          = {text = '+'},
-    delete       = {text = '_'},
-    change       = {text = '~'},
-    topdelete    = {text = '^'},
-    changedelete = {text = '%'},
-    untracked    = {text = '#'},
+    add = { text = '+' },
+    delete = { text = '_' },
+    change = { text = '~' },
+    topdelete = { text = '^' },
+    changedelete = { text = '%' },
+    untracked = { text = '#' },
   },
   on_attach = {
-    {'n', 'mhs', '<cmd>lua require"gitsigns".stage_hunk()<CR>'},
-    {'n', 'mhu', '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>'},
-    {'n', 'mhr', '<cmd>lua require"gitsigns".reset_hunk()<CR>'},
-    {'n', 'mhp', '<cmd>lua require"gitsigns".preview_hunk()<CR>'},
-    {'n', 'mhS', '<cmd>lua require"gitsigns".stage_buffer()<CR>'},
-    {'n', 'mhU', '<cmd>lua require"gitsigns".reset_buffer_index()<CR>'},
+    { 'n', 'mhs', '<cmd>lua require"gitsigns".stage_hunk()<CR>' },
+    { 'n', 'mhu', '<cmd>lua require"gitsigns".undo_stage_hunk()<CR>' },
+    { 'n', 'mhr', '<cmd>lua require"gitsigns".reset_hunk()<CR>' },
+    { 'n', 'mhp', '<cmd>lua require"gitsigns".preview_hunk()<CR>' },
+    { 'n', 'mhS', '<cmd>lua require"gitsigns".stage_buffer()<CR>' },
+    { 'n', 'mhU', '<cmd>lua require"gitsigns".reset_buffer_index()<CR>' },
   },
   _extmark_signs = extmark_signs,
   update_debounce = 5,
 }
 
 local test_file_text = {
-  'This', 'is', 'a', 'file', 'used', 'for', 'testing', 'gitsigns.', 'The',
-  'content', 'doesn\'t', 'matter,', 'it', 'just', 'needs', 'to', 'be', 'static.'
+  'This',
+  'is',
+  'a',
+  'file',
+  'used',
+  'for',
+  'testing',
+  'gitsigns.',
+  'The',
+  'content',
+  "doesn't",
+  'matter,',
+  'it',
+  'just',
+  'needs',
+  'to',
+  'be',
+  'static.',
 }
 
 --- Run a git command
 function M.gitf(args)
-  system{"git", "-C", M.scratch, unpack(args)}
+  system({ 'git', '-C', M.scratch, unpack(args) })
 end
 
 --- @param cmds string[][]
@@ -65,30 +81,30 @@ function M.git(args)
 end
 
 function M.cleanup()
-  system{"rm", "-rf", M.scratch}
+  system({ 'rm', '-rf', M.scratch })
 end
 
 function M.setup_git()
-  M.gitf{"init", '-b', 'master'}
+  M.gitf({ 'init', '-b', 'master' })
 
   -- Always force color to test settings don't interfere with gitsigns systems
   -- commands (addresses #23)
-  M.gitf{'config', 'color.branch'     , 'always'}
-  M.gitf{'config', 'color.ui'         , 'always'}
-  M.gitf{'config', 'color.diff'       , 'always'}
-  M.gitf{'config', 'color.interactive', 'always'}
-  M.gitf{'config', 'color.status'     , 'always'}
-  M.gitf{'config', 'color.grep'       , 'always'}
-  M.gitf{'config', 'color.pager'      , 'true'}
-  M.gitf{'config', 'color.decorate'   , 'always'}
-  M.gitf{'config', 'color.showbranch' , 'always'}
+  M.gitf({ 'config', 'color.branch', 'always' })
+  M.gitf({ 'config', 'color.ui', 'always' })
+  M.gitf({ 'config', 'color.diff', 'always' })
+  M.gitf({ 'config', 'color.interactive', 'always' })
+  M.gitf({ 'config', 'color.status', 'always' })
+  M.gitf({ 'config', 'color.grep', 'always' })
+  M.gitf({ 'config', 'color.pager', 'true' })
+  M.gitf({ 'config', 'color.decorate', 'always' })
+  M.gitf({ 'config', 'color.showbranch', 'always' })
 
-  M.gitf{'config', 'merge.conflictStyle', 'merge'}
+  M.gitf({ 'config', 'merge.conflictStyle', 'merge' })
 
-  M.gitf{'config', 'user.email', 'tester@com.com'}
-  M.gitf{'config', 'user.name' , 'tester'}
+  M.gitf({ 'config', 'user.email', 'tester@com.com' })
+  M.gitf({ 'config', 'user.name', 'tester' })
 
-  M.gitf{'config', 'init.defaultBranch', 'master'}
+  M.gitf({ 'config', 'init.defaultBranch', 'master' })
 end
 
 --- Setup a basic git repository in directory `helpers.scratch` with a single file
@@ -97,13 +113,13 @@ end
 function M.setup_test_repo(opts)
   local text = opts and opts.test_file_text or test_file_text
   M.cleanup()
-  system{"mkdir", M.scratch}
+  system({ 'mkdir', M.scratch })
   M.setup_git()
-  system{"touch", M.test_file}
+  system({ 'touch', M.test_file })
   M.write_to_file(M.test_file, text)
   if not (opts and opts.no_add) then
-    M.gitf{"add", M.test_file}
-    M.gitf{"commit", "-m", "init commit"}
+    M.gitf({ 'add', M.test_file })
+    M.gitf({ 'commit', '-m', 'init commit' })
   end
   helpers.sleep(20)
 end
@@ -126,7 +142,7 @@ function M.expectf(cond, interval)
 end
 
 function M.edit(path)
-  helpers.command("edit " .. path)
+  helpers.command('edit ' .. path)
 end
 
 --- @param path string
@@ -175,31 +191,34 @@ function M.match_lines(lines, spec)
   end
 
   if i < #spec + 1 then
-    local unmatched_msg = table.concat(vim.tbl_map(function(v)
-      return string.format('    - %s', v.text or v)
-    end, spec), '\n')
+    local unmatched_msg = table.concat(
+      vim.tbl_map(function(v)
+        return string.format('    - %s', v.text or v)
+      end, spec),
+      '\n'
+    )
 
-    local lines_msg = table.concat(vim.tbl_map(function(v)
-      return string.format('    - %s', v)
-    end, lines), '\n')
+    local lines_msg = table.concat(
+      vim.tbl_map(function(v)
+        return string.format('    - %s', v)
+      end, lines),
+      '\n'
+    )
 
-    error(('Did not match patterns:\n%s\nwith:\n%s'):format(
-      unmatched_msg,
-      lines_msg
-    ))
+    error(('Did not match patterns:\n%s\nwith:\n%s'):format(unmatched_msg, lines_msg))
   end
 end
 
 function M.p(str)
-  return {text = str, pattern = true}
+  return { text = str, pattern = true }
 end
 
 function M.n(str)
-  return {text = str, next = true}
+  return { text = str, next = true }
 end
 
 function M.np(str)
-  return {text = str, pattern = true, next = true}
+  return { text = str, pattern = true, next = true }
 end
 
 --- @return string[]
@@ -213,7 +232,7 @@ function M.match_dag(spec)
   M.expectf(function()
     local messages = M.debug_messages()
     for _, s in ipairs(spec) do
-      M.match_lines(messages, {s})
+      M.match_lines(messages, { s })
     end
   end)
 end
@@ -226,7 +245,8 @@ function M.match_debug_messages(spec)
 end
 
 function M.setup_gitsigns(config, on_attach)
-  exec_lua([[
+  exec_lua(
+    [[
       local config, on_attach = ...
       if config and config.on_attach then
         local maps = config.on_attach
@@ -242,9 +262,12 @@ function M.setup_gitsigns(config, on_attach)
         end
       end
       require('gitsigns').setup(config)
-    ]], config, on_attach)
+    ]],
+    config,
+    on_attach
+  )
   M.expectf(function()
-    return exec_lua[[return require'gitsigns'._setup_done == true]]
+    return exec_lua([[return require'gitsigns'._setup_done == true]])
   end)
 end
 
@@ -252,27 +275,21 @@ end
 local function check_status(status)
   local fn = helpers.funcs
   if next(status) == nil then
-    eq(0, fn.exists('b:gitsigns_head'),
-      'b:gitsigns_head is unexpectedly set')
-    eq(0, fn.exists('b:gitsigns_status_dict'),
-      'b:gitsigns_status_dict is unexpectedly set')
+    eq(0, fn.exists('b:gitsigns_head'), 'b:gitsigns_head is unexpectedly set')
+    eq(0, fn.exists('b:gitsigns_status_dict'), 'b:gitsigns_status_dict is unexpectedly set')
   else
-    eq(1, fn.exists('b:gitsigns_head'),
-      'b:gitsigns_head is not set')
-    eq(status.head, get_buf_var('gitsigns_head'),
-      'b:gitsigns_head does not match')
+    eq(1, fn.exists('b:gitsigns_head'), 'b:gitsigns_head is not set')
+    eq(status.head, get_buf_var('gitsigns_head'), 'b:gitsigns_head does not match')
 
     --- @type table<string,string|integer>
-    local bstatus = get_buf_var("gitsigns_status_dict")
+    local bstatus = get_buf_var('gitsigns_status_dict')
 
-    for _, i in ipairs{'added', 'changed', 'removed', 'head'} do
-      eq(status[i], bstatus[i],
-        string.format("status['%s'] did not match gitsigns_status_dict", i))
+    for _, i in ipairs({ 'added', 'changed', 'removed', 'head' }) do
+      eq(status[i], bstatus[i], string.format("status['%s'] did not match gitsigns_status_dict", i))
     end
     -- Catch any extra keys
     for i, v in pairs(status) do
-      eq(v, bstatus[i],
-        string.format("status['%s'] did not match gitsigns_status_dict", i))
+      eq(v, bstatus[i], string.format("status['%s'] did not match gitsigns_status_dict", i))
     end
   end
 end
@@ -280,17 +297,16 @@ end
 --- @param signs table<string,integer>
 --- @param extmarks boolean
 local function check_signs(signs, extmarks)
-
   local buf_signs = {} --- @type string[]
   if extmarks then
-    local buf_marks = helpers.curbufmeths.get_extmarks(-1, 0, -1, {details=true})
+    local buf_marks = helpers.curbufmeths.get_extmarks(-1, 0, -1, { details = true })
     for _, s in ipairs(buf_marks) do
-      buf_signs[#buf_signs+1] = s[4].sign_hl_group
+      buf_signs[#buf_signs + 1] = s[4].sign_hl_group
     end
   else
-    local buf_vimsigns = helpers.funcs.sign_getplaced("%", {group='*'})[1].signs
+    local buf_vimsigns = helpers.funcs.sign_getplaced('%', { group = '*' })[1].signs
     for _, s in ipairs(buf_vimsigns) do
-      buf_signs[#buf_signs+1] = s.name
+      buf_signs[#buf_signs + 1] = s.name
     end
   end
 
@@ -298,14 +314,14 @@ local function check_signs(signs, extmarks)
   local act = {}
 
   for _, name in ipairs(buf_signs) do
-    for t, hl in pairs{
-      added        = "GitSignsAdd",
-      changed      = "GitSignsChange",
-      delete       = "GitSignsDelete",
-      changedelete = "GitSignsChangedelete",
-      topdelete    = "GitSignsTopdelete",
-      untracked    = "GitSignsUntracked"
-    } do
+    for t, hl in pairs({
+      added = 'GitSignsAdd',
+      changed = 'GitSignsChange',
+      delete = 'GitSignsDelete',
+      changedelete = 'GitSignsChangedelete',
+      topdelete = 'GitSignsTopdelete',
+      untracked = 'GitSignsUntracked',
+    }) do
       if name == hl then
         act[t] = (act[t] or 0) + 1
       end
@@ -323,7 +339,7 @@ function M.check(attrs, interval)
   end
 
   local status = attrs.status
-  local signs  = attrs.signs
+  local signs = attrs.signs
 
   M.expectf(function()
     if status then
