@@ -4,14 +4,13 @@ local Screen = require('test.screen')
 local helpers = require('test.gs_helpers')
 
 local clear = helpers.clear
-local command = helpers.command
-local exec_capture = helpers.exec_capture
+local command = helpers.api.nvim_command
 local feed = helpers.feed
 local insert = helpers.insert
 local exec_lua = helpers.exec_lua
 local split = vim.split
-local get_buf_var = helpers.curbufmeths.get_var
-local fn = helpers.funcs
+local get_buf_var = helpers.api.nvim_buf_get_var
+local fn = helpers.fn
 local system = fn.system
 local expectf = helpers.expectf
 local write_to_file = helpers.write_to_file
@@ -87,7 +86,9 @@ describe('gitsigns (with screen)', function()
     match_dag({
       'attach(1): Attaching (trigger=BufReadPost)',
       p('run_job: git .* config user.name'),
-      p('run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'),
+      p(
+        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
+      ),
       p(
         'run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
           .. vim.pesc(test_file)
@@ -118,7 +119,9 @@ describe('gitsigns (with screen)', function()
     match_debug_messages({
       'attach(1): Attaching (trigger=BufReadPost)',
       np('run_job: git .* config user.name'),
-      np('run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'),
+      np(
+        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
+      ),
       n('new: Not in git repo'),
       n('attach(1): Empty git obj'),
     })
@@ -130,7 +133,9 @@ describe('gitsigns (with screen)', function()
     match_debug_messages({
       n('attach(1): Attaching (trigger=BufWritePost)'),
       np('run_job: git .* config user.name'),
-      np('run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'),
+      np(
+        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
+      ),
       n('new: Not in git repo'),
       n('attach(1): Empty git obj'),
     })
@@ -145,7 +150,7 @@ describe('gitsigns (with screen)', function()
     it('can setup mappings', function()
       edit(test_file)
       expectf(function()
-        local res = split(exec_capture('nmap <buffer>'), '\n')
+        local res = split(helpers.api.nvim_exec('nmap <buffer>', true), '\n')
         table.sort(res)
 
         -- Check all keymaps get set
@@ -181,7 +186,9 @@ describe('gitsigns (with screen)', function()
       match_debug_messages({
         'attach(1): Attaching (trigger=BufReadPost)',
         np('run_job: git .* config user.name'),
-        np('run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'),
+        np(
+          'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
+        ),
         np('run_job: git .* ls%-files .*/dummy_ignored.txt'),
         n('attach(1): Cannot resolve file in repo'),
       })
@@ -195,7 +202,9 @@ describe('gitsigns (with screen)', function()
       match_debug_messages({
         'attach(1): Attaching (trigger=BufNewFile)',
         np('run_job: git .* config user.name'),
-        np('run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'),
+        np(
+          'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
+        ),
         np(
           'run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
             .. vim.pesc(newfile)
@@ -214,8 +223,8 @@ describe('gitsigns (with screen)', function()
         n('attach(1): Not a path'),
       })
 
-      helpers.pcall_err(get_buf_var, 'gitsigns_head')
-      helpers.pcall_err(get_buf_var, 'gitsigns_status_dict')
+      helpers.pcall_err(get_buf_var, 0, 'gitsigns_head')
+      helpers.pcall_err(get_buf_var, 0, 'gitsigns_status_dict')
     end)
 
     it('can run copen', function()
@@ -232,18 +241,15 @@ describe('gitsigns (with screen)', function()
       feed('oline2<esc>')
 
       expectf(function()
-        eq(
+        eq({
           {
-            {
-              head = '@@ -1,1 +1,2 @@',
-              type = 'change',
-              lines = { '-This', '+line1This', '+line2' },
-              added = { count = 2, start = 1, lines = { 'line1This', 'line2' } },
-              removed = { count = 1, start = 1, lines = { 'This' } },
-            },
+            head = '@@ -1,1 +1,2 @@',
+            type = 'change',
+            lines = { '-This', '+line1This', '+line2' },
+            added = { count = 2, start = 1, lines = { 'line1This', 'line2' } },
+            removed = { count = 1, start = 1, lines = { 'This' } },
           },
-          exec_lua([[return require'gitsigns'.get_hunks()]])
-        )
+        }, exec_lua([[return require'gitsigns'.get_hunks()]]))
       end)
     end)
   end)
@@ -336,7 +342,9 @@ describe('gitsigns (with screen)', function()
       match_debug_messages({
         'attach(1): Attaching (trigger=BufReadPost)',
         np('run_job: git .* config user.name'),
-        np('run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'),
+        np(
+          'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
+        ),
         np('run_job: git .* rev%-parse %-%-short HEAD'),
         np('run_job: git .* %-%-git%-dir .* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*'),
         n('attach(1): User on_attach() returned false'),
@@ -451,7 +459,9 @@ describe('gitsigns (with screen)', function()
         match_debug_messages({
           'attach(1): Attaching (trigger=BufNewFile)',
           np('run_job: git .* config user.name'),
-          np('run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'),
+          np(
+            'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
+          ),
           np('run_job: git .* ls%-files .*'),
           n('attach(1): Not a file'),
         })
@@ -460,7 +470,9 @@ describe('gitsigns (with screen)', function()
         local messages = {
           'attach(1): Attaching (trigger=BufWritePost)',
           np('run_job: git .* config user.name'),
-          np('run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'),
+          np(
+            'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
+          ),
           np('run_job: git .* ls%-files .*'),
           n('watch_gitdir(1): Watching git dir'),
           np('run_job: git .* show :0:newfile.txt'),
@@ -648,10 +660,12 @@ describe('gitsigns (with screen)', function()
     helpers.exc_exec('vimgrep ben ' .. scratch .. '/*')
 
     screen:expect({
-      messages = { {
-        kind = 'quickfix',
-        content = { { '(1 of 2): hello ben' } },
-      } },
+      messages = {
+        {
+          kind = 'quickfix',
+          content = { { '(1 of 2): hello ben' } },
+        },
+      },
     })
 
     match_debug_messages({
@@ -673,7 +687,7 @@ describe('gitsigns (with screen)', function()
 
     -- SHA is not deterministic so just check it can be cast as a hex value
     expectf(function()
-      helpers.neq(nil, tonumber('0x' .. get_buf_var('gitsigns_head')))
+      helpers.neq(nil, tonumber('0x' .. get_buf_var(0, 'gitsigns_head')))
     end)
   end)
 
@@ -712,10 +726,12 @@ describe('gitsigns (with screen)', function()
 
     feed('x')
 
-    screen:expect({ grid = [[
+    screen:expect({
+      grid = [[
       {2:~ }^orem ipsum        |
       {6:~                   }|
-    ]] })
+    ]],
+    })
   end)
 
   it('handle #521', function()

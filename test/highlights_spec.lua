@@ -3,7 +3,7 @@ local helpers = require('test.gs_helpers')
 
 local clear = helpers.clear
 local exec_lua = helpers.exec_lua
-local command = helpers.command
+local command = helpers.api.nvim_command
 
 local cleanup = helpers.cleanup
 local test_config = helpers.test_config

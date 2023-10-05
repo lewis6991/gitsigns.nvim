@@ -7,10 +7,7 @@ assert:set_parameter('TableFormatLevel', 100)
 
 local M = {}
 
--- sleeps the test runner (_not_ the nvim instance)
-function M.sleep(ms)
-  luv.sleep(ms)
-end
+M.sleep = luv.sleep
 
 M.eq = assert.are.same
 M.neq = assert.are_not.same
@@ -29,49 +26,6 @@ function M.matches(pat, actual)
     return true
   end
   error(string.format('Pattern does not match.\nPattern:\n%s\nActual:\n%s', pat, actual))
-end
-
---- Reads text lines from `filename` into a table.
----
---- filename: path to file
---- start: start line (1-indexed), negative means "lines before end" (tail)
---- @param filename string
---- @param start? integer
---- @return string[]?
-local function read_file_list(filename, start)
-  local lnum = start or 1
-  local tail = lnum < 0
-  local maxlines = tail and math.abs(lnum) or nil
-  local file = io.open(filename, 'r')
-
-  if not file then
-    return
-  end
-
-  -- There is no need to read more than the last 2MB of the log file, so seek
-  -- to that.
-  local file_size = file:seek('end')
-  local offset = file_size - 2000000
-  if offset < 0 then
-    offset = 0
-  end
-  file:seek('set', offset)
-
-  local lines = {} --- @type string[]
-  local i = 1
-  local line = file:read('*l')
-  while line do
-    if i >= start then
-      table.insert(lines, line)
-      if #lines > maxlines then
-        table.remove(lines, 1)
-      end
-    end
-    i = i + 1
-    line = file:read('*l')
-  end
-  file:close()
-  return lines
 end
 
 --- @generic R
@@ -125,7 +79,6 @@ end
 --- @param ... any arguments
 --- @return R
 local function pcall_err_withfile(fn, ...)
-  assert(type(fn) == 'function')
   local status, rv = M.pcall(fn, ...)
   if status == true then
     error('expected failure, but got success')
@@ -190,41 +143,14 @@ function M.dedent(str, leave_indent)
   return str
 end
 
--- Gets the (tail) contents of `logfile`.
--- Also moves the file to "${NVIM_LOG_FILE}.displayed" on CI environments.
-function M.read_nvim_log(logfile)
-  logfile = logfile or os.getenv('NVIM_LOG_FILE') or '.nvimlog'
-  local keep = 10
-  local lines = read_file_list(logfile, -keep) or {}
-  local log = (
-    ('-'):rep(78)
-    .. '\n'
-    .. string.format('$NVIM_LOG_FILE: %s\n', logfile)
-    .. (#lines > 0 and '(last ' .. tostring(keep) .. ' lines)\n' or '(empty)\n')
-  )
-  for _, line in ipairs(lines) do
-    log = log .. line .. '\n'
-  end
-  log = log .. ('-'):rep(78) .. '\n'
-  return log
-end
-
-local runtime_set = 'set runtimepath^=./build/lib/nvim/'
-local nvim_prog = os.getenv('NVIM_PRG') or 'nvim'
 -- Default settings for the test session.
 local nvim_set = table.concat({
   'set',
-  'shortmess+=IS',
   'background=light',
   'noswapfile',
   'noautoindent',
   'startofline',
   'laststatus=1',
-  'undodir=.',
-  'directory=.',
-  'viewdir=.',
-  'backupdir=.',
-  'belloff=',
   'wildoptions-=pum',
   'joinspaces',
   'noshowcmd',
@@ -233,20 +159,14 @@ local nvim_set = table.concat({
   'redrawdebug=invalid',
 }, ' ')
 
-local nvim_argv = {
-  nvim_prog,
+local nvim_cmd = {
+  os.getenv('NVIM_PRG') or 'nvim',
   '-u',
   'NONE',
   '-i',
   'NONE',
   '--cmd',
-  runtime_set,
-  '--cmd',
   nvim_set,
-  '--cmd',
-  'mapclear',
-  '--cmd',
-  'mapclear!',
   '--embed',
   '--headless',
 }
@@ -257,23 +177,6 @@ local last_error --- @type string?
 
 function M.get_session()
   return session
-end
-
---- @param method string
---- @param ... any
---- @return any[]
-local function request(method, ...)
-  assert(session)
-  local status, rv = session:request(method, ...)
-  if not status then
-    if loop_running then
-      last_error = rv[2]
-      session:stop()
-    else
-      error(rv[2])
-    end
-  end
-  return rv
 end
 
 --- @param lsession NvimSession
@@ -322,33 +225,51 @@ function M.run_session(lsession, request_cb, notification_cb, timeout)
   return lsession.eof_err
 end
 
---- Executes an ex-command. VimL errors manifest as client (lua) errors, but
---- v:errmsg will not be updated.
---- @param cmd string
-function M.command(cmd)
-  request('nvim_command', cmd)
+function M.create_callindex(func)
+  return setmetatable({}, {
+    --- @param tbl table<string,function>
+    --- @param arg1 string
+    --- @return function
+    __index = function(tbl, arg1)
+      local ret = function(...)
+        return func(arg1, ...)
+      end
+      tbl[arg1] = ret
+      return ret
+    end,
+  })
 end
 
---- Evaluates a VimL expression.
---- Fails on VimL error, but does not update v:errmsg.
---- @param expr string
---- @return any[]
-function M.eval(expr)
-  return request('nvim_eval', expr)
-end
+-- Trick LuaLS that M.api has the type of vim.api. vim.api is set to nil in
+-- preload.lua so M.api gets the second term
 
---- Executes a VimL function via RPC.
---- Fails on VimL error, but does not update v:errmsg.
---- @param name string
---- @param ... any
---- @return any[]
-function M.call(name, ...)
-  return request('nvim_call_function', name, { ... })
+M.api = vim.api
+  or M.create_callindex(function(...)
+    assert(session)
+    local status, rv = session:request(...)
+    if not status then
+      if loop_running then
+        last_error = rv[2]
+        session:stop()
+      else
+        error(rv[2])
+      end
+    end
+    return rv
+  end)
+
+M.fn = vim.fn
+  or M.create_callindex(function(name, ...)
+    return M.api.nvim_call_function(name, { ... })
+  end)
+
+function M.exec_lua(code, ...)
+  return M.api.nvim_exec_lua(code, { ... })
 end
 
 -- Checks that the Nvim session did not terminate.
 local function assert_alive()
-  assert(2 == M.eval('1+1'), 'crash? request failed')
+  assert(2 == M.api.nvim_eval('1+1'), 'crash? request failed')
 end
 
 --- Sends user input to Nvim.
@@ -356,7 +277,7 @@ end
 --- @param input string
 local function nvim_feed(input)
   while #input > 0 do
-    local written = request('nvim_input', input)
+    local written = M.api.nvim_input(input)
     if written == nil then
       assert_alive()
       error('crash? (nvim_input returned nil)')
@@ -403,7 +324,7 @@ end
 --- Starts a new global Nvim session.
 function M.clear()
   check_close()
-  local child_stream = ProcessStream.spawn(nvim_argv)
+  local child_stream = ProcessStream.spawn(nvim_cmd)
   session = Session.new(child_stream)
 
   local status, info = session:request('nvim_get_api_info')
@@ -434,74 +355,17 @@ function M.insert(...)
   nvim_feed('<ESC>')
 end
 
-function M.create_callindex(func)
-  return setmetatable({}, {
-    --- @param tbl table<string,function>
-    --- @param arg1 string
-    --- @return function
-    __index = function(tbl, arg1)
-      local ret = function(...)
-        return func(arg1, ...)
-      end
-      tbl[arg1] = ret
-      return ret
-    end,
-  })
-end
-
-function M.nvim(method, ...)
-  return request('nvim_' .. method, ...)
-end
-
-function M.buffer(method, ...)
-  return request('nvim_buf_' .. method, ...)
-end
-
-function M.window(method, ...)
-  return request('nvim_win_' .. method, ...)
-end
-
-function M.curbuf(method, ...)
-  if not method then
-    return M.nvim('get_current_buf')
-  end
-  return M.buffer(method, 0, ...)
-end
-
-function M.curwin(method, ...)
-  if not method then
-    return M.nvim('get_current_win')
-  end
-  return M.window(method, 0, ...)
-end
-
-M.funcs = M.create_callindex(M.call)
-M.meths = M.create_callindex(M.nvim)
-M.bufmeths = M.create_callindex(M.buffer)
-M.winmeths = M.create_callindex(M.window)
-M.curbufmeths = M.create_callindex(M.curbuf)
-M.curwinmeths = M.create_callindex(M.curwin)
-
 function M.exc_exec(cmd)
-  M.command(([[
+  M.api.nvim_command(([[
     try
       execute "%s"
     catch
       let g:__exception = v:exception
     endtry
   ]]):format(cmd:gsub('\n', '\\n'):gsub('[\\"]', '\\%0')))
-  local ret = M.eval('get(g:, "__exception", 0)')
-  M.command('unlet! g:__exception')
+  local ret = M.api.nvim_eval('get(g:, "__exception", 0)')
+  M.api.nvim_command('unlet! g:__exception')
   return ret
-end
-
-function M.exec_capture(code)
-  -- return module.meths.exec2(code, { output = true }).output
-  return M.meths.exec(code, true)
-end
-
-function M.exec_lua(code, ...)
-  return M.meths.exec_lua(code, { ... })
 end
 
 --- @param after_each fun(block:fun())

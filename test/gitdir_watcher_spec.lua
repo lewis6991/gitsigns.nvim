@@ -6,7 +6,7 @@ local edit = helpers.edit
 local eq = helpers.eq
 local setup_test_repo = helpers.setup_test_repo
 local cleanup = helpers.cleanup
-local command = helpers.command
+local command = helpers.api.nvim_command
 local test_config = helpers.test_config
 local match_debug_messages = helpers.match_debug_messages
 local match_dag = helpers.match_dag
@@ -19,8 +19,8 @@ helpers.env()
 
 local function get_bufs()
   local bufs = {}
-  for _, b in ipairs(helpers.meths.list_bufs()) do
-    bufs[b.id] = helpers.meths.buf_get_name(b)
+  for _, b in ipairs(helpers.api.nvim_list_bufs()) do
+    bufs[b.id] = helpers.api.nvim_buf_get_name(b)
   end
   return bufs
 end
@@ -31,7 +31,7 @@ describe('gitdir_watcher', function()
 
     -- Make gitisigns available
     exec_lua('package.path = ...', package.path)
-    command('cd ' .. helpers.funcs.system({ 'dirname', os.tmpname() }))
+    command('cd ' .. helpers.fn.system({ 'dirname', os.tmpname() }))
   end)
 
   after_each(function()
@@ -47,7 +47,9 @@ describe('gitdir_watcher', function()
     match_debug_messages({
       'attach(1): Attaching (trigger=BufReadPost)',
       np('run_job: git .* config user.name'),
-      np('run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'),
+      np(
+        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
+      ),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
       n('watch_gitdir(1): Watching git dir'),
       np('run_job: git .* show :0:dummy.txt'),
@@ -68,7 +70,9 @@ describe('gitdir_watcher', function()
     })
 
     match_debug_messages({
-      np('run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'),
+      np(
+        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
+      ),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
       np('run_job: git .* diff %-%-name%-status %-C %-%-cached'),
       n('handle_moved(1): File moved to dummy.txt2'),
@@ -93,7 +97,9 @@ describe('gitdir_watcher', function()
     })
 
     match_debug_messages({
-      p('run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'),
+      p(
+        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
+      ),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file2)),
       np('run_job: git .* diff %-%-name%-status %-C %-%-cached'),
       n('handle_moved(1): File moved to dummy.txt3'),
@@ -116,7 +122,9 @@ describe('gitdir_watcher', function()
     })
 
     match_debug_messages({
-      p('run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'),
+      p(
+        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
+      ),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file3)),
       np('run_job: git .* diff %-%-name%-status %-C %-%-cached'),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),

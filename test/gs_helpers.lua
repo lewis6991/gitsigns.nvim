@@ -7,8 +7,8 @@ local M = helpers
 local exec_lua = helpers.exec_lua
 local matches = helpers.matches
 local eq = helpers.eq
-local get_buf_var = helpers.curbufmeths.get_var
-local system = helpers.funcs.system
+local buf_get_var = helpers.api.nvim_buf_get_var
+local system = helpers.fn.system
 
 M.scratch = os.getenv('PJ_ROOT') .. '/scratch'
 M.gitdir = M.scratch .. '/.git'
@@ -142,7 +142,7 @@ function M.expectf(cond, interval)
 end
 
 function M.edit(path)
-  helpers.command('edit ' .. path)
+  helpers.api.nvim_command('edit ' .. path)
 end
 
 --- @param path string
@@ -273,16 +273,16 @@ end
 
 --- @param status table<string,string|integer>
 local function check_status(status)
-  local fn = helpers.funcs
+  local fn = helpers.fn
   if next(status) == nil then
     eq(0, fn.exists('b:gitsigns_head'), 'b:gitsigns_head is unexpectedly set')
     eq(0, fn.exists('b:gitsigns_status_dict'), 'b:gitsigns_status_dict is unexpectedly set')
   else
     eq(1, fn.exists('b:gitsigns_head'), 'b:gitsigns_head is not set')
-    eq(status.head, get_buf_var('gitsigns_head'), 'b:gitsigns_head does not match')
+    eq(status.head, buf_get_var(0, 'gitsigns_head'), 'b:gitsigns_head does not match')
 
     --- @type table<string,string|integer>
-    local bstatus = get_buf_var('gitsigns_status_dict')
+    local bstatus = buf_get_var(0, 'gitsigns_status_dict')
 
     for _, i in ipairs({ 'added', 'changed', 'removed', 'head' }) do
       eq(status[i], bstatus[i], string.format("status['%s'] did not match gitsigns_status_dict", i))
@@ -299,12 +299,12 @@ end
 local function check_signs(signs, extmarks)
   local buf_signs = {} --- @type string[]
   if extmarks then
-    local buf_marks = helpers.curbufmeths.get_extmarks(-1, 0, -1, { details = true })
+    local buf_marks = helpers.api.nvim_buf_get_extmarks(0, -1, 0, -1, { details = true })
     for _, s in ipairs(buf_marks) do
       buf_signs[#buf_signs + 1] = s[4].sign_hl_group
     end
   else
-    local buf_vimsigns = helpers.funcs.sign_getplaced('%', { group = '*' })[1].signs
+    local buf_vimsigns = helpers.fn.sign_getplaced('%', { group = '*' })[1].signs
     for _, s in ipairs(buf_vimsigns) do
       buf_signs[#buf_signs + 1] = s.name
     end
