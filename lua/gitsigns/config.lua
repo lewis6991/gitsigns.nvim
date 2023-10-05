@@ -18,7 +18,7 @@
 --- @field ignore_whitespace_change_at_eol? true
 --- @field ignore_blank_lines? true
 
---- @class Gitsigns.SignConfig
+--- @class (exact) Gitsigns.SignConfig
 --- @field show_count boolean
 --- @field hl string
 --- @field text string
@@ -33,17 +33,19 @@
 --- | 'changedelete'
 --- | 'untracked'
 
---- @alias Gitsigns.CurrentLineBlameFmtOpts { relative_time: boolean }
---- @alias Gitsigns.CurrentLineBlameFmtFun fun(_: string, _: table<string,any>, _: Gitsigns.CurrentLineBlameFmtOpts): {[1]:string,[2]:string}[]
+--- @class (exact) Gitsigns.CurrentLineBlameFmtOpts
+--- @field relative_time boolean
 
---- @class Gitsigns.CurrentLineBlameOpts
+--- @alias Gitsigns.CurrentLineBlameFmtFun fun(user: string, info: table<string,any>, opts: Gitsigns.CurrentLineBlameFmtOpts): {[1]:string,[2]:string}[]
+
+--- @class (exact) Gitsigns.CurrentLineBlameOpts
 --- @field virt_text boolean
 --- @field virt_text_pos 'eol'|'overlay'|'right_align'
 --- @field delay integer
 --- @field ignore_whitespace boolean
 --- @field virt_text_priority integer
 
---- @class Gitsigns.Config
+--- @class (exact) Gitsigns.Config
 --- @field debug_mode boolean
 --- @field diff_opts Gitsigns.DiffOpts
 --- @field base? string

@@ -59,9 +59,9 @@ local function handle_moved(bufnr, old_relpath)
   dprintf('%s buffer %d from %s to %s', msg, bufnr, old_name, bcache.file)
 end
 
---- @param bufnr integer
 local handler = debounce_trailing(
   200,
+  --- @param bufnr integer
   async.void(function(bufnr)
     local __FUNC__ = 'watcher_handler'
     buf_check(bufnr)
@@ -94,7 +94,7 @@ local handler = debounce_trailing(
   1
 )
 
--- vim.inspect but on one line
+--- vim.inspect but on one line
 --- @param x any
 --- @return string
 local function inspect(x)

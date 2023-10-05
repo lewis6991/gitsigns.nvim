@@ -9,8 +9,8 @@ local api = vim.api
 
 local M = {}
 
--- Use array of dict so we can iterate deterministically
--- Export for docgen
+--- Use array of dict so we can iterate deterministically
+--- Export for docgen
 --- @type table<string,Gitsigns.Hldef>[]
 M.hls = {
   {
@@ -316,8 +316,8 @@ local function derive(hl, hldef)
   end
 end
 
--- Setup a GitSign* highlight by deriving it from other potentially present
--- highlights.
+--- Setup a GitSign* highlight by deriving it from other potentially present
+--- highlights.
 function M.setup_highlights()
   for _, hlg in ipairs(M.hls) do
     for hl, hldef in pairs(hlg) do

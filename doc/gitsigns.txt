@@ -160,7 +160,7 @@ setloclist({nr}, {target})                             *gitsigns.setloclist()*
                     {async}
 
                 Parameters: ~
-                    {nr}     (integer): Window number or the |window-ID|.
+                    {nr?}    (integer): Window number or the |window-ID|.
                              `0` for the current window (default).
                     {target} (integer|string): See |gitsigns.setqflist()|.
 

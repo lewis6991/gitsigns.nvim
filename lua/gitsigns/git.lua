@@ -48,16 +48,18 @@ local Obj = {}
 
 M.Obj = Obj
 
---- @class Gitsigns.Repo
+--- @class Gitsigns.RepoInfo
 --- @field gitdir string
 --- @field toplevel string
 --- @field detached boolean
 --- @field abbrev_head string
+
+--- @class Gitsigns.Repo : Gitsigns.RepoInfo
 --- @field username string
 local Repo = {}
 M.Repo = Repo
 
---- @class Gitsigns.Version
+--- @class (exact) Gitsigns.Version
 --- @field major integer
 --- @field minor integer
 --- @field patch integer
@@ -81,7 +83,7 @@ local function parse_version(version)
   return ret
 end
 
--- Usage: check_version{2,3}
+--- Usage: check_version{2,3}
 --- @param version {[1]: integer, [2]:integer, [3]:integer}
 --- @return boolean
 local function check_version(version)
@@ -110,9 +112,7 @@ function M._set_version(version)
   --- @type vim.SystemCompleted
   local obj = asystem({ 'git', '--version' })
 
-  local stdout = obj.stdout
-
-  local line = vim.split(stdout or '', '\n', { plain = true })[1]
+  local line = vim.split(obj.stdout or '', '\n', { plain = true })[1]
   if not line then
     err("Unable to detect git version as 'git --version' failed to return anything")
     eprint(obj.stderr)
@@ -222,7 +222,7 @@ local function process_abbrev_head(gitdir, head_str, path, cmd)
   end
   if head_str == 'HEAD' then
     local short_sha = git_command({ 'rev-parse', '--short', 'HEAD' }, {
-      command = cmd or 'git',
+      command = cmd,
       ignore_error = true,
       cwd = path,
     })[1] or ''
@@ -262,12 +262,6 @@ local function normalize_path(path)
   end
   return path
 end
-
---- @class Gitsigns.RepoInfo
---- @field gitdir string
---- @field toplevel string
---- @field detached boolean
---- @field abbrev_head string
 
 --- @param path string
 --- @param cmd? string
@@ -409,7 +403,7 @@ function Repo.new(dir, gitdir, toplevel)
     pairs(info --[[@as table<string,any>]])
   do
     ---@diagnostic disable-next-line:no-unknown
-    (self)[k] = v
+    self[k] = v
   end
 
   -- Try yadm
@@ -424,7 +418,7 @@ function Repo.new(dir, gitdir, toplevel)
         pairs(yadm_info --[[@as table<string,any>]])
       do
         ---@diagnostic disable-next-line:no-unknown
-        (self)[k] = v
+        self[k] = v
       end
     end
   end
@@ -463,7 +457,7 @@ function Obj:update_file_info(update_relpath, silent)
   return old_object_name ~= self.object_name
 end
 
---- @class Gitsigns.FileInfo
+--- @class (exact) Gitsigns.FileInfo
 --- @field relpath string
 --- @field i_crlf boolean
 --- @field w_crlf boolean
@@ -541,7 +535,7 @@ function Obj:get_show_text(revision)
   return stdout, stderr
 end
 
-Obj.unstage_file = function(self)
+function Obj:unstage_file()
   self:command({ 'reset', self.file })
 end
 
@@ -763,7 +757,7 @@ local function ensure_file_in_index(obj)
   obj:update_file_info()
 end
 
--- Stage 'lines' as the entire contents of the file
+--- Stage 'lines' as the entire contents of the file
 --- @param lines string[]
 function Obj:stage_lines(lines)
   local stdout = self:command({
@@ -785,7 +779,7 @@ end
 
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @param invert? boolean
-function Obj.stage_hunks(self, hunks, invert)
+function Obj:stage_hunks(hunks, invert)
   ensure_file_in_index(self)
 
   local gs_hunks = require('gitsigns.hunks')

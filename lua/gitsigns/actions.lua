@@ -33,7 +33,7 @@ local M = {}
 --- @field count integer
 --- @field smods Gitsigns.CmdParams.Smods
 
--- Variations of functions from M which are used for the Gitsigns command
+--- Variations of functions from M which are used for the Gitsigns command
 --- @type table<string,fun(args: Gitsigns.CmdArgs, params: Gitsigns.CmdParams)>
 local C = {}
 
@@ -1243,7 +1243,7 @@ end
 --- Attributes: ~
 ---     {async}
 ---
---- @param nr integer Window number or the |window-ID|.
+--- @param nr? integer Window number or the |window-ID|.
 ---     `0` for the current window (default).
 --- @param target integer|string See |gitsigns.setqflist()|.
 M.setloclist = function(nr, target)

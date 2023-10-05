@@ -49,7 +49,7 @@ local function expand_height(winid, nlines, border)
   end
 end
 
---- @class Gitsigns.HlMark
+--- @class (exact) Gitsigns.HlMark
 --- @field hl_group string
 --- @field start_row? integer
 --- @field start_col? integer
