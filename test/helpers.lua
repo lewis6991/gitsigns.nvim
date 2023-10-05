@@ -22,7 +22,7 @@ local function epicfail(state, arguments, _)
 end
 
 --- @diagnostic disable-next-line:missing-parameter
-assert:register("assertion", "epicfail", epicfail)
+assert:register('assertion', 'epicfail', epicfail)
 
 function M.matches(pat, actual)
   if nil ~= string.match(actual, pat) then
@@ -50,16 +50,16 @@ local function read_file_list(filename, start)
 
   -- There is no need to read more than the last 2MB of the log file, so seek
   -- to that.
-  local file_size = file:seek("end")
+  local file_size = file:seek('end')
   local offset = file_size - 2000000
   if offset < 0 then
     offset = 0
   end
-  file:seek("set", offset)
+  file:seek('set', offset)
 
   local lines = {} --- @type string[]
   local i = 1
-  local line = file:read("*l")
+  local line = file:read('*l')
   while line do
     if i >= start then
       table.insert(lines, line)
@@ -68,7 +68,7 @@ local function read_file_list(filename, start)
       end
     end
     i = i + 1
-    line = file:read("*l")
+    line = file:read('*l')
   end
   file:close()
   return lines
@@ -90,9 +90,10 @@ function M.pcall(fn, ...)
   --    C:/long/path/foo.lua:186: Expected string, got number
   -- to:
   --    .../foo.lua:0: Expected string, got number
-  local errmsg = tostring(rv):gsub('([%s<])vim[/\\]([^%s:/\\]+):%d+', '%1\xffvim\xff%2:0')
-                             :gsub('[^%s<]-[/\\]([^%s:/\\]+):%d+', '.../%1:0')
-                             :gsub('\xffvim\xff', 'vim/')
+  local errmsg = tostring(rv)
+    :gsub('([%s<])vim[/\\]([^%s:/\\]+):%d+', '%1\xffvim\xff%2:0')
+    :gsub('[^%s<]-[/\\]([^%s:/\\]+):%d+', '.../%1:0')
+    :gsub('\xffvim\xff', 'vim/')
   -- Scrub numbers in paths/stacktraces:
   --    shared.lua:0: in function 'gsplit'
   --    shared.lua:0: in function <shared.lua:0>'
@@ -135,9 +136,10 @@ end
 local function pcall_err_withtrace(fn, ...)
   local errmsg = pcall_err_withfile(fn, ...)
 
-  return errmsg:gsub('^%.%.%./helpers%.lua:0: ', '')
-               :gsub('^Error executing lua:- ' ,'')
-               :gsub('^%[string "<nvim>"%]:0: ' ,'')
+  return errmsg
+    :gsub('^%.%.%./helpers%.lua:0: ', '')
+    :gsub('^Error executing lua:- ', '')
+    :gsub('^%[string "<nvim>"%]:0: ', '')
 end
 
 function M.pcall_err(...)
@@ -145,7 +147,7 @@ function M.pcall_err(...)
 end
 
 function M.remove_trace(s)
-  return (s:gsub("\n%s*stack traceback:.*", ""))
+  return (s:gsub('\n%s*stack traceback:.*', ''))
 end
 
 -- Concat list-like tables.
@@ -182,9 +184,9 @@ function M.dedent(str, leave_indent)
   -- create a pattern for the indent
   indent = indent:gsub('%s', '[ \t]')
   -- strip it from the first line
-  str = str:gsub('^'..indent, left_indent)
+  str = str:gsub('^' .. indent, left_indent)
   -- strip it from the remaining lines
-  str = str:gsub('[\n]'..indent, '\n' .. left_indent)
+  str = str:gsub('[\n]' .. indent, '\n' .. left_indent)
   return str
 end
 
@@ -194,13 +196,16 @@ function M.read_nvim_log(logfile)
   logfile = logfile or os.getenv('NVIM_LOG_FILE') or '.nvimlog'
   local keep = 10
   local lines = read_file_list(logfile, -keep) or {}
-  local log = (('-'):rep(78)..'\n'
-    ..string.format('$NVIM_LOG_FILE: %s\n', logfile)
-    ..(#lines > 0 and '(last '..tostring(keep)..' lines)\n' or '(empty)\n'))
-  for _,line in ipairs(lines) do
-    log = log..line..'\n'
+  local log = (
+    ('-'):rep(78)
+    .. '\n'
+    .. string.format('$NVIM_LOG_FILE: %s\n', logfile)
+    .. (#lines > 0 and '(last ' .. tostring(keep) .. ' lines)\n' or '(empty)\n')
+  )
+  for _, line in ipairs(lines) do
+    log = log .. line .. '\n'
   end
-  log = log..('-'):rep(78)..'\n'
+  log = log .. ('-'):rep(78) .. '\n'
   return log
 end
 
@@ -222,20 +227,28 @@ local nvim_set = table.concat({
   'belloff=',
   'wildoptions-=pum',
   'joinspaces',
-  'noshowcmd', 'noruler', 'nomore',
-  'redrawdebug=invalid'
+  'noshowcmd',
+  'noruler',
+  'nomore',
+  'redrawdebug=invalid',
 }, ' ')
 
 local nvim_argv = {
   nvim_prog,
-  '-u', 'NONE',
-  '-i', 'NONE',
-  '--cmd', runtime_set,
-  '--cmd', nvim_set,
-  '--cmd', 'mapclear',
-  '--cmd', 'mapclear!',
+  '-u',
+  'NONE',
+  '-i',
+  'NONE',
+  '--cmd',
+  runtime_set,
+  '--cmd',
+  nvim_set,
+  '--cmd',
+  'mapclear',
+  '--cmd',
+  'mapclear!',
   '--embed',
-  '--headless'
+  '--headless',
 }
 
 local session --- @type NvimSession?
@@ -330,7 +343,7 @@ end
 --- @param ... any
 --- @return any[]
 function M.call(name, ...)
-  return request('nvim_call_function', name, {...})
+  return request('nvim_call_function', name, { ... })
 end
 
 -- Checks that the Nvim session did not terminate.
@@ -354,14 +367,14 @@ end
 
 --- @param ... string
 function M.feed(...)
-  for _, v in ipairs({...}) do
+  for _, v in ipairs({ ... }) do
     nvim_feed(M.dedent(v))
   end
 end
 
 --- @param ... string
 local function rawfeed(...)
-  for _, v in ipairs({...}) do
+  for _, v in ipairs({ ... }) do
     nvim_feed(M.dedent(v))
   end
 end
@@ -372,12 +385,16 @@ local function check_close()
   end
   local start_time = luv.now()
   session:close()
-  luv.update_time()  -- Update cached value of luv.now() (libuv: uv_now()).
+  luv.update_time() -- Update cached value of luv.now() (libuv: uv_now()).
   local end_time = luv.now()
   local delta = end_time - start_time
   if delta > 500 then
-    print("nvim took " .. delta .. " milliseconds to exit after last test\n"..
-          "This indicates a likely problem with the test even if it passed!\n")
+    print(
+      'nvim took '
+        .. delta
+        .. ' milliseconds to exit after last test\n'
+        .. 'This indicates a likely problem with the test even if it passed!\n'
+    )
     io.stdout:flush()
   end
   session = nil
@@ -392,7 +409,9 @@ function M.clear()
   local status, info = session:request('nvim_get_api_info')
   assert(status)
 
-  assert(session:request('nvim_exec_lua', [[
+  assert(session:request(
+    'nvim_exec_lua',
+    [[
     local channel = ...
     local orig_error = error
 
@@ -400,13 +419,15 @@ function M.clear()
       vim.rpcnotify(channel, 'nvim_error_event', debug.traceback(), ...)
       return orig_error(...)
     end
-    ]], {info[1]}))
+    ]],
+    { info[1] }
+  ))
 end
 
 ---@param ... string
 function M.insert(...)
   nvim_feed('i')
-  for _, v in ipairs({...}) do
+  for _, v in ipairs({ ... }) do
     local escaped = v:gsub('<', '<lt>')
     rawfeed(escaped)
   end
@@ -429,15 +450,15 @@ function M.create_callindex(func)
 end
 
 function M.nvim(method, ...)
-  return request('nvim_'..method, ...)
+  return request('nvim_' .. method, ...)
 end
 
 function M.buffer(method, ...)
-  return request('nvim_buf_'..method, ...)
+  return request('nvim_buf_' .. method, ...)
 end
 
 function M.window(method, ...)
-  return request('nvim_win_'..method, ...)
+  return request('nvim_win_' .. method, ...)
 end
 
 function M.curbuf(method, ...)
@@ -480,7 +501,7 @@ function M.exec_capture(code)
 end
 
 function M.exec_lua(code, ...)
-  return M.meths.exec_lua(code, {...})
+  return M.meths.exec_lua(code, { ... })
 end
 
 --- @param after_each fun(block:fun())
@@ -491,7 +512,7 @@ function M.after_each(after_each)
     end
     local msg = session:next_message(0)
     if msg then
-      if msg[1] == "notification" and msg[2] == "nvim_error_event" then
+      if msg[1] == 'notification' and msg[2] == 'nvim_error_event' then
         error(msg[3][2])
       end
     end
@@ -505,7 +526,7 @@ function M.env()
   local it0 = g.it
   g.it = function(name, test)
     it_id = it_id + 1
-    return it0(name..' #'..it_id..'#', test)
+    return it0(name .. ' #' .. it_id .. '#', test)
   end
 
   g.after_each(function()
@@ -514,7 +535,7 @@ function M.env()
     end
     local msg = session:next_message(0)
     if msg then
-      if msg[1] == "notification" and msg[2] == "nvim_error_event" then
+      if msg[1] == 'notification' and msg[2] == 'nvim_error_event' then
         error(msg[3][2])
       end
     end

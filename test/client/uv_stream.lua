@@ -15,16 +15,16 @@ local ProcessStream = {}
 function ProcessStream.spawn(argv)
   --- @type ProcessStream
   local self = setmetatable({
-    _child_stdin = uv.new_pipe(false);
-    _child_stdout = uv.new_pipe(false);
-    _exiting = false;
+    _child_stdin = uv.new_pipe(false),
+    _child_stdout = uv.new_pipe(false),
+    _exiting = false,
   }, { __index = ProcessStream })
 
   local prog, args = argv[1], vim.list_slice(argv, 2)
 
   --- @diagnostic disable-next-line:missing-fields
   self._proc, self._pid = uv.spawn(prog, {
-    stdio = {self._child_stdin, self._child_stdout, 2},
+    stdio = { self._child_stdin, self._child_stdout, 2 },
     args = args,
   }, function(status, signal)
     self.status = status
@@ -68,10 +68,10 @@ function ProcessStream:close(signal)
   self._child_stdin:close()
   self._child_stdout:close()
   if type(signal) == 'string' then
-    self._proc:kill('sig'..signal)
+    self._proc:kill('sig' .. signal)
   end
   while self.status == nil do
-    uv.run 'once'
+    uv.run('once')
   end
   return self.status, self.signal
 end
