@@ -15,16 +15,18 @@ M.gitdir    = M.scratch..'/.git'
 M.test_file = M.scratch..'/dummy.txt'
 M.newfile   = M.scratch.."/newfile.txt"
 
+local extmark_signs = os.getenv('NVIM_TEST_VERSION') ~= 'v0.8.3'
+
 M.test_config = {
   debug_mode = true,
   _test_mode = true,
   signs = {
-    add          = {hl = 'DiffAdd'   , text = '+'},
-    delete       = {hl = 'DiffDelete', text = '_'},
-    change       = {hl = 'DiffChange', text = '~'},
-    topdelete    = {hl = 'DiffDelete', text = '^'},
-    changedelete = {hl = 'DiffChange', text = '%'},
-    untracked    = {hl = 'DiffChange', text = '#'},
+    add          = {text = '+'},
+    delete       = {text = '_'},
+    change       = {text = '~'},
+    topdelete    = {text = '^'},
+    changedelete = {text = '%'},
+    untracked    = {text = '#'},
   },
   on_attach = {
     {'n', 'mhs', '<cmd>lua require"gitsigns".stage_hunk()<CR>'},
@@ -34,6 +36,7 @@ M.test_config = {
     {'n', 'mhS', '<cmd>lua require"gitsigns".stage_buffer()<CR>'},
     {'n', 'mhU', '<cmd>lua require"gitsigns".reset_buffer_index()<CR>'},
   },
+  _extmark_signs = extmark_signs,
   update_debounce = 5,
 }
 
@@ -105,6 +108,8 @@ function M.setup_test_repo(opts)
   helpers.sleep(20)
 end
 
+--- @param cond fun()
+--- @param interval? integer
 function M.expectf(cond, interval)
   local duration = 0
   interval = interval or 1
@@ -243,67 +248,90 @@ function M.setup_gitsigns(config, on_attach)
   end)
 end
 
-function M.check(attrs, interval)
-  attrs = attrs or {}
+--- @param status table<string,string|integer>
+local function check_status(status)
   local fn = helpers.funcs
+  if next(status) == nil then
+    eq(0, fn.exists('b:gitsigns_head'),
+      'b:gitsigns_head is unexpectedly set')
+    eq(0, fn.exists('b:gitsigns_status_dict'),
+      'b:gitsigns_status_dict is unexpectedly set')
+  else
+    eq(1, fn.exists('b:gitsigns_head'),
+      'b:gitsigns_head is not set')
+    eq(status.head, get_buf_var('gitsigns_head'),
+      'b:gitsigns_head does not match')
+
+    --- @type table<string,string|integer>
+    local bstatus = get_buf_var("gitsigns_status_dict")
+
+    for _, i in ipairs{'added', 'changed', 'removed', 'head'} do
+      eq(status[i], bstatus[i],
+        string.format("status['%s'] did not match gitsigns_status_dict", i))
+    end
+    -- Catch any extra keys
+    for i, v in pairs(status) do
+      eq(v, bstatus[i],
+        string.format("status['%s'] did not match gitsigns_status_dict", i))
+    end
+  end
+end
+
+--- @param signs table<string,integer>
+--- @param extmarks boolean
+local function check_signs(signs, extmarks)
+
+  local buf_signs = {} --- @type string[]
+  if extmarks then
+    local buf_marks = helpers.curbufmeths.get_extmarks(-1, 0, -1, {details=true})
+    for _, s in ipairs(buf_marks) do
+      buf_signs[#buf_signs+1] = s[4].sign_hl_group
+    end
+  else
+    local buf_vimsigns = helpers.funcs.sign_getplaced("%", {group='*'})[1].signs
+    for _, s in ipairs(buf_vimsigns) do
+      buf_signs[#buf_signs+1] = s.name
+    end
+  end
+
+  --- @type table<string,integer>
+  local act = {}
+
+  for _, name in ipairs(buf_signs) do
+    for t, hl in pairs{
+      added        = "GitSignsAdd",
+      changed      = "GitSignsChange",
+      delete       = "GitSignsDelete",
+      changedelete = "GitSignsChangedelete",
+      topdelete    = "GitSignsTopdelete",
+      untracked    = "GitSignsUntracked"
+    } do
+      if name == hl then
+        act[t] = (act[t] or 0) + 1
+      end
+    end
+  end
+
+  eq(signs, act, vim.inspect(buf_signs))
+end
+
+--- @param attrs {signs:table<string,integer>,status:table<string,string|integer>}
+--- @param interval? integer
+function M.check(attrs, interval)
+  if not attrs then
+    return
+  end
+
+  local status = attrs.status
+  local signs  = attrs.signs
 
   M.expectf(function()
-    local status = attrs.status
-    local signs  = attrs.signs
-
     if status then
-      if next(status) == nil then
-        eq(0, fn.exists('b:gitsigns_head'),
-          'b:gitsigns_head is unexpectedly set')
-        eq(0, fn.exists('b:gitsigns_status_dict'),
-          'b:gitsigns_status_dict is unexpectedly set')
-      else
-        eq(1, fn.exists('b:gitsigns_head'),
-          'b:gitsigns_head is not set')
-        eq(status.head, get_buf_var('gitsigns_head'),
-          'b:gitsigns_head does not match')
-
-        local bstatus = get_buf_var("gitsigns_status_dict")
-
-        for _, i in ipairs{'added', 'changed', 'removed', 'head'} do
-          eq(status[i], bstatus[i],
-            string.format("status['%s'] did not match gitsigns_status_dict", i))
-        end
-        -- Catch any extra keys
-        for i, v in pairs(status) do
-          eq(v, bstatus[i],
-            string.format("status['%s'] did not match gitsigns_status_dict", i))
-        end
-      end
+      check_status(status)
     end
 
     if signs then
-      local act = {
-        added        = 0,
-        changed      = 0,
-        delete       = 0,
-        changedelete = 0,
-        topdelete    = 0,
-        untracked    = 0,
-      }
-
-      for k, _ in pairs(act) do
-        signs[k] = signs[k] or 0
-      end
-
-      local buf_signs = fn.sign_getplaced("%", {group='*'})[1].signs
-
-      for _, s in ipairs(buf_signs) do
-        if     s.name == "GitSignsAdd"          then act.added        = act.added   + 1
-        elseif s.name == "GitSignsChange"       then act.changed      = act.changed + 1
-        elseif s.name == "GitSignsDelete"       then act.delete       = act.delete + 1
-        elseif s.name == "GitSignsChangedelete" then act.changedelete = act.changedelete + 1
-        elseif s.name == "GitSignsTopdelete"    then act.topdelete    = act.topdelete + 1
-        elseif s.name == "GitSignsUntracked"    then act.untracked    = act.untracked + 1
-        end
-      end
-
-      eq(signs, act, vim.inspect(buf_signs))
+      check_signs(signs, extmark_signs)
     end
   end, interval)
 end
