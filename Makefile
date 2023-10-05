@@ -66,6 +66,12 @@ test: $(NVIM_RUNNER) $(NVIM_TEST) .luarocks/bin/busted
 
 	-@stty sane
 
+.PHONY: test-all
+test-all:
+	$(MAKE) test NVIM_TEST_VERSION=v0.8.3
+	$(MAKE) test NVIM_TEST_VERSION=v0.9.2
+	$(MAKE) test NVIM_TEST_VERSION=nightly
+
 .PHONY: gen_help
 gen_help: $(NVIM_RUNNER)
 	@$(NVIM_RUNNER)/bin/nvim -l ./gen_help.lua
