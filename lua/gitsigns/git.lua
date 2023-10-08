@@ -78,10 +78,6 @@ local function git_command(args, spec)
     unpack(args),
   }
 
-  if spec.text == nil then
-    spec.text = true
-  end
-
   -- Fix #895. Only needed for Nvim 0.9 and older
   spec.clear_env = true
 
@@ -96,14 +92,6 @@ local function git_command(args, spec)
   end
 
   local stdout_lines = vim.split(stdout or '', '\n', { plain = true })
-
-  if spec.text then
-    -- If stdout ends with a newline, then remove the final empty string after
-    -- the split
-    if stdout_lines[#stdout_lines] == '' then
-      stdout_lines[#stdout_lines] = nil
-    end
-  end
 
   if log.verbose then
     log.vprintf('%d lines:', #stdout_lines)
@@ -308,7 +296,7 @@ end
 --- @param encoding? string
 --- @return string[] stdout, string? stderr
 function Repo:get_show_text(object, encoding)
-  local stdout, stderr = self:command({ 'show', object }, { text = false, ignore_error = true })
+  local stdout, stderr = self:command({ 'show', object }, { ignore_error = true })
 
   if encoding and encoding ~= 'utf-8' and iconv_supported(encoding) then
     for i, l in ipairs(stdout) do
@@ -333,7 +321,7 @@ end
 function Repo.new(dir, gitdir, toplevel)
   local self = setmetatable({}, { __index = Repo })
 
-  self.username = git_command({ 'config', 'user.name' }, { ignore_error = true })[1]
+  self.username = git_command({ 'config', '-z', 'user.name' }, { ignore_error = true })[1]
   local info = M.get_repo_info(dir, nil, gitdir, toplevel)
   for k, v in
     pairs(info --[[@as table<string,any>]])
@@ -346,7 +334,7 @@ function Repo.new(dir, gitdir, toplevel)
   if config.yadm.enable and not self.gitdir then
     if
       vim.startswith(dir, assert(os.getenv('HOME')))
-      and #git_command({ 'ls-files', dir }, { command = 'yadm' }) ~= 0
+      and #git_command({ 'ls-files', '-z', dir }, { command = 'yadm' }) ~= 0
     then
       M.get_repo_info(dir, 'yadm', gitdir, toplevel)
       local yadm_info = M.get_repo_info(dir, 'yadm', gitdir, toplevel)
@@ -411,6 +399,7 @@ function Obj:file_info(file, silent)
     '-c',
     'core.quotepath=off',
     'ls-files',
+    '-z',
     '--stage',
     '--others',
     '--exclude-standard',
@@ -603,6 +592,10 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
 
   local commits = {} --- @type table<string,Gitsigns.CommitInfo>
   local i = 1
+
+  if results[#results] == '' then
+    results[#results] = nil
+  end
 
   while i <= #results do
     --- @param pat? string
