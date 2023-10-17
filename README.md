@@ -272,7 +272,7 @@ If installed and enabled (via `config.trouble`; defaults to true if installed), 
 
 ### [lspsaga.nvim]
 
-If you are using lspsaga.nvim you can config `code_action.extend_gitsigns` (default is true) to show the gitsigns action in lspsaga codeaction.
+If you are using lspsaga.nvim you can config `code_action.extend_gitsigns` (default is false) to show the gitsigns action in lspsaga codeaction.
 
 ## Similar plugins
 
