@@ -80,7 +80,7 @@ local function run(func, callback, ...)
 
     if coroutine.status(co) == 'dead' then
       if callback then
-        callback(unpack(ret, 4, table.maxn(ret)))
+        callback(unpack(ret, 2, table.maxn(ret)))
       end
       return
     end
