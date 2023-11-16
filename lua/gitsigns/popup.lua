@@ -135,16 +135,12 @@ function M.close(id)
   end
 end
 
+local ns = api.nvim_create_namespace('gitsigns_popup')
+
 --- @param lines string[]
---- @param opts table
---- @param id? string|true
---- @return integer winid, integer bufnr
-function M.create0(lines, opts, id)
-  id = id or true
-
-  -- Close any popups not matching id
-  close_all_but(id)
-
+--- @param highlights Gitsigns.HlMark[]
+--- @return integer bufnr
+local function create_buf(lines, highlights)
   local ts = vim.bo.tabstop
   local bufnr = api.nvim_create_buf(false, true)
   assert(bufnr, 'Failed to create buffer')
@@ -157,6 +153,33 @@ function M.create0(lines, opts, id)
   -- Set tabstop before calculating the buffer width so that the correct width
   -- is calculated
   vim.bo[bufnr].tabstop = ts
+
+  for _, hl in ipairs(highlights) do
+    local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, ns, hl.start_row, hl.start_col or 0, {
+      hl_group = hl.hl_group,
+      end_row = hl.end_row,
+      end_col = hl.end_col,
+      hl_eol = true,
+    })
+    if not ok then
+      error(vim.inspect(hl) .. '\n' .. err)
+    end
+  end
+
+  return bufnr
+end
+
+--- @param bufnr integer
+--- @param opts table
+--- @param id? string|true
+--- @return integer winid
+local function create_win(bufnr, opts, id)
+  id = id or true
+
+  -- Close any popups not matching id
+  close_all_but(id)
+
+  local lines = api.nvim_buf_get_lines(bufnr, 0, -1, true)
 
   local opts1 = vim.deepcopy(opts or {})
   opts1.height = opts1.height or #lines -- Guess, adjust later
@@ -220,10 +243,8 @@ function M.create0(lines, opts, id)
     end,
   })
 
-  return winid, bufnr
+  return winid
 end
-
-local ns = api.nvim_create_namespace('gitsigns_popup')
 
 --- @param lines_spec {[1]: string, [2]: string|Gitsigns.HlMark[]}[][]
 --- @param opts table
@@ -231,20 +252,8 @@ local ns = api.nvim_create_namespace('gitsigns_popup')
 --- @return integer winid, integer bufnr
 function M.create(lines_spec, opts, id)
   local lines, highlights = partition_linesspec(lines_spec)
-  local winid, bufnr = M.create0(lines, opts, id)
-
-  for _, hl in ipairs(highlights) do
-    local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, ns, hl.start_row, hl.start_col or 0, {
-      hl_group = hl.hl_group,
-      end_row = hl.end_row,
-      end_col = hl.end_col,
-      hl_eol = true,
-    })
-    if not ok then
-      error(vim.inspect(hl) .. '\n' .. err)
-    end
-  end
-
+  local bufnr = create_buf(lines, highlights)
+  local winid = create_win(bufnr, opts, id)
   return winid, bufnr
 end
 
