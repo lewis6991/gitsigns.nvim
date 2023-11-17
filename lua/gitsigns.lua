@@ -119,6 +119,13 @@ end
 local function setup_attach()
   scheduler()
 
+  api.nvim_create_autocmd({ 'BufRead', 'BufNewFile', 'BufWritePost' }, {
+    group = 'gitsigns',
+    callback = function(data)
+      M.attach(nil, nil, data.event)
+    end,
+  })
+
   -- Attach to all open buffers
   for _, buf in ipairs(api.nvim_list_bufs()) do
     if api.nvim_buf_is_loaded(buf) and api.nvim_buf_get_name(buf) ~= '' then
@@ -126,13 +133,6 @@ local function setup_attach()
       scheduler()
     end
   end
-
-  api.nvim_create_autocmd({ 'BufRead', 'BufNewFile', 'BufWritePost' }, {
-    group = 'gitsigns',
-    callback = function(data)
-      M.attach(nil, nil, data.event)
-    end,
-  })
 end
 
 local function setup_cwd_head()
