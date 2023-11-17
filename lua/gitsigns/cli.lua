@@ -79,6 +79,9 @@ M.run = void(function(params)
 
   if not func then
     func = select(M.complete('', 'Gitsigns '), {}) --[[@as string]]
+    if not func then
+      return
+    end
   end
 
   local pos_args = vim.tbl_map(parse_to_lua, vim.list_slice(pos_args_raw, 2))
