@@ -1,21 +1,18 @@
 local async = require('gitsigns.async')
 local git = require('gitsigns.git')
 
+local manager = require('gitsigns.manager')
+
 local log = require('gitsigns.debug.log')
 local dprintf = log.dprintf
 local dprint = log.dprint
-
-local manager = require('gitsigns.manager')
-local hl = require('gitsigns.highlight')
 
 local gs_cache = require('gitsigns.cache')
 local cache = gs_cache.cache
 local Status = require('gitsigns.status')
 
-local gs_config = require('gitsigns.config')
-local config = gs_config.config
+local config = require('gitsigns.config').config
 
-local void = require('gitsigns.async').void
 local util = require('gitsigns.util')
 
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
@@ -165,33 +162,9 @@ local function try_worktrees(_bufnr, file, encoding)
   end
 end
 
-local done_setup = false
-
-function M._setup()
-  if done_setup then
-    return
-  end
-
-  done_setup = true
-
-  manager.setup()
-
-  hl.setup_highlights()
-  api.nvim_create_autocmd('ColorScheme', {
-    group = 'gitsigns',
-    callback = hl.setup_highlights,
-  })
-
-  api.nvim_create_autocmd('OptionSet', {
-    group = 'gitsigns',
-    pattern = { 'fileformat', 'bomb', 'eol' },
-    callback = function()
-      require('gitsigns.actions').refresh()
-    end,
-  })
-
-  -- vimpgrep creates and deletes lots of buffers so attaching to each one will
-  -- waste lots of resource and even slow down vimgrep.
+--- vimpgrep creates and deletes lots of buffers so attaching to each one will
+--- waste lots of resource and even slow down vimgrep.
+local function setup_vimgrep_autocmds()
   api.nvim_create_autocmd('QuickFixCmdPre', {
     group = 'gitsigns',
     pattern = '*vimgrep*',
@@ -207,6 +180,29 @@ function M._setup()
       attach_disabled = false
     end,
   })
+end
+
+local done_setup = false
+
+function M._setup()
+  if done_setup then
+    return
+  end
+
+  done_setup = true
+
+  manager.setup()
+  require('gitsigns.highlight').setup()
+
+  api.nvim_create_autocmd('OptionSet', {
+    group = 'gitsigns',
+    pattern = { 'fileformat', 'bomb', 'eol' },
+    callback = function()
+      require('gitsigns.actions').refresh()
+    end,
+  })
+
+  setup_vimgrep_autocmds()
 
   require('gitsigns.current_line_blame').setup()
 
@@ -223,7 +219,7 @@ end
 --- @field commit string
 --- @field base string
 
---- Ensure attaches cannot be interleaved.
+--- Ensure attaches cannot be interleaved for the same buffer.
 --- Since attaches are asynchronous we need to make sure an attach isn't
 --- performed whilst another one is in progress.
 --- @param cbuf integer
@@ -435,7 +431,7 @@ end
 ---     • {base}: (string|nil)
 ---       The git revision that the file should be compared to.
 --- @param _trigger? string
-M.attach = void(function(bufnr, ctx, _trigger)
+M.attach = async.void(function(bufnr, ctx, _trigger)
   attach_throttled(bufnr or api.nvim_get_current_buf(), ctx, _trigger)
 end)
 

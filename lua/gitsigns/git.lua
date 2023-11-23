@@ -102,6 +102,7 @@ local function check_version(version)
   return true
 end
 
+--- @async
 --- @param version string
 function M._set_version(version)
   if version ~= 'auto' then

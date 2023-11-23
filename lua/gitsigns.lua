@@ -1,5 +1,4 @@
-local void = require('gitsigns.async').void
-local scheduler = require('gitsigns.async').scheduler
+local async = require('gitsigns.async')
 
 local gs_config = require('gitsigns.config')
 local config = gs_config.config
@@ -15,7 +14,7 @@ local M = {}
 
 local cwd_watcher ---@type uv.uv_fs_event_t?
 
-local update_cwd_head = void(function()
+local update_cwd_head = async.void(function()
   local paths = vim.fs.find('.git', {
     limit = 1,
     upward = true,
@@ -56,7 +55,7 @@ local update_cwd_head = void(function()
     head = info.abbrev_head
   end
 
-  scheduler()
+  async.scheduler()
   vim.g.gitsigns_head = head
 
   if not gitdir then
@@ -74,9 +73,9 @@ local update_cwd_head = void(function()
 
   local update_head = debounce_trailing(
     100,
-    void(function()
+    async.void(function()
       local new_head = git.get_repo_info(cwd).abbrev_head
-      scheduler()
+      async.scheduler()
       vim.g.gitsigns_head = new_head
     end)
   )
@@ -85,7 +84,7 @@ local update_cwd_head = void(function()
   cwd_watcher:start(
     towatch,
     {},
-    void(function(err)
+    async.void(function(err)
       local __FUNC__ = 'cwd_watcher_cb'
       if err then
         dprintf('Git dir update error: %s', err)
@@ -116,27 +115,31 @@ local function setup_debug()
   log.verbose = config._verbose
 end
 
+--- @async
 local function setup_attach()
-  scheduler()
+  async.scheduler()
 
   api.nvim_create_autocmd({ 'BufRead', 'BufNewFile', 'BufWritePost' }, {
     group = 'gitsigns',
     callback = function(data)
-      M.attach(nil, nil, data.event)
+      require('gitsigns.attach').attach(data.buf, nil, data.event)
     end,
   })
 
   -- Attach to all open buffers
   for _, buf in ipairs(api.nvim_list_bufs()) do
     if api.nvim_buf_is_loaded(buf) and api.nvim_buf_get_name(buf) ~= '' then
-      M.attach(buf, nil, 'setup')
-      scheduler()
+      -- Make sure to run each attach in its on async context in case one of the
+      -- attaches is aborted.
+      local attach = require('gitsigns.attach')
+      async.run(attach.attach, buf, nil, 'setup')
     end
   end
 end
 
+--- @async
 local function setup_cwd_head()
-  scheduler()
+  async.scheduler()
   update_cwd_head()
   -- Need to debounce in case some plugin changes the cwd too often
   -- (like vim-grepper)
@@ -156,7 +159,7 @@ end
 ---
 --- @param cfg table|nil Configuration for Gitsigns.
 ---     See |gitsigns-usage| for more details.
-M.setup = void(function(cfg)
+M.setup = async.void(function(cfg)
   gs_config.build(cfg)
 
   if vim.fn.executable('git') == 0 then
