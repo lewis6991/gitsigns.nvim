@@ -331,4 +331,12 @@ function M.setup_highlights()
   end
 end
 
+function M.setup()
+  M.setup_highlights()
+  api.nvim_create_autocmd('ColorScheme', {
+    group = 'gitsigns',
+    callback = M.setup_highlights,
+  })
+end
+
 return M
