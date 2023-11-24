@@ -49,6 +49,7 @@ of the default settings:
       watch_gitdir = {
         follow_files = true
       },
+      auto_attach = true,
       attach_to_untracked = true,
       current_line_blame = false, -- Toggle with `:Gitsigns toggle_current_line_blame`
       current_line_blame_opts = {
@@ -712,6 +713,11 @@ preview_config                                *gitsigns-config-preview_config*
 <
       Option overrides for the Gitsigns preview window. Table is passed directly
       to `nvim_open_win`.
+
+auto_attach                                      *gitsigns-config-auto_attach*
+      Type: `boolean`, Default: `true`
+
+      Automatically attach to files.
 
 attach_to_untracked                      *gitsigns-config-attach_to_untracked*
       Type: `boolean`, Default: `true`
