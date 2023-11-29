@@ -294,8 +294,9 @@ end
 --- @param bufnr integer
 --- @param nsd integer
 --- @param hunk Gitsigns.Hunk.Hunk
+--- @param staged boolean?
 --- @return integer winid
-function M.show_deleted_in_float(bufnr, nsd, hunk)
+function M.show_deleted_in_float(bufnr, nsd, hunk, staged)
   local cwin = api.nvim_get_current_win()
   local virt_lines = {} --- @type {[1]: string, [2]: string}[][]
   local textoff = vim.fn.getwininfo(cwin)[1].textoff --[[@as integer]]
@@ -317,7 +318,8 @@ function M.show_deleted_in_float(bufnr, nsd, hunk)
 
   local bcache = cache[bufnr]
   local pbufnr = api.nvim_create_buf(false, true)
-  api.nvim_buf_set_lines(pbufnr, 0, -1, false, bcache.compare_text)
+  local text = staged and bcache.compare_text_head or bcache.compare_text
+  api.nvim_buf_set_lines(pbufnr, 0, -1, false, assert(text))
 
   local width = api.nvim_win_get_width(0)
 

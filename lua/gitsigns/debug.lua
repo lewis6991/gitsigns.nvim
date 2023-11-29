@@ -30,7 +30,6 @@ function M.dump_cache()
   --- @type string
   local text = vim.inspect(cache, { process = process })
   vim.api.nvim_echo({ { text } }, false, {})
-  return cache
 end
 
 --- @param noecho boolean
