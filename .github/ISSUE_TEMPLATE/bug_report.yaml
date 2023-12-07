@@ -5,8 +5,7 @@ body:
   - type: markdown
     attributes:
       value: >
-        Before reporting make sure that both Gitsigns and its dependencies are
-        updated to the latest version.
+        Before reporting make sure that Gitsigns is updated to the latest version.
   - type: textarea
     attributes:
       label: "Description"
@@ -66,7 +65,10 @@ body:
   - type: textarea
     attributes:
       label: "Steps to reproduce"
-      description: "Steps to reproduce using the minimal config provided."
+      description: >
+        Steps to reproduce using the minimal config provided.
+
+        If this is not provided, the issue may be closed without notice.
       value: |
         1. `nvim --clean -u minimal.lua`
         2. ...
@@ -76,7 +78,7 @@ body:
     attributes:
       label: "Gitsigns debug messages"
       description: >
-        Include the output of `:Gitsigns debug_messages`. If you think it's
+        Please include the output of `:Gitsigns debug_messages`. If you think it's
         relevant maybe also provide the output of `:Gitsigns dump_cache`.
 
         Note: You must have `debug_mode = true` in `setup()`.
