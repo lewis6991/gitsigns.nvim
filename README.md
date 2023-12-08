@@ -4,6 +4,10 @@
 [![Version](https://img.shields.io/github/v/release/lewis6991/gitsigns.nvim)](https://github.com/lewis6991/gitsigns.nvim/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Gitter](https://badges.gitter.im/gitsigns-nvim/community.svg)](https://gitter.im/gitsigns-nvim/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+<a href="https://dotfyle.com/plugins/lewis6991/gitsigns.nvim">
+  <img src="https://dotfyle.com/plugins/lewis6991/gitsigns.nvim/shield" />
+</a>
+
 
 Super fast git decorations implemented purely in Lua.
 
