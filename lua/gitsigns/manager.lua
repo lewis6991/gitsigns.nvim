@@ -430,24 +430,24 @@ end
 
 --- @param bufnr? integer
 --- @param check_compare_text? boolean
---- @param cb function
+--- @param cb fun(boolean)
 M.buf_check = async.wrap(function(bufnr, check_compare_text, cb)
   vim.schedule(function()
     if bufnr then
       if not api.nvim_buf_is_valid(bufnr) then
         dprint('Buffer not valid, aborting')
-        return
+        return cb(false)
       end
       if not cache[bufnr] then
         dprint('Has detached, aborting')
-        return
+        return cb(false)
       end
       if check_compare_text and not cache[bufnr].compare_text then
         dprint('compare_text was invalid, aborting')
-        return
+        return cb(false)
       end
     end
-    cb()
+    cb(true)
   end)
 end, 3)
 
@@ -460,7 +460,9 @@ local update_cnt = 0
 --- @param bufnr integer
 M.update = throttle_by_id(function(bufnr)
   local __FUNC__ = 'update'
-  M.buf_check(bufnr)
+  if not M.buf_check(bufnr) then
+    return
+  end
   local bcache = cache[bufnr]
   local old_hunks, old_hunks_staged = bcache.hunks, bcache.hunks_staged
   bcache.hunks, bcache.hunks_staged = nil, nil
@@ -473,22 +475,30 @@ M.update = throttle_by_id(function(bufnr)
 
   if not bcache.compare_text or config._refresh_staged_on_update or file_mode then
     bcache.compare_text = git_obj:get_show_text(compare_rev)
-    M.buf_check(bufnr, true)
+    if not M.buf_check(bufnr, true) then
+      return
+    end
   end
 
   local buftext = util.buf_lines(bufnr)
 
   bcache.hunks = run_diff(bcache.compare_text, buftext)
-  M.buf_check(bufnr)
+  if not M.buf_check(bufnr) then
+    return
+  end
 
   if config._signs_staged_enable and not file_mode then
     if not bcache.compare_text_head or config._refresh_staged_on_update then
       local staged_compare_rev = bcache.commit and string.format('%s^', bcache.commit) or 'HEAD'
       bcache.compare_text_head = git_obj:get_show_text(staged_compare_rev)
-      M.buf_check(bufnr, true)
+      if not M.buf_check(bufnr, true) then
+        return
+      end
     end
     local hunks_head = run_diff(bcache.compare_text_head, buftext)
-    M.buf_check(bufnr)
+    if not M.buf_check(bufnr) then
+      return
+    end
     bcache.hunks_staged = gs_hunks.filter_common(hunks_head, bcache.hunks)
   end
 
