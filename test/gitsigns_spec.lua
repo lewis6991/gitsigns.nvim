@@ -55,7 +55,12 @@ describe('gitsigns (with screen)', function()
       [10] = { foreground = Screen.colors.Red },
     })
 
-    -- Make gitisigns available
+    -- Use the classic vim colorscheme, not the new defaults in nvim >= 0.10
+    if fn.has('nvim-0.10') > 0 then
+      command('colorscheme vim')
+    end
+
+    -- Make gitsigns available
     exec_lua('package.path = ...', package.path)
     config = vim.deepcopy(test_config)
     command('cd ' .. system({ 'dirname', os.tmpname() }))
