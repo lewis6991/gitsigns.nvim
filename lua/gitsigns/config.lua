@@ -813,7 +813,7 @@ M.schema = {
 
   _inline2 = {
     type = 'boolean',
-    default = false,
+    default = true,
     description = [[
       Enable enhanced version of preview_hunk_inline()
     ]],
