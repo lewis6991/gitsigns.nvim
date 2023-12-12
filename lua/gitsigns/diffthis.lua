@@ -31,14 +31,17 @@ local bufread = async.void(function(bufnr, dbufnr, base)
     async.scheduler_if_buf_valid(bufnr)
   end
 
+  vim.bo[dbufnr].fileformat = vim.bo[bufnr].fileformat
+  vim.bo[dbufnr].filetype = vim.bo[bufnr].filetype
+  vim.bo[dbufnr].bufhidden = 'wipe'
+
   local modifiable = vim.bo[dbufnr].modifiable
   vim.bo[dbufnr].modifiable = true
+
   util.set_lines(dbufnr, 0, -1, text)
 
   vim.bo[dbufnr].modifiable = modifiable
   vim.bo[dbufnr].modified = false
-  vim.bo[dbufnr].filetype = vim.bo[bufnr].filetype
-  vim.bo[dbufnr].bufhidden = 'wipe'
 end)
 
 --- @param bufnr integer
