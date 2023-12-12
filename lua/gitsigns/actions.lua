@@ -1248,7 +1248,7 @@ M.setqflist = async.void(function(target, opts)
 end)
 
 C.setqflist = function(args, _)
-  local target = tonumber(args[2]) or args[2]
+  local target = tonumber(args[1]) or args[1]
   M.setqflist(target, args)
 end
 
