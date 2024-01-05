@@ -70,6 +70,7 @@
 --- @field current_line_blame_formatter_nc string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_opts Gitsigns.CurrentLineBlameOpts
 --- @field preview_config table<string,any>
+--- @field auto_attach boolean
 --- @field attach_to_untracked boolean
 --- @field yadm { enable: boolean }
 --- @field worktrees {toplevel: string, gitdir: string}[]
@@ -559,6 +560,14 @@ M.schema = {
     description = [[
       Option overrides for the Gitsigns preview window. Table is passed directly
       to `nvim_open_win`.
+    ]],
+  },
+
+  auto_attach = {
+    type = 'boolean',
+    default = true,
+    description = [[
+      Automatically attach to files.
     ]],
   },
 

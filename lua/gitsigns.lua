@@ -183,7 +183,10 @@ M.setup = async.void(function(cfg)
     require('gitsigns.git')._set_version(config._git_version)
   end
 
-  setup_attach()
+
+  if config.auto_attach then
+    setup_attach()
+  end
   setup_cwd_head()
 
   M._setup_done = true
