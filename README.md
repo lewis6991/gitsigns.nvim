@@ -274,7 +274,7 @@ This means the signs placed in the buffer reflect the changes introduced by that
 
 ### [trouble.nvim]
 
-If installed and enabled (via `config.trouble`; defaults to true if installed), `:Gitsigns setqflist` or `:Gitsigns seqloclist` will open Trouble instead of Neovim's built-in quickfix or location list windows.
+If installed and enabled (via `config.trouble`; defaults to true if installed), `:Gitsigns setqflist` or `:Gitsigns setloclist` will open Trouble instead of Neovim's built-in quickfix or location list windows.
 
 ### [lspsaga.nvim]
 
