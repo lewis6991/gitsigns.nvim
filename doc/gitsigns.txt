@@ -922,17 +922,17 @@ searching for other defined highlights in order.
 GitSignsAdd
         Used for the text of 'add' signs.
 
-        Fallbacks: `GitGutterAdd`, `SignifySignAdd`, `DiffAddedGutter`, `diffAdded`, `DiffAdd`
+        Fallbacks: `GitGutterAdd`, `SignifySignAdd`, `DiffAddedGutter`, `Added`, `DiffAdd`
                                                         *hl-GitSignsChange*
 GitSignsChange
         Used for the text of 'change' signs.
 
-        Fallbacks: `GitGutterChange`, `SignifySignChange`, `DiffModifiedGutter`, `diffChanged`, `DiffChange`
+        Fallbacks: `GitGutterChange`, `SignifySignChange`, `DiffModifiedGutter`, `Changed`, `DiffChange`
                                                         *hl-GitSignsDelete*
 GitSignsDelete
         Used for the text of 'delete' signs.
 
-        Fallbacks: `GitGutterDelete`, `SignifySignDelete`, `DiffRemovedGutter`, `diffRemoved`, `DiffDelete`
+        Fallbacks: `GitGutterDelete`, `SignifySignDelete`, `DiffRemovedGutter`, `Removed`, `DiffDelete`
                                                         *hl-GitSignsChangedelete*
 GitSignsChangedelete
         Used for the text of 'changedelete' signs.
