@@ -18,9 +18,9 @@ local git = helpers.git
 helpers.env()
 
 local function get_bufs()
-  local bufs = {}
+  local bufs = {} --- @type table<integer,string>
   for _, b in ipairs(helpers.api.nvim_list_bufs()) do
-    bufs[b.id] = helpers.api.nvim_buf_get_name(b)
+    bufs[b] = helpers.api.nvim_buf_get_name(b)
   end
   return bufs
 end
