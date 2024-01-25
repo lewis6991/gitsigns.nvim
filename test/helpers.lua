@@ -171,7 +171,7 @@ local nvim_cmd = {
   '--headless',
 }
 
-local session --- @type NvimSession?
+local session --- @type test.Session?
 local loop_running = false
 local last_error --- @type string?
 
@@ -179,7 +179,7 @@ function M.get_session()
   return session
 end
 
---- @param lsession NvimSession
+--- @param lsession test.Session
 --- @param ... any
 --- @return string
 local function call_and_stop_on_error(lsession, ...)
@@ -192,7 +192,7 @@ local function call_and_stop_on_error(lsession, ...)
   return result
 end
 
---- @param lsession NvimSession
+--- @param lsession test.Session
 --- @param request_cb fun()?
 --- @param notification_cb fun()?
 --- @param timeout integer

@@ -1,7 +1,7 @@
 local uv = vim.loop
 local MsgpackRpcStream = require('test.client.msgpack_rpc_stream')
 
---- @class NvimSession
+--- @class test.Session
 --- @field private _msgpack_rpc_stream MsgpackRpcStream
 --- @field private _pending_messages string[]
 --- @field private _prepare uv.uv_prepare_t

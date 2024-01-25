@@ -15,7 +15,7 @@ local setup_gitsigns = helpers.setup_gitsigns
 helpers.env()
 
 describe('highlights', function()
-  local screen
+  local screen --- @type test.screen
   local config
 
   before_each(function()
