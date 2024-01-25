@@ -73,7 +73,6 @@
 local helpers = require('test.helpers')
 local busted = require('busted')
 local deepcopy = vim.deepcopy
-local shallowcopy = helpers.shallowcopy
 local concat_tables = helpers.concat_tables
 local pesc = vim.pesc
 local run_session = helpers.run_session
@@ -82,13 +81,49 @@ local dedent = helpers.dedent
 local get_session = helpers.get_session
 local create_callindex = helpers.create_callindex
 
+--- @generic T
+--- @param orig T
+--- @return T
+local function shallowcopy(orig)
+  if type(orig) ~= 'table' then
+    return orig
+  end
+  --- @cast orig table<any,any>
+  local copy = {} --- @type table<any,any>
+  for orig_key, orig_value in pairs(orig) do
+    copy[orig_key] = orig_value
+  end
+  return copy
+end
+
 local inspect = require('vim.inspect')
 
 local function isempty(v)
   return type(v) == 'table' and next(v) == nil
 end
 
---- @class NvimScreen
+--- @class test.screen.Grid
+--- @field rows table[][]
+--- @field width integer
+--- @field height integer
+
+--- @class test.screen
+--- @field colors table<string,integer>
+--- @field colornames table<integer,string>
+--- @field uimeths table<string,function>
+--- @field options? table<string,any>
+--- @field timeout integer
+--- @field win_position table<integer,table<string,integer>>
+--- @field float_pos table<integer,table>
+--- @field cmdline table<integer,table>
+--- @field cmdline_block table[]
+--- @field hl_groups table<string,integer>
+--- @field messages table<integer,table>
+--- @field private _cursor {grid:integer,row:integer,col:integer}
+--- @field private _grids table<integer,test.screen.Grid>
+--- @field private _grid_win_extmarks table<integer,table>
+--- @field private _attr_table table<integer,table>
+--- @field private _hl_info table<integer,table>
 local Screen = {}
 Screen.__index = Screen
 
@@ -103,13 +138,14 @@ end
 
 local default_screen_timeout = default_timeout_factor * 3500
 
-function Screen._init_colors(session)
+function Screen._init_colors()
+  local session = get_session()
   local status, rv = session:request('nvim_get_color_map')
   if not status then
     error('failed to get color map')
   end
-  local colors = rv
-  local colornames = {}
+  local colors = rv --- @type table<string,integer>
+  local colornames = {} --- @type table<integer,string>
   for name, rgb in pairs(colors) do
     -- we disregard the case that colornames might not be unique, as
     -- this is just a helper to get any canonical name of a color
@@ -119,17 +155,14 @@ function Screen._init_colors(session)
   Screen.colornames = colornames
 end
 
+--- @param width? integer
+--- @param height? integer
+--- @return test.screen
 function Screen.new(width, height)
   if not Screen.colors then
-    Screen._init_colors(get_session())
+    Screen._init_colors()
   end
 
-  if not width then
-    width = 53
-  end
-  if not height then
-    height = 14
-  end
   local self = setmetatable({
     timeout = default_screen_timeout,
     title = '',
@@ -164,8 +197,8 @@ function Screen.new(width, height)
     _attr_table = { [0] = { {}, {} } },
     _clear_attrs = nil,
     _new_attrs = false,
-    _width = width,
-    _height = height,
+    _width = width or 53,
+    _height = height or 14,
     _grids = {},
     _grid_win_extmarks = {},
     _cursor = {
@@ -197,13 +230,21 @@ function Screen:set_rgb_cterm(val)
   self._rgb_cterm = val
 end
 
+--- @class test.screen.Opts
+--- @field ext_linegrid? boolean
+--- @field ext_multigrid? boolean
+--- @field ext_newgrid? boolean
+--- @field ext_popupmenu? boolean
+--- @field ext_wildmenu? boolean
+--- @field rgb? boolean
+--- @field _debug_float? boolean
+
+--- @param options? test.screen.Opts
+--- @param session? test.Session
 function Screen:attach(options, session)
-  if session == nil then
-    session = get_session()
-  end
-  if options == nil then
-    options = {}
-  end
+  session = session or get_session()
+  options = options or {}
+
   if options.ext_linegrid == nil then
     options.ext_linegrid = true
   end
@@ -240,6 +281,7 @@ end
 
 function Screen:set_option(option, value)
   self.uimeths.set_option(option, value)
+  --- @diagnostic disable-next-line:no-unknown
   self._options[option] = value
 end
 
@@ -259,106 +301,153 @@ local ext_keys = {
   'win_viewport',
 }
 
--- Asserts that the screen state eventually matches an expected state.
---
--- Can be called with positional args:
---    screen:expect(grid, [attr_ids])
---    screen:expect(condition)
--- or keyword args (supports more options):
---    screen:expect{grid=[[...]], cmdline={...}, condition=function() ... end}
---
---
--- grid:        Expected screen state (string). Each line represents a screen
---              row. Last character of each row (typically "|") is stripped.
---              Common indentation is stripped.
---              "{MATCH:x}" in a line is matched against Lua pattern `x`.
--- attr_ids:    Expected text attributes. Screen rows are transformed according
---              to this table, as follows: each substring S composed of
---              characters having the same attributes will be substituted by
---              "{K:S}", where K is a key in `attr_ids`. Any unexpected
---              attributes in the final state are an error.
---              Use screen:set_default_attr_ids() to define attributes for many
---              expect() calls.
--- extmarks:    Expected win_extmarks accumulated for the grids. For each grid,
---              the win_extmark messages are accumulated into an array.
--- condition:   Function asserting some arbitrary condition. Return value is
---              ignored, throw an error (use eq() or similar) to signal failure.
--- any:         Lua pattern string expected to match a screen line. NB: the
---              following chars are magic characters
---                 ( ) . % + - * ? [ ^ $
---              and must be escaped with a preceding % for a literal match.
--- mode:        Expected mode as signaled by "mode_change" event
--- unchanged:   Test that the screen state is unchanged since the previous
---              expect(...). Any flush event resulting in a different state is
---              considered an error. Not observing any events until timeout
---              is acceptable.
--- intermediate:Test that the final state is the same as the previous expect,
---              but expect an intermediate state that is different. If possible
---              it is better to use an explicit screen:expect(...) for this
---              intermediate state.
--- reset:       Reset the state internal to the test Screen before starting to
---              receive updates. This should be used after command("redraw!")
---              or some other mechanism that will invoke "redraw!", to check
---              that all screen state is transmitted again. This includes
---              state related to ext_ features as mentioned below.
--- timeout:     maximum time that will be waited until the expected state is
---              seen (or maximum time to observe an incorrect change when
---              `unchanged` flag is used)
---
--- The following keys should be used to expect the state of various ext_
--- features. Note that an absent key will assert that the item is currently
--- NOT present on the screen, also when positional form is used.
---
--- popupmenu:      Expected ext_popupmenu state,
--- cmdline:        Expected ext_cmdline state, as an array of cmdlines of
---                 different level.
--- cmdline_block:  Expected ext_cmdline block (for function definitions)
--- wildmenu_items: Expected items for ext_wildmenu
--- wildmenu_pos:   Expected position for ext_wildmenu
+local expect_keys = {
+  grid = true,
+  attr_ids = true,
+  condition = true,
+  mouse_enabled = true,
+  any = true,
+  mode = true,
+  unchanged = true,
+  intermediate = true,
+  reset = true,
+  timeout = true,
+  request_cb = true,
+  hl_groups = true,
+  extmarks = true,
+}
+
+for _, v in ipairs(ext_keys) do
+  expect_keys[v] = true
+end
+
+--- @class test.function.ui.screen.Expect
+---
+--- Expected screen state (string). Each line represents a screen
+--- row. Last character of each row (typically "|") is stripped.
+--- Common indentation is stripped.
+--- "{MATCH:x}" in a line is matched against Lua pattern `x`.
+--- "*n" at the end of a line means it repeats `n` times.
+--- @field grid? string
+---
+--- Expected text attributes. Screen rows are transformed according
+--- to this table, as follows: each substring S composed of
+--- characters having the same attributes will be substituted by
+--- "{K:S}", where K is a key in `attr_ids`. Any unexpected
+--- attributes in the final state are an error.
+--- Use an empty table for a text-only (no attributes) expectation.
+--- Use screen:set_default_attr_ids() to define attributes for many
+--- expect() calls.
+--- @field attr_ids? table<integer,table<string,any>>
+---
+--- Expected win_extmarks accumulated for the grids. For each grid,
+--- the win_extmark messages are accumulated into an array.
+--- @field extmarks? table<integer,table>
+---
+--- Function asserting some arbitrary condition. Return value is
+--- ignored, throw an error (use eq() or similar) to signal failure.
+--- @field condition? fun()
+---
+--- Lua pattern string expected to match a screen line. NB: the
+--- following chars are magic characters
+---    ( ) . % + - * ? [ ^ $
+--- and must be escaped with a preceding % for a literal match.
+--- @field any? string
+---
+--- Expected mode as signaled by "mode_change" event
+--- @field mode? string
+---
+--- Test that the screen state is unchanged since the previous
+--- expect(...). Any flush event resulting in a different state is
+--- considered an error. Not observing any events until timeout
+--- is acceptable.
+--- @field unchanged? boolean
+---
+--- Test that the final state is the same as the previous expect,
+--- but expect an intermediate state that is different. If possible
+--- it is better to use an explicit screen:expect(...) for this
+--- intermediate state.
+--- @field intermediate? boolean
+---
+--- Reset the state internal to the test Screen before starting to
+--- receive updates. This should be used after command("redraw!")
+--- or some other mechanism that will invoke "redraw!", to check
+--- that all screen state is transmitted again. This includes
+--- state related to ext_ features as mentioned below.
+--- @field reset? boolean
+---
+--- maximum time that will be waited until the expected state is
+--- seen (or maximum time to observe an incorrect change when
+--- `unchanged` flag is used)
+--- @field timeout? integer
+---
+--- @field mouse_enabled? boolean
+---
+--- @field win_viewport? table<integer,table<string,integer>>
+--- @field float_pos? {[1]:integer,[2]:integer}
+--- @field hl_groups? table<string,integer>
+---
+--- The following keys should be used to expect the state of various ext_
+--- features. Note that an absent key will assert that the item is currently
+--- NOT present on the screen, also when positional form is used.
+---
+--- Expected ext_popupmenu state,
+--- @field popupmenu? table
+---
+--- Expected ext_cmdline state, as an array of cmdlines of
+--- different level.
+--- @field cmdline? table
+---
+--- Expected ext_cmdline block (for function definitions)
+--- @field cmdline_block? table
+---
+--- items for ext_wildmenu
+--- @field wildmenu_items? table
+---
+--- position for ext_wildmenu
+--- @field wildmenu_pos? table
+
+--- Asserts that the screen state eventually matches an expected state.
+---
+--- Can be called with positional args:
+---    screen:expect(grid, [attr_ids])
+---    screen:expect(condition)
+--- or keyword args (supports more options):
+---    screen:expect{grid=[[...]], cmdline={...}, condition=function() ... end}
+---
+--- @param expected string|function|test.function.ui.screen.Expect
+--- @param attr_ids? table<integer,table<string,any>>
 function Screen:expect(expected, attr_ids, ...)
-  local grid, condition = nil, nil
-  local expected_rows = {}
+  --- @type string, fun()
+  local grid, condition
+
   assert(next({ ... }) == nil, 'invalid args to expect()')
+
   if type(expected) == 'table' then
-    assert(not (attr_ids ~= nil))
-    local is_key = {
-      grid = true,
-      attr_ids = true,
-      condition = true,
-      mouse_enabled = true,
-      any = true,
-      mode = true,
-      unchanged = true,
-      intermediate = true,
-      reset = true,
-      timeout = true,
-      request_cb = true,
-      hl_groups = true,
-      extmarks = true,
-    }
-    for _, v in ipairs(ext_keys) do
-      is_key[v] = true
-    end
-    for k, _ in pairs(expected) do
-      if not is_key[k] then
+    assert(attr_ids == nil)
+    for k, _ in
+      pairs(expected --[[@as table<string,any>]])
+    do
+      if not expect_keys[k] then
         error("Screen:expect: Unknown keyword argument '" .. k .. "'")
       end
     end
     grid = expected.grid
     attr_ids = expected.attr_ids
     condition = expected.condition
-    assert(not (expected.any ~= nil and grid ~= nil))
+    assert(expected.any == nil or grid == nil)
   elseif type(expected) == 'string' then
     grid = expected
     expected = {}
   elseif type(expected) == 'function' then
-    assert(not (attr_ids ~= nil))
+    assert(attr_ids == nil)
     condition = expected
     expected = {}
   else
     assert(false)
   end
 
+  local expected_rows = {} --- @type string[]
   if grid ~= nil then
     -- Remove the last line and dedent. Note that gsub returns more then one
     -- value.
@@ -370,12 +459,15 @@ function Screen:expect(expected, attr_ids, ...)
   local attr_state = {
     ids = attr_ids or self._default_attr_ids,
   }
+
   if self._options.ext_linegrid then
     attr_state.id_to_index = self:linegrid_check_attrs(attr_state.ids or {})
   end
+
   self._new_attrs = false
   self:_wait(function()
     if condition ~= nil then
+      --- @type boolean, string
       local status, res = pcall(condition)
       if not status then
         return tostring(res)
@@ -404,8 +496,19 @@ function Screen:expect(expected, attr_ids, ...)
       end
     end
 
-    if grid ~= nil then
-      local err_msg, msg_expected_rows = nil, {}
+    if grid then
+      for i, row in ipairs(expected_rows) do
+        local count --- @type integer?
+        row, count = row:match('^(.*%|)%*(%d+)$')
+        if row then
+          count = tonumber(count)
+          table.remove(expected_rows, i)
+          for _ = 1, count do
+            table.insert(expected_rows, i, row)
+          end
+        end
+      end
+      local err_msg = nil
       -- `expected` must match the screen lines exactly.
       if #actual_rows ~= #expected_rows then
         err_msg = 'Expected screen height '
@@ -414,9 +517,10 @@ function Screen:expect(expected, attr_ids, ...)
           .. #actual_rows
           .. '.'
       end
+      local msg_expected_rows = shallowcopy(expected_rows)
+      local msg_actual_rows = shallowcopy(actual_rows)
       for i, row in ipairs(expected_rows) do
-        msg_expected_rows[i] = row
-        local pat = nil
+        local pat = nil --- @type string?
         if actual_rows[i] and row ~= actual_rows[i] then
           local after = row
           while true do
@@ -425,6 +529,7 @@ function Screen:expect(expected, attr_ids, ...)
               pat = pat and (pat .. pesc(after))
               break
             end
+            --- @type string
             pat = (pat or '') .. pesc(after:sub(1, s - 1)) .. m
             after = after:sub(e + 1)
           end
@@ -432,7 +537,7 @@ function Screen:expect(expected, attr_ids, ...)
         if row ~= actual_rows[i] and (not pat or not actual_rows[i]:match(pat)) then
           msg_expected_rows[i] = '*' .. msg_expected_rows[i]
           if i <= #actual_rows then
-            actual_rows[i] = '*' .. actual_rows[i]
+            msg_actual_rows[i] = '*' .. msg_actual_rows[i]
           end
           if err_msg == nil then
             err_msg = 'Row ' .. tostring(i) .. ' did not match.'
@@ -446,12 +551,12 @@ function Screen:expect(expected, attr_ids, ...)
           .. table.concat(msg_expected_rows, '\n  |')
           .. '\n'
           .. 'Actual:\n  |'
-          .. table.concat(actual_rows, '\n  |')
+          .. table.concat(msg_actual_rows, '\n  |')
           .. '\n\n'
           .. [[
 To print the expect() call that would assert the current screen state, use
 screen:snapshot_util(). In case of non-deterministic failures, use
-screen:redraw_debug() to show all intermediate screen states.  ]]
+screen:redraw_debug() to show all intermediate screen states.]]
         )
       end
     end
@@ -546,6 +651,9 @@ function Screen:expect_unchanged(intermediate, waittime_ms, ignore_attrs)
   self:expect(kwargs)
 end
 
+--- @private
+--- @param check fun(): string
+--- @param flags table<string,any>
 function Screen:_wait(check, flags)
   local err, checked = false, false
   local success_seen = false
@@ -694,6 +802,8 @@ function Screen:sleep(ms, request_cb)
   run_session(self._session, request_cb, notification_cb, ms)
 end
 
+--- @private
+--- @param updates {[1]:string, [integer]:any[]}[]
 function Screen:_redraw(updates)
   local did_flush = false
   for k, update in ipairs(updates) do
@@ -701,6 +811,7 @@ function Screen:_redraw(updates)
     local method = update[1]
     for i = 2, #update do
       local handler_name = '_handle_' .. method
+      --- @type function
       local handler = self[handler_name]
       assert(handler ~= nil, 'missing handler: Screen:' .. handler_name)
       local status, res = pcall(handler, self, unpack(update[i]))
@@ -792,6 +903,8 @@ function Screen:_reset()
   self._grid_win_extmarks = {}
 end
 
+--- @param cursor_style_enabled boolean
+--- @param mode_info table[]
 function Screen:_handle_mode_info_set(cursor_style_enabled, mode_info)
   self._cursor_style_enabled = cursor_style_enabled
   for _, item in pairs(mode_info) do
@@ -990,6 +1103,8 @@ function Screen:_handle_hl_attr_define(id, rgb_attrs, cterm_attrs, info)
   self._new_attrs = true
 end
 
+--- @param name string
+--- @param id integer
 function Screen:_handle_hl_group_set(name, id)
   self.hl_groups[name] = id
 end
@@ -1015,6 +1130,10 @@ function Screen:_handle_put(str)
   self._cursor.col = self._cursor.col + 1
 end
 
+--- @param grid integer
+--- @param row integer
+--- @param col integer
+--- @param items integer[][]
 function Screen:_handle_grid_line(grid, row, col, items)
   assert(self._options.ext_linegrid)
   local line = self._grids[grid].rows[row + 1]
@@ -1355,6 +1474,10 @@ function Screen:redraw_debug(attrs, ignore, timeout)
   run_session(self._session, nil, notification_cb, timeout)
 end
 
+--- @param headers boolean
+--- @param attr_state any
+--- @param preview? boolean
+--- @return string[]
 function Screen:render(headers, attr_state, preview)
   headers = headers and (self._options.ext_multigrid or self._options._debug_float)
   local rv = {}
