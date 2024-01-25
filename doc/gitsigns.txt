@@ -720,7 +720,7 @@ auto_attach                                      *gitsigns-config-auto_attach*
       Automatically attach to files.
 
 attach_to_untracked                      *gitsigns-config-attach_to_untracked*
-      Type: `boolean`, Default: `true`
+      Type: `boolean`, Default: `false`
 
       Attach to untracked files.
 
