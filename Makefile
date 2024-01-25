@@ -3,8 +3,8 @@ export PJ_ROOT=$(PWD)
 
 FILTER ?= .*
 
-NVIM_RUNNER_VERSION := v0.9.1
-NVIM_TEST_VERSION ?= v0.9.1
+NVIM_RUNNER_VERSION := v0.9.5
+NVIM_TEST_VERSION ?= v0.9.5
 
 ifeq ($(shell uname -s),Darwin)
     UNAME ?= MACOS

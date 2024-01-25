@@ -573,7 +573,7 @@ M.schema = {
 
   attach_to_untracked = {
     type = 'boolean',
-    default = true,
+    default = false,
     description = [[
       Attach to untracked files.
     ]],

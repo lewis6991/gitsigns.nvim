@@ -36,6 +36,7 @@ M.test_config = {
     { 'n', 'mhS', '<cmd>lua require"gitsigns".stage_buffer()<CR>' },
     { 'n', 'mhU', '<cmd>lua require"gitsigns".reset_buffer_index()<CR>' },
   },
+  attach_to_untracked = true,
   _extmark_signs = extmark_signs,
   update_debounce = 5,
 }
