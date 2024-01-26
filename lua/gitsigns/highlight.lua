@@ -7,6 +7,8 @@ local api = vim.api
 --- @field fg_factor number
 --- @field bg_factor number
 
+local nvim10 = vim.fn.has('nvim-0.10') > 0
+
 local M = {}
 
 --- Use array of dict so we can iterate deterministically
@@ -18,7 +20,7 @@ M.hls = {
       'GitGutterAdd',
       'SignifySignAdd',
       'DiffAddedGutter',
-      'Added',
+      nvim10 and 'Added' or 'diffAdded',
       'DiffAdd',
       desc = "Used for the text of 'add' signs.",
     },
@@ -29,7 +31,7 @@ M.hls = {
       'GitGutterChange',
       'SignifySignChange',
       'DiffModifiedGutter',
-      'Changed',
+      nvim10 and 'Changed' or 'diffChanged',
       'DiffChange',
       desc = "Used for the text of 'change' signs.",
     },
@@ -40,7 +42,7 @@ M.hls = {
       'GitGutterDelete',
       'SignifySignDelete',
       'DiffRemovedGutter',
-      'Removed',
+      nvim10 and 'Removed' or 'diffRemoved',
       'DiffDelete',
       desc = "Used for the text of 'delete' signs.",
     },
