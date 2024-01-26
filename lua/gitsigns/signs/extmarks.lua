@@ -7,6 +7,8 @@ local M = {}
 
 local group_base = 'gitsigns_extmark_signs_'
 
+local use_invalidate_signs = vim.fn.has('nvim-0.10') > 0
+
 --- @param cfg Gitsigns.SignConfig
 --- @param hls table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @param name string
@@ -24,6 +26,9 @@ end
 --- @param last_orig? integer
 --- @param last_new? integer
 function M:on_lines(buf, _, last_orig, last_new)
+  if use_invalidate_signs then
+    return
+  end
   -- Remove extmarks on line deletions to mimic
   -- the behaviour of vim signs.
   if last_orig > last_new then
@@ -65,11 +70,15 @@ function M:add(bufnr, signs)
 
       local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, self.ns, s.lnum - 1, -1, {
         id = s.lnum,
+        end_row = s.end_lnum and s.end_lnum - 1 or nil,
         sign_text = config.signcolumn and text or '',
         priority = config.sign_priority,
         sign_hl_group = hls.hl,
         number_hl_group = config.numhl and hls.numhl or nil,
         line_hl_group = config.linehl and hls.linehl or nil,
+
+        undo_restore = not use_invalidate_signs,
+        invalidate = use_invalidate_signs,
       })
 
       if not ok and config.debug_mode then

@@ -225,6 +225,88 @@ function M.calc_signs(hunk, next, min_lnum, max_lnum, untracked)
   return signs
 end
 
+--- Calculate signs needed to be applied from a hunk for a specified line range.
+--- @param hunk Gitsigns.Hunk.Hunk
+--- @param next_hunk Gitsigns.Hunk.Hunk?
+--- @param untracked boolean
+--- @return Gitsigns.Sign[]
+function M.calc_sign_ranges(hunk, next_hunk, untracked)
+  assert(
+    not untracked or hunk.type == 'add',
+    string.format('Invalid hunk with untracked=%s hunk="%s"', untracked, hunk.head)
+  )
+
+  local start = hunk.added.start
+  local added = hunk.added.count
+  local removed = hunk.removed.count
+  local end_lnum = change_end(hunk)
+
+  if hunk.type == 'delete' and start == 0 then
+    -- topdelete signs get placed one row lower
+    return { {
+      type = 'topdelete',
+      count = removed,
+      lnum = 1,
+    } }
+  elseif hunk.type == 'delete' then
+    return {
+      {
+        type = 'delete',
+        count = removed,
+        lnum = start,
+        end_lnum = start,
+      },
+    }
+  elseif untracked or hunk.type == 'add' then
+    return {
+      {
+        type = untracked and 'untracked' or 'add',
+        count = added,
+        lnum = start,
+        end_lnum = end_lnum,
+      },
+    }
+  end
+
+  --- @type Gitsigns.Sign[]
+  local signs = {}
+
+  -- changedelete
+  if removed > added then
+    if end_lnum > start then
+      signs[#signs + 1] = {
+        type = 'change',
+        lnum = start,
+        end_lnum = end_lnum - 1,
+      }
+    end
+
+    signs[#signs + 1] = {
+      type = 'changedelete',
+      count = removed,
+      lnum = end_lnum,
+    }
+  else -- change
+    signs[#signs + 1] = {
+      type = 'change',
+      lnum = start,
+      end_lnum = end_lnum,
+    }
+
+    -- Added lines of a 'change' hunk
+    if added > removed then
+      signs[#signs + 1] = {
+        type = 'add',
+        count = added - removed,
+        lnum = end_lnum,
+        end_lnum = hunk.vend,
+      }
+    end
+  end
+
+  return signs
+end
+
 --- @param relpath string
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @param mode_bits string
