@@ -60,7 +60,8 @@ describe('gitsigns (with screen)', function()
       command('colorscheme vim')
     else
       default_attrs[2] = { background = Screen.colors.LightMagenta }
-      default_attrs[4] = { background = Screen.colors.LightCyan1, bold = true, foreground = Screen.colors.Blue1 }
+      default_attrs[4] =
+        { background = Screen.colors.LightCyan1, bold = true, foreground = Screen.colors.Blue1 }
     end
 
     screen:set_default_attr_ids(default_attrs)
