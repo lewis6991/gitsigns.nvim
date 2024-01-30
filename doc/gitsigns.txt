@@ -681,6 +681,15 @@ count_chars                                      *gitsigns-config-count_chars*
         • to specify unicode characters for the counts instead of 1-9.
         • to define characters to be used for counts greater than 9.
 
+top_count_chars                              *gitsigns-config-top_count_chars*
+      Type: `table`
+      Default: >
+        `{ "1", "2", "3", "4", "5", "6", "7", "8", "9",
+          ["+"] = ">"
+        }`
+<
+      Same as count_chars, but for top line.
+
 status_formatter                            *gitsigns-config-status_formatter*
       Type: `function`
       Default: >

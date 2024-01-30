@@ -56,7 +56,7 @@ function M:add(bufnr, signs)
       local text = cs.text
       if config.signcolumn and cs.show_count and s.count then
         local count = s.count
-        local cc = config.count_chars
+        local cc = s.type == 'topdelete' and config.top_count_chars or config.count_chars
         local count_char = cc[count] or cc['+'] or ''
         text = cs.text .. count_char
       end

@@ -53,6 +53,7 @@
 --- @field _signs_staged table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field _signs_staged_enable boolean
 --- @field count_chars table<string|integer,string>
+--- @field top_count_chars table<string|integer,string>
 --- @field signcolumn boolean
 --- @field numhl boolean
 --- @field linehl boolean
@@ -505,6 +506,25 @@ M.schema = {
       Possible use cases for this field:
         • to specify unicode characters for the counts instead of 1-9.
         • to define characters to be used for counts greater than 9.
+    ]],
+  },
+
+  top_count_chars = {
+    type = 'table',
+    default = {
+      [1] = '1', -- '¹',
+      [2] = '2', -- '²',
+      [3] = '3', -- '³',
+      [4] = '4', -- '⁴',
+      [5] = '5', -- '⁵',
+      [6] = '6', -- '⁶',
+      [7] = '7', -- '⁷',
+      [8] = '8', -- '⁸',
+      [9] = '9', -- '⁹',
+      ['+'] = '>', -- '⁺',
+    },
+    description = [[
+      Same as count_chars, but for top line.
     ]],
   },
 
