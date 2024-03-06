@@ -116,7 +116,7 @@ local function eprint(msg, level)
   end
   M.messages[#M.messages + 1] = msg
   if M.debug_mode then
-    error(msg)
+    error(msg, 3)
   end
 end
 
