@@ -470,16 +470,24 @@ end
 --- @param silent? boolean
 --- @return Gitsigns.FileInfo
 function Obj:file_info(file, silent)
-  local results, stderr = self:command({
+  local has_eol = check_version({ 2, 9 })
+
+  local cmd = {
     '-c',
     'core.quotepath=off',
     'ls-files',
     '--stage',
     '--others',
     '--exclude-standard',
-    '--eol',
-    file or self.file,
-  }, { ignore_error = true })
+  }
+
+  if has_eol then
+    cmd[#cmd + 1] = '--eol'
+  end
+
+  cmd[#cmd + 1] = file or self.file
+
+  local results, stderr = self:command(cmd, { ignore_error = true })
 
   if stderr and not silent then
     -- ignore_error for the cases when we run:
@@ -489,14 +497,12 @@ function Obj:file_info(file, silent)
     end
   end
 
+  local relpath_idx = has_eol and 2 or 1
+
   local result = {}
   for _, line in ipairs(results) do
     local parts = vim.split(line, '\t')
-    if #parts > 2 then -- tracked file
-      local eol = vim.split(parts[2], '%s+')
-      result.i_crlf = eol[1] == 'i/crlf'
-      result.w_crlf = eol[2] == 'w/crlf'
-      result.relpath = parts[3]
+    if #parts > relpath_idx then -- tracked file
       local attrs = vim.split(parts[1], '%s+')
       local stage = tonumber(attrs[3])
       if stage <= 1 then
@@ -505,8 +511,17 @@ function Obj:file_info(file, silent)
       else
         result.has_conflicts = true
       end
+
+      if has_eol then
+        result.relpath = parts[3]
+        local eol = vim.split(parts[2], '%s+')
+        result.i_crlf = eol[1] == 'i/crlf'
+        result.w_crlf = eol[2] == 'w/crlf'
+      else
+        result.relpath = parts[2]
+      end
     else -- untracked file
-      result.relpath = parts[2]
+      result.relpath = parts[relpath_idx]
     end
   end
   return result
