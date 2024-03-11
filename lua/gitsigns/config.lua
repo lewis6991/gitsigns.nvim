@@ -43,6 +43,7 @@
 --- @field virt_text_pos 'eol'|'overlay'|'right_align'
 --- @field delay integer
 --- @field ignore_whitespace boolean
+--- @field detect_move_or_copy 'C'|'CC'|'CCC'
 --- @field virt_text_priority integer
 
 --- @class (exact) Gitsigns.Config

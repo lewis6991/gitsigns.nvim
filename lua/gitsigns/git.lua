@@ -604,8 +604,9 @@ end
 --- @param lines string[]
 --- @param lnum? integer
 --- @param ignore_whitespace? boolean
+--- @param detect_move_or_copy? string
 --- @return table<integer,Gitsigns.BlameInfo?>?
-function Obj:run_blame(lines, lnum, ignore_whitespace)
+function Obj:run_blame(lines, lnum, ignore_whitespace, detect_move_or_copy)
   local ret = {} --- @type table<integer,Gitsigns.BlameInfo>
 
   if not self.object_name or self.repo.abbrev_head == '' then
@@ -634,6 +635,10 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
 
   if ignore_whitespace then
     args[#args + 1] = '-w'
+  end
+
+  if detect_move_or_copy ~= nil and detect_move_or_copy ~= '' then
+    args[#args + 1] = '-' .. detect_move_or_copy
   end
 
   local ignore_file = self.repo.toplevel .. '/.git-blame-ignore-revs'
