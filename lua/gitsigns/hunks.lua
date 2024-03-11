@@ -164,11 +164,12 @@ end
 
 --- Calculate signs needed to be applied from a hunk for a specified line range.
 --- @param hunk Gitsigns.Hunk.Hunk
+--- @param next Gitsigns.Hunk.Hunk?
 --- @param min_lnum integer
 --- @param max_lnum integer
 --- @param untracked boolean
 --- @return Gitsigns.Sign[]
-function M.calc_signs(hunk, min_lnum, max_lnum, untracked)
+function M.calc_signs(hunk, next, min_lnum, max_lnum, untracked)
   assert(
     not untracked or hunk.type == 'add',
     string.format('Invalid hunk with untracked=%s hunk="%s"', untracked, hunk.head)
@@ -191,11 +192,21 @@ function M.calc_signs(hunk, min_lnum, max_lnum, untracked)
 
   local cend = change_end(hunk)
 
-  for lnum = max(start, min_lnum), min(cend, max_lnum) do
-    local changedelete = hunk.type == 'change' and removed > added and lnum == cend
+  -- if this is a change hunk, mark changedelete if lines were removed or if the
+  -- next hunk removes on this hunks last line
+  local changedelete = false
+  if hunk.type == 'change' then
+    changedelete = removed > added
+    if next ~= nil and next.type == 'delete' then
+      changedelete = changedelete or hunk.added.start + hunk.added.count - 1 == next.added.start
+    end
+  end
 
+  for lnum = max(start, min_lnum), min(cend, max_lnum) do
     signs[#signs + 1] = {
-      type = changedelete and 'changedelete' or untracked and 'untracked' or hunk.type,
+      type = (changedelete and lnum == cend) and 'changedelete'
+        or untracked and 'untracked'
+        or hunk.type,
       count = lnum == start and (hunk.type == 'add' and added or removed) or nil,
       lnum = lnum,
     }
