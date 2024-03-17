@@ -64,7 +64,12 @@ local handler = debounce_trailing(
   --- @param bufnr integer
   async.void(function(bufnr)
     local __FUNC__ = 'watcher_handler'
-    buf_check(bufnr)
+
+    -- Avoid cache hit for detached buffer
+    -- ref: https://github.com/lewis6991/gitsigns.nvim/issues/956
+    if not buf_check(bufnr) then
+      return
+    end
 
     local git_obj = cache[bufnr].git_obj
 
