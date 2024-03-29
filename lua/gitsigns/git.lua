@@ -88,7 +88,8 @@ end
 --- @return boolean
 local function check_version(version)
   if not M.version then
-    return false
+    M._set_version(config._git_version)
+    return check_version(version)
   end
   if M.version.major < version[1] then
     return false
