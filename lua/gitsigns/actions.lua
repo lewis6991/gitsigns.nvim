@@ -912,6 +912,10 @@ M.blame_line = async.void(function(opts)
     loading:close()
   end)
 
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+
   assert(result)
 
   result = util.convert_blame_info(result)
