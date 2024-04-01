@@ -147,7 +147,8 @@ end
 --- @param argc number: The number of arguments of func. Must be included.
 --- @return function: Returns an async function
 function M.wrap(func, argc)
-  assert(argc)
+  assert(type(func) == 'function')
+  assert(type(argc) == 'number')
   return function(...)
     if not M.running() then
       return func(...)

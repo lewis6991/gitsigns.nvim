@@ -25,7 +25,7 @@ local function close_handles(state)
   close_handle(state.timer)
 end
 
---- @class Pckr.SystemObj : vim.SystemObj
+--- @class Gitsigns.SystemObj : vim.SystemObj
 --- @field private _state vim.SystemState
 local SystemObj = {}
 
@@ -59,14 +59,14 @@ function SystemObj:wait(timeout)
 
   local done = vim.wait(timeout or state.timeout or MAX_TIMEOUT, function()
     return state.result ~= nil
-  end)
+  end, nil, true)
 
   if not done then
     -- Send sigkill since this cannot be caught
     self:_timeout(SIG.KILL)
     vim.wait(timeout or state.timeout or MAX_TIMEOUT, function()
       return state.result ~= nil
-    end)
+    end, nil, true)
   end
 
   return state.result
@@ -140,9 +140,13 @@ local function setup_input(input)
   return assert(uv.new_pipe(false)), towrite
 end
 
-local environ = vim.fn.environ()
-environ['NVIM'] = vim.v.servername
-environ['NVIM_LISTEN_ADDRESS'] = nil
+--- @return table<string,string>
+local function base_env()
+  local env = vim.fn.environ() --- @type table<string,string>
+  env['NVIM'] = vim.v.servername
+  env['NVIM_LISTEN_ADDRESS'] = nil
+  return env
+end
 
 --- uv.spawn will completely overwrite the environment
 --- when we just want to modify the existing one, so
@@ -156,7 +160,7 @@ local function setup_env(env, clear_env)
   end
 
   --- @type table<string,string|number>
-  env = vim.tbl_extend('force', environ, env or {})
+  env = vim.tbl_extend('force', base_env(), env or {})
 
   local renv = {} --- @type string[]
   for k, v in pairs(env) do
@@ -261,7 +265,7 @@ end
 --- Run a system command
 ---
 --- @param cmd string[]
---- @param opts? SystemOpts
+--- @param opts? vim.SystemOpts
 --- @param on_exit? fun(out: vim.SystemCompleted)
 --- @return vim.SystemObj
 local function system(cmd, opts, on_exit)
