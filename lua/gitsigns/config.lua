@@ -751,6 +751,9 @@ M.schema = {
 
   yadm = {
     type = 'table',
+    deprecated = {
+      new_field = 'on_attach_pre',
+    },
     default = { enable = false },
     description = [[
       yadm configuration.

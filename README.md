@@ -31,7 +31,6 @@ Super fast git decorations implemented purely in Lua.
 - Automatically follow files moved in the index.
 - Live intra-line word diff
 - Ability to display deleted/changed lines via virtual lines.
-- Support for [yadm]
 - Support for detached working trees.
 
 ## Requirements
@@ -95,9 +94,6 @@ require('gitsigns').setup {
     relative = 'cursor',
     row = 0,
     col = 1
-  },
-  yadm = {
-    enable = false
   },
 }
 ```
@@ -256,7 +252,6 @@ Customizable signs and mappings                          | :white_check_mark:   
 Customizable extra diff arguments                        | :white_check_mark:   | :white_check_mark:                            |
 Can be toggled globally or per buffer                    | :white_check_mark: * | :white_check_mark:                            | * Through the detach/attach functions
 Statusline integration                                   | :white_check_mark:   | :white_check_mark:                            |
-Works with [yadm]                                        | :white_check_mark:   |                                               |
 Live blame in buffer (using virtual text)                | :white_check_mark:   |                                               |
 Blame preview                                            | :white_check_mark:   |                                               |
 Automatically follows open files moved with `git mv`     | :white_check_mark:   |                                               |
@@ -297,5 +292,4 @@ If you are using lspsaga.nvim you can config `code_action.extend_gitsigns` (defa
 [vim-gitgutter]: https://github.com/airblade/vim-gitgutter
 [vim-signify]: https://github.com/mhinz/vim-signify
 [virtual lines]: https://github.com/neovim/neovim/pull/15351
-[yadm]: https://yadm.io
 [lspsaga.nvim]: https://github.com/glepnir/lspsaga.nvim

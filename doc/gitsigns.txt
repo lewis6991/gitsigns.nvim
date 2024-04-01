@@ -72,9 +72,6 @@ of the default settings:
         row = 0,
         col = 1
       },
-      yadm = {
-        enable = false
-      },
     }
 <
 
@@ -875,6 +872,10 @@ trouble                                              *gitsigns-config-trouble*
       quickfix/location list window.
 
 yadm                                                    *gitsigns-config-yadm*
+   DEPRECATED
+
+   Please instead use |gitsigns-config-on_attach_pre|.
+
       Type: `table`
       Default: >
         `{
