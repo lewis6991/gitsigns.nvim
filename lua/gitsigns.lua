@@ -180,7 +180,7 @@ M.setup = async.void(function(cfg)
 
   if config._test_mode then
     require('gitsigns.attach')._setup()
-    require('gitsigns.git')._set_version(config._git_version)
+    require('gitsigns.git.version').check()
   end
 
   if config.auto_attach then
