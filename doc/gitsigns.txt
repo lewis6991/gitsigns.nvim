@@ -873,8 +873,7 @@ trouble                                              *gitsigns-config-trouble*
 
 yadm                                                    *gitsigns-config-yadm*
    DEPRECATED
-
-   Please instead use |gitsigns-config-on_attach_pre|.
+      Please use |gitsigns-config-on_attach_pre| instead
 
       Type: `table`
       Default: >

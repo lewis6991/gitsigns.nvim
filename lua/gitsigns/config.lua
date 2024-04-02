@@ -1,9 +1,21 @@
+--- @class (exact) Gitsigns.SchemaElem.Deprecated
+---
+--- Used for renaming fields.
+--- @field new_field string
+---
+--- Documentation for deprecation. Will be added to the help file and used in
+--- the notification if `hard = true`.
+--- @field message string
+---
+--- Emit a message via vim.notify
+--- @field hard boolean
+
 --- @class (exact) Gitsigns.SchemaElem
 --- @field type string|string[]
 --- @field refresh? fun(cb: fun()) Function to refresh the config value
 --- @field deep_extend? boolean
 --- @field default any
---- @field deprecated? boolean|{new_field:string,message:string,hard:boolean}
+--- @field deprecated? boolean|Gitsigns.SchemaElem.Deprecated
 --- @field default_help? string
 --- @field description string
 
@@ -752,7 +764,7 @@ M.schema = {
   yadm = {
     type = 'table',
     deprecated = {
-      new_field = 'on_attach_pre',
+      message = 'Please use |gitsigns-config-on_attach_pre| instead',
     },
     default = { enable = false },
     description = [[
