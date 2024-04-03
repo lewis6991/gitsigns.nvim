@@ -277,11 +277,13 @@ If you are using lspsaga.nvim you can config `code_action.extend_gitsigns` (defa
 
 ## Similar plugins
 
+- [mini.diff]
 - [coc-git]
 - [vim-gitgutter]
 - [vim-signify]
 
 <!-- links -->
+[mini.diff]: https://github.com/echasnovski/mini.diff
 [coc-git]: https://github.com/neoclide/coc-git
 [diff-linematch]: https://github.com/neovim/neovim/pull/14537
 [luv]: https://github.com/luvit/luv/blob/master/docs.md
