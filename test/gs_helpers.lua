@@ -1,6 +1,6 @@
-local helpers = require('test.helpers')
+local helpers = require('nvim-test.helpers')
 
-local timeout = 8000
+local timeout = 2000
 
 local M = helpers
 

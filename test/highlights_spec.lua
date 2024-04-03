@@ -1,4 +1,4 @@
-local Screen = require('test.screen')
+local Screen = require('nvim-test.screen')
 local helpers = require('test.gs_helpers')
 
 local clear = helpers.clear

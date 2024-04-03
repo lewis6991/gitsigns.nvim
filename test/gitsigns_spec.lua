@@ -1,6 +1,6 @@
 -- vim: foldnestmax=5 foldminlines=1
 
-local Screen = require('test.screen')
+local Screen = require('nvim-test.screen')
 local helpers = require('test.gs_helpers')
 
 local clear = helpers.clear
@@ -275,6 +275,7 @@ describe('gitsigns (with screen)', function()
 
     local function blame_line_ui_test(autocrlf, file_ending)
       setup_test_repo()
+      exec_lua[[vim.g.editorconfig = false]]
 
       git({ 'config', 'core.autocrlf', autocrlf })
       if file_ending == 'dos' then
@@ -293,7 +294,7 @@ describe('gitsigns (with screen)', function()
       check({ signs = {} })
 
       -- Wait until the virtual blame line appears
-      screen:sleep(1000)
+      -- screen:sleep(500)
       -- print(vim.inspect(exec_lua[[return require'gitsigns.cache'.cache[vim.api.nvim_get_current_buf()].compare_text]]))
       -- print(vim.inspect(exec_lua[[return require'gitsigns.util'.buf_lines(vim.api.nvim_get_current_buf())]]))
 

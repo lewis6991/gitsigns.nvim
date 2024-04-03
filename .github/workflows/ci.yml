@@ -42,11 +42,8 @@ jobs:
 
       - uses: leafo/gh-actions-luarocks@v4
 
-      - name: Download Nvim
-        run: make nvim
-
-      - name: Download Busted
-        run: make busted
+      - name: Download nvim-test
+        run: make nvim-test
 
       - name: Run Test
         run: make test
@@ -69,8 +66,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Download Nvim
-        run: make nvim
+      - uses: leafo/gh-actions-lua@v9
+        with:
+          luaVersion: "5.1.5"
+
+      - uses: leafo/gh-actions-luarocks@v4
+
+      - name: Download nvim-test
+        run: make nvim-test
 
       - name: Doc Check
         run: make doc-check
