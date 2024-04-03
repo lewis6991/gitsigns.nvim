@@ -1,14 +1,14 @@
 --- @class (exact) Gitsigns.SchemaElem.Deprecated
 ---
 --- Used for renaming fields.
---- @field new_field string
+--- @field new_field? string
 ---
 --- Documentation for deprecation. Will be added to the help file and used in
 --- the notification if `hard = true`.
---- @field message string
+--- @field message? string
 ---
 --- Emit a message via vim.notify
---- @field hard boolean
+--- @field hard? boolean
 
 --- @class (exact) Gitsigns.SchemaElem
 --- @field type string|string[]
@@ -50,12 +50,18 @@
 
 --- @alias Gitsigns.CurrentLineBlameFmtFun fun(user: string, info: table<string,any>, opts: Gitsigns.CurrentLineBlameFmtOpts): {[1]:string,[2]:string}[]
 
---- @class (exact) Gitsigns.CurrentLineBlameOpts
---- @field virt_text boolean
---- @field virt_text_pos 'eol'|'overlay'|'right_align'
---- @field delay integer
---- @field ignore_whitespace boolean
---- @field virt_text_priority integer
+--- @class (exact) Gitsigns.CurrentLineBlameOpts : Gitsigns.BlameOpts
+--- @field virt_text? boolean
+--- @field virt_text_pos? 'eol'|'overlay'|'right_align'
+--- @field delay? integer
+--- @field virt_text_priority? integer
+
+--- @class (exact) Gitsigns.BlameOpts
+--- @field ignore_whitespace? boolean
+--- @field rev? string
+
+--- @class (exact) Gitsigns.LineBlameOpts : Gitsigns.BlameOpts
+--- @field full? boolean
 
 --- @class (exact) Gitsigns.Config
 --- @field debug_mode boolean

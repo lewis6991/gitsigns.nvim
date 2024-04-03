@@ -898,11 +898,14 @@ end
 ---       Display full commit message with hunk.
 ---     • {ignore_whitespace}: (boolean)
 ---       Ignore whitespace when running blame.
+---     • {rev}: (string)
+---       Revision to blame against.
 M.blame_line = async.create(1, function(opts)
   if popup.focus_open('blame') then
     return
   end
 
+  --- @type Gitsigns.LineBlameOpts
   opts = opts or {}
 
   local bufnr = current_buf()
@@ -926,7 +929,7 @@ M.blame_line = async.create(1, function(opts)
     loading:close()
   end)
 
-  if not api.nvim_buf_is_valid(bufnr) then
+  if not manager.schedule(bufnr) then
     return
   end
 

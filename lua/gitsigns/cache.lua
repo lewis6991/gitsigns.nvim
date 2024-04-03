@@ -90,7 +90,7 @@ local BLAME_THRESHOLD_LEN = 1000000
 
 --- @private
 --- @param lnum integer
---- @param opts Gitsigns.CurrentLineBlameOpts
+--- @param opts Gitsigns.BlameOpts
 --- @return table<integer,Gitsigns.BlameInfo?>?
 function CacheEntry:run_blame(lnum, opts)
   local bufnr = self.bufnr
@@ -124,9 +124,14 @@ local function get_blame_nc(file, lnum)
 end
 
 --- @param lnum integer
---- @param opts Gitsigns.CurrentLineBlameOpts
+--- @param opts Gitsigns.BlameOpts
 --- @return Gitsigns.BlameInfo?
 function CacheEntry:get_blame(lnum, opts)
+  if opts.rev then
+    local buftext = util.buf_lines(self.bufnr)
+    return self.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)[lnum]
+  end
+
   local blame_cache = self.blame
 
   if not blame_cache or not blame_cache[lnum] then

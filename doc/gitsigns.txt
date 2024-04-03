@@ -300,6 +300,8 @@ blame_line({opts}, {callback?})                        *gitsigns.blame_line()*
                              Display full commit message with hunk.
                            • {ignore_whitespace}: (boolean)
                              Ignore whitespace when running blame.
+                           • {rev}: (string)
+                             Revision to blame against.
 
 get_hunks({bufnr})                                      *gitsigns.get_hunks()*
                 Get hunk array for specified buffer.
