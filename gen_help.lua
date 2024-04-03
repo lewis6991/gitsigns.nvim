@@ -1,7 +1,4 @@
-#!/bin/sh
-_=[[
-exec nvim -l "$0" "$@"
-]]
+#!/usr/bin/env -S nvim -l
 -- Simple script to update the help doc by reading the config schema.
 
 local inspect = vim.inspect

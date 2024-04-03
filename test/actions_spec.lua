@@ -115,6 +115,7 @@ describe('actions', function()
 
   describe('staging partial hunks', function()
     setup(function()
+      clear()
       setup_test_repo({ test_file_text = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H' } })
     end)
 
