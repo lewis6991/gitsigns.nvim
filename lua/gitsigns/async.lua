@@ -135,6 +135,7 @@ function M.wait(argc, func, ...)
 
   local ok = ret[1]
   if not ok then
+    --- @type string, string
     local err, traceback = ret[2], ret[3]
     error(string.format('Wrapped function failed: %s\n%s', err, traceback))
   end
@@ -143,73 +144,49 @@ function M.wait(argc, func, ...)
 end
 
 --- Creates an async function with a callback style function.
---- @param func function: A callback style function to be converted. The last argument must be the callback.
---- @param argc number: The number of arguments of func. Must be included.
+--- @param argc number The number of arguments of func. Must be included.
+--- @param func function A callback style function to be converted. The last argument must be the callback.
 --- @return function: Returns an async function
-function M.wrap(func, argc)
+function M.wrap(argc, func)
   assert(type(func) == 'function')
   assert(type(argc) == 'number')
   return function(...)
-    if not M.running() then
-      return func(...)
-    end
     return M.wait(argc, func, ...)
   end
 end
 
+--- create([argc, ] func)
+---
 --- Use this to create a function which executes in an async context but
 --- called from a non-async context. Inherently this cannot return anything
 --- since it is non-blocking
+---
+--- If argc is not provided, then the created async function cannot be continued
+---
 --- @generic F: function
---- @param func F
---- @param argc integer
+--- @param argc_or_func F|integer
+--- @param func? F
 --- @return F
-function M.create(func, argc)
-  argc = argc or 0
+function M.create(argc_or_func, func)
+  local argc --- @type integer
+  if type(argc_or_func) == 'function' then
+    assert(not func)
+    func = argc_or_func
+  elseif type(argc_or_func) == 'number' then
+    assert(type(func) == 'function')
+    argc = argc_or_func
+  end
+
+  --- @cast func function
+
   return function(...)
-    if M.running() then
-      return func(...)
-    end
-    local callback = select(argc + 1, ...)
+    local callback = argc and select(argc + 1, ...) or nil
     return run(func, callback, unpack({ ... }, 1, argc))
   end
 end
 
---- Use this to create a function which executes in an async context but
---- called from a non-async context. Inherently this cannot return anything
---- since it is non-blocking
---- @generic F: function
---- @param func F
---- @return async F
-function M.void(func)
-  return function(...)
-    if M.running() then
-      return func(...)
-    end
-    return run(func, nil, ...)
-  end
-end
-
---- @generic F: function
---- @param func F
---- @param ... any
---- @return async F
-function M.run(func, ...)
-  return run(func, nil, ...)
-end
-
 --- An async function that when called will yield to the Neovim scheduler to be
 --- able to call the API.
-M.scheduler = M.wrap(vim.schedule, 1)
-
---- @param buf? integer
---- @param cb function
-M.scheduler_if_buf_valid = M.wrap(function(buf, cb)
-  vim.schedule(function()
-    if not buf or vim.api.nvim_buf_is_valid(buf) then
-      cb()
-    end
-  end)
-end, 2)
+M.scheduler = M.wrap(1, vim.schedule)
 
 return M

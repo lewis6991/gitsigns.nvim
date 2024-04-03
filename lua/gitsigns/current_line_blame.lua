@@ -141,7 +141,10 @@ end
 --- Update function, must be called in async context
 --- @param bufnr integer
 local function update0(bufnr)
-  async.scheduler_if_buf_valid(bufnr)
+  async.scheduler()
+  if not api.nvim_buf_is_valid(bufnr) then
+    return
+  end
 
   if insert_mode() then
     return
@@ -182,7 +185,7 @@ local function update0(bufnr)
   handle_blame_info(bufnr, lnum, blame_info, opts)
 end
 
-local update = async.void(debounce.throttle_by_id(update0))
+local update = async.create(1, debounce.throttle_by_id(update0))
 
 --- @type fun(bufnr: integer)
 local update_debounced

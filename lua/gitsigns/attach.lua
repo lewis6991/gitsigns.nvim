@@ -130,7 +130,7 @@ local function on_attach_pre(bufnr)
   local gitdir, toplevel
   if config._on_attach_pre then
     --- @type {gitdir: string?, toplevel: string?}
-    local res = async.wrap(config._on_attach_pre, 2)(bufnr)
+    local res = async.wait(2, config._on_attach_pre, bufnr)
     dprintf('ran on_attach_pre with result %s', vim.inspect(res))
     if type(res) == 'table' then
       if type(res.gitdir) == 'string' then
@@ -291,7 +291,10 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   if not git_obj and not ctx then
     git_obj = try_worktrees(cbuf, file, encoding)
-    async.scheduler_if_buf_valid(cbuf)
+    async.scheduler()
+    if not api.nvim_buf_is_valid(cbuf) then
+      return
+    end
   end
 
   if not git_obj then
@@ -300,7 +303,11 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   end
   local repo = git_obj.repo
 
-  async.scheduler_if_buf_valid(cbuf)
+  async.scheduler()
+  if not api.nvim_buf_is_valid(cbuf) then
+    return
+  end
+
   Status:update(cbuf, {
     head = repo.abbrev_head,
     root = repo.toplevel,
@@ -329,7 +336,10 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   -- On windows os.tmpname() crashes in callback threads so initialise this
   -- variable on the main thread.
-  async.scheduler_if_buf_valid(cbuf)
+  async.scheduler()
+  if not api.nvim_buf_is_valid(cbuf) then
+    return
+  end
 
   if config.on_attach and config.on_attach(cbuf) == false then
     dprint('User on_attach() returned false')
@@ -431,7 +441,7 @@ end
 ---     • {base}: (string|nil)
 ---       The git revision that the file should be compared to.
 --- @param _trigger? string
-M.attach = async.void(function(bufnr, ctx, _trigger)
+M.attach = async.create(3, function(bufnr, ctx, _trigger)
   attach_throttled(bufnr or api.nvim_get_current_buf(), ctx, _trigger)
 end)
 

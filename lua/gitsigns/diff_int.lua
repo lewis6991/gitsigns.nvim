@@ -26,6 +26,7 @@ end
 
 --- @type Gitsigns.RawDifffn
 local run_diff_xdl_async = async.wrap(
+  4,
   --- @param a string
   --- @param b string
   --- @param linematch? integer
@@ -55,7 +56,7 @@ local run_diff_xdl_async = async.wrap(
             return bit.band(flags0, bit.lshift(1, pos)) ~= 0
           end
 
-          --- @diagnostic disable-next-line:return-type-mismatch
+          --- @diagnostic disable-next-line:redundant-return-value
           return vim.mpack.encode(vim.diff(a0, b0, {
             result_type = 'indices',
             algorithm = algorithm,
@@ -73,8 +74,7 @@ local run_diff_xdl_async = async.wrap(
         end
       )
       :queue(a, b, opts.algorithm, flags, linematch)
-  end,
-  4
+  end
 )
 
 --- @param fa string[]

@@ -8,13 +8,14 @@ local dprintf = log.dprintf
 local dprint = log.dprint
 
 local api = vim.api
-local uv = vim.loop
+local uv = vim.uv or vim.loop
 
 local M = {}
 
 local cwd_watcher ---@type uv.uv_fs_event_t?
 
-local update_cwd_head = async.void(function()
+--- @async
+local function update_cwd_head()
   local paths = vim.fs.find('.git', {
     limit = 1,
     upward = true,
@@ -31,7 +32,7 @@ local update_cwd_head = async.void(function()
     cwd_watcher = assert(uv.new_fs_event())
   end
 
-  local cwd = assert(vim.loop.cwd())
+  local cwd = assert(uv.cwd())
   --- @type string, string
   local gitdir, head
 
@@ -73,7 +74,7 @@ local update_cwd_head = async.void(function()
 
   local update_head = debounce_trailing(
     100,
-    async.void(function()
+    async.create(function()
       local new_head = git.get_repo_info(cwd).abbrev_head
       async.scheduler()
       vim.g.gitsigns_head = new_head
@@ -84,7 +85,7 @@ local update_cwd_head = async.void(function()
   cwd_watcher:start(
     towatch,
     {},
-    async.void(function(err)
+    async.create(function(err)
       local __FUNC__ = 'cwd_watcher_cb'
       if err then
         dprintf('Git dir update error: %s', err)
@@ -95,7 +96,7 @@ local update_cwd_head = async.void(function()
       update_head()
     end)
   )
-end)
+end
 
 local function setup_cli()
   api.nvim_create_user_command('Gitsigns', function(params)
@@ -132,7 +133,7 @@ local function setup_attach()
       -- Make sure to run each attach in its on async context in case one of the
       -- attaches is aborted.
       local attach = require('gitsigns.attach')
-      async.run(attach.attach, buf, nil, 'setup')
+      attach.attach(buf, nil, 'setup')
     end
   end
 end
@@ -141,13 +142,16 @@ end
 local function setup_cwd_head()
   async.scheduler()
   update_cwd_head()
+
+  local debounce = require('gitsigns.debounce').debounce_trailing
+  local update_cwd_head_debounced = debounce(100, async.create(update_cwd_head))
+
   -- Need to debounce in case some plugin changes the cwd too often
   -- (like vim-grepper)
   api.nvim_create_autocmd('DirChanged', {
     group = 'gitsigns',
     callback = function()
-      local debounce = require('gitsigns.debounce').debounce_trailing
-      debounce(100, update_cwd_head)
+      update_cwd_head_debounced()
     end,
   })
 end
@@ -159,7 +163,7 @@ end
 ---
 --- @param cfg table|nil Configuration for Gitsigns.
 ---     See |gitsigns-usage| for more details.
-M.setup = async.void(function(cfg)
+M.setup = async.create(1, function(cfg)
   gs_config.build(cfg)
 
   if vim.fn.executable('git') == 0 then

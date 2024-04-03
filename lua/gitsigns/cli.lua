@@ -1,5 +1,4 @@
 local async = require('gitsigns.async')
-local void = require('gitsigns.async').void
 
 local log = require('gitsigns.debug.log')
 local dprintf = log.dprintf
@@ -69,16 +68,14 @@ local function print_nonnil(x)
   end
 end
 
-local select = async.wrap(vim.ui.select, 3)
-
-M.run = void(function(params)
+M.run = async.create(1, function(params)
   local __FUNC__ = 'cli.run'
   local pos_args_raw, named_args_raw = parse_args(params.args)
 
   local func = pos_args_raw[1]
 
   if not func then
-    func = select(M.complete('', 'Gitsigns '), {}) --[[@as string]]
+    func = async.wait(3, vim.ui.select, M.complete('', 'Gitsigns '), {}) --[[@as string]]
     if not func then
       return
     end

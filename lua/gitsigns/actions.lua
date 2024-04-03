@@ -172,7 +172,9 @@ end
 --- @param bufnr integer
 local function update(bufnr)
   manager.update(bufnr)
-  async.scheduler_if_buf_valid(bufnr)
+  if not manager.schedule(bufnr) then
+    return
+  end
   if vim.wo.diff then
     require('gitsigns.diffthis').update(bufnr)
   end
@@ -206,7 +208,9 @@ local function get_hunks(bufnr, bcache, greedy, staged)
       return
     end
     local hunks = run_diff(text, buftext, false)
-    manager.buf_check(bufnr)
+    if not manager.schedule(bufnr) then
+      return
+    end
     return hunks
   end
 
@@ -260,7 +264,7 @@ end
 ---             • {greedy}: (boolean)
 ---               Stage all contiguous hunks. Only useful if 'diff_opts'
 ---               contains `linematch`. Defaults to `true`.
-M.stage_hunk = mk_repeatable(async.void(function(range, opts)
+M.stage_hunk = mk_repeatable(async.create(2, function(range, opts)
   opts = opts or {}
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -326,7 +330,7 @@ end
 ---     • {greedy}: (boolean)
 ---       Stage all contiguous hunks. Only useful if 'diff_opts'
 ---       contains `linematch`. Defaults to `true`.
-M.reset_hunk = mk_repeatable(async.void(function(range, opts)
+M.reset_hunk = mk_repeatable(async.create(2, function(range, opts)
   opts = opts or {}
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -374,7 +378,7 @@ end
 ---
 --- Attributes: ~
 ---     {async}
-M.undo_stage_hunk = async.void(function()
+M.undo_stage_hunk = async.create(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
@@ -396,7 +400,7 @@ end)
 ---
 --- Attributes: ~
 ---     {async}
-M.stage_buffer = async.void(function()
+M.stage_buffer = async.create(function()
   local bufnr = current_buf()
 
   local bcache = cache[bufnr]
@@ -432,7 +436,7 @@ end)
 ---
 --- Attributes: ~
 ---     {async}
-M.reset_buffer_index = async.void(function()
+M.reset_buffer_index = async.create(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
@@ -509,9 +513,10 @@ local function has_preview_inline(bufnr)
   return #api.nvim_buf_get_extmarks(bufnr, ns_inline, 0, -1, { limit = 1 }) > 0
 end
 
+--- @async
 --- @param opts? Gitsigns.NavOpts
 --- @param forwards boolean
-local nav_hunk = async.void(function(opts, forwards)
+local function nav_hunk(opts, forwards)
   opts = process_nav_opts(opts)
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -569,11 +574,14 @@ local nav_hunk = async.void(function(opts, forwards)
       api.nvim_echo({ { string.format('Hunk %d of %d', index, #hunks), 'None' } }, false, {})
     end
   end
-end)
+end
 
 --- Jump to the next hunk in the current buffer. If a hunk preview
 --- (popup or inline) was previously opened, it will be re-opened
 --- at the next hunk.
+---
+--- Attributes: ~
+---     {async}
 ---
 --- @param opts table|nil Configuration table. Keys:
 ---     • {wrap}: (boolean)
@@ -592,9 +600,9 @@ end)
 ---     • {greedy}: (boolean)
 ---       Only navigate between non-contiguous hunks. Only useful if
 ---       'diff_opts' contains `linematch`. Defaults to `true`.
-M.next_hunk = function(opts)
+M.next_hunk = async.create(1, function(opts)
   nav_hunk(opts, true)
-end
+end)
 
 C.next_hunk = function(args, _)
   M.next_hunk(args)
@@ -604,11 +612,14 @@ end
 --- (popup or inline) was previously opened, it will be re-opened
 --- at the previous hunk.
 ---
+--- Attributes: ~
+---     {async}
+---
 --- Parameters: ~
 ---     See |gitsigns.next_hunk()|.
-M.prev_hunk = function(opts)
+M.prev_hunk = async.create(1, function(opts)
   nav_hunk(opts, false)
-end
+end)
 
 C.prev_hunk = function(args, _)
   M.prev_hunk(args)
@@ -752,7 +763,7 @@ local function get_hunk_with_staged(bufnr, greedy)
 end
 
 --- Preview the hunk at the cursor position inline in the buffer.
-M.preview_hunk_inline = async.void(function()
+M.preview_hunk_inline = async.create(function()
   local bufnr = current_buf()
 
   local hunk, staged = get_hunk_with_staged(bufnr, true)
@@ -887,7 +898,7 @@ end
 ---       Display full commit message with hunk.
 ---     • {ignore_whitespace}: (boolean)
 ---       Ignore whitespace when running blame.
-M.blame_line = async.void(function(opts)
+M.blame_line = async.create(1, function(opts)
   if popup.focus_open('blame') then
     return
   end
@@ -904,7 +915,10 @@ M.blame_line = async.void(function(opts)
     popup.create({ { { 'Loading...', 'Title' } } }, config.preview_config)
   end, 1000)
 
-  async.scheduler_if_buf_valid()
+  if not manager.schedule(bufnr) then
+    return
+  end
+
   local fileformat = vim.bo[bufnr].fileformat
   local lnum = api.nvim_win_get_cursor(0)[1]
   local result = bcache:get_blame(lnum, opts)
@@ -912,7 +926,7 @@ M.blame_line = async.void(function(opts)
     loading:close()
   end)
 
-  if not vim.api.nvim_buf_is_valid(bufnr) then
+  if not api.nvim_buf_is_valid(bufnr) then
     return
   end
 
@@ -943,7 +957,9 @@ M.blame_line = async.void(function(opts)
     })
   end
 
-  async.scheduler_if_buf_valid(bufnr)
+  if not manager.schedule(bufnr) then
+    return
+  end
 
   popup.create(lines_format(blame_linespec, result), config.preview_config, 'blame')
 end)
@@ -992,7 +1008,7 @@ end
 ---
 --- @param base string|nil The object/revision to diff against.
 --- @param global boolean|nil Change the base of all buffers.
-M.change_base = async.void(function(base, global)
+M.change_base = async.create(2, function(base, global)
   base = util.calc_base(base)
 
   if global then
@@ -1219,7 +1235,7 @@ end
 ---     • {open}: (boolean)
 ---       Open the quickfix/location list viewer.
 ---       Defaults to `true`.
-M.setqflist = async.void(function(target, opts)
+M.setqflist = async.create(2, function(target, opts)
   opts = opts or {}
   if opts.open == nil then
     opts.open = true
@@ -1332,7 +1348,7 @@ end
 ---
 --- Attributes: ~
 ---     {async}
-M.refresh = async.void(function()
+M.refresh = async.create(function()
   manager.reset_signs()
   require('gitsigns.highlight').setup_highlights()
   require('gitsigns.current_line_blame').setup()

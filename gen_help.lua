@@ -95,8 +95,9 @@ local function gen_config_doc_field(field, out)
 
   if v.description then
     local d --- @type string
-    if v.default_help ~= nil then
-      d = v.default_help
+    local default_help = v.default_help
+    if default_help ~= nil then
+      d = default_help
     else
       d = inspect(v.default):gsub('\n', '\n    ')
       d = ('`%s`'):format(d)
@@ -160,6 +161,11 @@ local function parse_func_header(line)
       args[#args + 1] = string.format('{%s}', k)
     end
   end
+
+  if line:match('async.create%(%d, function%(') then
+    args[#args + 1] = '{callback?}'
+  end
+
   return string.format(
     '%-40s%38s',
     string.format('%s(%s)', func, table.concat(args, ', ')),
@@ -486,6 +492,7 @@ local function main()
         if type(sub) == 'function' then
           sub = sub()
         end
+        --- @type string
         sub = sub:gsub('%%', '%%%%')
         l = l:gsub('{{' .. marker .. '}}', sub)
       end
