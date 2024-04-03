@@ -5,6 +5,7 @@ local cache = require('gitsigns.cache').cache
 local util = require('gitsigns.util')
 local manager = require('gitsigns.manager')
 local message = require('gitsigns.message')
+local Status = require('gitsigns.status')
 
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
@@ -38,6 +39,7 @@ local function bufread(bufnr, dbufnr, base)
 
   local modifiable = vim.bo[dbufnr].modifiable
   vim.bo[dbufnr].modifiable = true
+  Status:update(dbufnr, {head = comp_rev})
 
   util.set_lines(dbufnr, 0, -1, text)
 
