@@ -70,9 +70,9 @@ function M.new(o)
   return setmetatable(o, { __index = CacheEntry })
 end
 
-local sleep = async.wrap(function(duration, cb)
+local sleep = async.wrap(2, function(duration, cb)
   vim.defer_fn(cb, duration)
-end, 2)
+end)
 
 --- @private
 function CacheEntry:wait_for_hunks()
@@ -93,15 +93,19 @@ local BLAME_THRESHOLD_LEN = 1000000
 --- @param opts Gitsigns.CurrentLineBlameOpts
 --- @return table<integer,Gitsigns.BlameInfo?>?
 function CacheEntry:run_blame(lnum, opts)
+  local bufnr = self.bufnr
   local blame_cache --- @type table<integer,Gitsigns.BlameInfo?>?
   repeat
-    local buftext = util.buf_lines(self.bufnr)
-    local tick = vim.b[self.bufnr].changedtick
+    local buftext = util.buf_lines(bufnr)
+    local tick = vim.b[bufnr].changedtick
     local lnum0 = #buftext > BLAME_THRESHOLD_LEN and lnum or nil
     -- TODO(lewis6991): Cancel blame on changedtick
     blame_cache = self.git_obj:run_blame(buftext, lnum0, opts.ignore_whitespace)
-    async.scheduler_if_buf_valid(self.bufnr)
-  until vim.b[self.bufnr].changedtick == tick
+    async.scheduler()
+    if not vim.api.nvim_buf_is_valid(bufnr) then
+      return
+    end
+  until vim.b[bufnr].changedtick == tick
   return blame_cache
 end
 

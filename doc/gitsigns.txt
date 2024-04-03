@@ -86,11 +86,11 @@ Most actions can be repeated with `.` if you have |vim-repeat| installed.
 ==============================================================================
 FUNCTIONS                                                 *gitsigns-functions*
 
-Note functions with the {async} attribute are run asynchronously and are
-non-blocking (return immediately).
+Note functions with the {async} attribute are run asynchronously and accept
+an optional {callback} argument.
 
 
-setup({cfg})                                                *gitsigns.setup()*
+setup({cfg}, {callback?})                                   *gitsigns.setup()*
                 Setup and start Gitsigns.
 
                 Attributes: ~
@@ -100,7 +100,7 @@ setup({cfg})                                                *gitsigns.setup()*
                     {cfg} (table|nil): Configuration for Gitsigns.
                           See |gitsigns-usage| for more details.
 
-attach({bufnr}, {ctx})                                     *gitsigns.attach()*
+attach({bufnr}, {ctx}, {callback?})                        *gitsigns.attach()*
                 Attach Gitsigns to the buffer.
 
                 Attributes: ~
@@ -163,7 +163,7 @@ setloclist({nr}, {target})                             *gitsigns.setloclist()*
                              `0` for the current window (default).
                     {target} (integer|string): See |gitsigns.setqflist()|.
 
-setqflist({target}, {opts})                             *gitsigns.setqflist()*
+setqflist({target}, {opts}, {callback?})                *gitsigns.setqflist()*
                 Populate the quickfix list with hunks. Automatically opens the
                 quickfix window.
 
@@ -251,7 +251,7 @@ reset_base({global})                                   *gitsigns.reset_base()*
 
                 Alias for `change_base(nil, {global})` .
 
-change_base({base}, {global})                         *gitsigns.change_base()*
+change_base({base}, {global}, {callback?})              *gitsigns.change_base()*
                 Change the base revision to diff against. If {base} is not
                 given, then the original base is used. If {global} is given
                 and true, then change the base revision of all buffers,
@@ -286,7 +286,7 @@ change_base({base}, {global})                         *gitsigns.change_base()*
                     {base}   (string|nil): The object/revision to diff against.
                     {global} (boolean|nil): Change the base of all buffers.
 
-blame_line({opts})                                     *gitsigns.blame_line()*
+blame_line({opts}, {callback?})                        *gitsigns.blame_line()*
                 Run git blame on the current line and show the results in a
                 floating window. If already open, calling this will cause the
                 window to get focus.
@@ -335,18 +335,24 @@ preview_hunk()                                       *gitsigns.preview_hunk()*
                 window. If the preview is already open, calling this
                 will cause the window to get focus.
 
-prev_hunk({opts})                                       *gitsigns.prev_hunk()*
+prev_hunk({opts}, {callback?})                          *gitsigns.prev_hunk()*
                 Jump to the previous hunk in the current buffer. If a hunk preview
                 (popup or inline) was previously opened, it will be re-opened
                 at the previous hunk.
 
+                Attributes: ~
+                    {async}
+
                 Parameters: ~
                     See |gitsigns.next_hunk()|.
 
-next_hunk({opts})                                       *gitsigns.next_hunk()*
+next_hunk({opts}, {callback?})                          *gitsigns.next_hunk()*
                 Jump to the next hunk in the current buffer. If a hunk preview
                 (popup or inline) was previously opened, it will be re-opened
                 at the next hunk.
+
+                Attributes: ~
+                    {async}
 
                 Parameters: ~
                     {opts} (table|nil): Configuration table. Keys:
@@ -393,7 +399,7 @@ undo_stage_hunk()                                 *gitsigns.undo_stage_hunk()*
 reset_buffer()                                       *gitsigns.reset_buffer()*
                 Reset the lines of all hunks in the buffer.
 
-reset_hunk({range}, {opts})                            *gitsigns.reset_hunk()*
+reset_hunk({range}, {opts}, {callback?})               *gitsigns.reset_hunk()*
                 Reset the lines of the hunk at the cursor position, or all
                 lines in the given range. If {range} is provided, all lines in
                 the given range are reset. This supports partial-hunks,
@@ -410,7 +416,7 @@ reset_hunk({range}, {opts})                            *gitsigns.reset_hunk()*
                               Stage all contiguous hunks. Only useful if 'diff_opts'
                               contains `linematch`. Defaults to `true`.
 
-stage_hunk({range}, {opts})                            *gitsigns.stage_hunk()*
+stage_hunk({range}, {opts}, {callback?})               *gitsigns.stage_hunk()*
                 Stage the hunk at the cursor position, or all lines in the
                 given range. If {range} is provided, all lines in the given
                 range are staged. This supports partial-hunks, meaning if a

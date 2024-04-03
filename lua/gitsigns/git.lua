@@ -19,7 +19,7 @@ local check_version = require('gitsigns.git.version').check
 local M = {}
 
 --- @type fun(cmd: string[], opts?: vim.SystemOpts): vim.SystemCompleted
-local asystem = async.wrap(system, 3)
+local asystem = async.wrap(3, system)
 
 --- @param file string
 --- @return boolean
@@ -62,10 +62,11 @@ M.Repo = Repo
 --- @field command? string
 --- @field ignore_error? boolean
 
+--- @async
 --- @param args string[]
 --- @param spec? Gitsigns.Git.JobSpec
 --- @return string[] stdout, string? stderr
-local git_command = async.create(function(args, spec)
+local function git_command(args, spec)
   spec = spec or {}
 
   local cmd = {
@@ -116,8 +117,9 @@ local git_command = async.create(function(args, spec)
   end
 
   return stdout_lines, stderr
-end, 2)
+end
 
+--- @async
 --- @param file_cmp string
 --- @param file_buf string
 --- @param indent_heuristic? boolean
@@ -141,6 +143,7 @@ function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
   })
 end
 
+--- @async
 --- @param gitdir string
 --- @param head_str string
 --- @param path string
@@ -193,6 +196,7 @@ local function normalize_path(path)
   return path
 end
 
+--- @async
 --- @param path string
 --- @param cmd? string
 --- @param gitdir? string
@@ -251,6 +255,7 @@ end
 --------------------------------------------------------------------------------
 
 --- Run git command the with the objects gitdir and toplevel
+--- @async
 --- @param args string[]
 --- @param spec? Gitsigns.Git.JobSpec
 --- @return string[] stdout, string? stderr
@@ -315,10 +320,12 @@ function Repo:get_show_text(object, encoding)
   return stdout, stderr
 end
 
+--- @async
 function Repo:update_abbrev_head()
   self.abbrev_head = M.get_repo_info(self.toplevel).abbrev_head
 end
 
+--- @async
 --- @param dir string
 --- @param gitdir? string
 --- @param toplevel? string

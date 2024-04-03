@@ -8,7 +8,7 @@ local system = require('gitsigns.system').system
 local M = {}
 
 --- @type fun(cmd: string[], opts?: vim.SystemOpts): vim.SystemCompleted
-local asystem = async.wrap(system, 3)
+local asystem = async.wrap(3, system)
 
 --- @class (exact) Gitsigns.Version
 --- @field major integer
