@@ -293,11 +293,6 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     gitdir = git_obj.repo.gitdir,
   })
 
-  if vim.startswith(file, git_obj.repo.gitdir .. util.path_sep) then
-    dprint('In non-standard git dir')
-    return
-  end
-
   if not passed_ctx and (not util.path_exists(file) or uv.fs_stat(file).type == 'directory') then
     dprint('Not a file')
     return
