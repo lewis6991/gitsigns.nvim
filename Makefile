@@ -15,14 +15,26 @@ endif
 NVIM_PLATFORM_MACOS := macos
 NVIM_PLATFORM_LINUX := linux64
 NVIM_PLATFORM ?= $(NVIM_PLATFORM_$(UNAME))
+NVIM_TEST_PLATFORM := $(NVIM_PLATFORM)
+NVIM_RUNNER_PLATFORM := $(NVIM_PLATFORM)
+
+ifeq ($(NVIM_PLATFORM),macos)
+    ifeq ($(NVIM_RUNNER_VERSION),nightly)
+        NVIM_RUNNER_PLATFORM ?= $(NVIM_PLATFORM)-$(shell uname -m)
+    endif
+
+    ifeq ($(NVIM_TEST_VERSION),nightly)
+        NVIM_TEST_PLATFORM ?= $(NVIM_PLATFORM)-$(shell uname -m)
+    endif
+endif
 
 NVIM_URL := https://github.com/neovim/neovim/releases/download
 
 NVIM_RUNNER := nvim-runner-$(NVIM_RUNNER_VERSION)
-NVIM_RUNNER_URL := $(NVIM_URL)/$(NVIM_RUNNER_VERSION)/nvim-$(NVIM_PLATFORM).tar.gz
+NVIM_RUNNER_URL := $(NVIM_URL)/$(NVIM_RUNNER_VERSION)/nvim-$(NVIM_TEST_PLATFORM).tar.gz
 
 NVIM_TEST := nvim-test-$(NVIM_TEST_VERSION)
-NVIM_TEST_URL := $(NVIM_URL)/$(NVIM_TEST_VERSION)/nvim-$(NVIM_PLATFORM).tar.gz
+NVIM_TEST_URL := $(NVIM_URL)/$(NVIM_TEST_VERSION)/nvim-$(NVIM_TEST_PLATFORM).tar.gz
 
 export NVIM_PRG = $(NVIM_TEST)/bin/nvim
 
