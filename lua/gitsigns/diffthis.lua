@@ -10,10 +10,11 @@ local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
 local M = {}
 
+--- @async
 --- @param bufnr integer
 --- @param dbufnr integer
 --- @param base string?
-local bufread = async.create(3, function(bufnr, dbufnr, base)
+local function bufread(bufnr, dbufnr, base)
   local bcache = cache[bufnr]
   local comp_rev = bcache:get_compare_rev(util.calc_base(base))
   local text --- @type string[]
@@ -42,7 +43,7 @@ local bufread = async.create(3, function(bufnr, dbufnr, base)
 
   vim.bo[dbufnr].modifiable = modifiable
   vim.bo[dbufnr].modified = false
-end)
+end
 
 --- @param bufnr integer
 --- @param dbufnr integer
@@ -64,6 +65,7 @@ local bufwrite = async.create(3, function(bufnr, dbufnr, base)
   end
 end)
 
+--- @async
 --- Create a gitsigns buffer for a certain revision of a file
 --- @param bufnr integer
 --- @param base string?
@@ -97,7 +99,7 @@ local function create_show_buf(bufnr, base)
       group = 'gitsigns',
       buffer = dbuf,
       callback = function()
-        bufread(bufnr, dbuf, base)
+        async.run(bufread, bufnr, dbuf, base)
       end,
     })
 
@@ -120,6 +122,7 @@ end
 --- @field vertical boolean
 --- @field split string
 
+--- @async
 --- @param base string?
 --- @param opts? Gitsigns.DiffthisOpts
 local function diffthis_rev(base, opts)

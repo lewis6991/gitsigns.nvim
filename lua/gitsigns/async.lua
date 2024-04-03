@@ -189,4 +189,8 @@ end
 --- able to call the API.
 M.scheduler = M.wrap(1, vim.schedule)
 
+function M.run(func, ...)
+  return run(func, nil, ...)
+end
+
 return M
