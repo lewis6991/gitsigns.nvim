@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Check commit messages
-      - uses: webiny/action-conventional-commits@v1.1.0
+      - uses: webiny/action-conventional-commits@v1.3.0
 
   test:
     runs-on: ubuntu-latest
