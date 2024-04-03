@@ -275,7 +275,7 @@ describe('gitsigns (with screen)', function()
 
     local function blame_line_ui_test(autocrlf, file_ending)
       setup_test_repo()
-      exec_lua[[vim.g.editorconfig = false]]
+      exec_lua([[vim.g.editorconfig = false]])
 
       git({ 'config', 'core.autocrlf', autocrlf })
       if file_ending == 'dos' then

@@ -64,8 +64,9 @@ stylua-check: stylua
 .PHONY: stylua-run
 stylua-run: stylua
 	./stylua \
-		lua/**/*.lua lua/*.lua \
-		test/*.lua test/**/*.lua
+		lua/**/*.lua \
+		lua/*.lua \
+		test/*.lua
 
 .PHONY: build
 build: gen_help stylua-run
