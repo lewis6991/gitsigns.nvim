@@ -45,7 +45,7 @@ describe('gitsigns (with screen)', function()
     local default_attrs = {
       [1] = { foreground = Screen.colors.DarkBlue, background = Screen.colors.WebGray },
       [2] = { foreground = Screen.colors.NvimDarkCyan },
-      [3] = { background = Screen.colors.LightBlue },
+      [3] = { foreground = Screen.colors.NvimDarkGreen },
       [4] = { foreground = Screen.colors.NvimDarkRed },
       [5] = { foreground = Screen.colors.Brown },
       [6] = { foreground = Screen.colors.Blue1, bold = true },
@@ -60,6 +60,7 @@ describe('gitsigns (with screen)', function()
       command('colorscheme vim')
     else
       default_attrs[2] = { background = Screen.colors.LightMagenta }
+      default_attrs[3] = { background = Screen.colors.LightBlue }
       default_attrs[4] =
         { background = Screen.colors.LightCyan1, bold = true, foreground = Screen.colors.Blue1 }
     end
