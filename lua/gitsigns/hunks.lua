@@ -316,39 +316,35 @@ end
 
 --- @param lnum integer
 --- @param hunks Gitsigns.Hunk.Hunk[]
---- @param forwards boolean
+--- @param direction 'first'|'last'|'next'|'prev'
 --- @param wrap boolean
---- @return Gitsigns.Hunk.Hunk, integer
-function M.find_nearest_hunk(lnum, hunks, forwards, wrap)
-  local ret --- @type Gitsigns.Hunk.Hunk
-  local index --- @type integer
-  local distance = math.huge
-  if forwards then
-    for i = 1, #hunks do
-      local hunk = hunks[i]
-      local dist = hunk.added.start - lnum
-      if dist > 0 and dist < distance then
-        distance = dist
-        ret = hunk
-        index = i
-      end
-    end
-  else
+--- @return integer?
+function M.find_nearest_hunk(lnum, hunks, direction, wrap)
+  if direction == 'first' then
+    return 1
+  elseif direction == 'last' then
+    return #hunks
+  elseif direction == 'next' then
     for i = #hunks, 1, -1 do
-      local hunk = hunks[i]
-      local dist = lnum - math.max(hunk.vend, 1)
-      if dist > 0 and dist < distance then
-        distance = dist
-        ret = hunk
-        index = i
+      if hunks[i].added.start <= lnum then
+        if i + 1 <= #hunks and hunks[i + 1].added.start > lnum then
+          return i + 1
+        elseif wrap then
+          return 1
+        end
+      end
+    end
+  elseif direction == 'prev' then
+    for i = 1, #hunks do
+      if lnum <= math.max(hunks[i].vend, 1) then
+        if i > 1 and math.max(hunks[i - 1].vend, 1) < lnum then
+          return i - 1
+        elseif wrap then
+          return #hunks
+        end
       end
     end
   end
-  if not ret and wrap then
-    index = forwards and 1 or #hunks
-    ret = hunks[index]
-  end
-  return ret, index
 end
 
 --- @param a Gitsigns.Hunk.Hunk[]?
