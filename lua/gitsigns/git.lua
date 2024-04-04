@@ -553,9 +553,9 @@ end
 
 --- @param lines string[]
 --- @param lnum? integer
---- @param ignore_whitespace? boolean
+--- @param opts? Gitsigns.BlameOpts
 --- @return table<integer,Gitsigns.BlameInfo?>?
-function Obj:run_blame(lines, lnum, ignore_whitespace)
+function Obj:run_blame(lines, lnum, opts)
   local ret = {} --- @type table<integer,Gitsigns.BlameInfo>
 
   if not self.object_name or self.repo.abbrev_head == '' then
@@ -576,15 +576,23 @@ function Obj:run_blame(lines, lnum, ignore_whitespace)
 
   local args = { 'blame', '--contents', '-', '--incremental' }
 
+  opts = opts or {}
+
+  if opts.ignore_whitespace then
+    args[#args + 1] = '-w'
+  end
+
   if lnum then
     vim.list_extend(args, { '-L', lnum .. ',+1' })
   end
 
-  args[#args + 1] = self.file
-
-  if ignore_whitespace then
-    args[#args + 1] = '-w'
+  if opts.extra_opts then
+    vim.list_extend(args, opts.extra_opts)
   end
+
+  args[#args + 1] = opts.rev
+  args[#args + 1] = '--'
+  args[#args + 1] = self.file
 
   local ignore_file = self.repo.toplevel .. '/.git-blame-ignore-revs'
   if uv.fs_stat(ignore_file) then

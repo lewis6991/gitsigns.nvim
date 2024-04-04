@@ -100,7 +100,7 @@ function CacheEntry:run_blame(lnum, opts)
     local tick = vim.b[bufnr].changedtick
     local lnum0 = #buftext > BLAME_THRESHOLD_LEN and lnum or nil
     -- TODO(lewis6991): Cancel blame on changedtick
-    blame_cache = self.git_obj:run_blame(buftext, lnum0, opts.ignore_whitespace)
+    blame_cache = self.git_obj:run_blame(buftext, lnum0, opts)
     async.scheduler()
     if not vim.api.nvim_buf_is_valid(bufnr) then
       return
@@ -129,7 +129,7 @@ end
 function CacheEntry:get_blame(lnum, opts)
   if opts.rev then
     local buftext = util.buf_lines(self.bufnr)
-    return self.git_obj:run_blame(buftext, lnum, opts.ignore_whitespace)[lnum]
+    return self.git_obj:run_blame(buftext, lnum, opts)[lnum]
   end
 
   local blame_cache = self.blame

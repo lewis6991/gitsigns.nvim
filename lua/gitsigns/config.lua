@@ -59,6 +59,7 @@
 --- @class (exact) Gitsigns.BlameOpts
 --- @field ignore_whitespace? boolean
 --- @field rev? string
+--- @field extra_opts? string[]
 
 --- @class (exact) Gitsigns.LineBlameOpts : Gitsigns.BlameOpts
 --- @field full? boolean
@@ -644,6 +645,8 @@ M.schema = {
           Ignore whitespace when running blame.
         • virt_text_priority: integer
           Priority of virtual text.
+        • extra_opts: string[]
+          Extra options passed to `git-blame`.
     ]],
   },
 
