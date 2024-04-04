@@ -295,13 +295,22 @@ end
 --- @param block string[]
 --- @param params {[1]: string, [2]: string, [3]: string[]}[]
 --- @param returns {[1]: string, [2]: string, [3]: string[]}[]
+--- @param deprecated string?
 --- @return string[]?
-local function render_block(header, block, params, returns)
+local function render_block(header, block, params, returns, deprecated)
   if vim.startswith(header, '_') then
     return
   end
 
   local res = { header }
+
+  if deprecated then
+    list_extend(res, {
+      '                DEPRECATED: '..deprecated,
+      ''
+    })
+  end
+
   list_extend(res, block)
 
   -- filter arguments beginning with '_'
@@ -356,21 +365,28 @@ local function gen_functions_doc_from_file(path)
   local desc = {} --- @type string[]
   local params = {} --- @type {[1]: string, [2]: string, [3]: string[]}[]
   local returns = {} --- @type {[1]: string, [2]: string, [3]: string[]}[]
+  local deprecated --- @type string?
 
   for l in i do
     local doc_comment = l:match('^%-%-%- ?(.*)') --- @type string?
     if doc_comment then
-      state = process_doc_comment(state, doc_comment, desc, params, returns)
+      local depre = doc_comment:match('@deprecated ?(.*)')
+      if depre then
+        deprecated = depre
+      else
+        state = process_doc_comment(state, doc_comment, desc, params, returns)
+      end
     elseif state ~= 'none' then
       -- First line after block
       local ok, header = pcall(parse_func_header, l)
       if ok then
-        blocks[#blocks + 1] = render_block(header, desc, params, returns)
+        blocks[#blocks + 1] = render_block(header, desc, params, returns, deprecated)
       end
       state = 'none'
       desc = {}
       params = {}
       returns = {}
+      deprecated = nil
     end
   end
 

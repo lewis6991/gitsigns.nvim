@@ -463,6 +463,7 @@ end)
 --- @field navigation_message boolean
 --- @field greedy boolean
 --- @field preview boolean
+--- @field count integer
 
 --- @param x string
 --- @param word string
@@ -494,6 +495,10 @@ local function process_nav_opts(opts)
     opts.greedy = true
   end
 
+  if opts.count == nil then
+    opts.count = vim.v.count1
+  end
+
   return opts
 end
 
@@ -514,9 +519,9 @@ local function has_preview_inline(bufnr)
 end
 
 --- @async
+--- @param direction 'first'|'last'|'next'|'prev'
 --- @param opts? Gitsigns.NavOpts
---- @param forwards boolean
-local function nav_hunk(opts, forwards)
+local function nav_hunk(direction, opts)
   opts = process_nav_opts(opts)
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -524,10 +529,9 @@ local function nav_hunk(opts, forwards)
     return
   end
 
-  local hunks = {}
-  vim.list_extend(hunks, get_hunks(bufnr, bcache, opts.greedy, false) or {})
+  local hunks = get_hunks(bufnr, bcache, opts.greedy, false) or {}
   local hunks_head = get_hunks(bufnr, bcache, opts.greedy, true) or {}
-  vim.list_extend(hunks, Hunks.filter_common(hunks_head, bcache.hunks) or {})
+  vim.list_extend(hunks, Hunks.filter_common(hunks_head, hunks) or {})
 
   if not hunks or vim.tbl_isempty(hunks) then
     if opts.navigation_message then
@@ -535,54 +539,65 @@ local function nav_hunk(opts, forwards)
     end
     return
   end
+
   local line = api.nvim_win_get_cursor(0)[1]
+  local index --- @type integer?
 
-  local hunk, index = Hunks.find_nearest_hunk(line, hunks, forwards, opts.wrap)
+  local forwards = direction == 'next' or direction == 'last'
 
-  if hunk == nil then
-    if opts.navigation_message then
-      api.nvim_echo({ { 'No more hunks', 'WarningMsg' } }, false, {})
+  for _ = 1, opts.count do
+    index = Hunks.find_nearest_hunk(line, hunks, direction, opts.wrap)
+
+    if not index then
+      if opts.navigation_message then
+        api.nvim_echo({ { 'No more hunks', 'WarningMsg' } }, false, {})
+      end
+      local _, col = vim.fn.getline(line):find('^%s*')
+      api.nvim_win_set_cursor(0, { line, col })
+      return
     end
-    return
+
+    line = forwards and hunks[index].added.start or hunks[index].vend
   end
 
-  local row = forwards and hunk.added.start or hunk.vend
-  if row then
-    -- Handle topdelete
-    if row == 0 then
-      row = 1
-    end
-    vim.cmd([[ normal! m' ]]) -- add current cursor position to the jump list
-    api.nvim_win_set_cursor(0, { row, 0 })
-    if opts.foldopen then
-      vim.cmd('silent! foldopen!')
-    end
-    if opts.preview or popup.is_open('hunk') ~= nil then
-      -- Use defer so the cursor change can settle, otherwise the popup might
-      -- appear in the old position
-      defer(function()
-        -- Close the popup in case one is open which will cause it to focus the
-        -- popup
-        popup.close('hunk')
-        M.preview_hunk()
-      end)
-    elseif has_preview_inline(bufnr) then
-      defer(M.preview_hunk_inline)
-    end
+  -- Handle topdelete
+  line = math.max(line, 1)
 
-    if index ~= nil and opts.navigation_message then
-      api.nvim_echo({ { string.format('Hunk %d of %d', index, #hunks), 'None' } }, false, {})
-    end
+  vim.cmd([[ normal! m' ]]) -- add current cursor position to the jump list
+
+  local _, col = vim.fn.getline(line):find('^%s*')
+  api.nvim_win_set_cursor(0, { line, col })
+
+  if opts.foldopen then
+    vim.cmd('silent! foldopen!')
+  end
+
+  if opts.preview or popup.is_open('hunk') ~= nil then
+    -- Use defer so the cursor change can settle, otherwise the popup might
+    -- appear in the old position
+    defer(function()
+      -- Close the popup in case one is open which will cause it to focus the
+      -- popup
+      popup.close('hunk')
+      M.preview_hunk()
+    end)
+  elseif has_preview_inline(bufnr) then
+    defer(M.preview_hunk_inline)
+  end
+
+  if index and opts.navigation_message then
+    api.nvim_echo({ { string.format('Hunk %d of %d', index, #hunks), 'None' } }, false, {})
   end
 end
 
---- Jump to the next hunk in the current buffer. If a hunk preview
+--- Jump to hunk in the current buffer. If a hunk preview
 --- (popup or inline) was previously opened, it will be re-opened
 --- at the next hunk.
 ---
 --- Attributes: ~
 ---     {async}
 ---
+--- @param direction 'first'|'last'|'next'|'prev'
 --- @param opts table|nil Configuration table. Keys:
 ---     • {wrap}: (boolean)
 ---       Whether to loop around file or not. Defaults
@@ -600,14 +615,35 @@ end
 ---     • {greedy}: (boolean)
 ---       Only navigate between non-contiguous hunks. Only useful if
 ---       'diff_opts' contains `linematch`. Defaults to `true`.
+---     • {count}: (integer)
+---       Number of times to advance. Defaults to |v:count1|.
+M.nav_hunk = async.create(2, function(direction, opts)
+  nav_hunk(direction, opts)
+end)
+
+C.nav_hunk = function(args, _)
+  M.nav_hunk(args[1], args)
+end
+
+--- @deprecated use |gitsigns.nav_hunk()|
+--- Jump to the next hunk in the current buffer. If a hunk preview
+--- (popup or inline) was previously opened, it will be re-opened
+--- at the next hunk.
+---
+--- Attributes: ~
+---     {async}
+---
+--- Parameters: ~
+---     See |gitsigns.nav_hunk()|.
 M.next_hunk = async.create(1, function(opts)
-  nav_hunk(opts, true)
+  nav_hunk('next', opts)
 end)
 
 C.next_hunk = function(args, _)
-  M.next_hunk(args)
+  M.nav_hunk('next', args)
 end
 
+--- @deprecated use |gitsigns.nav_hunk()|
 --- Jump to the previous hunk in the current buffer. If a hunk preview
 --- (popup or inline) was previously opened, it will be re-opened
 --- at the previous hunk.
@@ -616,13 +652,13 @@ end
 ---     {async}
 ---
 --- Parameters: ~
----     See |gitsigns.next_hunk()|.
+---     See |gitsigns.nav_hunk()|.
 M.prev_hunk = async.create(1, function(opts)
-  nav_hunk(opts, false)
+  nav_hunk('prev', opts)
 end)
 
 C.prev_hunk = function(args, _)
-  M.prev_hunk(args)
+  M.nav_hunk('prev', args)
 end
 
 --- @param fmt Gitsigns.LineSpec

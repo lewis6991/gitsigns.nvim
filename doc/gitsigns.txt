@@ -343,6 +343,8 @@ preview_hunk()                                       *gitsigns.preview_hunk()*
                 will cause the window to get focus.
 
 prev_hunk({opts}, {callback?})                          *gitsigns.prev_hunk()*
+                DEPRECATED: use |gitsigns.nav_hunk()|
+
                 Jump to the previous hunk in the current buffer. If a hunk preview
                 (popup or inline) was previously opened, it will be re-opened
                 at the previous hunk.
@@ -351,9 +353,11 @@ prev_hunk({opts}, {callback?})                          *gitsigns.prev_hunk()*
                     {async}
 
                 Parameters: ~
-                    See |gitsigns.next_hunk()|.
+                    See |gitsigns.nav_hunk()|.
 
 next_hunk({opts}, {callback?})                          *gitsigns.next_hunk()*
+                DEPRECATED: use |gitsigns.nav_hunk()|
+
                 Jump to the next hunk in the current buffer. If a hunk preview
                 (popup or inline) was previously opened, it will be re-opened
                 at the next hunk.
@@ -362,23 +366,37 @@ next_hunk({opts}, {callback?})                          *gitsigns.next_hunk()*
                     {async}
 
                 Parameters: ~
-                    {opts} (table|nil): Configuration table. Keys:
-                           • {wrap}: (boolean)
-                             Whether to loop around file or not. Defaults
-                             to the value 'wrapscan'
-                           • {navigation_message}: (boolean)
-                             Whether to show navigation messages or not.
-                             Looks at 'shortmess' for default behaviour.
-                           • {foldopen}: (boolean)
-                             Expand folds when navigating to a hunk which is
-                             inside a fold. Defaults to `true` if 'foldopen'
-                             contains `search`.
-                           • {preview}: (boolean)
-                             Automatically open preview_hunk() upon navigating
-                             to a hunk.
-                           • {greedy}: (boolean)
-                             Only navigate between non-contiguous hunks. Only useful if
-                             'diff_opts' contains `linematch`. Defaults to `true`.
+                    See |gitsigns.nav_hunk()|.
+
+nav_hunk({direction}, {opts}, {callback?})                 *gitsigns.nav_hunk()*
+                Jump to hunk in the current buffer. If a hunk preview
+                (popup or inline) was previously opened, it will be re-opened
+                at the next hunk.
+
+                Attributes: ~
+                    {async}
+
+                Parameters: ~
+                    {direction} ('first'|'last'|'next'|'prev'):
+                    {opts}      (table|nil): Configuration table. Keys:
+                                • {wrap}: (boolean)
+                                  Whether to loop around file or not. Defaults
+                                  to the value 'wrapscan'
+                                • {navigation_message}: (boolean)
+                                  Whether to show navigation messages or not.
+                                  Looks at 'shortmess' for default behaviour.
+                                • {foldopen}: (boolean)
+                                  Expand folds when navigating to a hunk which is
+                                  inside a fold. Defaults to `true` if 'foldopen'
+                                  contains `search`.
+                                • {preview}: (boolean)
+                                  Automatically open preview_hunk() upon navigating
+                                  to a hunk.
+                                • {greedy}: (boolean)
+                                  Only navigate between non-contiguous hunks. Only useful if
+                                  'diff_opts' contains `linematch`. Defaults to `true`.
+                                • {count}: (integer)
+                                  Number of times to advance. Defaults to |v:count1|.
 
 reset_buffer_index()                           *gitsigns.reset_buffer_index()*
                 Unstage all hunks for current buffer in the index. Note:
