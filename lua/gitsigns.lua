@@ -57,6 +57,12 @@ local function update_cwd_head()
   end
 
   async.scheduler()
+
+  api.nvim_exec_autocmds('User', {
+    pattern = 'GitSignsUpdate',
+    modeline = false,
+  })
+
   vim.g.gitsigns_head = head
 
   if not gitdir then

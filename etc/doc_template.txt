@@ -171,8 +171,8 @@ like so: >lua
 
     vim.api.nvim_create_autocmd('User', {
       pattern = 'GitSignsUpdate',
-      callback = function()
-        print(os.time() .. ' Gitsigns made an update')
+      callback = function(args)
+        print(os.time(), ' Gitsigns made an update on ', args.data.buffer)
       end
     })
 
