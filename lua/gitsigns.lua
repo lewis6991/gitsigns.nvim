@@ -16,6 +16,9 @@ local cwd_watcher ---@type uv.uv_fs_event_t?
 
 --- @async
 local function update_cwd_head()
+  if not uv.cwd() then
+    return
+  end
   local paths = vim.fs.find('.git', {
     limit = 1,
     upward = true,
