@@ -201,7 +201,7 @@ function M.setup()
   end
 
   if config.current_line_blame then
-    api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' }, {
+    api.nvim_create_autocmd({ 'WinResized', 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' }, {
       group = group,
       callback = function(args)
         reset(args.buf)
