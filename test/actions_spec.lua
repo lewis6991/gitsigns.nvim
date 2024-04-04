@@ -254,20 +254,19 @@ describe('actions', function()
       eq(pos, helpers.api.nvim_win_get_cursor(0))
     end
 
-    check_cursor({6,0})
+    check_cursor({ 6, 0 })
     command('Gitsigns next_hunk') -- Wrap
-    check_cursor({1,0})
+    check_cursor({ 1, 0 })
     command('Gitsigns next_hunk')
-    check_cursor({4,0})
+    check_cursor({ 4, 0 })
     command('Gitsigns next_hunk')
-    check_cursor({6,0})
+    check_cursor({ 6, 0 })
 
     command('Gitsigns prev_hunk')
-    check_cursor({4,0})
+    check_cursor({ 4, 0 })
     command('Gitsigns prev_hunk')
-    check_cursor({1,0})
+    check_cursor({ 1, 0 })
     command('Gitsigns prev_hunk') -- Wrap
-    check_cursor({6,0})
-
+    check_cursor({ 6, 0 })
   end)
 end)
