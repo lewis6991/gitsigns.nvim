@@ -336,7 +336,7 @@ function M.find_nearest_hunk(lnum, hunks, forwards, wrap)
   else
     for i = #hunks, 1, -1 do
       local hunk = hunks[i]
-      local dist = lnum - hunk.vend
+      local dist = lnum - math.max(hunk.vend, 1)
       if dist > 0 and dist < distance then
         distance = dist
         ret = hunk
