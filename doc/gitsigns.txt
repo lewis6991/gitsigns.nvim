@@ -752,6 +752,11 @@ attach_to_untracked                      *gitsigns-config-attach_to_untracked*
 
       Attach to untracked files.
 
+attach_to_out_of_repo                  *gitsigns-config-attach_to_out_of_repo*
+      Type: `boolean`, Default: `false`
+
+      Attach to files out of git repository to highlight unsaved changes.
+
 update_debounce                              *gitsigns-config-update_debounce*
       Type: `number`, Default: `100`
 

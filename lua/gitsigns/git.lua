@@ -23,7 +23,7 @@ local asystem = async.wrap(3, system)
 
 --- @param file string
 --- @return boolean
-local function in_git_dir(file)
+function M.in_git_dir(file)
   for _, p in ipairs(vim.split(file, util.path_sep)) do
     if p == '.git' then
       return true
@@ -800,12 +800,8 @@ end
 --- @param encoding string
 --- @param gitdir string?
 --- @param toplevel string?
---- @return Gitsigns.GitObj?
+--- @return Gitsigns.GitObj
 function Obj.new(file, encoding, gitdir, toplevel)
-  if in_git_dir(file) then
-    dprint('In git dir')
-    return nil
-  end
   local self = setmetatable({}, { __index = Obj })
 
   self.file = file
@@ -813,8 +809,7 @@ function Obj.new(file, encoding, gitdir, toplevel)
   self.repo = Repo.new(util.dirname(file), gitdir, toplevel)
 
   if not self.repo.gitdir then
-    dprint('Not in git repo')
-    return nil
+    return self
   end
 
   -- When passing gitdir and toplevel, suppress stderr when resolving the file

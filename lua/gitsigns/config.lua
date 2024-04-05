@@ -91,6 +91,7 @@
 --- @field preview_config table<string,any>
 --- @field auto_attach boolean
 --- @field attach_to_untracked boolean
+--- @field attach_to_out_of_repo boolean
 --- @field yadm { enable: boolean }
 --- @field worktrees {toplevel: string, gitdir: string}[]
 --- @field word_diff boolean
@@ -595,6 +596,14 @@ M.schema = {
     default = false,
     description = [[
       Attach to untracked files.
+    ]],
+  },
+
+  attach_to_out_of_repo = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      Attach to files out of git repository to highlight unsaved changes.
     ]],
   },
 

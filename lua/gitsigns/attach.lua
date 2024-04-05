@@ -155,7 +155,7 @@ local function try_worktrees(_bufnr, file, encoding)
 
   for _, wt in ipairs(config.worktrees) do
     local git_obj = git.Obj.new(file, encoding, wt.gitdir, wt.toplevel)
-    if git_obj and git_obj.object_name then
+    if git_obj.repo.gitdir and git_obj.object_name then
       dprintf('Using worktree %s', vim.inspect(wt))
       return git_obj
     end
@@ -289,21 +289,23 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     gitdir_oap, toplevel_oap = on_attach_pre(cbuf)
   end
 
+  if not ctx and git.in_git_dir(file) then
+    dprint('In git dir')
+    return
+  end
+
   local git_obj = git.Obj.new(file, encoding, gitdir_oap, toplevel_oap)
 
-  if not git_obj and not ctx then
-    git_obj = try_worktrees(cbuf, file, encoding)
+  if not git_obj.repo.gitdir and not ctx then
+    git_obj = try_worktrees(cbuf, file, encoding) or git_obj
     async.scheduler()
     if not api.nvim_buf_is_valid(cbuf) then
       return
     end
   end
 
-  if not git_obj then
-    dprint('Empty git obj')
-    return
-  end
   local repo = git_obj.repo
+  local base = ctx and ctx.base or nil
 
   async.scheduler()
   if not api.nvim_buf_is_valid(cbuf) then
@@ -316,7 +318,16 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     gitdir = repo.gitdir,
   })
 
-  if vim.startswith(file, repo.gitdir .. util.path_sep) then
+  if not repo.gitdir then
+    if config.attach_to_out_of_repo then
+      base = 'FILE'
+    else
+      dprint('Not in git repo')
+      return
+    end
+  end
+
+  if repo.gitdir and vim.startswith(file, repo.gitdir .. util.path_sep) then
     dprint('In non-standard git dir')
     return
   end
@@ -326,7 +337,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     return
   end
 
-  if not git_obj.relpath then
+  if repo.gitdir and not git_obj.relpath then
     dprint('Cannot resolve file in repo')
     return
   end
@@ -350,13 +361,13 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   cache[cbuf] = gs_cache.new({
     bufnr = cbuf,
-    base = ctx and ctx.base or config.base,
+    base = base or config.base,
     file = file,
     commit = commit,
     git_obj = git_obj,
   })
 
-  if config.watch_gitdir.enable then
+  if config.watch_gitdir.enable and repo.gitdir then
     local watcher = require('gitsigns.watcher')
     cache[cbuf].gitdir_watcher = watcher.watch_gitdir(cbuf, repo.gitdir)
   end

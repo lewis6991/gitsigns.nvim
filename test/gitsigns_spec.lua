@@ -134,8 +134,7 @@ describe('gitsigns (with screen)', function()
       np(
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
-      n('new: Not in git repo'),
-      n('attach(1): Empty git obj'),
+      n('attach(1): Not in git repo'),
     })
     command('Gitsigns clear_debug')
 
@@ -148,8 +147,7 @@ describe('gitsigns (with screen)', function()
       np(
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
-      n('new: Not in git repo'),
-      n('attach(1): Empty git obj'),
+      n('attach(1): Not in git repo'),
     })
   end)
 
@@ -182,8 +180,7 @@ describe('gitsigns (with screen)', function()
 
       match_debug_messages({
         'attach(1): Attaching (trigger=BufReadPost)',
-        n('new: In git dir'),
-        n('attach(1): Empty git obj'),
+        n('attach(1): In git dir'),
       })
     end)
 
