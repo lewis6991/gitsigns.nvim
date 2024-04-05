@@ -590,14 +590,14 @@ function Obj:run_blame(lines, lnum, opts)
     vim.list_extend(args, opts.extra_opts)
   end
 
-  args[#args + 1] = opts.rev
-  args[#args + 1] = '--'
-  args[#args + 1] = self.file
-
   local ignore_file = self.repo.toplevel .. '/.git-blame-ignore-revs'
   if uv.fs_stat(ignore_file) then
     vim.list_extend(args, { '--ignore-revs-file', ignore_file })
   end
+
+  args[#args + 1] = opts.rev
+  args[#args + 1] = '--'
+  args[#args + 1] = self.file
 
   local results, stderr = self:command(args, { stdin = lines, ignore_error = true })
   if stderr then
