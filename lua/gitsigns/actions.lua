@@ -195,6 +195,9 @@ end
 --- @param staged? boolean
 --- @return Gitsigns.Hunk.Hunk[]? hunks
 local function get_hunks(bufnr, bcache, greedy, staged)
+  if not bcache then
+    return nil
+  end
   if greedy and config.diff_opts.linematch then
     -- Re-run the diff without linematch
     local buftext = util.buf_lines(bufnr)
