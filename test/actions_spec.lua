@@ -268,7 +268,6 @@ describe('actions', function()
     check_cursor({ 1, 0 })
     command('Gitsigns prev_hunk') -- Wrap
     check_cursor({ 6, 0 })
-
   end)
 
   it('can navigate hunks (nowrap)', function()
@@ -302,6 +301,5 @@ describe('actions', function()
     check_cursor({ 4, 0 })
     command('Gitsigns prev_hunk')
     check_cursor({ 4, 0 })
-
   end)
 end)
