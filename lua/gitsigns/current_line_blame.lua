@@ -201,16 +201,19 @@ function M.setup()
   end
 
   if config.current_line_blame then
-    api.nvim_create_autocmd(
-      { 'WinResized', 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' },
-      {
-        group = group,
-        callback = function(args)
-          reset(args.buf)
-          update_debounced(args.buf)
-        end,
-      }
-    )
+    local events = { 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' }
+    if vim.fn.exists('#WinResized') == 1 then
+      -- For nvim 0.9+
+      events[#events + 1] = 'WinResized'
+    end
+
+    api.nvim_create_autocmd(events, {
+      group = group,
+      callback = function(args)
+        reset(args.buf)
+        update_debounced(args.buf)
+      end,
+    })
 
     api.nvim_create_autocmd({ 'InsertEnter', 'FocusLost', 'BufLeave' }, {
       group = group,
