@@ -236,6 +236,10 @@ describe('actions', function()
     end)
   end)
 
+  local function check_cursor(pos)
+    eq(pos, helpers.api.nvim_win_get_cursor(0))
+  end
+
   it('can navigate hunks', function()
     setup_test_repo()
     edit(test_file)
@@ -249,10 +253,6 @@ describe('actions', function()
       '@@ -5,1 +4,1 @@',
       '@@ -7,1 +6,1 @@',
     })
-
-    local function check_cursor(pos)
-      eq(pos, helpers.api.nvim_win_get_cursor(0))
-    end
 
     check_cursor({ 6, 0 })
     command('Gitsigns next_hunk') -- Wrap
@@ -268,5 +268,40 @@ describe('actions', function()
     check_cursor({ 1, 0 })
     command('Gitsigns prev_hunk') -- Wrap
     check_cursor({ 6, 0 })
+
+  end)
+
+  it('can navigate hunks (nowrap)', function()
+    setup_test_repo()
+    edit(test_file)
+
+    feed('4Gx')
+    feed('6Gx')
+    feed('gg')
+
+    expect_hunks({
+      '@@ -4,1 +4,1 @@',
+      '@@ -6,1 +6,1 @@',
+    })
+
+    command('set nowrapscan')
+
+    check_cursor({ 1, 0 })
+    command('Gitsigns next_hunk')
+    check_cursor({ 4, 0 })
+    command('Gitsigns next_hunk')
+    check_cursor({ 6, 0 })
+    command('Gitsigns next_hunk')
+    check_cursor({ 6, 0 })
+
+    feed('G')
+    check_cursor({ 18, 0 })
+    command('Gitsigns prev_hunk')
+    check_cursor({ 6, 0 })
+    command('Gitsigns prev_hunk')
+    check_cursor({ 4, 0 })
+    command('Gitsigns prev_hunk')
+    check_cursor({ 4, 0 })
+
   end)
 end)

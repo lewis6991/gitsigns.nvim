@@ -325,6 +325,9 @@ function M.find_nearest_hunk(lnum, hunks, direction, wrap)
   elseif direction == 'last' then
     return #hunks
   elseif direction == 'next' then
+    if hunks[1].added.start > lnum then
+      return 1
+    end
     for i = #hunks, 1, -1 do
       if hunks[i].added.start <= lnum then
         if i + 1 <= #hunks and hunks[i + 1].added.start > lnum then
@@ -335,6 +338,9 @@ function M.find_nearest_hunk(lnum, hunks, direction, wrap)
       end
     end
   elseif direction == 'prev' then
+    if math.max(hunks[#hunks].vend) < lnum then
+      return #hunks
+    end
     for i = 1, #hunks do
       if lnum <= math.max(hunks[i].vend, 1) then
         if i > 1 and math.max(hunks[i - 1].vend, 1) < lnum then
