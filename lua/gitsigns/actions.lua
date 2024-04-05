@@ -1122,11 +1122,10 @@ M.diffthis = function(base, opts)
     base = tostring(base)
   end
   opts = opts or {}
-  local diffthis = require('gitsigns.diffthis')
   if not opts.vertical then
     opts.vertical = config.diff_opts.vertical
   end
-  diffthis.diffthis(base, opts)
+  require('gitsigns.diffthis').diffthis(base, opts)
 end
 
 C.diffthis = function(args, params)
