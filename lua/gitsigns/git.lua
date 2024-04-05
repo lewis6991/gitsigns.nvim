@@ -486,8 +486,19 @@ function Obj:get_show_text(revision)
   return stdout, stderr
 end
 
+local function autocmd_changed(file)
+  vim.schedule(function()
+    vim.api.nvim_exec_autocmds('User', {
+      pattern = 'GitSignsChanged',
+      modeline = false,
+      data = { file = file },
+    })
+  end)
+end
+
 function Obj:unstage_file()
   self:command({ 'reset', self.file })
+  autocmd_changed(self.file)
 end
 
 --- @class Gitsigns.CommitInfo
@@ -734,6 +745,8 @@ function Obj:stage_lines(lines)
     '--cacheinfo',
     string.format('%s,%s,%s', self.mode_bits, new_object, self.relpath),
   })
+
+  autocmd_changed(self.file)
 end
 
 --- @param hunks Gitsigns.Hunk.Hunk[]
@@ -761,6 +774,8 @@ function Obj:stage_hunks(hunks, invert)
   }, {
     stdin = patch,
   })
+
+  autocmd_changed(self.file)
 end
 
 --- @return string?
