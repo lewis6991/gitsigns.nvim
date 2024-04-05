@@ -62,32 +62,32 @@ local function parse_gitsigns_uri(name)
 end
 
 --- @param bufnr integer
---- @return string, string?
+--- @return string buffer
+--- @return string? commit
+--- @return boolean? force_attach
 local function get_buf_path(bufnr)
   local file = uv.fs_realpath(api.nvim_buf_get_name(bufnr))
     or api.nvim_buf_call(bufnr, function()
       return vim.fn.expand('%:p')
     end)
 
-  if not vim.wo.diff then
-    if vim.startswith(file, 'fugitive://') then
-      local path, commit = parse_fugitive_uri(file)
-      dprintf("Fugitive buffer for file '%s' from path '%s'", path, file)
-      if path then
-        local realpath = uv.fs_realpath(path)
-        if realpath then
-          return realpath, commit
-        end
-      end
-    end
-
-    if vim.startswith(file, 'gitsigns://') then
-      local path, commit = parse_gitsigns_uri(file)
-      dprintf("Gitsigns buffer for file '%s' from path '%s'", path, file)
+  if vim.startswith(file, 'fugitive://') then
+    local path, commit = parse_fugitive_uri(file)
+    dprintf("Fugitive buffer for file '%s' from path '%s'", path, file)
+    if path then
       local realpath = uv.fs_realpath(path)
       if realpath then
-        return realpath, commit
+        return realpath, commit, true
       end
+    end
+  end
+
+  if vim.startswith(file, 'gitsigns://') then
+    local path, commit = parse_gitsigns_uri(file)
+    dprintf("Gitsigns buffer for file '%s' from path '%s' on commit '%s'", path, file, commit)
+    local realpath = uv.fs_realpath(path)
+    if realpath then
+      return realpath, commit, true
     end
   end
 
@@ -271,12 +271,14 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
       return
     end
 
-    if vim.bo[cbuf].buftype ~= '' then
+    local force_attach
+    file, commit, force_attach = get_buf_path(cbuf)
+
+    if vim.bo[cbuf].buftype ~= '' and not force_attach then
       dprint('Non-normal buffer')
       return
     end
 
-    file, commit = get_buf_path(cbuf)
     local file_dir = util.dirname(file)
 
     if not file_dir or not util.path_exists(file_dir) then
