@@ -228,6 +228,9 @@ end
 --- @return Gitsigns.Hunk.Hunk?
 local function get_hunk(bufnr, range, greedy, staged)
   local bcache = cache[bufnr]
+  if not bcache then
+    return
+  end
   local hunks = get_hunks(bufnr, bcache, greedy, staged)
 
   if not range then
