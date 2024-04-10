@@ -102,10 +102,16 @@ function M.run_diff(fa, fb, linematch)
       for i = rs, rs + rc - 1 do
         hunk.removed.lines[#hunk.removed.lines + 1] = fa[i] or ''
       end
+      if rs + rc >= #fa and fa[#fa] ~= '' then
+        hunk.removed.no_nl_at_eof = true
+      end
     end
     if ac > 0 then
       for i = as, as + ac - 1 do
         hunk.added.lines[#hunk.added.lines + 1] = fb[i] or ''
+      end
+      if as + ac >= #fb and fb[#fb] ~= '' then
+        hunk.added.no_nl_at_eof = true
       end
     end
     hunks[#hunks + 1] = hunk
