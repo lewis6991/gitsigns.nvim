@@ -11,6 +11,7 @@ local min, max = math.min, math.max
 --- @field start integer
 --- @field count integer
 --- @field lines string[]
+--- @field no_nl_at_eof? true
 
 --- @class (exact) Gitsigns.Hunk.Hunk
 --- @field type Gitsigns.Hunk.Type
@@ -265,8 +266,17 @@ function M.create_patch(relpath, hunks, mode_bits, invert)
     for _, l in ipairs(pre_lines) do
       results[#results + 1] = '-' .. l
     end
+
+    if process_hunk.removed.no_nl_at_eof then
+      results[#results + 1] = '\\ No newline at end of file'
+    end
+
     for _, l in ipairs(now_lines) do
       results[#results + 1] = '+' .. l
+    end
+
+    if process_hunk.added.no_nl_at_eof then
+      results[#results + 1] = '\\ No newline at end of file'
     end
 
     process_hunk.removed.start = start + offset

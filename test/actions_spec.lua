@@ -302,4 +302,23 @@ describe('actions', function()
     command('Gitsigns prev_hunk')
     check_cursor({ 4, 0 })
   end)
+
+  it('can stage hunks with no NL at EOF', function()
+    setup_test_repo()
+    local newfile = helpers.newfile
+    exec_lua([[vim.g.editorconfig = false]])
+    system("printf 'This is a file with no nl at eof' > "..newfile)
+    helpers.gitm({
+      { 'add', newfile },
+      { 'commit', '-m', 'commit on main' },
+    })
+
+    edit(newfile)
+    check({ status = { head = 'master', added = 0, changed = 0, removed = 0 } })
+    feed('x')
+    check({ status = { head = 'master', added = 0, changed = 1, removed = 0 } })
+    command('Gitsigns stage_hunk')
+    check({ status = { head = 'master', added = 0, changed = 0, removed = 0 } })
+  end)
+
 end)
