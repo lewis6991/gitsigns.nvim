@@ -22,8 +22,6 @@ local uv = vim.loop
 
 local M = {}
 
-local attach_disabled = false
-
 --- @param name string
 --- @return string? buffer
 --- @return string? commit
@@ -115,10 +113,7 @@ end
 --- @param _ 'detach'
 --- @param bufnr integer
 local function on_detach(_, bufnr)
-  api.nvim_clear_autocmds({
-    group = 'gitsigns',
-    buffer = bufnr,
-  })
+  api.nvim_clear_autocmds({ group = 'gitsigns', buffer = bufnr })
   M.detach(bufnr, true)
 end
 
@@ -162,47 +157,18 @@ local function try_worktrees(_bufnr, file, encoding)
   end
 end
 
---- vimpgrep creates and deletes lots of buffers so attaching to each one will
---- waste lots of resource and even slow down vimgrep.
-local function setup_vimgrep_autocmds()
-  api.nvim_create_autocmd('QuickFixCmdPre', {
-    group = 'gitsigns',
-    pattern = '*vimgrep*',
-    callback = function()
-      attach_disabled = true
-    end,
-  })
-
-  api.nvim_create_autocmd('QuickFixCmdPost', {
-    group = 'gitsigns',
-    pattern = '*vimgrep*',
-    callback = function()
-      attach_disabled = false
-    end,
-  })
-end
-
-local done_setup = false
-
-function M._setup()
-  if done_setup then
-    return
-  end
-
-  done_setup = true
-
+local setup = util.once(function()
   manager.setup()
-  require('gitsigns.highlight').setup()
 
   api.nvim_create_autocmd('OptionSet', {
     group = 'gitsigns',
     pattern = { 'fileformat', 'bomb', 'eol' },
     callback = function()
-      require('gitsigns.actions').refresh()
+      local buf = vim.api.nvim_get_current_buf()
+      cache[buf]:invalidate(true)
+      manager.update(buf)
     end,
   })
-
-  setup_vimgrep_autocmds()
 
   require('gitsigns.current_line_blame').setup()
 
@@ -210,7 +176,7 @@ function M._setup()
     group = 'gitsigns',
     callback = M.detach_all,
   })
-end
+end)
 
 --- @class Gitsigns.GitContext
 --- @field file string
@@ -259,12 +225,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   local __FUNC__ = 'attach'
   local passed_ctx = ctx ~= nil
 
-  M._setup()
-
-  if attach_disabled then
-    dprint('attaching is disabled')
-    return
-  end
+  setup()
 
   if cache[cbuf] then
     dprint('Already attached')

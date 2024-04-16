@@ -347,4 +347,19 @@ function M.list_insert(t, first, last, v)
   end
 end
 
+--- Run a function once and ignore subsequent calls
+--- @generic F: function
+--- @param fn F
+--- @return F
+function M.once(fn)
+  local called = false
+  return function(...)
+    if called then
+      return
+    end
+    called = true
+    return fn(...)
+  end
+end
+
 return M

@@ -56,6 +56,7 @@ describe('highlights', function()
     cleanup()
     screen:detach()
   end)
+
   it('get set up correctly', function()
     command('set termguicolors')
 

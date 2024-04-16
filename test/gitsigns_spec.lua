@@ -678,10 +678,10 @@ describe('gitsigns (with screen)', function()
     })
 
     match_debug_messages({
-      'attach(2): attaching is disabled',
-      n('attach(3): attaching is disabled'),
-      n('attach(4): attaching is disabled'),
-      n('attach(5): attaching is disabled'),
+      'attach_autocmd(2): Attaching is disabled',
+      n('attach_autocmd(3): Attaching is disabled'),
+      n('attach_autocmd(4): Attaching is disabled'),
+      n('attach_autocmd(5): Attaching is disabled'),
     })
   end)
 

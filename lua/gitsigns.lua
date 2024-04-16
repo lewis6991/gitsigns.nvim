@@ -1,11 +1,8 @@
 local async = require('gitsigns.async')
+local log = require('gitsigns.debug.log')
 
 local gs_config = require('gitsigns.config')
 local config = gs_config.config
-
-local log = require('gitsigns.debug.log')
-local dprintf = log.dprintf
-local dprint = log.dprint
 
 local api = vim.api
 local uv = vim.uv or vim.loop
@@ -97,10 +94,10 @@ local function update_cwd_head()
     async.create(function(err)
       local __FUNC__ = 'cwd_watcher_cb'
       if err then
-        dprintf('Git dir update error: %s', err)
+        log.dprintf('Git dir update error: %s', err)
         return
       end
-      dprint('Git cwd dir update')
+      log.dprint('Git cwd dir update')
 
       update_head()
     end)
@@ -127,12 +124,34 @@ end
 
 --- @async
 local function setup_attach()
+  if not config.auto_attach then
+    return
+  end
+
   async.scheduler()
+
+  local attach_autocmd_disabled = false
 
   api.nvim_create_autocmd({ 'BufRead', 'BufNewFile', 'BufWritePost' }, {
     group = 'gitsigns',
-    callback = function(data)
-      require('gitsigns.attach').attach(data.buf, nil, data.event)
+    callback = function(args)
+      local bufnr = args.buf --[[@as integer]]
+      if attach_autocmd_disabled then
+        local __FUNC__ = 'attach_autocmd'
+        log.dprint('Attaching is disabled')
+        return
+      end
+      require('gitsigns.attach').attach(bufnr, nil, args.event)
+    end,
+  })
+
+  --- vimpgrep creates and deletes lots of buffers so attaching to each one will
+  --- waste lots of resource and even slow down vimgrep.
+  api.nvim_create_autocmd({'QuickFixCmdPre', 'QuickFixCmdPost'}, {
+    group = 'gitsigns',
+    pattern = '*vimgrep*',
+    callback = function(args)
+      attach_autocmd_disabled = args.event == 'QuickFixCmdPre'
     end,
   })
 
@@ -141,8 +160,7 @@ local function setup_attach()
     if api.nvim_buf_is_loaded(buf) and api.nvim_buf_get_name(buf) ~= '' then
       -- Make sure to run each attach in its on async context in case one of the
       -- attaches is aborted.
-      local attach = require('gitsigns.attach')
-      attach.attach(buf, nil, 'setup')
+      require('gitsigns.attach').attach(buf, nil, 'setup')
     end
   end
 end
@@ -180,28 +198,13 @@ M.setup = async.create(1, function(cfg)
     return
   end
 
-  if config.yadm.enable and vim.fn.executable('yadm') == 0 then
-    print("gitsigns: yadm not in path. Ignoring 'yadm.enable' in config")
-    config.yadm.enable = false
-    return
-  end
+  api.nvim_create_augroup('gitsigns', {})
 
   setup_debug()
   setup_cli()
-
-  api.nvim_create_augroup('gitsigns', {})
-
-  if config._test_mode then
-    require('gitsigns.attach')._setup()
-    require('gitsigns.git.version').check()
-  end
-
-  if config.auto_attach then
-    setup_attach()
-  end
+  require('gitsigns.highlight').setup()
+  setup_attach()
   setup_cwd_head()
-
-  M._setup_done = true
 end)
 
 return setmetatable(M, {
