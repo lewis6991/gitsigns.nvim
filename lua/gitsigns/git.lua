@@ -334,8 +334,14 @@ function Repo:try_yadm(dir, gitdir, toplevel)
     return
   end
 
-  if not vim.startswith(dir, assert(os.getenv('HOME'))) then
-    return
+  if vim.loop.os_uname().sysname == 'Windows_NT' then
+    if not vim.startswith(dir, assert(os.getenv('USERPROFILE'))) then
+      return
+    end
+  else
+    if not vim.startswith(dir, os.getenv('HOME')) then
+      return
+    end
   end
 
   if not #git_command({ 'ls-files', dir }, { command = 'yadm' }) ~= 0 then
