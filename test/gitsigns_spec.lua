@@ -107,7 +107,6 @@ describe('gitsigns (with screen)', function()
       ),
       'watch_gitdir(1): Watching git dir',
       p('run_job: git .* show :0:dummy.txt'),
-      'update(1): updates: 1, jobs: 6',
     })
 
     check({
@@ -495,9 +494,6 @@ describe('gitsigns (with screen)', function()
           table.insert(messages, np('run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*'))
         end
 
-        local jobs = internal_diff and 8 or 9
-        table.insert(messages, n('update(1): updates: 1, jobs: ' .. jobs))
-
         match_debug_messages(messages)
 
         check({
@@ -682,10 +678,10 @@ describe('gitsigns (with screen)', function()
     })
 
     match_debug_messages({
-      'attach(2): attaching is disabled',
-      n('attach(3): attaching is disabled'),
-      n('attach(4): attaching is disabled'),
-      n('attach(5): attaching is disabled'),
+      'attach_autocmd(2): Attaching is disabled',
+      n('attach_autocmd(3): Attaching is disabled'),
+      n('attach_autocmd(4): Attaching is disabled'),
+      n('attach_autocmd(5): Attaching is disabled'),
     })
   end)
 

@@ -146,10 +146,10 @@ end
 --- @async
 --- @param gitdir string
 --- @param head_str string
---- @param path string
+--- @param cwd string
 --- @param cmd? string
 --- @return string
-local function process_abbrev_head(gitdir, head_str, path, cmd)
+local function process_abbrev_head(gitdir, head_str, cwd, cmd)
   if not gitdir then
     return head_str
   end
@@ -157,7 +157,7 @@ local function process_abbrev_head(gitdir, head_str, path, cmd)
     local short_sha = git_command({ 'rev-parse', '--short', 'HEAD' }, {
       command = cmd,
       ignore_error = true,
-      cwd = path,
+      cwd = cwd,
     })[1] or ''
     if log.debug_mode and short_sha ~= '' then
       short_sha = 'HEAD'
@@ -197,12 +197,12 @@ local function normalize_path(path)
 end
 
 --- @async
---- @param path string
+--- @param cwd string
 --- @param cmd? string
 --- @param gitdir? string
 --- @param toplevel? string
 --- @return Gitsigns.RepoInfo
-function M.get_repo_info(path, cmd, gitdir, toplevel)
+function M.get_repo_info(cwd, cmd, gitdir, toplevel)
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --    https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
   local has_abs_gd = check_version({ 2, 13 })
@@ -232,7 +232,7 @@ function M.get_repo_info(path, cmd, gitdir, toplevel)
   local results = git_command(args, {
     command = cmd,
     ignore_error = true,
-    cwd = toplevel or path,
+    cwd = toplevel or cwd,
   })
 
   local toplevel_r = normalize_path(results[1])
@@ -245,7 +245,7 @@ function M.get_repo_info(path, cmd, gitdir, toplevel)
   return {
     toplevel = toplevel_r,
     gitdir = gitdir_r,
-    abbrev_head = process_abbrev_head(gitdir_r, results[3], path, cmd),
+    abbrev_head = process_abbrev_head(gitdir_r, results[3], cwd, cmd),
     detached = toplevel_r and gitdir_r ~= toplevel_r .. '/.git',
   }
 end
@@ -325,6 +325,33 @@ function Repo:update_abbrev_head()
   self.abbrev_head = M.get_repo_info(self.toplevel).abbrev_head
 end
 
+--- @private
+--- @param dir string
+--- @param gitdir? string
+--- @param toplevel? string
+function Repo:try_yadm(dir, gitdir, toplevel)
+  if not config.yadm.enable and self.gitdir then
+    return
+  end
+
+  if not vim.startswith(dir, assert(os.getenv('HOME'))) then
+    return
+  end
+
+  if not #git_command({ 'ls-files', dir }, { command = 'yadm' }) ~= 0 then
+    return
+  end
+
+  M.get_repo_info(dir, 'yadm', gitdir, toplevel)
+  local yadm_info = M.get_repo_info(dir, 'yadm', gitdir, toplevel)
+  for k, v in
+    pairs(yadm_info --[[@as table<string,any>]])
+  do
+    ---@diagnostic disable-next-line:no-unknown
+    self[k] = v
+  end
+end
+
 --- @async
 --- @param dir string
 --- @param gitdir? string
@@ -342,22 +369,7 @@ function Repo.new(dir, gitdir, toplevel)
     self[k] = v
   end
 
-  -- Try yadm
-  if config.yadm.enable and not self.gitdir then
-    if
-      vim.startswith(dir, assert(os.getenv('HOME')))
-      and #git_command({ 'ls-files', dir }, { command = 'yadm' }) ~= 0
-    then
-      M.get_repo_info(dir, 'yadm', gitdir, toplevel)
-      local yadm_info = M.get_repo_info(dir, 'yadm', gitdir, toplevel)
-      for k, v in
-        pairs(yadm_info --[[@as table<string,any>]])
-      do
-        ---@diagnostic disable-next-line:no-unknown
-        self[k] = v
-      end
-    end
-  end
+  self:try_yadm(dir, gitdir, toplevel)
 
   return self
 end
@@ -807,6 +819,10 @@ function Obj.new(file, encoding, gitdir, toplevel)
     return nil
   end
   local self = setmetatable({}, { __index = Obj })
+
+  if not vim.startswith(file, '/') and toplevel then
+    file = toplevel .. util.path_sep .. file
+  end
 
   self.file = file
   self.encoding = encoding

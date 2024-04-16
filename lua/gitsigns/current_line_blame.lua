@@ -222,6 +222,14 @@ function M.setup()
       end,
     })
 
+    api.nvim_create_autocmd('OptionSet', {
+      group = group,
+      pattern = { 'fileformat', 'bomb', 'eol' },
+      callback = function(args)
+        reset(args.buf)
+      end,
+    })
+
     update_debounced(api.nvim_get_current_buf())
   end
 end

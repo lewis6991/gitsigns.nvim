@@ -11,9 +11,7 @@ local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
 local log = require('gitsigns.debug.log')
 local dprint = log.dprint
-local dprintf = log.dprintf
 
-local system = require('gitsigns.system')
 local util = require('gitsigns.util')
 local run_diff = require('gitsigns.diff')
 
@@ -456,15 +454,12 @@ function M.schedule(bufnr, check_compare_text)
   return true
 end
 
-local update_cnt = 0
-
 --- Ensure updates cannot be interleaved.
 --- Since updates are asynchronous we need to make sure an update isn't performed
 --- whilst another one is in progress. If this happens then schedule another
 --- update after the current one has completed.
 --- @param bufnr integer
 M.update = throttle_by_id(function(bufnr)
-  local __FUNC__ = 'update'
   if not M.schedule(bufnr) then
     return
   end
@@ -525,10 +520,6 @@ M.update = throttle_by_id(function(bufnr)
     summary.head = git_obj.repo.abbrev_head
     Status:update(bufnr, summary)
   end
-
-  update_cnt = update_cnt + 1
-
-  dprintf('updates: %s, jobs: %s', update_cnt, system.job_cnt)
 end, true)
 
 --- @param bufnr integer

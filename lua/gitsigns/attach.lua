@@ -22,8 +22,6 @@ local uv = vim.loop
 
 local M = {}
 
-local attach_disabled = false
-
 --- @param name string
 --- @return string? buffer
 --- @return string? commit
@@ -115,10 +113,7 @@ end
 --- @param _ 'detach'
 --- @param bufnr integer
 local function on_detach(_, bufnr)
-  api.nvim_clear_autocmds({
-    group = 'gitsigns',
-    buffer = bufnr,
-  })
+  api.nvim_clear_autocmds({ group = 'gitsigns', buffer = bufnr })
   M.detach(bufnr, true)
 end
 
@@ -162,47 +157,18 @@ local function try_worktrees(_bufnr, file, encoding)
   end
 end
 
---- vimpgrep creates and deletes lots of buffers so attaching to each one will
---- waste lots of resource and even slow down vimgrep.
-local function setup_vimgrep_autocmds()
-  api.nvim_create_autocmd('QuickFixCmdPre', {
-    group = 'gitsigns',
-    pattern = '*vimgrep*',
-    callback = function()
-      attach_disabled = true
-    end,
-  })
-
-  api.nvim_create_autocmd('QuickFixCmdPost', {
-    group = 'gitsigns',
-    pattern = '*vimgrep*',
-    callback = function()
-      attach_disabled = false
-    end,
-  })
-end
-
-local done_setup = false
-
-function M._setup()
-  if done_setup then
-    return
-  end
-
-  done_setup = true
-
+local setup = util.once(function()
   manager.setup()
-  require('gitsigns.highlight').setup()
 
   api.nvim_create_autocmd('OptionSet', {
     group = 'gitsigns',
     pattern = { 'fileformat', 'bomb', 'eol' },
     callback = function()
-      require('gitsigns.actions').refresh()
+      local buf = vim.api.nvim_get_current_buf()
+      cache[buf]:invalidate(true)
+      manager.update(buf)
     end,
   })
-
-  setup_vimgrep_autocmds()
 
   require('gitsigns.current_line_blame').setup()
 
@@ -210,14 +176,44 @@ function M._setup()
     group = 'gitsigns',
     callback = M.detach_all,
   })
-end
+end)
 
 --- @class Gitsigns.GitContext
---- @field toplevel string
---- @field gitdir string
 --- @field file string
---- @field commit string
---- @field base string
+--- @field toplevel? string
+--- @field gitdir? string
+--- @field commit? string
+--- @field base? string
+
+--- @param bufnr integer
+--- @return Gitsigns.GitContext? ctx
+--- @return string? err
+local function get_buf_context(bufnr)
+  if api.nvim_buf_line_count(bufnr) > config.max_file_length then
+    return nil, 'Exceeds max_file_length'
+  end
+
+  local file, commit, force_attach = get_buf_path(bufnr)
+
+  if vim.bo[bufnr].buftype ~= '' and not force_attach then
+    return nil, 'Non-normal buffer'
+  end
+
+  local file_dir = util.dirname(file)
+
+  if not file_dir or not util.path_exists(file_dir) then
+    return nil, 'Not a path'
+  end
+
+  local gitdir, toplevel = on_attach_pre(bufnr)
+
+  return {
+    file = file,
+    gitdir = gitdir,
+    toplevel = toplevel,
+    commit = commit,
+  }
+end
 
 --- Ensure attaches cannot be interleaved for the same buffer.
 --- Since attaches are asynchronous we need to make sure an attach isn't
@@ -227,13 +223,9 @@ end
 --- @param aucmd? string
 local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   local __FUNC__ = 'attach'
+  local passed_ctx = ctx ~= nil
 
-  M._setup()
-
-  if attach_disabled then
-    dprint('attaching is disabled')
-    return
-  end
+  setup()
 
   if cache[cbuf] then
     dprint('Already attached')
@@ -251,47 +243,29 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     return
   end
 
+  if not ctx then
+    local err
+    ctx, err = get_buf_context(cbuf)
+    if err then
+      dprint(err)
+      return
+    end
+    assert(ctx)
+  end
+
   local encoding = vim.bo[cbuf].fileencoding
   if encoding == '' then
     encoding = 'utf-8'
   end
-  local file --- @type string
-  local commit --- @type string?
-  local gitdir_oap --- @type string?
-  local toplevel_oap --- @type string?
 
-  if ctx then
-    gitdir_oap = ctx.gitdir
-    toplevel_oap = ctx.toplevel
-    file = ctx.toplevel .. util.path_sep .. ctx.file
-    commit = ctx.commit
-  else
-    if api.nvim_buf_line_count(cbuf) > config.max_file_length then
-      dprint('Exceeds max_file_length')
-      return
-    end
-
-    local force_attach
-    file, commit, force_attach = get_buf_path(cbuf)
-
-    if vim.bo[cbuf].buftype ~= '' and not force_attach then
-      dprint('Non-normal buffer')
-      return
-    end
-
-    local file_dir = util.dirname(file)
-
-    if not file_dir or not util.path_exists(file_dir) then
-      dprint('Not a path')
-      return
-    end
-
-    gitdir_oap, toplevel_oap = on_attach_pre(cbuf)
+  local file = ctx.file
+  if not vim.startswith(file, '/') and ctx.toplevel then
+    file = ctx.toplevel .. util.path_sep .. file
   end
 
-  local git_obj = git.Obj.new(file, encoding, gitdir_oap, toplevel_oap)
+  local git_obj = git.Obj.new(file, encoding, ctx.gitdir, ctx.toplevel)
 
-  if not git_obj and not ctx then
+  if not git_obj and not passed_ctx then
     git_obj = try_worktrees(cbuf, file, encoding)
     async.scheduler()
     if not api.nvim_buf_is_valid(cbuf) then
@@ -303,7 +277,6 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     dprint('Empty git obj')
     return
   end
-  local repo = git_obj.repo
 
   async.scheduler()
   if not api.nvim_buf_is_valid(cbuf) then
@@ -311,17 +284,17 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   end
 
   Status:update(cbuf, {
-    head = repo.abbrev_head,
-    root = repo.toplevel,
-    gitdir = repo.gitdir,
+    head = git_obj.repo.abbrev_head,
+    root = git_obj.repo.toplevel,
+    gitdir = git_obj.repo.gitdir,
   })
 
-  if vim.startswith(file, repo.gitdir .. util.path_sep) then
+  if vim.startswith(file, git_obj.repo.gitdir .. util.path_sep) then
     dprint('In non-standard git dir')
     return
   end
 
-  if not ctx and (not util.path_exists(file) or uv.fs_stat(file).type == 'directory') then
+  if not passed_ctx and (not util.path_exists(file) or uv.fs_stat(file).type == 'directory') then
     dprint('Not a file')
     return
   end
@@ -350,15 +323,15 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   cache[cbuf] = gs_cache.new({
     bufnr = cbuf,
-    base = ctx and ctx.base or config.base,
+    base = ctx.base or config.base,
     file = file,
-    commit = commit,
+    commit = ctx.commit,
     git_obj = git_obj,
   })
 
   if config.watch_gitdir.enable then
     local watcher = require('gitsigns.watcher')
-    cache[cbuf].gitdir_watcher = watcher.watch_gitdir(cbuf, repo.gitdir)
+    cache[cbuf].gitdir_watcher = watcher.watch_gitdir(cbuf, git_obj.repo.gitdir)
   end
 
   if not api.nvim_buf_is_loaded(cbuf) then
@@ -433,14 +406,14 @@ end
 ---     • {file}: (string)
 ---       Path to the file represented by the buffer, relative to the
 ---       top-level.
----     • {toplevel}: (string)
+---     • {toplevel}: (string?)
 ---       Path to the top-level of the parent git repository.
----     • {gitdir}: (string)
+---     • {gitdir}: (string?)
 ---       Path to the git directory of the parent git repository
 ---       (typically the ".git/" directory).
----     • {commit}: (string)
+---     • {commit}: (string?)
 ---       The git revision that the file belongs to.
----     • {base}: (string|nil)
+---     • {base}: (string?)
 ---       The git revision that the file should be compared to.
 --- @param _trigger? string
 M.attach = async.create(3, function(bufnr, ctx, _trigger)

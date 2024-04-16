@@ -6,6 +6,7 @@ local M = {
 
 --- @param name string
 --- @param lvl integer
+--- @return any
 local function getvarvalue(name, lvl)
   lvl = lvl + 1
   local value --- @type any?
@@ -67,6 +68,7 @@ end
 
 -- If called in a callback then make sure the callback defines a __FUNC__
 -- variable which can be used to identify the name of the function.
+--- @param obj any
 --- @param lvl integer
 local function cprint(obj, lvl)
   lvl = lvl + 1

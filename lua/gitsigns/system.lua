@@ -1,8 +1,6 @@
 local log = require('gitsigns.debug.log')
 
-local M = {
-  job_cnt = 0,
-}
+local M = {}
 
 local system = vim.system or require('gitsigns.system.compat')
 
@@ -15,7 +13,6 @@ function M.system(cmd, opts, on_exit)
   if log.debug_mode then
     log.dprint(table.concat(cmd, ' '))
   end
-  M.job_cnt = M.job_cnt + 1
   return system(cmd, opts, on_exit)
 end
 
