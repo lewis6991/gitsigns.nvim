@@ -200,6 +200,10 @@ M.setup = async.create(1, function(cfg)
 
   api.nvim_create_augroup('gitsigns', {})
 
+  if vim.fn.has('nvim-0.9') == 0 then
+    require('gitsigns.git.version').check()
+  end
+
   setup_debug()
   setup_cli()
   require('gitsigns.highlight').setup()
