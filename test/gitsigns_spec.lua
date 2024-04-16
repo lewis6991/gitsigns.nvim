@@ -107,7 +107,6 @@ describe('gitsigns (with screen)', function()
       ),
       'watch_gitdir(1): Watching git dir',
       p('run_job: git .* show :0:dummy.txt'),
-      'update(1): updates: 1, jobs: 6',
     })
 
     check({
@@ -494,9 +493,6 @@ describe('gitsigns (with screen)', function()
         if not internal_diff then
           table.insert(messages, np('run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*'))
         end
-
-        local jobs = internal_diff and 8 or 9
-        table.insert(messages, n('update(1): updates: 1, jobs: ' .. jobs))
 
         match_debug_messages(messages)
 

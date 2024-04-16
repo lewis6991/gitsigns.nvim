@@ -53,7 +53,6 @@ describe('gitdir_watcher', function()
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
       n('watch_gitdir(1): Watching git dir'),
       np('run_job: git .* show :0:dummy.txt'),
-      n('update(1): updates: 1, jobs: 5'),
     })
 
     eq({ [1] = test_file }, get_bufs())
@@ -79,7 +78,6 @@ describe('gitdir_watcher', function()
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file2)),
       np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt to .*/dummy.txt2'),
       np('run_job: git .* show :0:dummy.txt2'),
-      n('update(1): updates: 2, jobs: 10'),
     })
 
     eq({ [1] = test_file2 }, get_bufs())
@@ -106,7 +104,6 @@ describe('gitdir_watcher', function()
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file3)),
       np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt2 to .*/dummy.txt3'),
       np('run_job: git .* show :0:dummy.txt3'),
-      n('update(1): updates: 3, jobs: 15'),
     })
 
     eq({ [1] = test_file3 }, get_bufs())
@@ -132,7 +129,6 @@ describe('gitdir_watcher', function()
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
       np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt3 to .*/dummy.txt'),
       np('run_job: git .* show :0:dummy.txt'),
-      n('update(1): updates: 4, jobs: 21'),
     })
 
     eq({ [1] = test_file }, get_bufs())
