@@ -307,7 +307,7 @@ describe('actions', function()
     setup_test_repo()
     local newfile = helpers.newfile
     exec_lua([[vim.g.editorconfig = false]])
-    system("printf 'This is a file with no nl at eof' > "..newfile)
+    system("printf 'This is a file with no nl at eof' > " .. newfile)
     helpers.gitm({
       { 'add', newfile },
       { 'commit', '-m', 'commit on main' },
@@ -320,5 +320,4 @@ describe('actions', function()
     command('Gitsigns stage_hunk')
     check({ status = { head = 'master', added = 0, changed = 0, removed = 0 } })
   end)
-
 end)

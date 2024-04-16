@@ -211,7 +211,7 @@ local function get_buf_context(bufnr)
     file = file,
     gitdir = gitdir,
     toplevel = toplevel,
-    commit = commit
+    commit = commit,
   }
 end
 

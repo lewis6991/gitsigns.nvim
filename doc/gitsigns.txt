@@ -117,14 +117,14 @@ attach({bufnr}, {ctx}, {callback?})                        *gitsigns.attach()*
                             • {file}: (string)
                               Path to the file represented by the buffer, relative to the
                               top-level.
-                            • {toplevel}: (string)
+                            • {toplevel}: (string?)
                               Path to the top-level of the parent git repository.
-                            • {gitdir}: (string)
+                            • {gitdir}: (string?)
                               Path to the git directory of the parent git repository
                               (typically the ".git/" directory).
-                            • {commit}: (string)
+                            • {commit}: (string?)
                               The git revision that the file belongs to.
-                            • {base}: (string|nil)
+                            • {base}: (string?)
                               The git revision that the file should be compared to.
 
 detach({bufnr})                                            *gitsigns.detach()*

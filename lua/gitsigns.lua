@@ -147,7 +147,7 @@ local function setup_attach()
 
   --- vimpgrep creates and deletes lots of buffers so attaching to each one will
   --- waste lots of resource and even slow down vimgrep.
-  api.nvim_create_autocmd({'QuickFixCmdPre', 'QuickFixCmdPost'}, {
+  api.nvim_create_autocmd({ 'QuickFixCmdPre', 'QuickFixCmdPost' }, {
     group = 'gitsigns',
     pattern = '*vimgrep*',
     callback = function(args)

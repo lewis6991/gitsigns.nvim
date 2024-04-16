@@ -344,7 +344,9 @@ function Repo:try_yadm(dir, gitdir, toplevel)
 
   M.get_repo_info(dir, 'yadm', gitdir, toplevel)
   local yadm_info = M.get_repo_info(dir, 'yadm', gitdir, toplevel)
-  for k, v in pairs(yadm_info --[[@as table<string,any>]]) do
+  for k, v in
+    pairs(yadm_info --[[@as table<string,any>]])
+  do
     ---@diagnostic disable-next-line:no-unknown
     self[k] = v
   end
