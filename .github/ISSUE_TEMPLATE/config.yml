@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+   - name: Question
+     url: https://gitter.im/gitsigns-nvim/community
+     about: Usage questions and support requests are answered in the Gitsigns Gitter

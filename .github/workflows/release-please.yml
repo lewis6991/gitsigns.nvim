@@ -1,0 +1,15 @@
+on:
+  push:
+    branches:
+      - test-rp
+
+name: release-please
+
+jobs:
+  release-please:
+    name: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v4
+        with:
+          target-branch: test-rp
