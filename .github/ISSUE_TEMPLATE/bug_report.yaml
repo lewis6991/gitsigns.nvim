@@ -1,0 +1,84 @@
+name: Bug report
+description: Report a problem with Gitsigns
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Before reporting make sure that Gitsigns is updated to the latest version.
+  - type: textarea
+    attributes:
+      label: "Description"
+      description: "A comprehensive description of the problem you are reporting."
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: "Neovim version"
+      description: |
+        Output of `nvim --version`
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: "Operating system and version"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: "Expected behavior"
+      description: "A description of the behavior you expected:"
+  - type: textarea
+    attributes:
+      label: "Actual behavior"
+      description: "Observed behavior (may optionally include logs, images, or videos)."
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+       label: "Minimal config"
+       description: >
+         Minimal(!) configuration necessary to reproduce the issue. Save this as
+         `minimal.lua`. If necessary, add plugins and config options from your
+         `init.lua` at the indicated lines.
+       render: Lua
+       value: |
+         for name, url in pairs{
+           gitsigns = 'https://github.com/lewis6991/gitsigns.nvim',
+           -- ADD OTHER PLUGINS _NECESSARY_ TO REPRODUCE THE ISSUE
+         } do
+           local install_path = vim.fn.fnamemodify('gitsigns_issue/'..name, ':p')
+           if vim.fn.isdirectory(install_path) == 0 then
+             vim.fn.system { 'git', 'clone', '--depth=1', url, install_path }
+           end
+           vim.opt.runtimepath:append(install_path)
+         end
+
+         require('gitsigns').setup{
+           debug_mode = true, -- You must add this to enable debug messages
+           -- ADD GITSIGNS CONFIG THAT IS _NECESSARY_ FOR REPRODUCING THE ISSUE
+         }
+
+         -- ADD INIT.LUA SETTINGS THAT IS _NECESSARY_ FOR REPRODUCING THE ISSUE
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: "Steps to reproduce"
+      description: >
+        Steps to reproduce using the minimal config provided.
+
+        If this is not provided, the issue may be closed without notice.
+      value: |
+        1. `nvim --clean -u minimal.lua`
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: "Gitsigns debug messages"
+      description: >
+        Please include the output of `:Gitsigns debug_messages`. If you think it's
+        relevant maybe also provide the output of `:Gitsigns dump_cache`.
+
+        Note: You must have `debug_mode = true` in `setup()`.
