@@ -3,16 +3,49 @@ on:
     branches:
       - main
 
+name: release-please
+
 permissions:
   contents: write
   pull-requests: write
 
-name: release-please
-
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
     steps:
       - uses: google-github-actions/release-please-action@v4
+        id: release
+
+  update-doc:
+    needs: release-please
+    if: ${{ ! needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
-          release-type: simple
+          ref: release-please--branches--test-rp
+          # Fetch the last 2 commits instead of just 1. (Fetching just 1 commit would overwrite the whole history)
+          fetch-depth: 2
+
+      - uses: leafo/gh-actions-lua@v9
+        with:
+          luaVersion: "5.1.5"
+
+      - uses: leafo/gh-actions-luarocks@v4
+
+      - name: Update doc
+        run: make gen_help
+
+      - name: Update PR
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+          git remote add gh-token "https://${{ secrets.GITHUB_TOKEN }}@github.com/google-github-actions/release-please-action.git"
+          git diff
+          git add doc
+          git commit --amend --no-edit
+          git push --force
+
