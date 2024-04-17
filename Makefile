@@ -88,7 +88,7 @@ luals:
 .PHONY: luals-check
 luals-check: luals nvim-test
 	VIMRUNTIME=$(XDG_DATA_HOME)/nvim-test/nvim-test-$(NVIM_TEST_VERSION)/share/nvim/runtime \
-		lua-language-server \
+		luals/bin/lua-language-server \
 			--logpath=. \
 			--configpath=../.luarc.json \
 			--check=lua
