@@ -6,6 +6,7 @@ end
 
 -- Return positional arguments and named arguments
 --- @param x string
+--- @return string[], table<string,string|boolean>
 function M.parse_args(x)
   --- @type string[], table<string,string|boolean>
   local pos_args, named_args = {}, {}

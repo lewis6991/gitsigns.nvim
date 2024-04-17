@@ -255,8 +255,8 @@ function M.create_patch(relpath, hunks, mode_bits, invert)
     local now_lines = process_hunk.added.lines
 
     if invert then
-      pre_count, now_count = now_count, pre_count
-      pre_lines, now_lines = now_lines, pre_lines
+      pre_count, now_count = now_count, pre_count --- @type integer, integer
+      pre_lines, now_lines = now_lines, pre_lines --- @type string[], string[]
     end
 
     table.insert(
