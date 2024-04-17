@@ -75,3 +75,20 @@ build: gen_help stylua-run
 doc-check: gen_help
 	git diff --exit-code -- doc
 
+LUALS_VERSION := 3.7.4
+LUALS_TARBALL := lua-language-server-$(LUALS_VERSION)-$(shell uname -s)-$(shell uname -m).tar.gz
+LUALS_URL := https://github.com/LuaLS/lua-language-server/releases/download/$(LUALS_VERSION)/$(LUALS_TARBALL)
+
+luals:
+	wget $(LUALS_URL)
+	mkdir luals
+	tar -xf $(LUALS_TARBALL) -C luals
+	rm -rf $(LUALS_TARBALL)
+
+.PHONY: luals-check
+luals-check: luals nvim-test
+	VIMRUNTIME=$(XDG_DATA_HOME)/nvim-test/nvim-test-$(NVIM_TEST_VERSION)/share/nvim/runtime \
+		lua-language-server \
+			--logpath=. \
+			--configpath=../.luarc.json \
+			--check=lua

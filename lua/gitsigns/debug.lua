@@ -6,6 +6,7 @@ local M = {}
 --- @param path string[]
 --- @return any
 local function process(raw_item, path)
+  --- @diagnostic disable-next-line:undefined-field
   if path[#path] == vim.inspect.METATABLE then
     return nil
   elseif type(raw_item) == 'function' then

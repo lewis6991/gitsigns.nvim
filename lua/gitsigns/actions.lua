@@ -268,6 +268,8 @@ end
 ---               Stage all contiguous hunks. Only useful if 'diff_opts'
 ---               contains `linematch`. Defaults to `true`.
 M.stage_hunk = mk_repeatable(async.create(2, function(range, opts)
+  --- @cast range {[1]: integer, [2]: integer}?
+
   opts = opts or {}
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -334,6 +336,8 @@ end
 ---       Stage all contiguous hunks. Only useful if 'diff_opts'
 ---       contains `linematch`. Defaults to `true`.
 M.reset_hunk = mk_repeatable(async.create(2, function(range, opts)
+  --- @cast range {[1]: integer, [2]: integer}?
+
   opts = opts or {}
   local bufnr = current_buf()
   local bcache = cache[bufnr]

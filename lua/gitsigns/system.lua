@@ -5,7 +5,7 @@ local M = {}
 local system = vim.system or require('gitsigns.system.compat')
 
 --- @param cmd string[]
---- @param opts SystemOpts
+--- @param opts vim.SystemOpts
 --- @param on_exit fun(obj: vim.SystemCompleted)
 --- @return vim.SystemObj
 function M.system(cmd, opts, on_exit)
