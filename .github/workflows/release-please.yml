@@ -17,3 +17,4 @@ jobs:
         with:
           token: ${{ secrets.MY_RELEASE_PLEASE_TOKEN }}
           release-type: simple
+          config-file: release-please-config.json
