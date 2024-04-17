@@ -330,11 +330,13 @@ end
 --- @param gitdir? string
 --- @param toplevel? string
 function Repo:try_yadm(dir, gitdir, toplevel)
-  if not config.yadm.enable and self.gitdir then
+  if not config.yadm.enable or self.gitdir then
     return
   end
 
-  if not vim.startswith(dir, assert(os.getenv('HOME'))) then
+  local home = os.getenv('HOME')
+
+  if not home or not vim.startswith(dir, home) then
     return
   end
 
