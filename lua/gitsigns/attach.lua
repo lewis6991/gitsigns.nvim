@@ -165,7 +165,11 @@ local setup = util.once(function()
     pattern = { 'fileformat', 'bomb', 'eol' },
     callback = function()
       local buf = vim.api.nvim_get_current_buf()
-      cache[buf]:invalidate(true)
+      local bcache = cache[buf]
+      if not bcache then
+        return
+      end
+      bcache:invalidate(true)
       manager.update(buf)
     end,
   })
