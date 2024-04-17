@@ -15,6 +15,4 @@ jobs:
     steps:
       - uses: google-github-actions/release-please-action@v4
         with:
-          token: ${{ secrets.MY_RELEASE_PLEASE_TOKEN }}
           release-type: simple
-          config-file: release-please-config.json
