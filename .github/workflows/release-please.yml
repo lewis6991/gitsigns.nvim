@@ -30,7 +30,7 @@ jobs:
           # Fetch the last 2 commits instead of just 1. (Fetching just 1 commit would overwrite the whole history)
           fetch-depth: 2
 
-      - uses: leafo/gh-actions-lua@v9
+      - uses: leafo/gh-actions-lua@v10
         with:
           luaVersion: "5.1.5"
 
