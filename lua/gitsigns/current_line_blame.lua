@@ -172,6 +172,10 @@ local function update0(bufnr)
 
   local blame_info = bcache:get_blame(lnum, opts)
 
+  if not api.nvim_win_is_valid(winid) or bufnr ~= api.nvim_win_get_buf(winid) then
+    return
+  end
+
   if not blame_info then
     return
   end
