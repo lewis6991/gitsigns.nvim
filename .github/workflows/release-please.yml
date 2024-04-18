@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - uses: google-github-actions/release-please-action@v4
         id: release
@@ -35,7 +36,7 @@ jobs:
         with:
           fetch-depth: 0 # Required to count the commits
       - name: Get Version
-        run: echo "LUAROCKS_VERSION=$(git describe --abbrev=0 --tags)" >> $GITHUB_ENV
+        run: echo "LUAROCKS_VERSION=${{ needs.release-please.outputs.tag_name }}" >> $GITHUB_ENV
       - name: LuaRocks Upload
         uses: nvim-neorocks/luarocks-tag-release@v5
         env:
