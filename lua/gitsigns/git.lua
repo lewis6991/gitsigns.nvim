@@ -340,7 +340,7 @@ function Repo:try_yadm(dir, gitdir, toplevel)
     return
   end
 
-  if not #git_command({ 'ls-files', dir }, { command = 'yadm' }) ~= 0 then
+  if #git_command({ 'ls-files', dir }, { command = 'yadm' }) == 0 then
     return
   end
 
