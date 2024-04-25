@@ -1026,7 +1026,10 @@ end
 --- @param bcache Gitsigns.CacheEntry
 --- @param base string?
 local function update_buf_base(bcache, base)
-  bcache.base = base
+  bcache.file_mode = base == 'FILE'
+  if not bcache.file_mode then
+    bcache.git_obj:update_revision(base)
+  end
   bcache:invalidate(true)
   update(bcache.bufnr)
 end
@@ -1064,7 +1067,7 @@ end
 --- @param base string|nil The object/revision to diff against.
 --- @param global boolean|nil Change the base of all buffers.
 M.change_base = async.create(2, function(base, global)
-  base = util.calc_base(base)
+  base = util.norm_base(base)
 
   if global then
     config.base = base

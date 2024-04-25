@@ -223,7 +223,10 @@ end
 
 --- @param base? string
 --- @return string?
-function M.calc_base(base)
+function M.norm_base(base)
+  if base == ':0' then
+    return
+  end
   if base and base:sub(1, 1):match('[~\\^]') then
     base = 'HEAD' .. base
   end

@@ -49,10 +49,7 @@ local function parse_gitsigns_uri(name)
   -- TODO(lewis6991): Support submodules
   --- @type any, any, string?, string?, string
   local _, _, root_path, commit, rel_path = name:find([[^gitsigns://(.*)/%.git/(.*):(.*)]])
-  if commit == ':0' then
-    -- ':0' means the index so clear commit so we attach normally
-    commit = nil
-  end
+  commit = util.norm_base(commit)
   if root_path then
     name = root_path .. '/' .. rel_path
   end
@@ -186,7 +183,6 @@ end)
 --- @field file string
 --- @field toplevel? string
 --- @field gitdir? string
---- @field commit? string
 --- @field base? string
 
 --- @param bufnr integer
@@ -215,7 +211,13 @@ local function get_buf_context(bufnr)
     file = file,
     gitdir = gitdir,
     toplevel = toplevel,
-    commit = commit,
+    -- Commit buffers have there base set back one revision with '^'
+    -- Stage buffers always compare against the common ancestor (':1')
+    -- :0: index
+    -- :1: common ancestor
+    -- :2: target commit (HEAD)
+    -- :3: commit which is being merged
+    base = commit and (commit:match('^:[1-3]') and ':1' or commit .. '^') or nil,
   }
 end
 
@@ -267,7 +269,8 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     file = ctx.toplevel .. util.path_sep .. file
   end
 
-  local git_obj = git.Obj.new(file, encoding, ctx.gitdir, ctx.toplevel)
+  local revision = ctx.base or config.base
+  local git_obj = git.Obj.new(file, revision, encoding, ctx.gitdir, ctx.toplevel)
 
   if not git_obj and not passed_ctx then
     git_obj = try_worktrees(cbuf, file, encoding)
@@ -322,9 +325,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   cache[cbuf] = gs_cache.new({
     bufnr = cbuf,
-    base = ctx.base or config.base,
     file = file,
-    commit = ctx.commit,
     git_obj = git_obj,
   })
 

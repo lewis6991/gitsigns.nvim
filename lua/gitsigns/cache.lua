@@ -9,10 +9,10 @@ local M = {
 --- @class (exact) Gitsigns.CacheEntry
 --- @field bufnr              integer
 --- @field file               string
---- @field base?              string
 --- @field compare_text?      string[]
 --- @field hunks?             Gitsigns.Hunk.Hunk[]
 --- @field force_next_update? boolean
+--- @field file_mode?         boolean
 ---
 --- @field compare_text_head? string[]
 --- @field hunks_staged?      Gitsigns.Hunk.Hunk[]
@@ -20,31 +20,11 @@ local M = {
 --- @field staged_diffs?      Gitsigns.Hunk.Hunk[]
 --- @field gitdir_watcher?    uv.uv_fs_event_t
 --- @field git_obj            Gitsigns.GitObj
---- @field commit?            string
 --- @field blame?             table<integer,Gitsigns.BlameInfo?>
 local CacheEntry = M.CacheEntry
 
-function CacheEntry:get_compare_rev(base)
-  base = base or self.base
-  if base then
-    return base
-  end
-
-  if self.commit then
-    -- Buffer is a fugitive commit so compare against the parent of the commit
-    if config._signs_staged_enable then
-      return self.commit
-    else
-      return string.format('%s^', self.commit)
-    end
-  end
-
-  local stage = self.git_obj.has_conflicts and 1 or 0
-  return string.format(':%d', stage)
-end
-
 function CacheEntry:get_rev_bufname(rev)
-  rev = rev or self:get_compare_rev()
+  rev = rev or self.git_obj.revision or ':0'
   return string.format('gitsigns://%s/%s:%s', self.git_obj.repo.gitdir, rev, self.git_obj.relpath)
 end
 

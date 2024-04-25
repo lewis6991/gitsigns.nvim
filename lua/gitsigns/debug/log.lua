@@ -130,6 +130,9 @@ function M.eprintf(fmt, ...)
   eprint(fmt:format(...), 1)
 end
 
+--- @param cond boolean
+--- @param msg string
+--- @return boolean
 function M.assert(cond, msg)
   if not cond then
     eprint(msg, 1)
