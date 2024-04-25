@@ -72,7 +72,7 @@ local function apply_win_signs(bufnr, top, bot, clear)
     return
   end
 
-  local untracked = bcache.git_obj.object_name == nil and not bcache.base
+  local untracked = bcache.git_obj.object_name == nil
   apply_win_signs0(bufnr, signs_normal, bcache.hunks, top, bot, clear, untracked)
   if signs_staged then
     apply_win_signs0(bufnr, signs_staged, bcache.hunks_staged, top, bot, clear, false)
@@ -468,13 +468,14 @@ M.update = throttle_by_id(function(bufnr)
   bcache.hunks, bcache.hunks_staged = nil, nil
 
   local git_obj = bcache.git_obj
-
-  local compare_rev = bcache:get_compare_rev()
-
-  local file_mode = compare_rev == 'FILE'
+  local file_mode = bcache.file_mode
 
   if not bcache.compare_text or config._refresh_staged_on_update or file_mode then
-    bcache.compare_text = git_obj:get_show_text(compare_rev)
+    if file_mode then
+      bcache.compare_text = util.file_lines(git_obj.file)
+    else
+      bcache.compare_text = git_obj:get_show_text()
+    end
     if not M.schedule(bufnr, true) then
       return
     end
@@ -487,10 +488,9 @@ M.update = throttle_by_id(function(bufnr)
     return
   end
 
-  if config._signs_staged_enable and not file_mode then
+  if config._signs_staged_enable and not file_mode and not git_obj.revision then
     if not bcache.compare_text_head or config._refresh_staged_on_update then
-      local staged_compare_rev = bcache.commit and string.format('%s^', bcache.commit) or 'HEAD'
-      bcache.compare_text_head = git_obj:get_show_text(staged_compare_rev)
+      bcache.compare_text_head = git_obj:get_show_text('HEAD')
       if not M.schedule(bufnr, true) then
         return
       end

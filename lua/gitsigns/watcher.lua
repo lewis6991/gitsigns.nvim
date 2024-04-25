@@ -43,7 +43,7 @@ local function handle_moved(bufnr, old_relpath)
 
   git_obj.file = git_obj.repo.toplevel .. util.path_sep .. git_obj.relpath
   bcache.file = git_obj.file
-  git_obj:update_file_info()
+  git_obj:update()
   if not manager.schedule(bufnr) then
     return
   end
@@ -82,7 +82,7 @@ local watcher_handler = async.create(1, function(bufnr)
   local was_tracked = git_obj.object_name ~= nil
   local old_relpath = git_obj.relpath
 
-  git_obj:update_file_info()
+  git_obj:update()
   if not manager.schedule(bufnr) then
     return
   end

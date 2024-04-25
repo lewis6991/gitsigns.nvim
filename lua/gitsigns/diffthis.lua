@@ -17,13 +17,13 @@ local M = {}
 --- @param base string?
 local function bufread(bufnr, dbufnr, base)
   local bcache = cache[bufnr]
-  local comp_rev = bcache:get_compare_rev(util.calc_base(base))
+  base = util.norm_base(base)
   local text --- @type string[]
-  if util.calc_base(base) == util.calc_base(bcache.base) then
+  if base == bcache.git_obj.revision then
     text = assert(bcache.compare_text)
   else
     local err
-    text, err = bcache.git_obj:get_show_text(comp_rev)
+    text, err = bcache.git_obj:get_show_text(base)
     if err then
       error(err, 2)
     end
@@ -39,7 +39,7 @@ local function bufread(bufnr, dbufnr, base)
 
   local modifiable = vim.bo[dbufnr].modifiable
   vim.bo[dbufnr].modifiable = true
-  Status:update(dbufnr, { head = comp_rev })
+  Status:update(dbufnr, { head = base })
 
   util.set_lines(dbufnr, 0, -1, text)
 
@@ -54,15 +54,16 @@ end
 local bufwrite = async.create(3, function(bufnr, dbufnr, base)
   local bcache = cache[bufnr]
   local buftext = util.buf_lines(dbufnr)
+  base = util.norm_base(base)
   bcache.git_obj:stage_lines(buftext)
   async.scheduler()
   if not api.nvim_buf_is_valid(bufnr) then
     return
   end
   vim.bo[dbufnr].modified = false
-  -- If diff buffer base matches the bcache base then also update the
+  -- If diff buffer base matches the git_obj revision then also update the
   -- signs.
-  if util.calc_base(base) == util.calc_base(bcache.base) then
+  if base == bcache.git_obj.revision then
     bcache.compare_text = buftext
     manager.update(bufnr)
   end
@@ -75,9 +76,9 @@ end)
 --- @return string? buf Buffer name
 local function create_show_buf(bufnr, base)
   local bcache = assert(cache[bufnr])
+  base = util.norm_base(base)
 
-  local revision = bcache:get_compare_rev(util.calc_base(base))
-  local bufname = bcache:get_rev_bufname(revision)
+  local bufname = bcache:get_rev_bufname(base)
 
   if util.bufexists(bufname) then
     return bufname
@@ -95,7 +96,7 @@ local function create_show_buf(bufnr, base)
   end
 
   -- allow editing the index revision
-  if revision == ':0' then
+  if not bcache.git_obj.revision then
     vim.bo[dbuf].buftype = 'acwrite'
 
     api.nvim_create_autocmd('BufReadCmd', {

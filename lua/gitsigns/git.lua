@@ -38,7 +38,8 @@ end
 --- @field i_crlf boolean Object has crlf
 --- @field w_crlf boolean Working copy has crlf
 --- @field mode_bits string
---- @field object_name string
+--- @field revision? string Revision the object is tracking against. Nil for index
+--- @field object_name string The fixed object name to use.
 --- @field relpath string
 --- @field orig_relpath? string Use for tracking moved files
 --- @field repo Gitsigns.Repo
@@ -72,6 +73,7 @@ local function git_command(args, spec)
   local cmd = {
     spec.command or 'git',
     '--no-pager',
+    '--no-optional-locks',
     '--literal-pathspecs',
     '-c',
     'gc.auto=0', -- Disable auto-packing which emits messages to stderr
@@ -95,7 +97,7 @@ local function git_command(args, spec)
     log.eprintf("Received exit code %d when running command\n'%s':\n%s", obj.code, cmd_str, stderr)
   end
 
-  local stdout_lines = vim.split(stdout or '', '\n', { plain = true })
+  local stdout_lines = vim.split(stdout or '', '\n')
 
   if spec.text then
     -- If stdout ends with a newline, then remove the final empty string after
@@ -388,10 +390,17 @@ function Obj:command(args, spec)
   return self.repo:command(args, spec)
 end
 
+--- @param revision? string
+function Obj:update_revision(revision)
+  revision = util.norm_base(revision)
+  self.revision = revision
+  self:update()
+end
+
 --- @param update_relpath? boolean
 --- @param silent? boolean
 --- @return boolean
-function Obj:update_file_info(update_relpath, silent)
+function Obj:update(update_relpath, silent)
   local old_object_name = self.object_name
   local props = self:file_info(self.file, silent)
 
@@ -409,16 +418,28 @@ end
 
 --- @class (exact) Gitsigns.FileInfo
 --- @field relpath string
---- @field i_crlf boolean
---- @field w_crlf boolean
---- @field mode_bits string
---- @field object_name string
---- @field has_conflicts true?
+--- @field i_crlf? boolean
+--- @field w_crlf? boolean
+--- @field mode_bits? string
+--- @field object_name? string
+--- @field has_conflicts? true
 
---- @param file string
+--- @param file? string
 --- @param silent? boolean
 --- @return Gitsigns.FileInfo
 function Obj:file_info(file, silent)
+  if self.revision and not vim.startswith(self.revision, ':') then
+    return self:file_info_tree(file, silent)
+  else
+    return self:file_info_index(file, silent)
+  end
+end
+
+--- @private
+--- @param file? string
+--- @param silent? boolean
+--- @return Gitsigns.FileInfo
+function Obj:file_info_index(file, silent)
   local has_eol = check_version({ 2, 9 })
 
   local cmd = {
@@ -473,21 +494,57 @@ function Obj:file_info(file, silent)
       result.relpath = parts[relpath_idx]
     end
   end
+
   return result
 end
 
---- @param revision string
---- @return string[] stdout, string? stderr
-function Obj:get_show_text(revision)
-  if revision == 'FILE' then
-    return util.file_lines(self.file)
-  end
+--- @private
+--- @param file? string
+--- @param silent? boolean
+--- @return Gitsigns.FileInfo
+function Obj:file_info_tree(file, silent)
+  local results, stderr = self:command({
+    '-c',
+    'core.quotepath=off',
+    'ls-tree',
+    self.revision,
+    file or self.file,
+  }, { ignore_error = true })
 
-  if not self.relpath then
+  if stderr then
+    if not silent then
+      log.eprint(stderr)
+    end
     return {}
   end
 
-  local stdout, stderr = self.repo:get_show_text(revision .. ':' .. self.relpath, self.encoding)
+  local info, relpath = unpack(vim.split(results[1], '\t'))
+  local mode_bits, objtype, object_name = unpack(vim.split(info, '%s+'))
+  assert(objtype == 'blob')
+
+  return {
+    mode_bits = mode_bits,
+    object_name = object_name,
+    relpath = relpath,
+  }
+end
+
+--- @param revision? string
+--- @return string[] stdout, string? stderr
+function Obj:get_show_text(revision)
+  if revision and not self.relpath then
+    dprint('no relpath')
+    return {}
+  end
+
+  local object = revision and (revision .. ':' .. self.relpath) or self.object_name
+
+  if not object then
+    dprint('no revision or object_name')
+    return { '' }
+  end
+
+  local stdout, stderr = self.repo:get_show_text(object, self.encoding)
 
   if not self.i_crlf and self.w_crlf then
     -- Add cr
@@ -738,7 +795,7 @@ local function ensure_file_in_index(obj)
     obj:command({ 'update-index', '--add', '--cacheinfo', info })
   end
 
-  obj:update_file_info()
+  obj:update()
 end
 
 --- Stage 'lines' as the entire contents of the file
@@ -811,11 +868,12 @@ function Obj:has_moved()
 end
 
 --- @param file string
+--- @param revision string?
 --- @param encoding string
 --- @param gitdir string?
 --- @param toplevel string?
 --- @return Gitsigns.GitObj?
-function Obj.new(file, encoding, gitdir, toplevel)
+function Obj.new(file, revision, encoding, gitdir, toplevel)
   if in_git_dir(file) then
     dprint('In git dir')
     return nil
@@ -827,6 +885,7 @@ function Obj.new(file, encoding, gitdir, toplevel)
   end
 
   self.file = file
+  self.revision = util.norm_base(revision)
   self.encoding = encoding
   self.repo = Repo.new(util.dirname(file), gitdir, toplevel)
 
@@ -838,7 +897,7 @@ function Obj.new(file, encoding, gitdir, toplevel)
   -- When passing gitdir and toplevel, suppress stderr when resolving the file
   local silent = gitdir ~= nil and toplevel ~= nil
 
-  self:update_file_info(true, silent)
+  self:update(true, silent)
 
   return self
 end

@@ -106,7 +106,6 @@ describe('gitsigns (with screen)', function()
           .. vim.pesc(test_file)
       ),
       'watch_gitdir(1): Watching git dir',
-      p('run_job: git .* show :0:dummy.txt'),
     })
 
     check({
@@ -487,7 +486,6 @@ describe('gitsigns (with screen)', function()
           ),
           np('run_job: git .* ls%-files .*'),
           n('watch_gitdir(1): Watching git dir'),
-          np('run_job: git .* show :0:newfile.txt'),
         }
 
         if not internal_diff then
