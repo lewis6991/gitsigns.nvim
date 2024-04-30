@@ -18,6 +18,8 @@ jobs:
     steps:
       - uses: google-github-actions/release-please-action@v4
         id: release
+      - uses: actions/checkout@v3
+        if: ${{ steps.release.outputs.release_created }}
       - name: tag stable versions
         if: ${{ steps.release.outputs.release_created }}
         run: |
