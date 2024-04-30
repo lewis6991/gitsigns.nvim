@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.8.1](https://github.com/lewis6991/gitsigns.nvim/compare/v0.8.0...v0.8.1) (2024-04-30)
+
+
+### Bug Fixes
+
+* **blame:** check win is valid after running blame ([7e38f07](https://github.com/lewis6991/gitsigns.nvim/commit/7e38f07cab0e5387f9f41e92474db174a63a4725))
+* **reset:** handle 'endofline' when resetting hunks ([7aa9a56](https://github.com/lewis6991/gitsigns.nvim/commit/7aa9a567127d679c6ca639e9e88c546d72924296))
+* **yadm:** correct ls-files check ([035da03](https://github.com/lewis6991/gitsigns.nvim/commit/035da036e68e509ed158414416c827d022d914bd))
+
 ## [0.8.0](https://github.com/lewis6991/gitsigns.nvim/compare/v0.7.0...v0.8.0) (2024-04-17)
 
 
