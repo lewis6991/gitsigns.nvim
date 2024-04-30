@@ -318,6 +318,13 @@ local function reset_hunk(bufnr, hunk)
     lstart = hunk.added.start - 1
     lend = hunk.added.start - 1 + hunk.added.count
   end
+
+  if hunk.removed.no_nl_at_eof ~= hunk.added.no_nl_at_eof then
+    local no_eol = hunk.added.no_nl_at_eof or false
+    vim.bo[bufnr].endofline = no_eol
+    vim.bo[bufnr].fixendofline = no_eol
+  end
+
   util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
 end
 
