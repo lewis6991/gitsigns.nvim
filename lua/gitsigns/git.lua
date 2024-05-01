@@ -480,7 +480,7 @@ end
 --- @return string[] stdout, string? stderr
 function Obj:get_show_text(revision)
   if revision == 'FILE' then
-    return util.file_lines(self.file, { raw = true })
+    return util.file_lines(self.file)
   end
 
   if not self.relpath then

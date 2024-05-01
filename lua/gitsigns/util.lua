@@ -25,20 +25,12 @@ function M.dirname(file)
 end
 
 --- @param path string
---- @param opts {raw: boolean}?
 --- @return string[]
-function M.file_lines(path, opts)
-  opts = opts or {}
-  local file = assert(io.open(path))
+function M.file_lines(path)
+  local file = assert(io.open(path, 'rb'))
   local contents = file:read('*a')
-  local lines = vim.split(contents, '\n', { plain = true })
-  if not opts.raw then
-    -- If contents ends with a newline, then remove the final empty string after the split
-    if lines[#lines] == '' then
-      lines[#lines] = nil
-    end
-  end
-  return lines
+  file:close()
+  return vim.split(contents, '\n')
 end
 
 M.path_sep = package.config:sub(1, 1)
