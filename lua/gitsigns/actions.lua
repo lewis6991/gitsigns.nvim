@@ -1254,7 +1254,7 @@ local function buildqflist(target)
         if stat and stat.type == 'file' then
           local a = r:get_show_text(':0:' .. f)
           async.scheduler()
-          local hunks = run_diff(a, util.file_lines(f_abs, { raw = true }))
+          local hunks = run_diff(a, util.file_lines(f_abs))
           hunks_to_qflist(f_abs, hunks, qflist)
         end
       end
