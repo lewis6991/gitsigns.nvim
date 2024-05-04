@@ -183,6 +183,15 @@ function M.get_relative_time(timestamp)
   end
 end
 
+--- @param opts vim.api.keyset.redraw
+function M.redraw(opts)
+  if vim.fn.has('nvim-0.10') == 1 then
+    vim.api.nvim__redraw(opts)
+  else
+    vim.api.nvim__buf_redraw(opts.buf, opts.range[1], opts.range[2])
+  end
+end
+
 --- @param xs string[]
 --- @return boolean
 local function is_dos(xs)

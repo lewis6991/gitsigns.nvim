@@ -115,7 +115,7 @@ M.toggle_word_diff = function(value)
     config.word_diff = not config.word_diff
   end
   -- Don't use refresh() to avoid flicker
-  api.nvim__buf_redraw_range(0, vim.fn.line('w0') - 1, vim.fn.line('w$'))
+  util.redraw({ buf = 0, range = { vim.fn.line('w0') - 1, vim.fn.line('w$') } })
   return config.word_diff
 end
 
