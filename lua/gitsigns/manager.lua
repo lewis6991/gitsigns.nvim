@@ -210,7 +210,7 @@ local function apply_word_diff(bufnr, row)
     end
 
     api.nvim_buf_set_extmark(bufnr, ns, row, scol, opts)
-    api.nvim__buf_redraw_range(bufnr, row, row + 1)
+    util.redraw({ buf = bufnr, range = { row, row + 1 } })
   end
 end
 
