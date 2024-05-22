@@ -27,6 +27,7 @@ jobs:
         neovim_branch:
           - 'v0.8.3'
           - 'v0.9.5'
+          - 'v0.10.0'
           - 'nightly'
 
     env:
