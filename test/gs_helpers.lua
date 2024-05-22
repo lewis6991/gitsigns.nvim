@@ -15,8 +15,6 @@ M.gitdir = M.scratch .. '/.git'
 M.test_file = M.scratch .. '/dummy.txt'
 M.newfile = M.scratch .. '/newfile.txt'
 
-local extmark_signs = os.getenv('NVIM_TEST_VERSION') ~= 'v0.8.3'
-
 M.test_config = {
   debug_mode = true,
   _test_mode = true,
@@ -37,7 +35,6 @@ M.test_config = {
     { 'n', 'mhU', '<cmd>lua require"gitsigns".reset_buffer_index()<CR>' },
   },
   attach_to_untracked = true,
-  _extmark_signs = extmark_signs,
   update_debounce = 5,
 }
 
@@ -299,19 +296,11 @@ local function check_status(status)
 end
 
 --- @param signs table<string,integer>
---- @param extmarks boolean
-local function check_signs(signs, extmarks)
+local function check_signs(signs)
   local buf_signs = {} --- @type string[]
-  if extmarks then
-    local buf_marks = helpers.api.nvim_buf_get_extmarks(0, -1, 0, -1, { details = true })
-    for _, s in ipairs(buf_marks) do
-      buf_signs[#buf_signs + 1] = s[4].sign_hl_group
-    end
-  else
-    local buf_vimsigns = helpers.fn.sign_getplaced('%', { group = '*' })[1].signs
-    for _, s in ipairs(buf_vimsigns) do
-      buf_signs[#buf_signs + 1] = s.name
-    end
+  local buf_marks = helpers.api.nvim_buf_get_extmarks(0, -1, 0, -1, { details = true })
+  for _, s in ipairs(buf_marks) do
+    buf_signs[#buf_signs + 1] = s[4].sign_hl_group
   end
 
   --- @type table<string,integer>
@@ -351,7 +340,7 @@ function M.check(attrs, interval)
     end
 
     if signs then
-      check_signs(signs, extmark_signs)
+      check_signs(signs)
     end
   end, interval)
 end

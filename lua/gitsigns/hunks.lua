@@ -29,8 +29,6 @@ local min, max = math.min, math.max
 
 local M = {}
 
--- For internal use
-
 --- @param old_start integer
 --- @param old_count integer
 --- @param new_start integer
