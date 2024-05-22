@@ -1,5 +1,4 @@
 local async = require('gitsigns.async')
-local config = require('gitsigns.config').config
 local util = require('gitsigns.util')
 
 local M = {

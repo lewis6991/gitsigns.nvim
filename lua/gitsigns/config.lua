@@ -99,7 +99,6 @@
 --- @field _refresh_staged_on_update boolean
 --- @field _threaded_diff boolean
 --- @field _inline2 boolean
---- @field _extmark_signs boolean
 --- @field _git_version string
 --- @field _verbose boolean
 --- @field _test_mode boolean
@@ -849,14 +848,6 @@ M.schema = {
     default = true,
     description = [[
       Enable enhanced version of preview_hunk_inline()
-    ]],
-  },
-
-  _extmark_signs = {
-    type = 'boolean',
-    default = true,
-    description = [[
-      Use extmarks for placing signs.
     ]],
   },
 
