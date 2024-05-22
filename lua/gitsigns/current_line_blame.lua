@@ -43,8 +43,8 @@ end
 
 --- @param winid integer
 --- @return integer
-local function win_width(winid)
-  winid = winid or api.nvim_get_current_win()
+local function win_width()
+  local winid = api.nvim_get_current_win()
   local wininfo = vim.fn.getwininfo(winid)[1]
   local textoff = wininfo and wininfo.textoff or 0
   return api.nvim_win_get_width(winid) - textoff
@@ -54,7 +54,8 @@ end
 --- @param lnum integer
 --- @return integer
 local function line_len(bufnr, lnum)
-  return #api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, true)[1]
+  local line = api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, true)[1]
+  return api.nvim_strwidth(line)
 end
 
 --- @param fmt string
@@ -103,7 +104,7 @@ local function handle_blame_info(bufnr, lnum, blame_info, opts)
   if opts.virt_text then
     local virt_text_pos = opts.virt_text_pos
     if virt_text_pos == 'right_align' then
-      if #virt_text_str > (win_width(0) - line_len(bufnr, lnum)) then
+      if api.nvim_strwidth(virt_text_str) > (win_width() - line_len(bufnr, lnum)) then
         virt_text_pos = 'eol'
       end
     end
