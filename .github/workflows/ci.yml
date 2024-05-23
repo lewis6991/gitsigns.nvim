@@ -23,9 +23,13 @@ jobs:
     timeout-minutes: 10
 
     strategy:
+
+      # Nightly can often fail as it is a moving target so disable fail-fast so
+      # we can always see if the over versions pass or not.
+      fail-fast: false
+
       matrix:
         neovim_branch:
-          - 'v0.8.3'
           - 'v0.9.5'
           - 'v0.10.0'
           - 'nightly'
