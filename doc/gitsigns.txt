@@ -93,11 +93,8 @@ Note functions with the {async} attribute are run asynchronously and accept
 an optional {callback} argument.
 
 
-setup({cfg}, {callback?})                                   *gitsigns.setup()*
+setup({cfg})                                                *gitsigns.setup()*
                 Setup and start Gitsigns.
-
-                Attributes: ~
-                    {async}
 
                 Parameters: ~
                     {cfg} (table|nil): Configuration for Gitsigns.

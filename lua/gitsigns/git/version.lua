@@ -34,6 +34,7 @@ local function parse_version(version)
   return ret
 end
 
+--- @async
 local function set_version()
   local version = gs_config.config._git_version
   if version ~= 'auto' then
@@ -70,6 +71,7 @@ local function set_version()
   M.version = parse_version(parts[3])
 end
 
+--- @async
 --- Usage: check_version{2,3}
 --- @param version {[1]: integer, [2]:integer, [3]:integer}?
 --- @return boolean
