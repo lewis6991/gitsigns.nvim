@@ -259,17 +259,11 @@ function M.setup_gitsigns(config, on_attach)
           return false
         end
       end
-      _SETUP_DONE = false
-      require('gitsigns').setup(config, function()
-        _SETUP_DONE = true
-      end)
+      require('gitsigns').setup(config)
     ]],
     config,
     on_attach
   )
-  M.expectf(function()
-    return exec_lua([[return _SETUP_DONE]])
-  end)
 end
 
 --- @param status table<string,string|integer>

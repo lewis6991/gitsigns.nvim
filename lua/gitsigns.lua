@@ -12,10 +12,32 @@ local M = {}
 local cwd_watcher ---@type uv.uv_fs_event_t?
 
 --- @async
-local function update_cwd_head()
-  if not uv.cwd() then
+--- @return string gitdir
+--- @return string head
+local function get_gitdir_and_head()
+  local cwd = assert(uv.cwd())
+
+  -- Look in the cache first
+  for _, bcache in pairs(require('gitsigns.cache').cache) do
+    local repo = bcache.git_obj.repo
+    if repo.toplevel == cwd then
+      return repo.gitdir, repo.abbrev_head
+    end
+  end
+
+  local info = require('gitsigns.git').get_repo_info(cwd)
+  async.scheduler()
+
+  return info.gitdir, info.abbrev_head
+end
+
+local update_cwd_head = async.create(function()
+  local cwd = uv.cwd()
+
+  if not cwd then
     return
   end
+
   local paths = vim.fs.find('.git', {
     limit = 1,
     upward = true,
@@ -26,37 +48,7 @@ local function update_cwd_head()
     return
   end
 
-  if cwd_watcher then
-    cwd_watcher:stop()
-  else
-    cwd_watcher = assert(uv.new_fs_event())
-  end
-
-  local cwd = assert(uv.cwd())
-  --- @type string, string
-  local gitdir, head
-
-  local gs_cache = require('gitsigns.cache')
-
-  -- Look in the cache first
-  for _, bcache in pairs(gs_cache.cache) do
-    local repo = bcache.git_obj.repo
-    if repo.toplevel == cwd then
-      head = repo.abbrev_head
-      gitdir = repo.gitdir
-      break
-    end
-  end
-
-  local git = require('gitsigns.git')
-
-  if not head or not gitdir then
-    local info = git.get_repo_info(cwd)
-    gitdir = info.gitdir
-    head = info.abbrev_head
-  end
-
-  async.scheduler()
+  local gitdir, head = get_gitdir_and_head()
 
   api.nvim_exec_autocmds('User', {
     pattern = 'GitSignsUpdate',
@@ -71,6 +63,12 @@ local function update_cwd_head()
 
   local towatch = gitdir .. '/HEAD'
 
+  if cwd_watcher then
+    cwd_watcher:stop()
+  else
+    cwd_watcher = assert(uv.new_fs_event())
+  end
+
   if cwd_watcher:getpath() == towatch then
     -- Already watching
     return
@@ -81,6 +79,7 @@ local function update_cwd_head()
   local update_head = debounce_trailing(
     100,
     async.create(function()
+      local git = require('gitsigns.git')
       local new_head = git.get_repo_info(cwd).abbrev_head
       async.scheduler()
       vim.g.gitsigns_head = new_head
@@ -102,7 +101,7 @@ local function update_cwd_head()
       update_head()
     end)
   )
-end
+end)
 
 local function setup_cli()
   api.nvim_create_user_command('Gitsigns', function(params)
@@ -127,8 +126,6 @@ local function setup_attach()
   if not config.auto_attach then
     return
   end
-
-  async.scheduler()
 
   local attach_autocmd_disabled = false
 
@@ -165,13 +162,11 @@ local function setup_attach()
   end
 end
 
---- @async
 local function setup_cwd_head()
-  async.scheduler()
-  update_cwd_head()
-
   local debounce = require('gitsigns.debounce').debounce_trailing
-  local update_cwd_head_debounced = debounce(100, async.create(update_cwd_head))
+  local update_cwd_head_debounced = debounce(100, update_cwd_head)
+
+  update_cwd_head_debounced()
 
   -- Need to debounce in case some plugin changes the cwd too often
   -- (like vim-grepper)
@@ -185,12 +180,9 @@ end
 
 --- Setup and start Gitsigns.
 ---
---- Attributes: ~
----     {async}
----
 --- @param cfg table|nil Configuration for Gitsigns.
 ---     See |gitsigns-usage| for more details.
-M.setup = async.create(1, function(cfg)
+function M.setup(cfg)
   gs_config.build(cfg)
 
   if vim.fn.executable('git') == 0 then
@@ -200,16 +192,12 @@ M.setup = async.create(1, function(cfg)
 
   api.nvim_create_augroup('gitsigns', {})
 
-  if vim.fn.has('nvim-0.9') == 0 then
-    require('gitsigns.git.version').check()
-  end
-
   setup_debug()
   setup_cli()
   require('gitsigns.highlight').setup()
   setup_attach()
   setup_cwd_head()
-end)
+end
 
 return setmetatable(M, {
   __index = function(_, f)
