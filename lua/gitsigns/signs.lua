@@ -6,6 +6,7 @@ local dprint = require('gitsigns.debug.log').dprint
 --- @field type Gitsigns.SignType
 --- @field count? integer
 --- @field lnum integer
+--- @field end_lnum? integer
 
 --- @class Gitsigns.Signs
 --- @field hls table<Gitsigns.SignType,Gitsigns.SignConfig>
