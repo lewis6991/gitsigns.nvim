@@ -518,7 +518,12 @@ function Obj:file_info_tree(file, silent)
     return {}
   end
 
-  local info, relpath = unpack(vim.split(results[1], '\t'))
+  local info_line = results[1]
+  if not info_line then
+    return {}
+  end
+
+  local info, relpath = unpack(vim.split(info_line, '\t'))
   local mode_bits, objtype, object_name = unpack(vim.split(info, '%s+'))
   assert(objtype == 'blob')
 
