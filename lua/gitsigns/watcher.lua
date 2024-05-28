@@ -52,7 +52,10 @@ local function handle_moved(bufnr, old_relpath)
   local old_name = api.nvim_buf_get_name(bufnr)
 
   if not bufexists then
-    util.buf_rename(bufnr, bcache.file)
+    -- Do not trigger BufFilePre/Post
+    util.noautocmd(function()
+      util.buf_rename(bufnr, bcache.file)
+    end)
   end
 
   local msg = bufexists and 'Cannot rename' or 'Renamed'

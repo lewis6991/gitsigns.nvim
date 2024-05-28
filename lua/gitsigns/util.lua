@@ -116,6 +116,13 @@ function M.buf_rename(bufnr, name)
   delete_alt(bufnr)
 end
 
+function M.noautocmd(f)
+  local ei = vim.o.eventignore
+  vim.o.eventignore = 'all'
+  f()
+  vim.o.eventignore = ei
+end
+
 --- @param bufnr integer
 --- @param start_row integer
 --- @param end_row integer

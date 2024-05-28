@@ -129,8 +129,10 @@ local function setup_attach()
 
   local attach_autocmd_disabled = false
 
-  api.nvim_create_autocmd({ 'BufRead', 'BufNewFile', 'BufWritePost' }, {
+  -- Need to attach in 'BufFilePost' since we always detach in 'BufFilePre'
+  api.nvim_create_autocmd({ 'BufFilePost', 'BufRead', 'BufNewFile', 'BufWritePost' }, {
     group = 'gitsigns',
+    desc = 'Gitsigns: attach',
     callback = function(args)
       local bufnr = args.buf --[[@as integer]]
       if attach_autocmd_disabled then
@@ -142,11 +144,21 @@ local function setup_attach()
     end,
   })
 
+  -- If the buffer name is about to change, then detach
+  api.nvim_create_autocmd('BufFilePre', {
+    group = 'gitsigns',
+    desc = 'Gitsigns: detach when changing buffer names',
+    callback = function(args)
+      require('gitsigns.attach').detach(args.buf)
+    end,
+  })
+
   --- vimpgrep creates and deletes lots of buffers so attaching to each one will
-  --- waste lots of resource and even slow down vimgrep.
+  --- waste lots of resource and slow down vimgrep.
   api.nvim_create_autocmd({ 'QuickFixCmdPre', 'QuickFixCmdPost' }, {
     group = 'gitsigns',
     pattern = '*vimgrep*',
+    desc = 'Gitsigns: disable attach during vimgrep',
     callback = function(args)
       attach_autocmd_disabled = args.event == 'QuickFixCmdPre'
     end,
