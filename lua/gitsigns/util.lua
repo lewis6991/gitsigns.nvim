@@ -116,6 +116,15 @@ function M.buf_rename(bufnr, name)
   delete_alt(bufnr)
 end
 
+--- @param events string[]
+--- @param f fun()
+function M.noautocmd(events, f)
+  local ei = vim.o.eventignore
+  vim.o.eventignore = table.concat(events, ',')
+  f()
+  vim.o.eventignore = ei
+end
+
 --- @param bufnr integer
 --- @param start_row integer
 --- @param end_row integer
