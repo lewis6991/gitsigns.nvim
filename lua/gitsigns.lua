@@ -26,7 +26,6 @@ local function get_gitdir_and_head()
   end
 
   local info = require('gitsigns.git').get_repo_info(cwd)
-  async.scheduler()
 
   return info.gitdir, info.abbrev_head
 end
@@ -49,6 +48,7 @@ local update_cwd_head = async.create(function()
   end
 
   local gitdir, head = get_gitdir_and_head()
+  async.scheduler()
 
   api.nvim_exec_autocmds('User', {
     pattern = 'GitSignsUpdate',
