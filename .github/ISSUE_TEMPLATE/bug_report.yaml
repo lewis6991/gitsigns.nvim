@@ -41,6 +41,8 @@ body:
          Minimal(!) configuration necessary to reproduce the issue. Save this as
          `minimal.lua`. If necessary, add plugins and config options from your
          `init.lua` at the indicated lines.
+
+         Please **do not** include a package manager (like lazy.nvim) in this.
        render: Lua
        value: |
          for name, url in pairs{
@@ -70,8 +72,14 @@ body:
 
         If this is not provided, the issue may be closed without notice.
       value: |
-        1. `nvim --clean -u minimal.lua`
-        2. ...
+        1. `mkdir gitsigns_issue`
+        2. `cd gitsigns_issue`
+        3. `git init`
+        4. `touch file`
+        5. `git add file`
+        6. `git commit -m 'init commit'
+        7. `nvim --clean -u minimal.lua file`
+        8. ...
     validations:
       required: true
   - type: textarea
