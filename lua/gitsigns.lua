@@ -17,6 +17,10 @@ local cwd_watcher ---@type uv.uv_fs_event_t?
 local function get_gitdir_and_head()
   local cwd = assert(uv.cwd())
 
+  -- Run on the main loop to avoid:
+  --   https://github.com/LazyVim/LazyVim/discussions/3407#discussioncomment-9622211
+  async.scheduler()
+
   -- Look in the cache first
   for _, bcache in pairs(require('gitsigns.cache').cache) do
     local repo = bcache.git_obj.repo
