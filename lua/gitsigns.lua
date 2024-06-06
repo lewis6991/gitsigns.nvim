@@ -69,6 +69,11 @@ local update_cwd_head = async.create(function()
 
   if cwd_watcher then
     cwd_watcher:stop()
+    -- TODO(lewis6991): (#1027) Running `fs_event:stop()` -> `fs_event:start()`
+    -- in the same loop event, on Windows, causes Nvim to hang on quit.
+    if vim.fn.has('win32') then
+      async.scheduler()
+    end
   else
     cwd_watcher = assert(uv.new_fs_event())
   end
