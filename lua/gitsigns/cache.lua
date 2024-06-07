@@ -97,7 +97,7 @@ local function get_blame_nc(file, lnum)
   return {
     orig_lnum = 0,
     final_lnum = lnum,
-    commit = Git.not_commited(file),
+    commit = Git.not_committed(file),
     filename = file,
   }
 end

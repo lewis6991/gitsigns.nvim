@@ -615,7 +615,7 @@ local NOT_COMMITTED = {
 
 --- @param file string
 --- @return Gitsigns.CommitInfo
-function M.not_commited(file)
+function M.not_committed(file)
   local time = os.time()
   return {
     sha = string.rep('0', 40),
@@ -649,7 +649,7 @@ function Obj:run_blame(lines, lnum, opts)
     -- As we support attaching to untracked files we need to return something if
     -- the file isn't isn't tracked in git.
     -- If abbrev_head is empty, then assume the repo has no commits
-    local commit = M.not_commited(self.file)
+    local commit = M.not_committed(self.file)
     for i in ipairs(lines) do
       ret[i] = {
         orig_lnum = 0,
