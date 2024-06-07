@@ -1,3 +1,5 @@
+local start_time = vim.loop.hrtime()
+
 local M = {
   debug_mode = false,
   verbose = false,
@@ -75,10 +77,11 @@ local function cprint(obj, lvl)
   local msg = type(obj) == 'string' and obj or vim.inspect(obj)
   local ctx = get_context(lvl)
   local msg2 --- @type string
+  local time = (vim.loop.hrtime() - start_time) / 1e6
   if ctx.bufnr then
-    msg2 = string.format('%s(%s): %s', ctx.name, ctx.bufnr, msg)
+    msg2 = string.format('[%.3f] %s(%s): %s', time, ctx.name, ctx.bufnr, msg)
   else
-    msg2 = string.format('%s: %s', ctx.name, msg)
+    msg2 = string.format('[%.3f] %s: %s', time, ctx.name, msg)
   end
   table.insert(M.messages, msg2)
 end
@@ -116,7 +119,7 @@ local function eprint(msg, level)
   if info then
     msg = string.format('(ERROR) %s(%d): %s', info.short_src, info.currentline, msg)
   end
-  M.messages[#M.messages + 1] = debug.traceback(msg)
+  table.insert(M.messages, debug.traceback(msg))
   if M.debug_mode then
     error(msg, 3)
   end
