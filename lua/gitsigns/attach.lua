@@ -138,15 +138,16 @@ end
 
 --- @param _bufnr integer
 --- @param file string
+--- @param revision string?
 --- @param encoding string
 --- @return Gitsigns.GitObj?
-local function try_worktrees(_bufnr, file, encoding)
+local function try_worktrees(_bufnr, file, revision, encoding)
   if not config.worktrees then
     return
   end
 
   for _, wt in ipairs(config.worktrees) do
-    local git_obj = git.Obj.new(file, encoding, wt.gitdir, wt.toplevel)
+    local git_obj = git.Obj.new(file, revision, encoding, wt.gitdir, wt.toplevel)
     if git_obj and git_obj.object_name then
       dprintf('Using worktree %s', vim.inspect(wt))
       return git_obj
@@ -273,7 +274,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   local git_obj = git.Obj.new(file, revision, encoding, ctx.gitdir, ctx.toplevel)
 
   if not git_obj and not passed_ctx then
-    git_obj = try_worktrees(cbuf, file, encoding)
+    git_obj = try_worktrees(cbuf, file, revision, encoding)
     async.scheduler()
     if not api.nvim_buf_is_valid(cbuf) then
       return
