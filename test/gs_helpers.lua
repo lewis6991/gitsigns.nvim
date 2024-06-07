@@ -182,6 +182,9 @@ end
 function M.match_lines(lines, spec)
   local i = 1
   for _, line in ipairs(lines) do
+    -- Remove leading timestamp
+    line = line:gsub('^%[[0-9.]+%] ', '')
+
     local s = spec[i]
     if line ~= '' and s and match_spec_elem(line, s) then
       i = i + 1
