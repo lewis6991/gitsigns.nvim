@@ -254,6 +254,13 @@ function M.setup(cfg)
   end
 end
 
+--- @param bufnr? integer Buffer number. Defaults to current buffer.
+--- @param lnum? integer Line number to return status for. Defaults to `vim.v.lnum`
+--- @return string
+function M.statuscolumn(bufnr, lnum)
+  return require('gitsigns.manager').statuscolumn(bufnr, lnum)
+end
+
 M = setmetatable(M, {
   __index = function(_, f)
     local actions = require('gitsigns.actions')

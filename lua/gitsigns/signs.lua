@@ -20,6 +20,7 @@ end
 --- @field config table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field staged boolean
 --- @field ns integer
+--- @field signs table<integer,[string,string?]?>
 --- @field private _hl_cache table<Gitsigns.SignType,table<string,string>>
 local M = {}
 
@@ -67,7 +68,11 @@ end
 function M:remove(bufnr, start_lnum, end_lnum)
   if start_lnum then
     api.nvim_buf_clear_namespace(bufnr, self.ns, start_lnum - 1, end_lnum or start_lnum)
+    for i = start_lnum - 1, (end_lnum or start_lnum) - 1 do
+      self.signs[i] = nil
+    end
   else
+    self.signs = {}
     api.nvim_buf_clear_namespace(bufnr, self.ns, 0, -1)
   end
 end
@@ -76,7 +81,12 @@ end
 ---@param signs Gitsigns.Sign[]
 --- @param filter? fun(line: integer):boolean
 function M:add(bufnr, signs, filter)
-  if not config.signcolumn and not config.numhl and not config.linehl then
+  if
+    not config.signcolumn
+    and not config.numhl
+    and not config.linehl
+    and not config._statuscolumn
+  then
     -- Don't place signs if it won't show anything
     return
   end
@@ -92,7 +102,8 @@ function M:add(bufnr, signs, filter)
         text = text .. count_char
       end
 
-      local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, self.ns, lnum - 1, 0, {
+      local sign_hl_group = self:hl(ty, 'hl')
+      local ok, id_or_err = pcall(api.nvim_buf_set_extmark, bufnr, self.ns, lnum - 1, 0, {
         id = lnum,
         sign_text = config.signcolumn and text or '',
         priority = config.sign_priority,
@@ -102,11 +113,14 @@ function M:add(bufnr, signs, filter)
         cursorline_hl_group = self:hl(ty, 'culhl'),
       })
 
-      if not ok and config.debug_mode then
+      if ok then
+        --- @cast id_or_err integer
+        self.signs[id_or_err] = { text, sign_hl_group }
+      elseif config.debug_mode then
         vim.schedule(function()
           error(table.concat({
-            string.format('Error placing extmark on line %d', sign.lnum),
-            err,
+            string.format('Error placing extmark on line %d', lnum),
+            id_or_err,
           }, '\n'))
         end)
       end
@@ -147,6 +161,7 @@ function M.new(staged)
   self.staged = staged == true
   self.group = 'gitsigns_signs_' .. (staged and 'staged' or '')
   self.ns = api.nvim_create_namespace(self.group)
+  self.signs = {}
   return self
 end
 
