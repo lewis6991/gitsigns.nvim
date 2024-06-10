@@ -21,6 +21,51 @@ local signs_staged = Signs.new(true)
 --- @class gitsigns.manager
 local M = {}
 
+local statuscolumn_active = false
+
+--- @param bufnr? integer
+--- @param top? integer
+--- @param bot? integer
+local function redraw_statuscol(bufnr, top, bot)
+  if statuscolumn_active then
+    api.nvim__redraw({
+      buf = bufnr,
+      range = { top, bot },
+      statuscolumn = true,
+    })
+  end
+end
+
+--- @param bufnr? integer
+--- @param lnum? integer
+--- @return string
+function M.statuscolumn(bufnr, lnum)
+  bufnr = bufnr or 0
+  lnum = lnum or vim.v.lnum
+
+  if not config._statuscolumn then
+    config.signcolumn = false
+    config._statuscolumn = true
+  end
+
+  local res = {} --- @type string[]
+  local res_len = 0
+  for _, signs in pairs({ signs_normal, signs_staged }) do
+    local marks = api.nvim_buf_get_extmarks(bufnr, signs.ns, { lnum - 1, 0 }, { lnum - 1, -1 }, {})
+    for _, mark in pairs(marks) do
+      local id = mark[1]
+      local s = signs.signs[id]
+      if s then
+        vim.list_extend(res, { '%#' .. s[2] .. '#', s[1], '%*' })
+        res_len = res_len + vim.str_utfindex(s[1])
+      end
+    end
+  end
+
+  local pad = math.max(0, 2 - res_len)
+  return table.concat(res) .. string.rep(' ', pad)
+end
+
 --- @param bufnr integer
 --- @param signs Gitsigns.Signs
 --- @param hunks? Gitsigns.Hunk.Hunk[]
@@ -80,6 +125,9 @@ local function apply_win_signs(bufnr, top, bot, clear)
         return not signs_normal:contains(bufnr, lnum)
       end
     )
+  end
+  if clear then
+    redraw_statuscol(bufnr, top, bot)
   end
 end
 
@@ -419,6 +467,7 @@ function M.detach(bufnr, keep_signs)
     if signs_staged then
       signs_staged:remove(bufnr)
     end
+    redraw_statuscol(bufnr)
   end
 end
 

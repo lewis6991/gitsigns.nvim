@@ -170,6 +170,19 @@ local function parse_param(x)
   return name, ty, des
 end
 
+--- @param x string
+--- @return string? type
+--- @return string? name
+--- @return string? description
+local function parse_return(x)
+  local ty, name, des = x:match('([^ ]+) +([^ ]+) *(.*)')
+  if ty then
+    return ty, name, des
+  end
+  ty = x:match('([^ ]+)')
+  return ty
+end
+
 --- @param x string[]
 --- @return string[]
 local function trim_lines(x)
@@ -198,11 +211,11 @@ local function render_param_or_return(name, ty, desc, name_pad)
   ty = ty:gsub('Gitsigns%.%w+', 'table')
 
   name_pad = name_pad and (name_pad + 3) or 0
-  local name_str --- @type string
+  local name_str = '' --- @type string
 
   if name == ':' then
     name_str = ''
-  else
+  elseif name then
     local nf = '%-' .. tostring(name_pad) .. 's'
     name_str = nf:format(string.format('{%s} ', name))
   end
@@ -257,7 +270,7 @@ local function process_doc_comment(state, doc_comment, desc, params, returns)
   end
 
   if emmy_type == 'return' then
-    local ty, name, rdesc = parse_param(emmy_str)
+    local ty, name, rdesc = parse_return(emmy_str)
     returns[#returns + 1] = { name, ty, { rdesc } }
     return 'in_return'
   end

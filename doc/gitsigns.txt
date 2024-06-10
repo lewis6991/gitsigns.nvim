@@ -96,6 +96,14 @@ Note functions with the {async} attribute are run asynchronously and accept
 an optional {callback} argument.
 
 
+statuscolumn({bufnr}, {lnum})                        *gitsigns.statuscolumn()*
+                Parameters: ~
+                    {bufnr?} (integer): Buffer number. Defaults to current buffer.
+                    {lnum?}  (integer): Line number to return status for. Defaults to `vim.v.lnum`
+
+                Returns: ~
+                    (string)
+
 setup({cfg})                                                *gitsigns.setup()*
                 Setup and start Gitsigns.
 
