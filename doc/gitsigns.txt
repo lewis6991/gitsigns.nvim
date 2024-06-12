@@ -192,7 +192,7 @@ setqflist({target}, {opts}, {callback?})                *gitsigns.setqflist()*
                                Open the quickfix/location list viewer.
                                Defaults to `true`.
 
-show({revision})                                             *gitsigns.show()*
+show({revision}, {callback})                                 *gitsigns.show()*
                 Show revision {base} of the current file, if it is given, or
                 with the currently set base (index by default).
 
@@ -285,6 +285,17 @@ change_base({base}, {global}, {callback?})              *gitsigns.change_base()*
                 Parameters: ~
                     {base}   (string|nil): The object/revision to diff against.
                     {global} (boolean|nil): Change the base of all buffers.
+
+blame({callback?})                                          *gitsigns.blame()*
+                Run git-blame on the current file and open the results
+                in a scroll-bound vertical split.
+
+                <CR> is mapped to open a menu with the actions:
+                  - [Show commit] in a vertical split.
+                  - [Reblame at commit]
+
+                Attributes: ~
+                    {async}
 
 blame_line({opts}, {callback?})                        *gitsigns.blame_line()*
                 Run git blame on the current line and show the results in a

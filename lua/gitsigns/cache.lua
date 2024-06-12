@@ -67,8 +67,8 @@ end
 -- at a time.
 local BLAME_THRESHOLD_LEN = 1000000
 
---- @private
---- @param lnum integer
+--- @async
+--- @param lnum? integer
 --- @param opts Gitsigns.BlameOpts
 --- @return table<integer,Gitsigns.BlameInfo?>?
 function CacheEntry:run_blame(lnum, opts)

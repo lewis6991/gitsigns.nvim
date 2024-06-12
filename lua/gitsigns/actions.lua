@@ -1023,6 +1023,19 @@ C.blame_line = function(args, _)
   M.blame_line(args)
 end
 
+--- Run git-blame on the current file and open the results
+--- in a scroll-bound vertical split.
+---
+--- <CR> is mapped to open a menu with the actions:
+---   - [Show commit] in a vertical split.
+---   - [Reblame at commit]
+---
+--- Attributes: ~
+---     {async}
+M.blame = async.create(0, function()
+  return require('gitsigns.blame').blame()
+end)
+
 --- @param bcache Gitsigns.CacheEntry
 --- @param base string?
 local function update_buf_base(bcache, base)
@@ -1191,14 +1204,14 @@ CP.diffthis = complete_heads
 ---
 --- Attributes: ~
 ---     {async}
-M.show = function(revision)
+M.show = function(revision, callback)
   local bufnr = api.nvim_get_current_buf()
   if not cache[bufnr] then
     print('Error: Buffer is not attached.')
     return
   end
   local diffthis = require('gitsigns.diffthis')
-  diffthis.show(bufnr, revision)
+  diffthis.show(bufnr, revision, callback)
 end
 
 CP.show = complete_heads
