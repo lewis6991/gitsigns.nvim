@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.9.0](https://github.com/lewis6991/gitsigns.nvim/compare/v0.8.1...v0.9.0) (2024-06-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **setup:** make setup() synchronous
+* drop support for nvim v0.8
+
+### Features
+
+* drop support for nvim v0.8 ([d9d94e0](https://github.com/lewis6991/gitsigns.nvim/commit/d9d94e055a19415767bb073e8dd86028105c4319))
+* **setup:** make setup() synchronous ([720061a](https://github.com/lewis6991/gitsigns.nvim/commit/720061aa152faedfe4099dfb92d2b3fcb0e55edc))
+
+
+### Bug Fixes
+
+* add workaround for Lazy issue ([e31d214](https://github.com/lewis6991/gitsigns.nvim/commit/e31d2149d9f3fb056bfd5b3416b2e818be10aabe))
+* **attach:** allow attaching inside .git/ ([9cafac3](https://github.com/lewis6991/gitsigns.nvim/commit/9cafac31a091267838e1e90fd6e083d37611f516)), closes [#923](https://github.com/lewis6991/gitsigns.nvim/issues/923)
+* **attach:** detach on when the buffer name changes ([75dc649](https://github.com/lewis6991/gitsigns.nvim/commit/75dc649106827183547d3bedd4602442340d2f7f)), closes [#1021](https://github.com/lewis6991/gitsigns.nvim/issues/1021)
+* **attach:** fix worktree attaching ([54b9df4](https://github.com/lewis6991/gitsigns.nvim/commit/54b9df401b8f21f4e6ca537ec47a109394aaccd7)), closes [#1020](https://github.com/lewis6991/gitsigns.nvim/issues/1020)
+* **blame:** avoid right-aligned blame overlapping buftext ([20f305d](https://github.com/lewis6991/gitsigns.nvim/commit/20f305d63bc86852821ac47d9967e73931f7130b))
+* handle untracked files for custom bases ([af3fdad](https://github.com/lewis6991/gitsigns.nvim/commit/af3fdad8ddcadbdad835975204f6503310526fd9)), closes [#1022](https://github.com/lewis6991/gitsigns.nvim/issues/1022)
+* scheduling in cwd watching ([c96e3cf](https://github.com/lewis6991/gitsigns.nvim/commit/c96e3cf4767ee98030bff855e7a6f07cfc6d427f))
+* **update:** always get object contents from object names ([a28bb1d](https://github.com/lewis6991/gitsigns.nvim/commit/a28bb1db506df663b063cc63f44fbbda178255a7)), closes [#847](https://github.com/lewis6991/gitsigns.nvim/issues/847)
+* use latest api in 0.10 ([bc933d2](https://github.com/lewis6991/gitsigns.nvim/commit/bc933d24a669608968ff4791b14d2d9554813a65))
+* **util:** close file after reading ([f65d1d8](https://github.com/lewis6991/gitsigns.nvim/commit/f65d1d82013e032ca6c199b62f08089b420b068c))
+* **watcher:** throttle watcher handler ([de18f6b](https://github.com/lewis6991/gitsigns.nvim/commit/de18f6b749f6129eb9042a2038590872df4c94a9))
+* **watcher:** workaround weird annoying libuv bug ([4b53134](https://github.com/lewis6991/gitsigns.nvim/commit/4b53134ce5fdd58e6c52c49fb906b6e7a347d137)), closes [#1027](https://github.com/lewis6991/gitsigns.nvim/issues/1027)
+* wrong api name in stable ([805610a](https://github.com/lewis6991/gitsigns.nvim/commit/805610a9393fa231f2c2b49cb521bfa413fadb3d))
+
 ## [0.8.1](https://github.com/lewis6991/gitsigns.nvim/compare/v0.8.0...v0.8.1) (2024-04-30)
 
 
