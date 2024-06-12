@@ -26,7 +26,7 @@ Super fast git decorations implemented purely in Lua.
 - Preview diffs of hunks (with word diff)
 - Customizable (signs, highlights, mappings, etc)
 - Status bar integration
-- Git blame a specific line using virtual text.
+- Git blame a whole buffer or a specific line.
 - Hunk text object
 - Automatically follow files moved in the index.
 - Live intra-line word diff
