@@ -424,11 +424,15 @@ end
 --- @field object_name? string
 --- @field has_conflicts? true
 
+function Obj:from_tree()
+  return self.revision and not vim.startswith(self.revision, ':')
+end
+
 --- @param file? string
 --- @param silent? boolean
 --- @return Gitsigns.FileInfo
 function Obj:file_info(file, silent)
-  if self.revision and not vim.startswith(self.revision, ':') then
+  if self:from_tree() then
     return self:file_info_tree(file, silent)
   else
     return self:file_info_index(file, silent)
@@ -436,12 +440,16 @@ function Obj:file_info(file, silent)
 end
 
 --- @private
+--- Get information about files in the index and the working tree
 --- @param file? string
 --- @param silent? boolean
 --- @return Gitsigns.FileInfo
 function Obj:file_info_index(file, silent)
   local has_eol = check_version({ 2, 9 })
 
+  -- --others + --exclude-standard means ignored files won't return info, but
+  -- untracked files will. Unlike file_info_tree which won't return untracked
+  -- files.
   local cmd = {
     '-c',
     'core.quotepath=off',
@@ -499,6 +507,7 @@ function Obj:file_info_index(file, silent)
 end
 
 --- @private
+--- Get information about files in a certain revision
 --- @param file? string
 --- @param silent? boolean
 --- @return Gitsigns.FileInfo
