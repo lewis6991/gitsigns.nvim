@@ -212,13 +212,12 @@ local function get_buf_context(bufnr)
     file = file,
     gitdir = gitdir,
     toplevel = toplevel,
-    -- Commit buffers have there base set back one revision with '^'
     -- Stage buffers always compare against the common ancestor (':1')
     -- :0: index
     -- :1: common ancestor
     -- :2: target commit (HEAD)
     -- :3: commit which is being merged
-    base = commit and (commit:match('^:[1-3]') and ':1' or commit .. '^') or nil,
+    base = commit and (commit:match('^:[1-3]') and ':1' or commit) or nil,
   }
 end
 

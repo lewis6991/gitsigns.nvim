@@ -488,9 +488,10 @@ M.update = throttle_by_id(function(bufnr)
     return
   end
 
-  if config.signs_staged_enable and not file_mode and not git_obj.revision then
+  if config.signs_staged_enable and not file_mode then
     if not bcache.compare_text_head or config._refresh_staged_on_update then
-      bcache.compare_text_head = git_obj:get_show_text('HEAD')
+      local staged_rev = git_obj:from_tree() and git_obj.revision .. '^' or 'HEAD'
+      bcache.compare_text_head = git_obj:get_show_text(staged_rev)
       if not M.schedule(bufnr, true) then
         return
       end
