@@ -182,9 +182,6 @@ end
 function M.match_lines(lines, spec)
   local i = 1
   for _, line in ipairs(lines) do
-    -- Remove leading timestamp
-    line = line:gsub('^%[[0-9.]+%] ', '')
-
     local s = spec[i]
     if line ~= '' and s and match_spec_elem(line, s) then
       i = i + 1
@@ -224,7 +221,13 @@ end
 
 --- @return string[]
 function M.debug_messages()
-  return exec_lua("return require'gitsigns.debug.log'.messages")
+  --- @type string[]
+  local r = exec_lua("return require'gitsigns.debug.log'.get()")
+  for i, line in ipairs(r) do
+    -- Remove leading timestamp
+    r[i] = line:gsub('^[0-9.]+ D ', '')
+  end
+  return r
 end
 
 --- Like match_debug_messages but elements in spec are unordered

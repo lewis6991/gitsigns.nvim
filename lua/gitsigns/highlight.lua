@@ -283,7 +283,8 @@ local function cmul(x, factor)
 end
 
 local function dprintf(fmt, ...)
-  require('gitsigns.debug.log').dprintf(fmt, ...)
+  dprintf = require('gitsigns.debug.log').dprintf
+  dprintf(fmt, ...)
 end
 
 --- @param hl string
