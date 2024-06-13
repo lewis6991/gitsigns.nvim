@@ -7,6 +7,7 @@ local manager = require('gitsigns.manager')
 local message = require('gitsigns.message')
 local Status = require('gitsigns.status')
 
+local dprint = require('gitsigns.debug.log').dprint
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
 local M = {}
@@ -176,11 +177,14 @@ end)
 --- @param bufnr integer
 --- @param base string
 M.show = async.create(2, function(bufnr, base)
+  __FUNC__ = 'show'
   local bufname = create_show_buf(bufnr, base)
   if not bufname then
+    dprint('No bufname for revision ' .. base)
     return
   end
 
+  dprint('bufname ' .. bufname)
   vim.cmd.edit(bufname)
 end)
 

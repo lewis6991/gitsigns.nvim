@@ -3,7 +3,7 @@ local start_time = vim.loop.hrtime()
 local M = {
   debug_mode = false,
   verbose = false,
-  messages = {}, --- @type string[]
+  messages = {} --- @type [number, string, string, string][]
 }
 
 --- @param name string
@@ -46,7 +46,6 @@ local function getvarvalue(name, lvl)
   end
 
   -- not found; get global
-  --- @diagnostic disable-next-line:deprecated
   return getfenv(func)[name]
 end
 
@@ -54,72 +53,72 @@ end
 --- @return {name:string, bufnr: integer}
 local function get_context(lvl)
   lvl = lvl + 1
-  local ret = {} --- @type {name:string, bufnr: integer}
-  ret.name = getvarvalue('__FUNC__', lvl)
-  if not ret.name then
+
+  local name = getvarvalue('__FUNC__', lvl)
+  if not name then
     local name0 = debug.getinfo(lvl, 'n').name or ''
-    ret.name = name0:gsub('(.*)%d+$', '%1')
+    name = name0:gsub('(.*)%d+$', '%1')
   end
-  ret.bufnr = getvarvalue('bufnr', lvl)
+
+  local bufnr = getvarvalue('bufnr', lvl)
     or getvarvalue('_bufnr', lvl)
     or getvarvalue('cbuf', lvl)
     or getvarvalue('buf', lvl)
 
-  return ret
+  return {name=name, bufnr=bufnr}
 end
 
 -- If called in a callback then make sure the callback defines a __FUNC__
 -- variable which can be used to identify the name of the function.
+--- @param kind string
 --- @param obj any
 --- @param lvl integer
-local function cprint(obj, lvl)
+local function cprint(kind, obj, lvl)
   lvl = lvl + 1
+  --- @type string
   local msg = type(obj) == 'string' and obj or vim.inspect(obj)
   local ctx = get_context(lvl)
-  local msg2 --- @type string
   local time = (vim.loop.hrtime() - start_time) / 1e6
+  local ctx1 = ctx.name
   if ctx.bufnr then
-    msg2 = string.format('[%.3f] %s(%s): %s', time, ctx.name, ctx.bufnr, msg)
-  else
-    msg2 = string.format('[%.3f] %s: %s', time, ctx.name, msg)
+    ctx1 = string.format('%s(%s)', ctx1, ctx.bufnr)
   end
-  table.insert(M.messages, msg2)
+  table.insert(M.messages, {time, kind, ctx1, msg})
 end
 
 function M.dprint(obj)
   if not M.debug_mode then
     return
   end
-  cprint(obj, 2)
+  cprint('debug', obj, 2)
 end
 
 function M.dprintf(obj, ...)
   if not M.debug_mode then
     return
   end
-  cprint(obj:format(...), 2)
+  cprint('debug', obj:format(...), 2)
 end
 
 function M.vprint(obj)
   if not (M.debug_mode and M.verbose) then
     return
   end
-  cprint(obj, 2)
+  cprint('info', obj, 2)
 end
 
 function M.vprintf(obj, ...)
   if not (M.debug_mode and M.verbose) then
     return
   end
-  cprint(obj:format(...), 2)
+  cprint('info', obj:format(...), 2)
 end
 
 local function eprint(msg, level)
   local info = debug.getinfo(level + 2, 'Sl')
-  if info then
-    msg = string.format('(ERROR) %s(%d): %s', info.short_src, info.currentline, msg)
-  end
-  table.insert(M.messages, debug.traceback(msg))
+  local ctx = info and string.format('%s<%d>', info.short_src, info.currentline) or '???'
+  local time = (vim.loop.hrtime() - start_time) / 1e6
+  table.insert(M.messages, { time, 'error', ctx, debug.traceback(msg) })
   if M.debug_mode then
     error(msg, 3)
   end
@@ -142,6 +141,51 @@ function M.assert(cond, msg)
   end
 
   return not cond
+end
+
+local sev_to_hl = {
+  debug = 'Title',
+  info = 'MoreMsg',
+  warn = 'WarningMsg',
+  error = 'ErrorMsg',
+}
+
+function M.clear()
+  M.messages = {}
+end
+
+--- @param m [number, string, string, string]
+--- @return [string,string][]
+local function build_msg(m)
+  local time, kind, ctx, msg = m[1], m[2], m[3], m[4]
+  local hl = sev_to_hl[kind]
+  return {
+    { string.format('%.2f ', time), 'Comment' },
+    { kind:upper():sub(1,1), hl },
+    { string.format(' %s:', ctx), 'Tag'},
+    { ' ' },
+    { msg }
+  }
+end
+
+function M.show()
+  for _, m in ipairs(M.messages) do
+    vim.api.nvim_echo(build_msg(m), false, {})
+  end
+end
+
+--- @return string[]?
+function M.get()
+  local r = {} --- @type string[]
+  for _, m in ipairs(M.messages) do
+    local e = build_msg(m)
+    local e1 = {} --- @type string[]
+    for _, x in ipairs(e) do
+      e1[#e1+1] = x[1]
+    end
+    r[#r+1] = table.concat(e1)
+  end
+  return r
 end
 
 return M

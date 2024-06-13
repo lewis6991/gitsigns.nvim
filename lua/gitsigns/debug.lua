@@ -43,20 +43,7 @@ function M.dump_cache()
   vim.api.nvim_echo({ { text } }, false, {})
 end
 
---- @param noecho boolean
---- @return string[]?
-function M.debug_messages(noecho)
-  if noecho then
-    return log.messages
-  else
-    for _, m in ipairs(log.messages) do
-      vim.api.nvim_echo({ { m } }, false, {})
-    end
-  end
-end
-
-function M.clear_debug()
-  log.messages = {}
-end
+M.debug_messages = log.show
+M.clear_debug = log.clear
 
 return M
