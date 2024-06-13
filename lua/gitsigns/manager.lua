@@ -488,7 +488,7 @@ M.update = throttle_by_id(function(bufnr)
     return
   end
 
-  if config._signs_staged_enable and not file_mode and not git_obj.revision then
+  if config.signs_staged_enable and not file_mode and not git_obj.revision then
     if not bcache.compare_text_head or config._refresh_staged_on_update then
       bcache.compare_text_head = git_obj:get_show_text('HEAD')
       if not M.schedule(bufnr, true) then
@@ -581,8 +581,8 @@ function M.setup()
   })
 
   signs_normal = Signs.new(config.signs)
-  if config._signs_staged_enable then
-    signs_staged = Signs.new(config._signs_staged, 'staged')
+  if config.signs_staged_enable then
+    signs_staged = Signs.new(config.signs_staged, 'staged')
   end
 
   M.update_debounced = debounce_trailing(config.update_debounce, async.create(1, M.update))

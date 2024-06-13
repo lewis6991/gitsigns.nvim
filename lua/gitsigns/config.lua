@@ -69,8 +69,8 @@
 --- @field diff_opts Gitsigns.DiffOpts
 --- @field base? string
 --- @field signs table<Gitsigns.SignType,Gitsigns.SignConfig>
---- @field _signs_staged table<Gitsigns.SignType,Gitsigns.SignConfig>
---- @field _signs_staged_enable boolean
+--- @field signs_staged table<Gitsigns.SignType,Gitsigns.SignConfig>
+--- @field signs_staged_enable boolean
 --- @field count_chars table<string|integer,string>
 --- @field signcolumn boolean
 --- @field numhl boolean
@@ -244,7 +244,7 @@ M.schema = {
     ]],
   },
 
-  _signs_staged = {
+  signs_staged = {
     type = 'table',
     deep_extend = true,
     default = {
@@ -293,9 +293,9 @@ M.schema = {
     ]],
   },
 
-  _signs_staged_enable = {
+  signs_staged_enable = {
     type = 'boolean',
-    default = false,
+    default = true,
     description = [[
     Show signs for staged hunks.
 

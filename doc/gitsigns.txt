@@ -554,6 +554,28 @@ signs                                                  *gitsigns-config-signs*
 
       See |gitsigns-highlight-groups|.
 
+signs_staged                                    *gitsigns-config-signs_staged*
+      Type: `table[extended]`
+      Default: >
+        {
+          add          = { text = '┃' },
+          change       = { text = '┃' },
+          delete       = { text = '▁' },
+          topdelete    = { text = '▔' },
+          changedelete = { text = '~' },
+        }
+<
+    Configuration for signs of staged hunks.
+
+    See |gitsigns-config-signs|.
+
+signs_staged_enable                      *gitsigns-config-signs_staged_enable*
+      Type: `boolean`, Default: `true`
+
+    Show signs for staged hunks.
+
+    When enabled the signs defined in |git-config-signs_staged|` are used.
+
 worktrees                                          *gitsigns-config-worktrees*
       Type: `table`, Default: `nil`
 
