@@ -126,7 +126,7 @@ function M.new(cfg, name)
 
   local self = setmetatable({}, { __index = M })
   self.config = cfg
-  self.hls = name == 'staged' and config._signs_staged or config.signs
+  self.hls = name == 'staged' and config.signs_staged or config.signs
   self.group = 'gitsigns_signs_' .. (name or '')
   self.ns = api.nvim_create_namespace(self.group)
   return self
