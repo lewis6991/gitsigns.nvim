@@ -75,7 +75,7 @@ function CacheEntry:run_blame(lnum, opts)
   local bufnr = self.bufnr
   local blame_cache --- @type table<integer,Gitsigns.BlameInfo?>?
   repeat
-    local buftext = util.buf_lines(bufnr)
+    local buftext = util.buf_lines(bufnr, true)
     local tick = vim.b[bufnr].changedtick
     local lnum0 = #buftext > BLAME_THRESHOLD_LEN and lnum or nil
     -- TODO(lewis6991): Cancel blame on changedtick
