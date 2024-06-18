@@ -82,7 +82,7 @@ function M.cleanup()
   system({ 'rm', '-rf', M.scratch })
 end
 
-function M.setup_git()
+function M.git_init()
   M.gitf({ 'init', '-b', 'master' })
 
   -- Always force color to test settings don't interfere with gitsigns systems
@@ -112,7 +112,7 @@ function M.setup_test_repo(opts)
   local text = opts and opts.test_file_text or test_file_text
   M.cleanup()
   system({ 'mkdir', M.scratch })
-  M.setup_git()
+  M.git_init()
   system({ 'touch', M.test_file })
   M.write_to_file(M.test_file, text)
   if not (opts and opts.no_add) then
@@ -269,33 +269,52 @@ function M.setup_gitsigns(config, on_attach)
   )
 end
 
+--- @param bufnr integer
+--- @param x string
+--- @return any
+local function buf_var(bufnr, x)
+  return exec_lua(
+    [[
+    local bufnr, x = ...
+    return vim.b[bufnr][x]
+  ]],
+    bufnr,
+    x
+  )
+end
+
 --- @param status table<string,string|integer>
-local function check_status(status)
-  local fn = helpers.fn
+--- @param bufnr integer
+local function check_status(status, bufnr)
   if next(status) == nil then
-    eq(0, fn.exists('b:gitsigns_head'), 'b:gitsigns_head is unexpectedly set')
-    eq(0, fn.exists('b:gitsigns_status_dict'), 'b:gitsigns_status_dict is unexpectedly set')
-  else
-    eq(1, fn.exists('b:gitsigns_head'), 'b:gitsigns_head is not set')
-    eq(status.head, buf_get_var(0, 'gitsigns_head'), 'b:gitsigns_head does not match')
+    eq(vim.NIL, buf_var(bufnr, 'gitsigns_head'), 'b:gitsigns_head is unexpectedly set')
+    eq(
+      vim.NIL,
+      buf_var(bufnr, 'gitsigns_status_dict'),
+      'b:gitsigns_status_dict is unexpectedly set'
+    )
+    return
+  end
 
-    --- @type table<string,string|integer>
-    local bstatus = buf_get_var(0, 'gitsigns_status_dict')
+  eq(status.head, buf_get_var(bufnr, 'gitsigns_head'), 'b:gitsigns_head does not match')
 
-    for _, i in ipairs({ 'added', 'changed', 'removed', 'head' }) do
-      eq(status[i], bstatus[i], string.format("status['%s'] did not match gitsigns_status_dict", i))
-    end
-    -- Catch any extra keys
-    for i, v in pairs(status) do
-      eq(v, bstatus[i], string.format("status['%s'] did not match gitsigns_status_dict", i))
-    end
+  --- @type table<string,string|integer>
+  local bstatus = buf_get_var(bufnr, 'gitsigns_status_dict')
+
+  for _, i in ipairs({ 'added', 'changed', 'removed', 'head' }) do
+    eq(status[i], bstatus[i], string.format("status['%s'] did not match gitsigns_status_dict", i))
+  end
+  -- Catch any extra keys
+  for i, v in pairs(status) do
+    eq(v, bstatus[i], string.format("status['%s'] did not match gitsigns_status_dict", i))
   end
 end
 
 --- @param signs table<string,integer>
-local function check_signs(signs)
+--- @param bufnr integer
+local function check_signs(signs, bufnr)
   local buf_signs = {} --- @type string[]
-  local buf_marks = helpers.api.nvim_buf_get_extmarks(0, -1, 0, -1, { details = true })
+  local buf_marks = helpers.api.nvim_buf_get_extmarks(bufnr, -1, 0, -1, { details = true })
   for _, s in ipairs(buf_marks) do
     buf_signs[#buf_signs + 1] = s[4].sign_hl_group
   end
@@ -322,8 +341,9 @@ local function check_signs(signs)
 end
 
 --- @param attrs {signs:table<string,integer>,status:table<string,string|integer>}
---- @param interval? integer
-function M.check(attrs, interval)
+--- @param bufnr? integer
+function M.check(attrs, bufnr)
+  bufnr = bufnr or 0
   if not attrs then
     return
   end
@@ -333,13 +353,13 @@ function M.check(attrs, interval)
 
   M.expectf(function()
     if status then
-      check_status(status)
+      check_status(status, bufnr)
     end
 
     if signs then
-      check_signs(signs)
+      check_signs(signs, bufnr)
     end
-  end, interval)
+  end)
 end
 
 return M
