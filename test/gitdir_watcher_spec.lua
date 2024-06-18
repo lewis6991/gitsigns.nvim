@@ -133,4 +133,41 @@ describe('gitdir_watcher', function()
 
     eq({ [1] = test_file }, get_bufs())
   end)
+
+  it('can debounce and throttle updates per buffer', function()
+    local system = helpers.fn.system
+
+    helpers.cleanup()
+    system({ 'mkdir', helpers.scratch })
+    helpers.git_init()
+
+    local f1 = vim.fs.joinpath(helpers.scratch, 'file1')
+    local f2 = vim.fs.joinpath(helpers.scratch, 'file2')
+
+    helpers.write_to_file(f1, { '1', '2', '3' })
+    helpers.write_to_file(f2, { '1', '2', '3' })
+
+    helpers.gitf({ 'add', f1, f2 })
+    helpers.gitf({ 'commit', '-m', 'init commit' })
+
+    setup_gitsigns(test_config)
+
+    command('edit ' .. f1)
+    helpers.feed('Aa<esc>')
+    command('write')
+    local b1 = helpers.api.nvim_get_current_buf()
+
+    command('split ' .. f2)
+    helpers.feed('Ab<esc>')
+    command('write')
+    local b2 = helpers.api.nvim_get_current_buf()
+
+    helpers.check({ signs = { changed = 1 } }, b1)
+    helpers.check({ signs = { changed = 1 } }, b2)
+
+    helpers.gitf({ 'add', f1, f2 })
+
+    helpers.check({ signs = {} }, b1)
+    helpers.check({ signs = {} }, b2)
+  end)
 end)

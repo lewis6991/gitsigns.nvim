@@ -112,7 +112,7 @@ end
 --- We also throttle in case the debounce delay is not enough and to prevent
 --- too many handlers from being launched (and interleaved).
 local watcher_handler =
-  debounce_trailing(200, async.create(1, throttle_by_id(watcher_handler0, true)))
+  debounce_trailing(200, async.create(1, throttle_by_id(watcher_handler0, true)), 1)
 
 --- vim.inspect but on one line
 --- @param x any
