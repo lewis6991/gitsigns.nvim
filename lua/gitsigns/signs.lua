@@ -63,6 +63,7 @@ function M:add(bufnr, signs)
         sign_text = config.signcolumn and text or '',
         priority = config.sign_priority,
         sign_hl_group = hls.hl,
+        cursorline_hl_group = hls.curhl or nil,
         number_hl_group = config.numhl and hls.numhl or nil,
         line_hl_group = config.linehl and hls.linehl or nil,
       })
