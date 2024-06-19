@@ -12,23 +12,54 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - uses: actions/stale@v8
+      - uses: actions/stale@v9
         with:
-          stale-issue-message:
+          stale-issue-message: >
             This has been labeled stale since a request for information has
             not been answered for 30 days.
-          close-issue-message:
-            This has been closed since it has been marked stale for 30 days.
+          close-issue-message: >
+            This has been closed since it has been marked stale for 5 days.
             It can be reopened when the requested information is provided.
           days-before-stale: 30
-          days-before-close: 30
+          days-before-close: 5
           any-of-labels: needs response
-          labels-to-remove-when-stale: needs response
 
   remove_label:
     if: github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
-      - uses: actions-ecosystem/action-remove-labels@v1
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
         with:
-          labels: needs response
+          script: |
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const author = issue.data.user.login;
+            const commenter = context.actor;
+
+            if (author === commenter) {
+              const labels = issue.data.labels.map((e) => e.name);
+              if (labels.includes("needs response")) {
+                github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: "needs response",
+                });
+              }
+              if (labels.includes("Stale")) {
+                github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: "Stale",
+                });
+              }
+            }
