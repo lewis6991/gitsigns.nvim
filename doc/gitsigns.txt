@@ -936,18 +936,6 @@ trouble                                              *gitsigns-config-trouble*
       When using setqflist() or setloclist(), open Trouble instead of the
       quickfix/location list window.
 
-yadm                                                    *gitsigns-config-yadm*
-   DEPRECATED
-      Please use |gitsigns-config-on_attach_pre| instead
-
-      Type: `table`
-      Default: >
-        `{
-          enable = false
-        }`
-<
-      yadm configuration.
-
 word_diff                                          *gitsigns-config-word_diff*
       Type: `boolean`, Default: `false`
 
