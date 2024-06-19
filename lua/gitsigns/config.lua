@@ -1,22 +1,10 @@
---- @class (exact) Gitsigns.SchemaElem.Deprecated
----
---- Used for renaming fields.
---- @field new_field? string
----
---- Documentation for deprecation. Will be added to the help file and used in
---- the notification if `hard = true`.
---- @field message? string
----
---- Emit a message via vim.notify
---- @field hard? boolean
-
 --- @class (exact) Gitsigns.SchemaElem
 --- @field type string|string[]|fun(x:any): boolean
 --- @field type_help? string
 --- @field refresh? fun(cb: fun()) Function to refresh the config value
 --- @field deep_extend? boolean
 --- @field default any
---- @field deprecated? boolean|Gitsigns.SchemaElem.Deprecated
+--- @field deprecated? boolean
 --- @field default_help? string
 --- @field description string
 
@@ -889,28 +877,15 @@ local function handle_deprecated(cfg)
     local dep = v.deprecated
     if dep and cfg[k] ~= nil then
       if type(dep) == 'table' then
-        if dep.new_field then
-          local opts_key, field = dep.new_field:match('(.*)%.(.*)')
-          if opts_key and field then
-            -- Field moved to an options table
-            local opts = (cfg[opts_key] or {}) --[[@as table<any,any>]]
-            opts[field] = cfg[k]
-            cfg[opts_key] = opts
-          else
-            -- Field renamed
-            cfg[dep.new_field] = cfg[k]
-          end
-        end
-
         if dep.hard then
           if dep.message then
             warn(dep.message)
-          elseif dep.new_field then
-            warn('%s is now deprecated, please use %s', k, dep.new_field)
           else
             warn('%s is now deprecated; ignoring', k)
           end
         end
+      else
+        warn('%s is now deprecated; ignoring', k)
       end
     end
   end
