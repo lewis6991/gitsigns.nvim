@@ -432,7 +432,6 @@ function M.filter_common(a, b)
   end
 
   a, b = a or {}, b or {}
-  local max_iter = math.max(#a, #b)
 
   local a_i = 1
   local b_i = 1
@@ -440,7 +439,9 @@ function M.filter_common(a, b)
   --- @type Gitsigns.Hunk.Hunk[]
   local ret = {}
 
-  for _ = 1, max_iter do
+  -- Need an offset of 1 in order to process when we hit the end of either
+  -- a or b
+  for _ = 1, math.max(#a, #b) + 1 do
     local a_h, b_h = a[a_i], b[b_i]
 
     if not a_h then

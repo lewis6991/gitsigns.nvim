@@ -215,10 +215,10 @@ local function get_hunks(bufnr, bcache, greedy, staged)
   end
 
   if staged then
-    return bcache.hunks_staged
+    return vim.deepcopy(bcache.hunks_staged, true)
   end
 
-  return bcache.hunks
+  return vim.deepcopy(bcache.hunks, true)
 end
 
 --- @param bufnr integer
