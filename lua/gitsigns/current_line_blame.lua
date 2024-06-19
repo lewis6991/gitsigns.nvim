@@ -28,7 +28,7 @@ local function expand_blame_format(fmt, name, info)
   if info.author == name then
     info.author = 'You'
   end
-  return util.expand_format(fmt, info, config.current_line_blame_formatter_opts.relative_time)
+  return util.expand_format(fmt, info)
 end
 
 --- @param virt_text {[1]: string, [2]: string}[]
@@ -41,7 +41,6 @@ local function flatten_virt_text(virt_text)
   return table.concat(res)
 end
 
---- @param winid integer
 --- @return integer
 local function win_width()
   local winid = api.nvim_get_current_win()
@@ -61,7 +60,7 @@ end
 --- @param fmt string
 --- @return Gitsigns.CurrentLineBlameFmtFun
 local function default_formatter(fmt)
-  return function(username, blame_info, _opts)
+  return function(username, blame_info)
     return {
       {
         expand_blame_format(fmt, username, blame_info),
@@ -85,7 +84,7 @@ local function get_blame_virt_text(bufnr, blame_info)
     clb_formatter = default_formatter(clb_formatter)
   end
 
-  return clb_formatter(git_obj.repo.username, blame_info, config.current_line_blame_formatter_opts)
+  return clb_formatter(git_obj.repo.username, blame_info)
 end
 
 --- @param bufnr integer

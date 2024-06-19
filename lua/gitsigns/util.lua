@@ -264,9 +264,8 @@ end
 
 ---@param fmt string
 ---@param info table<string,any>
----@param reltime? boolean Use relative time as the default date format
 ---@return string
-function M.expand_format(fmt, info, reltime)
+function M.expand_format(fmt, info)
   local ret = {} --- @type string[]
 
   for _ = 1, 20 do -- loop protection
@@ -287,7 +286,7 @@ function M.expand_format(fmt, info, reltime)
       end
       if vim.endswith(key, '_time') then
         if time_fmt == '' then
-          time_fmt = reltime and '%R' or '%Y-%m-%d'
+          time_fmt = '%Y-%m-%d'
         end
         v = expand_date(time_fmt, v)
       end
