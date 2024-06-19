@@ -46,10 +46,7 @@
 --- | 'changedelete'
 --- | 'untracked'
 
---- @class (exact) Gitsigns.CurrentLineBlameFmtOpts
---- @field relative_time boolean
-
---- @alias Gitsigns.CurrentLineBlameFmtFun fun(user: string, info: table<string,any>, opts: Gitsigns.CurrentLineBlameFmtOpts): {[1]:string,[2]:string}[]
+--- @alias Gitsigns.CurrentLineBlameFmtFun fun(user: string, info: table<string,any>): {[1]:string,[2]:string}[]
 
 --- @class (exact) Gitsigns.CurrentLineBlameOpts : Gitsigns.BlameOpts
 --- @field virt_text? boolean
@@ -85,7 +82,6 @@
 --- @field update_debounce integer
 --- @field status_formatter fun(_: table<string,any>): string
 --- @field current_line_blame boolean
---- @field current_line_blame_formatter_opts { relative_time: boolean }
 --- @field current_line_blame_formatter string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_formatter_nc string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_opts Gitsigns.CurrentLineBlameOpts
@@ -108,7 +104,6 @@ local M = {
     DiffOpts = {},
     SignConfig = {},
     watch_gitdir = {},
-    current_line_blame_formatter_opts = {},
     current_line_blame_opts = {},
     Worktree = {},
   },
@@ -688,24 +683,9 @@ M.schema = {
     ]],
   },
 
-  current_line_blame_formatter_opts = {
-    type = 'table',
-    deep_extend = true,
-    deprecated = true,
-    default = {
-      relative_time = false,
-    },
-    description = [[
-      Options for the current line blame annotation formatter.
-
-      Fields: ~
-        • relative_time: boolean
-    ]],
-  },
-
   current_line_blame_formatter = {
     type = { 'string', 'function' },
-    default = ' <author>, <author_time> - <summary> ',
+    default = ' <author>, <author_time:%R> - <summary> ',
     description = [[
       String or function used to format the virtual text of
       |gitsigns-config-current_line_blame|.
@@ -773,9 +753,6 @@ M.schema = {
 
                        Note that the keys map onto the output of:
                          `git blame --line-porcelain`
-
-          {opts}       Passed directly from
-                       |gitsigns-config-current_line_blame_formatter_opts|.
 
         Return: ~
           The result of this function is passed directly to the `opts.virt_text`
