@@ -35,6 +35,7 @@
 --- @field hl string
 --- @field text string
 --- @field numhl string
+--- @field curhl string
 --- @field linehl string
 
 --- @alias Gitsigns.SignType
@@ -188,36 +189,47 @@ M.schema = {
     type = 'table',
     deep_extend = true,
     default = {
-      add = { hl = 'GitSignsAdd', text = '┃', numhl = 'GitSignsAddNr', linehl = 'GitSignsAddLn' },
+      add = {
+        hl = 'GitSignsAdd',
+        text = '┃',
+        numhl = 'GitSignsAddNr',
+        linehl = 'GitSignsAddLn',
+        curhl = 'GitSignsAdd',
+      },
       change = {
         hl = 'GitSignsChange',
         text = '┃',
         numhl = 'GitSignsChangeNr',
         linehl = 'GitSignsChangeLn',
+        curhl = 'GitSignsChange',
       },
       delete = {
         hl = 'GitSignsDelete',
         text = '▁',
         numhl = 'GitSignsDeleteNr',
         linehl = 'GitSignsDeleteLn',
+        curhl = 'GitSignsDelete',
       },
       topdelete = {
         hl = 'GitSignsTopdelete',
         text = '▔',
         numhl = 'GitSignsTopdeleteNr',
         linehl = 'GitSignsTopdeleteLn',
+        curhl = 'GitSignsTopdelete',
       },
       changedelete = {
         hl = 'GitSignsChangedelete',
         text = '~',
         numhl = 'GitSignsChangedeleteNr',
         linehl = 'GitSignsChangedeleteLn',
+        curhl = 'GitSignsChangedelete',
       },
       untracked = {
         hl = 'GitSignsUntracked',
         text = '┆',
         numhl = 'GitSignsUntrackedNr',
         linehl = 'GitSignsUntrackedLn',
+        curhl = 'GitSignsUntracked',
       },
     },
     default_help = [[{
@@ -253,30 +265,35 @@ M.schema = {
         text = '┃',
         numhl = 'GitSignsStagedAddNr',
         linehl = 'GitSignsStagedAddLn',
+        curhl = 'GitSignsStagedAdd',
       },
       change = {
         hl = 'GitSignsStagedChange',
         text = '┃',
         numhl = 'GitSignsStagedChangeNr',
         linehl = 'GitSignsStagedChangeLn',
+        curhl = 'GitSignsStagedChange',
       },
       delete = {
         hl = 'GitSignsStagedDelete',
         text = '▁',
         numhl = 'GitSignsStagedDeleteNr',
         linehl = 'GitSignsStagedDeleteLn',
+        curhl = 'GitSignsStagedDelete',
       },
       topdelete = {
         hl = 'GitSignsStagedTopdelete',
         text = '▔',
         numhl = 'GitSignsStagedTopdeleteNr',
         linehl = 'GitSignsStagedTopdeleteLn',
+        curhl = 'GitSignsStagedTopdelete',
       },
       changedelete = {
         hl = 'GitSignsStagedChangedelete',
         text = '~',
         numhl = 'GitSignsStagedChangedeleteNr',
         linehl = 'GitSignsStagedChangedeleteLn',
+        curhl = 'GitSignsStagedChangedelete',
       },
     },
     default_help = [[{
