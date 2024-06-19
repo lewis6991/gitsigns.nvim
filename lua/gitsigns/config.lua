@@ -92,7 +92,6 @@
 --- @field preview_config table<string,any>
 --- @field auto_attach boolean
 --- @field attach_to_untracked boolean
---- @field yadm { enable: boolean }
 --- @field worktrees {toplevel: string, gitdir: string}[]
 --- @field word_diff boolean
 --- @field trouble boolean
@@ -111,7 +110,6 @@ local M = {
     watch_gitdir = {},
     current_line_blame_formatter_opts = {},
     current_line_blame_opts = {},
-    yadm = {},
     Worktree = {},
   },
 }
@@ -807,17 +805,6 @@ M.schema = {
     description = [[
       When using setqflist() or setloclist(), open Trouble instead of the
       quickfix/location list window.
-    ]],
-  },
-
-  yadm = {
-    type = 'table',
-    deprecated = {
-      message = 'Please use |gitsigns-config-on_attach_pre| instead',
-    },
-    default = { enable = false },
-    description = [[
-      yadm configuration.
     ]],
   },
 

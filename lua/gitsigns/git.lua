@@ -327,35 +327,6 @@ function Repo:update_abbrev_head()
   self.abbrev_head = M.get_repo_info(self.toplevel).abbrev_head
 end
 
---- @private
---- @param dir string
---- @param gitdir? string
---- @param toplevel? string
-function Repo:try_yadm(dir, gitdir, toplevel)
-  if not config.yadm.enable or self.gitdir then
-    return
-  end
-
-  local home = os.getenv('HOME')
-
-  if not home or not vim.startswith(dir, home) then
-    return
-  end
-
-  if #git_command({ 'ls-files', dir }, { command = 'yadm' }) == 0 then
-    return
-  end
-
-  M.get_repo_info(dir, 'yadm', gitdir, toplevel)
-  local yadm_info = M.get_repo_info(dir, 'yadm', gitdir, toplevel)
-  for k, v in
-    pairs(yadm_info --[[@as table<string,any>]])
-  do
-    ---@diagnostic disable-next-line:no-unknown
-    self[k] = v
-  end
-end
-
 --- @async
 --- @param dir string
 --- @param gitdir? string
@@ -372,8 +343,6 @@ function Repo.new(dir, gitdir, toplevel)
     ---@diagnostic disable-next-line:no-unknown
     self[k] = v
   end
-
-  self:try_yadm(dir, gitdir, toplevel)
 
   return self
 end
