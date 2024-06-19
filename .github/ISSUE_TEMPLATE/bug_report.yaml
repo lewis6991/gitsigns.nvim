@@ -6,12 +6,14 @@ body:
     attributes:
       value: >
         Before reporting make sure that Gitsigns is updated to the latest version.
+
   - type: textarea
     attributes:
       label: "Description"
       description: "A comprehensive description of the problem you are reporting."
     validations:
       required: true
+
   - type: input
     attributes:
       label: "Neovim version"
@@ -19,51 +21,56 @@ body:
         Output of `nvim --version`
     validations:
       required: true
+
   - type: input
     attributes:
       label: "Operating system and version"
     validations:
       required: true
+
   - type: textarea
     attributes:
       label: "Expected behavior"
       description: "A description of the behavior you expected:"
+
   - type: textarea
     attributes:
       label: "Actual behavior"
       description: "Observed behavior (may optionally include logs, images, or videos)."
     validations:
       required: true
+
   - type: textarea
     attributes:
-       label: "Minimal config"
-       description: >
-         Minimal(!) configuration necessary to reproduce the issue. Save this as
-         `minimal.lua`. If necessary, add plugins and config options from your
-         `init.lua` at the indicated lines.
+      label: "Minimal config"
+      description: >
+        Minimal(!) configuration necessary to reproduce the issue. Save this as
+        `minimal.lua`. If necessary, add plugins and config options from your
+        `init.lua` at the indicated lines.
 
-         Please **do not** include a package manager (like lazy.nvim) in this.
-       render: Lua
-       value: |
-         for name, url in pairs{
-           gitsigns = 'https://github.com/lewis6991/gitsigns.nvim',
-           -- ADD OTHER PLUGINS _NECESSARY_ TO REPRODUCE THE ISSUE
-         } do
-           local install_path = vim.fn.fnamemodify('gitsigns_issue/'..name, ':p')
-           if vim.fn.isdirectory(install_path) == 0 then
-             vim.fn.system { 'git', 'clone', '--depth=1', url, install_path }
-           end
-           vim.opt.runtimepath:append(install_path)
-         end
+        Please **DO NOT** include a package manager (such as `lazy.nvim`) in this.
+      render: Lua
+      value: |
+        for name, url in pairs{
+          gitsigns = 'https://github.com/lewis6991/gitsigns.nvim',
+          -- ADD OTHER PLUGINS _NECESSARY_ TO REPRODUCE THE ISSUE
+        } do
+        local install_path = vim.fn.fnamemodify('gitsigns_issue/'..name, ':p')
+        if vim.fn.isdirectory(install_path) == 0 then
+        vim.fn.system { 'git', 'clone', '--depth=1', url, install_path }
+        end
+        vim.opt.runtimepath:append(install_path)
+        end
 
-         require('gitsigns').setup{
-           debug_mode = true, -- You must add this to enable debug messages
-           -- ADD GITSIGNS CONFIG THAT IS _NECESSARY_ FOR REPRODUCING THE ISSUE
-         }
+        require('gitsigns').setup{
+          debug_mode = true, -- You must add this to enable debug messages
+          -- ADD GITSIGNS CONFIG THAT IS _NECESSARY_ FOR REPRODUCING THE ISSUE
+        }
 
-         -- ADD INIT.LUA SETTINGS THAT IS _NECESSARY_ FOR REPRODUCING THE ISSUE
+        -- ADD INIT.LUA SETTINGS THAT IS _NECESSARY_ FOR REPRODUCING THE ISSUE
     validations:
       required: true
+
   - type: textarea
     attributes:
       label: "Steps to reproduce"
@@ -77,16 +84,25 @@ body:
         3. `git init`
         4. `touch file`
         5. `git add file`
-        6. `git commit -m 'init commit'
+        6. `git commit -m 'initial commit'`
         7. `nvim --clean -u minimal.lua file`
         8. ...
     validations:
       required: true
+
   - type: textarea
     attributes:
       label: "Gitsigns debug messages"
+      render: text
       description: >
-        Please include the output of `:Gitsigns debug_messages`. If you think it's
-        relevant maybe also provide the output of `:Gitsigns dump_cache`.
+        Please include the output of `:Gitsigns debug_messages`.
 
         Note: You must have `debug_mode = true` in `setup()`.
+
+  - type: textarea
+    attributes:
+      label: "Gitsigns cache"
+      render: lua
+      description: >
+        If you think it's relevant maybe also provide the output of
+        `:Gitsigns dump_cache`.
