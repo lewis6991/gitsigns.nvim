@@ -11,7 +11,8 @@
 --- @field hard? boolean
 
 --- @class (exact) Gitsigns.SchemaElem
---- @field type string|string[]
+--- @field type string|string[]|fun(x:any): boolean
+--- @field type_help? string
 --- @field refresh? fun(cb: fun()) Function to refresh the config value
 --- @field deep_extend? boolean
 --- @field default any
@@ -182,10 +183,50 @@ M.config = setmetatable({}, {
   end,
 })
 
+local function warn(s, ...)
+  vim.notify_once(s:format(...), vim.log.levels.WARN, { title = 'gitsigns' })
+end
+
+--- @param x Gitsigns.SignConfig
+--- @return boolean
+local function validate_signs(x)
+  if type(x) ~= 'table' then
+    return false
+  end
+
+  local warnings --- @type table<string,true>?
+
+  --- @diagnostic disable-next-line:no-unknown
+  for kind, s in pairs(M.schema.signs.default) do
+    --- @diagnostic disable-next-line:no-unknown
+    for ty, v in pairs(s) do
+      if x[kind] and x[kind][ty] and vim.endswith(ty, 'hl') then
+        warnings = warnings or {}
+        local w = string.format(
+          "'signs.%s.%s' is now deprecated, please define highlight '%s'",
+          kind,
+          ty,
+          v
+        )
+        warnings[w] = true
+      end
+    end
+  end
+
+  if warnings then
+    for w in vim.spairs(warnings) do
+      warn(w)
+    end
+  end
+
+  return true
+end
+
 --- @type table<string,Gitsigns.SchemaElem>
 M.schema = {
   signs = {
-    type = 'table',
+    type_help = 'table',
+    type = validate_signs,
     deep_extend = true,
     default = {
       add = { hl = 'GitSignsAdd', text = '┃', numhl = 'GitSignsAddNr', linehl = 'GitSignsAddLn' },
@@ -861,22 +902,18 @@ M.schema = {
   },
 }
 
-local function warn(s, ...)
-  vim.notify(s:format(...), vim.log.levels.WARN, { title = 'gitsigns' })
-end
-
 --- @param config Gitsigns.Config
 local function validate_config(config)
-  --- @diagnostic disable-next-line:no-unknown
-  for k, v in pairs(config) do
+  for k, v in
+    pairs(config --[[@as table<string,any>]])
+  do
     local kschema = M.schema[k]
     if kschema == nil then
       warn("gitsigns: Ignoring invalid configuration field '%s'", k)
-    elseif kschema.type then
-      if type(kschema.type) == 'string' then
-        vim.validate({
-          [k] = { v, kschema.type },
-        })
+    else
+      local ty = kschema.type
+      if type(ty) == 'string' or type(ty) == 'function' then
+        vim.validate({ [k] = { v, ty } })
       end
     end
   end

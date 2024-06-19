@@ -101,10 +101,10 @@ local function gen_config_doc_field(field, out)
     end
 
     local vtype = (function()
-      if v.type == 'table' and v.deep_extend then
+      local ty = v.type_help or v.type
+      if ty == 'table' and v.deep_extend then
         return 'table[extended]'
       end
-      local ty = v.type
       if type(ty) == 'table' then
         v.type = table.concat(ty, '|')
       end
