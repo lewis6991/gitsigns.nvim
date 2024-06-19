@@ -403,6 +403,8 @@ nav_hunk({direction}, {opts}, {callback?})                 *gitsigns.nav_hunk()*
                                 • {greedy}: (boolean)
                                   Only navigate between non-contiguous hunks. Only useful if
                                   'diff_opts' contains `linematch`. Defaults to `true`.
+                                • {target}: (`'unstaged'|'staged'|'all'`)
+                                  Which kinds of hunks to target. Defaults to `'unstaged'`.
                                 • {count}: (integer)
                                   Number of times to advance. Defaults to |v:count1|.
 

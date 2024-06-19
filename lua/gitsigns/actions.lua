@@ -215,10 +215,10 @@ local function get_hunks(bufnr, bcache, greedy, staged)
   end
 
   if staged then
-    return vim.deepcopy(bcache.hunks_staged, true)
+    return vim.deepcopy(bcache.hunks_staged)
   end
 
-  return vim.deepcopy(bcache.hunks, true)
+  return vim.deepcopy(bcache.hunks)
 end
 
 --- @param bufnr integer
@@ -478,6 +478,7 @@ end)
 --- @field greedy boolean
 --- @field preview boolean
 --- @field count integer
+--- @field target 'unstaged'|'staged'|'all'
 
 --- @param x string
 --- @param word string
@@ -513,6 +514,10 @@ local function process_nav_opts(opts)
     opts.count = vim.v.count1
   end
 
+  if opts.target == nil then
+    opts.target = 'unstaged'
+  end
+
   return opts
 end
 
@@ -532,6 +537,30 @@ local function has_preview_inline(bufnr)
   return #api.nvim_buf_get_extmarks(bufnr, ns_inline, 0, -1, { limit = 1 }) > 0
 end
 
+--- @param bufnr integer
+--- @param target 'unstaged'|'staged'|'all'
+--- @param greedy boolean
+--- @return Gitsigns.Hunk.Hunk[]
+local function get_nav_hunks(bufnr, target, greedy)
+  local bcache = assert(cache[bufnr])
+  local hunks_main = get_hunks(bufnr, bcache, greedy, false) or {}
+
+  local hunks --- @type Gitsigns.Hunk.Hunk[]
+  if target == 'unstaged' then
+    hunks = hunks_main
+  else
+    local hunks_head = get_hunks(bufnr, bcache, greedy, true) or {}
+    hunks_head = Hunks.filter_common(hunks_head, hunks_main) or {}
+    if target == 'all' then
+      hunks = hunks_main
+      vim.list_extend(hunks, hunks_head)
+    elseif target == 'staged' then
+      hunks = hunks_head
+    end
+  end
+  return hunks
+end
+
 --- @async
 --- @param direction 'first'|'last'|'next'|'prev'
 --- @param opts? Gitsigns.NavOpts
@@ -543,9 +572,7 @@ local function nav_hunk(direction, opts)
     return
   end
 
-  local hunks = get_hunks(bufnr, bcache, opts.greedy, false) or {}
-  local hunks_head = get_hunks(bufnr, bcache, opts.greedy, true) or {}
-  vim.list_extend(hunks, Hunks.filter_common(hunks_head, hunks) or {})
+  local hunks = get_nav_hunks(bufnr, opts.target, opts.greedy)
 
   if not hunks or vim.tbl_isempty(hunks) then
     if opts.navigation_message then
@@ -629,6 +656,8 @@ end
 ---     • {greedy}: (boolean)
 ---       Only navigate between non-contiguous hunks. Only useful if
 ---       'diff_opts' contains `linematch`. Defaults to `true`.
+---     • {target}: (`'unstaged'|'staged'|'all'`)
+---       Which kinds of hunks to target. Defaults to `'unstaged'`.
 ---     • {count}: (integer)
 ---       Number of times to advance. Defaults to |v:count1|.
 M.nav_hunk = async.create(2, function(direction, opts)
