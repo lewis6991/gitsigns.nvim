@@ -79,7 +79,7 @@ local function apply_win_signs(bufnr, top, bot, clear)
   end
 end
 
---- @param blame table<integer,Gitsigns.BlameInfo?>?
+--- @param blame table<integer,Gitsigns.BlameInfo|false?>?
 --- @param first integer
 --- @param last_orig integer
 --- @param last_new integer
@@ -88,16 +88,14 @@ local function on_lines_blame(blame, first, last_orig, last_new)
     return
   end
 
-  if last_new ~= last_orig then
-    if last_new < last_orig then
-      util.list_remove(blame, last_new, last_orig)
-    else
-      util.list_insert(blame, last_orig, last_new)
-    end
+  if last_new < last_orig then
+    util.list_remove(blame, last_new + 1, last_orig)
+  elseif last_new > last_orig then
+    util.list_insert(blame, last_orig + 1, last_new, false)
   end
 
-  for i = math.min(first + 1, last_new), math.max(first + 1, last_new) do
-    blame[i] = nil
+  for i = first + 1, last_new do
+    blame[i] = false
   end
 end
 
