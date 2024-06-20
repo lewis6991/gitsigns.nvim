@@ -253,6 +253,7 @@ M.blame = function()
   local blm_bo = vim.bo[blm_bufnr]
   blm_bo.buftype = 'nofile'
   blm_bo.modifiable = false
+  blm_bo.filetype = 'gitsigns.blame'
 
   local blm_wlo = vim.wo[blm_win][0]
   blm_wlo.foldcolumn = '0'

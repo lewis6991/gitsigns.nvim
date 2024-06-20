@@ -327,7 +327,7 @@ end
 ---@param first integer
 ---@param last integer
 function M.list_remove(t, first, last)
-  local n = #t
+  local n = table.maxn(t)
   for i = 0, n - first do
     t[first + i] = t[last + 1 + i]
     t[last + 1 + i] = nil
@@ -347,7 +347,7 @@ end
 ---@param last integer
 ---@param v any
 function M.list_insert(t, first, last, v)
-  local n = #t
+  local n = table.maxn(t)
 
   -- Shift table forward
   for i = n - first, 0, -1 do

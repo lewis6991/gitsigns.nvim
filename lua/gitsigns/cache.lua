@@ -19,7 +19,7 @@ local M = {
 --- @field staged_diffs?      Gitsigns.Hunk.Hunk[]
 --- @field gitdir_watcher?    uv.uv_fs_event_t
 --- @field git_obj            Gitsigns.GitObj
---- @field blame?             table<integer,Gitsigns.BlameInfo|false?>
+--- @field blame?             table<integer,Gitsigns.BlameInfo?>
 local CacheEntry = M.CacheEntry
 
 function CacheEntry:get_rev_bufname(rev)
