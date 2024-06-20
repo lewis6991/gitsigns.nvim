@@ -71,7 +71,7 @@ local function get_buf_path(bufnr)
     dprintf("Fugitive buffer for file '%s' from path '%s'", path, file)
     if path then
       local realpath = uv.fs_realpath(path)
-      if realpath then
+      if realpath and vim.fn.isdirectory(realpath) == 0 then
         return realpath, commit, true
       end
     end
