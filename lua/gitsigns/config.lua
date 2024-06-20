@@ -44,7 +44,6 @@
 
 --- @class (exact) Gitsigns.BlameOpts
 --- @field ignore_whitespace? boolean
---- @field rev? string
 --- @field extra_opts? string[]
 
 --- @class (exact) Gitsigns.LineBlameOpts : Gitsigns.BlameOpts
