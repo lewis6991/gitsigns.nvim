@@ -7,24 +7,39 @@ local async = require('gitsigns.async')
 local log = require('gitsigns.debug.log')
 local dprint = log.dprint
 
-local hash_colors = {} --- @type table<string,string>
+local hash_colors = {} --- @type table<integer,string>
 
 local ns = api.nvim_create_namespace('gitsigns_blame_win')
 local ns_hl = api.nvim_create_namespace('gitsigns_blame_win_hl')
 
+--- Convert a hex char to a rgb color component
+---
+--- Taken from vim-fugitive:
+--- Avoid color components lower than 0x20 and higher than 0xdf to help
+--- avoid colors that blend into the background, light or dark.
+--- @param x string hex char
+--- @return integer
+local function mod(x)
+  local y = tonumber(x, 16)
+  return math.min(0xdf, 0x20 + math.floor((y * 0x10 + (15 - y)) * 0.75))
+end
+
+--- Taken from vim-fugitive
+--- Use 3 characters of the commit hash, limiting the maximum total colors to
+--- 4,096.
 --- @param sha string
 --- @return string
 local function get_hash_color(sha)
+  local r, g, b = sha:match('(%x)%x(%x)%x(%x)')
+  local color = mod(r) * 0x10000 + mod(g) * 0x100 + mod(b)
+
   if hash_colors[sha] then
     return hash_colors[sha]
   end
 
-  local r0, g0, b0 = sha:match('(%x)%x(%x)%x(%x)')
-  local color = tonumber(string.format('%s0%s0%s0', r0, g0, b0), 16)
-
-  local hl_name = 'GitSignsBlameHash' .. sha
+  local hl_name = string.format('GitSignsBlameColor.%s%s%s', r, g, b)
   api.nvim_set_hl(0, hl_name, { fg = color })
-  hash_colors[sha] = hl_name
+  hash_colors[color] = hl_name
 
   return hl_name
 end
@@ -257,6 +272,7 @@ M.blame = function()
   vim.cmd(tostring(top))
   vim.cmd('normal! zt')
   vim.cmd(tostring(current))
+  vim.cmd('normal! 0')
 
   local cur_wlo = vim.wo[win][0]
   cur_wlo.foldenable = false
