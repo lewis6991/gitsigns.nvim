@@ -34,7 +34,7 @@
 --- | 'changedelete'
 --- | 'untracked'
 
---- @alias Gitsigns.CurrentLineBlameFmtFun fun(user: string, info: table<string,any>): {[1]:string,[2]:string}[]
+--- @alias Gitsigns.CurrentLineBlameFmtFun fun(user: string, info: table<string,any>): [string,string][]
 
 --- @class (exact) Gitsigns.CurrentLineBlameOpts : Gitsigns.BlameOpts
 --- @field virt_text? boolean

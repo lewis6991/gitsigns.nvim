@@ -1,7 +1,10 @@
 local async = require('gitsigns.async')
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
+local schema = require('gitsigns.config').schema
 local util = require('gitsigns.util')
+
+local error_once = require('gitsigns.message').error_once
 
 local api = vim.api
 
@@ -72,19 +75,27 @@ end
 
 ---@param bufnr integer
 ---@param blame_info Gitsigns.BlameInfoPublic
----@return {[1]: string, [2]:string}[]
+---@return [string, string][]
 local function get_blame_virt_text(bufnr, blame_info)
   local git_obj = assert(cache[bufnr]).git_obj
+  local use_nc = blame_info.author == 'Not Committed Yet'
 
-  local clb_formatter = blame_info.author == 'Not Committed Yet'
-      and config.current_line_blame_formatter_nc
+  local clb_formatter = use_nc and config.current_line_blame_formatter_nc
     or config.current_line_blame_formatter
 
-  if type(clb_formatter) == 'string' then
-    clb_formatter = default_formatter(clb_formatter)
+  if type(clb_formatter) == 'function' then
+    local ok, res = pcall(clb_formatter, git_obj.repo.username, blame_info)
+    if ok then
+      return res
+    end
+
+    local nc_sfx = use_nc and '_nc' or ''
+    error_once('Failed running config.current_line_blame_formatter%s, using default', nc_sfx)
+    --- @type string
+    clb_formatter = schema.current_line_blame_formatter.default
   end
 
-  return clb_formatter(git_obj.repo.username, blame_info)
+  return default_formatter(clb_formatter)(git_obj.repo.username, blame_info)
 end
 
 --- @param bufnr integer
