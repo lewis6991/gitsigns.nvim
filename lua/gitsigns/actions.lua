@@ -977,8 +977,6 @@ end
 ---       Display full commit message with hunk.
 ---     • {ignore_whitespace}: (boolean)
 ---       Ignore whitespace when running blame.
----     • {rev}: (string)
----       Revision to blame against.
 ---     • {extra_opts}: (string[])
 ---       Extra options passed to `git-blame`.
 M.blame_line = async.create(1, function(opts)

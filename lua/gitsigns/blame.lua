@@ -220,11 +220,8 @@ M.blame = function()
     return
   end
 
-  local blame = bcache:run_blame(nil, { rev = bcache.git_obj.revision })
-  if not blame then
-    dprint('No blame info')
-    return
-  end
+  bcache:get_blame()
+  local blame = assert(bcache.blame)
 
   -- Save position to align 'scrollbind'
   local top = vim.fn.line('w0') + vim.wo.scrolloff

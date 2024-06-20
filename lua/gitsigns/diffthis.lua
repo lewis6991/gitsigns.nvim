@@ -17,7 +17,7 @@ local M = {}
 --- @param dbufnr integer
 --- @param base string?
 local function bufread(bufnr, dbufnr, base)
-  local bcache = cache[bufnr]
+  local bcache = assert(cache[bufnr])
   base = util.norm_base(base)
   local text --- @type string[]
   if base == bcache.git_obj.revision then
@@ -52,8 +52,9 @@ end
 --- @param bufnr integer
 --- @param dbufnr integer
 --- @param base string?
-local bufwrite = async.create(3, function(bufnr, dbufnr, base)
-  local bcache = cache[bufnr]
+--- @param _callback? fun()
+local bufwrite = async.create(3, function(bufnr, dbufnr, base, _callback)
+  local bcache = assert(cache[bufnr])
   local buftext = util.buf_lines(dbufnr)
   base = util.norm_base(base)
   bcache.git_obj:stage_lines(buftext)
@@ -151,7 +152,8 @@ end
 
 --- @param base string?
 --- @param opts Gitsigns.DiffthisOpts
-M.diffthis = async.create(2, function(base, opts)
+--- @param _callback? fun()
+M.diffthis = async.create(2, function(base, opts, _callback)
   if vim.wo.diff then
     return
   end
@@ -176,7 +178,8 @@ end)
 
 --- @param bufnr integer
 --- @param base string
-M.show = async.create(2, function(bufnr, base)
+--- @param _callback? fun()
+M.show = async.create(2, function(bufnr, base, _callback)
   __FUNC__ = 'show'
   local bufname = create_show_buf(bufnr, base)
   if not bufname then
@@ -205,16 +208,15 @@ end
 
 -- This function needs to be throttled as there is a call to vim.ui.input
 --- @param bufnr integer
-M.update = throttle_by_id(async.create(1, function(bufnr)
+--- @param _callback? fun()
+M.update = throttle_by_id(async.create(1, function(bufnr, _callback)
   if not vim.wo.diff then
     return
   end
 
-  local bcache = cache[bufnr]
-
   -- Note this will be the bufname for the currently set base
   -- which are the only ones we want to update
-  local bufname = bcache:get_rev_bufname()
+  local bufname = assert(cache[bufnr]):get_rev_bufname()
 
   for _, w in ipairs(api.nvim_list_wins()) do
     if api.nvim_win_is_valid(w) then
