@@ -357,6 +357,10 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   -- Initial update
   manager.update(cbuf)
+
+  if config.current_line_blame then
+    require('gitsigns.current_line_blame').update(cbuf)
+  end
 end)
 
 --- Detach Gitsigns from all buffers it is attached to.
