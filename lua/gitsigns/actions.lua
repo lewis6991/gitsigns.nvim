@@ -1053,9 +1053,13 @@ end
 --- Run git-blame on the current file and open the results
 --- in a scroll-bound vertical split.
 ---
---- <CR> is mapped to open a menu with the actions:
----   - [Show commit] in a vertical split.
----   - [Reblame at commit]
+--- Mappings:
+---   <CR> is mapped to open a menu with the other mappings
+---        Note: <Alt> must be held to activate the mappings whilst the menu is
+---        open.
+---   s   [Show commit] in a vertical split.
+---   S   [Show commit] in a new tab.
+---   r   [Reblame at commit]
 ---
 --- Attributes: ~
 ---     {async}
