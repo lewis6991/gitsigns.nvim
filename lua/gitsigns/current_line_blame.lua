@@ -90,7 +90,11 @@ local function get_blame_virt_text(bufnr, blame_info)
     end
 
     local nc_sfx = use_nc and '_nc' or ''
-    error_once('Failed running config.current_line_blame_formatter%s, using default', nc_sfx)
+    error_once(
+      'Failed running config.current_line_blame_formatter%s, using default:\n   %s',
+      nc_sfx,
+      res
+    )
     --- @type string
     clb_formatter = schema.current_line_blame_formatter.default
   end
