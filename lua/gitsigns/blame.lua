@@ -187,7 +187,8 @@ local show_commit = async.create(3, function(win, open, bcache)
   local sha = bcache.blame[cursor].commit.sha
   local res = bcache.git_obj:command({ 'show', sha })
   async.scheduler()
-  local commit_buf = api.nvim_create_buf(false, true)
+  local commit_buf = api.nvim_create_buf(true, true)
+  api.nvim_buf_set_name(commit_buf, bcache:get_rev_bufname(sha, true))
   api.nvim_buf_set_lines(commit_buf, 0, -1, false, res)
   vim.cmd[open]({ mods = { keepalt = true } })
   api.nvim_win_set_buf(0, commit_buf)
@@ -273,6 +274,7 @@ M.blame = function()
 
   local blm_bo = vim.bo[blm_bufnr]
   blm_bo.buftype = 'nofile'
+  blm_bo.bufhidden = 'wipe'
   blm_bo.modifiable = false
   blm_bo.filetype = 'gitsigns.blame'
 

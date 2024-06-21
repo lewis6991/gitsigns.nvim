@@ -22,8 +22,11 @@ local M = {
 --- @field blame?             table<integer,Gitsigns.BlameInfo?>
 local CacheEntry = M.CacheEntry
 
-function CacheEntry:get_rev_bufname(rev)
+function CacheEntry:get_rev_bufname(rev, nofile)
   rev = rev or self.git_obj.revision or ':0'
+  if nofile then
+    return string.format('gitsigns://%s/%s', self.git_obj.repo.gitdir, rev)
+  end
   return string.format('gitsigns://%s/%s:%s', self.git_obj.repo.gitdir, rev, self.git_obj.relpath)
 end
 
