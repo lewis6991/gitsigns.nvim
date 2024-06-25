@@ -289,7 +289,7 @@ M.blame = function()
   blm_wlo.winfixwidth = true
   blm_wlo.wrap = false
 
-  if vim.wo[win].winbar ~= '' then
+  if vim.wo[win].winbar ~= '' and blm_wlo.winbar == '' then
     local name = api.nvim_buf_get_name(bufnr)
     blm_wlo.winbar = vim.fn.fnamemodify(name, ':.')
   end
