@@ -183,10 +183,13 @@ local function validate_signs(x)
       if x[kind] and x[kind][ty] and vim.endswith(ty, 'hl') then
         warnings = warnings or {}
         local w = string.format(
-          "'signs.%s.%s' is now deprecated, please define highlight '%s'",
+          "'signs.%s.%s' is now deprecated, please define highlight '%s' e.g:\n"
+            .. "  vim.api.nvim_set_hl(0, '%s', { link = '%s' })",
           kind,
           ty,
-          v
+          v,
+          v,
+          x[kind][ty]
         )
         warnings[w] = true
       end
