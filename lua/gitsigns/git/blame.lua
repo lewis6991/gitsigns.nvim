@@ -83,7 +83,7 @@ local function incremental_iter(data_lines, i, commits, result)
     i = i + 1
     local key, value = l:match('^([^%s]+) (.*)')
     if key == 'previous' then
-      previous_sha, previous_filename = data_lines[i]:match('^previous (%x+) (.*)')
+      previous_sha, previous_filename = l:match('^previous (%x+) (.*)')
     elseif key then
       key = key:gsub('%-', '_') --- @type string
       if vim.endswith(key, '_time') then

@@ -1012,9 +1012,7 @@ M.blame_line = async.create(1, function(opts)
     return
   end
 
-  assert(result)
-
-  result = util.convert_blame_info(result)
+  result = util.convert_blame_info(assert(result))
 
   local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
 
