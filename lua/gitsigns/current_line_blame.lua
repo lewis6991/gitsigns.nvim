@@ -214,11 +214,12 @@ function M.setup()
     reset(k)
   end
 
+  local group = api.nvim_create_augroup('gitsigns_blame', {})
+
   if not config.current_line_blame then
     return
   end
 
-  local group = api.nvim_create_augroup('gitsigns_blame', {})
   local opts = config.current_line_blame_opts
   M.update = debounce.debounce_trailing(opts.delay, update)
 
