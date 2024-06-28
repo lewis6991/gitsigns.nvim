@@ -1,5 +1,50 @@
 # Changelog
 
+## [1.0.0](https://github.com/lewis6991/gitsigns.nvim/compare/v0.9.0...v1.0.0) (2024-06-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove current_line_blame_formatter_opts
+* remove support for yadm
+* **config:** deprecate highlight groups in config.signs
+
+### Features
+
+* **blame:** add `Gitsigns blame` ([25b6ee4](https://github.com/lewis6991/gitsigns.nvim/commit/25b6ee4be514b38d5bfe950d790a67042e05ef35))
+* **blame:** run formatter with pcall ([9ca00df](https://github.com/lewis6991/gitsigns.nvim/commit/9ca00df1c84fc0a1ed18c79156c06b081dc1da1f))
+* **blame:** set filetype to gitsigns.blame ([0dc8866](https://github.com/lewis6991/gitsigns.nvim/commit/0dc886637f9686b7cfd245a4726f93abeab19d4a)), closes [#1049](https://github.com/lewis6991/gitsigns.nvim/issues/1049)
+* **config:** deprecate highlight groups in config.signs ([3d7e49c](https://github.com/lewis6991/gitsigns.nvim/commit/3d7e49c201537ee0293a1a3abe67b67f8e7648a5))
+* **config:** improve deprecation message ([fa42613](https://github.com/lewis6991/gitsigns.nvim/commit/fa42613096ebfa5fee1ea87d70f8625ab9685d01))
+* **nav:** add target option ([9291836](https://github.com/lewis6991/gitsigns.nvim/commit/929183666540e164fa74028954ade62fa703fa1a))
+* remove current_line_blame_formatter_opts ([92a8fbb](https://github.com/lewis6991/gitsigns.nvim/commit/92a8fbb8453571978468e4ad2d4f8cd302d79eab))
+* remove support for yadm ([61f5b64](https://github.com/lewis6991/gitsigns.nvim/commit/61f5b6407611a25e2d407ac0bc60e5c87c25ad72))
+* set bufname for commit buffers ([e4efe9b](https://github.com/lewis6991/gitsigns.nvim/commit/e4efe9b99b7c473e9f917edf441cec48c05fd99e))
+* **signs:** able staged signs by default ([b8cf5e8](https://github.com/lewis6991/gitsigns.nvim/commit/b8cf5e8efaa0036d493a2e2dfed768c3a03fac73))
+* tweak how commit buffers are processed ([47c8e3e](https://github.com/lewis6991/gitsigns.nvim/commit/47c8e3e571376b24de62408fd0c9d12f0a9fc0a3))
+
+
+### Bug Fixes
+
+* **attach:** resolve error viewing fugitive trees ([#1058](https://github.com/lewis6991/gitsigns.nvim/issues/1058)) ([89a4dce](https://github.com/lewis6991/gitsigns.nvim/commit/89a4dce7c94c40c89774d3cb3a7788a9ecf412c0))
+* **blame:** include error message in error ([d03a1c9](https://github.com/lewis6991/gitsigns.nvim/commit/d03a1c9a1045122823af97e351719227ed3718eb))
+* **blame:** parse blame info correctly ([0595724](https://github.com/lewis6991/gitsigns.nvim/commit/0595724fa9516a35696ff6b1e3cb95b6462b38b1)), closes [#1065](https://github.com/lewis6991/gitsigns.nvim/issues/1065)
+* **blame:** popupmenu error ([93c38d9](https://github.com/lewis6991/gitsigns.nvim/commit/93c38d97260330e8501ccda1e6000c858af0d603)), closes [#1061](https://github.com/lewis6991/gitsigns.nvim/issues/1061)
+* **blame:** respect original blame winbar ([d0db8ef](https://github.com/lewis6991/gitsigns.nvim/commit/d0db8ef6a0489ed6af0baacb101a7b733c5d5de1))
+* **blame:** show current buffer line blame immediately ([6b1a14e](https://github.com/lewis6991/gitsigns.nvim/commit/6b1a14eabcebbcca1b9e9163a26b2f8371364cb7))
+* **blame:** show the winbar if the main window has it enabled ([17e8fd6](https://github.com/lewis6991/gitsigns.nvim/commit/17e8fd66182c9ad79dc129451ad015af3d27529c))
+* **blame:** track buffers changes correctly in the cache ([0349546](https://github.com/lewis6991/gitsigns.nvim/commit/0349546134d8a3a3c3a33e2e781b8d7bd07ea156))
+* **blame:** update current_line_blame when attaching ([8df63f2](https://github.com/lewis6991/gitsigns.nvim/commit/8df63f2ddc615feb71fd4aee45a4cee022876df1))
+* **nav:** misc bugs ([7516bac](https://github.com/lewis6991/gitsigns.nvim/commit/7516bac5639a9ce8e7b199066199a02cb3057230))
+* toggle_current_line_blame ([0e39e9a](https://github.com/lewis6991/gitsigns.nvim/commit/0e39e9afcfc180d55ac8f0691a230703683ddb0f)), closes [#1072](https://github.com/lewis6991/gitsigns.nvim/issues/1072)
+* **util:** ignore endofline when running blame ([def49e4](https://github.com/lewis6991/gitsigns.nvim/commit/def49e48c6329527e344d0c99a0d2cd9fdf6bb84))
+* **watcher:** fix debounce ([f846c50](https://github.com/lewis6991/gitsigns.nvim/commit/f846c507242a74d9a458bff2d029bd2eae8c0ca1)), closes [#1046](https://github.com/lewis6991/gitsigns.nvim/issues/1046)
+
+
+### Performance Improvements
+
+* **blame:** some improvements ([9cdfcb5](https://github.com/lewis6991/gitsigns.nvim/commit/9cdfcb5f038586c36ad8b010f7e479f6a6f95a63))
+
 ## [0.9.0](https://github.com/lewis6991/gitsigns.nvim/compare/v0.8.1...v0.9.0) (2024-06-12)
 
 
