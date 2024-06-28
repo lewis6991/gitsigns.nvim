@@ -223,6 +223,9 @@ function M.setup()
   local opts = config.current_line_blame_opts
   M.update = debounce.debounce_trailing(opts.delay, update)
 
+  -- show current buffer line blame immediately
+  M.update(api.nvim_get_current_buf())
+
   local events = { 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' }
   if vim.fn.exists('#WinResized') == 1 then
     -- For nvim 0.9+
