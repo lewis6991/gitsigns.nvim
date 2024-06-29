@@ -1,8 +1,4 @@
 local async = require('gitsigns.async')
-local log = require('gitsigns.debug.log')
-
-local gs_config = require('gitsigns.config')
-local config = gs_config.config
 
 local api = vim.api
 local uv = vim.uv or vim.loop
@@ -101,6 +97,7 @@ local update_cwd_head = async.create(function()
     {},
     async.create(function(err)
       local __FUNC__ = 'cwd_watcher_cb'
+      local log = require('gitsigns.debug.log')
       if err then
         log.dprintf('Git dir update error: %s', err)
         return
@@ -125,13 +122,16 @@ local function setup_cli()
   })
 end
 
-local function setup_debug()
+--- @param config Gitsigns.Config
+local function setup_debug(config)
+  local log = require('gitsigns.debug.log')
   log.debug_mode = config.debug_mode
   log.verbose = config._verbose
 end
 
 --- @async
-local function setup_attach()
+--- @param config Gitsigns.Config
+local function setup_attach(config)
   if not config.auto_attach then
     return
   end
@@ -146,6 +146,7 @@ local function setup_attach()
       local bufnr = args.buf --[[@as integer]]
       if attach_autocmd_disabled then
         local __FUNC__ = 'attach_autocmd'
+        local log = require('gitsigns.debug.log')
         log.dprint('Attaching is disabled')
         return
       end
@@ -199,11 +200,25 @@ local function setup_cwd_head()
   })
 end
 
+--- Function that can be used in the 'statuscolumn' option.
+---
+--- Note calling this function will automatically disable
+--- |gitsigns-config-signcolumn|.
+---
+--- e.g. >lua
+---   vim.o.statuscolumn = "%s%l%C%{%v:lua.require'gitsigns'.statuscolumn()%} "
+--- <
+--- @return string
+function M.statuscolumn()
+  return require('gitsigns.manager').statuscolumn()
+end
+
 --- Setup and start Gitsigns.
 ---
 --- @param cfg table|nil Configuration for Gitsigns.
 ---     See |gitsigns-usage| for more details.
 function M.setup(cfg)
+  local gs_config = require('gitsigns.config')
   gs_config.build(cfg)
 
   if vim.fn.executable('git') == 0 then
@@ -213,10 +228,12 @@ function M.setup(cfg)
 
   api.nvim_create_augroup('gitsigns', {})
 
-  setup_debug()
+  local config = gs_config.config
+
+  setup_debug(config)
   setup_cli()
   require('gitsigns.highlight').setup()
-  setup_attach()
+  setup_attach(config)
   setup_cwd_head()
 end
 
@@ -232,7 +249,7 @@ return setmetatable(M, {
       return actions[f]
     end
 
-    if config.debug_mode then
+    if require('gitsigns.config').config.debug_mode then
       local debug = require('gitsigns.debug')
       if debug[f] then
         return debug[f]

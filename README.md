@@ -32,6 +32,7 @@ Super fast git decorations implemented purely in Lua.
 - Live intra-line word diff
 - Ability to display deleted/changed lines via virtual lines.
 - Support for detached working trees.
+- Support for `'statuscolumn'`.
 
 ## Requirements
 

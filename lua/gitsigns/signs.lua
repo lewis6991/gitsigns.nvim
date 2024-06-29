@@ -11,6 +11,7 @@ local config = require('gitsigns.config').config
 --- @field hls table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field name string
 --- @field group string
+--- @field signs table<integer,[string,string]>
 --- @field config table<string,Gitsigns.SignConfig>
 --- @field ns integer
 local M = {}
@@ -32,7 +33,11 @@ end
 function M:remove(bufnr, start_lnum, end_lnum)
   if start_lnum then
     api.nvim_buf_clear_namespace(bufnr, self.ns, start_lnum - 1, end_lnum or start_lnum)
+    for i = start_lnum - 1, (end_lnum or start_lnum) - 1 do
+      self.signs[i] = nil
+    end
   else
+    self.signs = {}
     api.nvim_buf_clear_namespace(bufnr, self.ns, 0, -1)
   end
 end
@@ -40,16 +45,11 @@ end
 ---@param bufnr integer
 ---@param signs Gitsigns.Sign[]
 function M:add(bufnr, signs)
-  if not config.signcolumn and not config.numhl and not config.linehl then
-    -- Don't place signs if it won't show anything
-    return
-  end
-
   for _, s in ipairs(signs) do
     if not self:contains(bufnr, s.lnum) then
       local cs = self.config[s.type]
       local text = cs.text
-      if config.signcolumn and cs.show_count and s.count then
+      if cs.show_count and s.count then
         local count = s.count
         local cc = config.count_chars
         local count_char = cc[count] or cc['+'] or ''
@@ -58,8 +58,7 @@ function M:add(bufnr, signs)
 
       local hls = self.hls[s.type]
 
-      local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, self.ns, s.lnum - 1, -1, {
-        id = s.lnum,
+      local ok, id_or_err = pcall(api.nvim_buf_set_extmark, bufnr, self.ns, s.lnum - 1, -1, {
         sign_text = config.signcolumn and text or '',
         priority = config.sign_priority,
         sign_hl_group = hls.hl,
@@ -67,11 +66,13 @@ function M:add(bufnr, signs)
         line_hl_group = config.linehl and hls.linehl or nil,
       })
 
-      if not ok and config.debug_mode then
+      if ok then
+        self.signs[id_or_err] = { text, hls.hl }
+      elseif config.debug_mode then
         vim.schedule(function()
           error(table.concat({
             string.format('Error placing extmark on line %d', s.lnum),
-            err,
+            id_or_err,
           }, '\n'))
         end)
       end
@@ -129,6 +130,7 @@ function M.new(cfg, name)
   self.hls = name == 'staged' and config.signs_staged or config.signs
   self.group = 'gitsigns_signs_' .. (name or '')
   self.ns = api.nvim_create_namespace(self.group)
+  self.signs = {}
   return self
 end
 
