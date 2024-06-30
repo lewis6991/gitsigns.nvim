@@ -137,22 +137,14 @@ end
 
 local ns = api.nvim_create_namespace('gitsigns_popup')
 
+--- @param bufnr integer
 --- @param lines string[]
 --- @param highlights Gitsigns.HlMark[]
---- @return integer bufnr
-local function create_buf(lines, highlights)
-  local ts = vim.bo.tabstop
-  local bufnr = api.nvim_create_buf(false, true)
-  assert(bufnr, 'Failed to create buffer')
-
+local function set_lines_and_highlights(bufnr, lines, highlights)
   -- In case nvim was opened with '-M'
   vim.bo[bufnr].modifiable = true
   api.nvim_buf_set_lines(bufnr, 0, -1, true, lines)
   vim.bo[bufnr].modifiable = false
-
-  -- Set tabstop before calculating the buffer width so that the correct width
-  -- is calculated
-  vim.bo[bufnr].tabstop = ts
 
   for _, hl in ipairs(highlights) do
     local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, ns, hl.start_row, hl.start_col or 0, {
@@ -165,6 +157,20 @@ local function create_buf(lines, highlights)
       error(vim.inspect(hl) .. '\n' .. err)
     end
   end
+end
+
+--- @param lines string[]
+--- @param highlights Gitsigns.HlMark[]
+--- @return integer bufnr
+local function create_buf(lines, highlights)
+  local ts = vim.bo.tabstop
+  local bufnr = api.nvim_create_buf(false, true)
+  assert(bufnr, 'Failed to create buffer')
+  set_lines_and_highlights(bufnr, lines, highlights)
+
+  -- Set tabstop before calculating the buffer width so that the correct width
+  -- is calculated
+  vim.bo[bufnr].tabstop = ts
 
   return bufnr
 end
@@ -257,6 +263,13 @@ function M.create(lines_spec, opts, id)
   local bufnr = create_buf(lines, highlights)
   local winid = create_win(bufnr, opts, id)
   return winid, bufnr
+end
+
+--- @param bufnr integer
+--- @param lines_spec {[1]: string, [2]: string|Gitsigns.HlMark[]}[][]
+function M.update(bufnr, lines_spec)
+  local lines, highlights = partition_linesspec(lines_spec)
+  set_lines_and_highlights(bufnr, lines, highlights)
 end
 
 --- @param id string

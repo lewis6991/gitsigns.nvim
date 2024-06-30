@@ -993,8 +993,9 @@ M.blame_line = async.create(1, function(opts)
     return
   end
 
+  local loading_buf --- @type integer
   local loading = vim.defer_fn(function()
-    popup.create({ { { 'Loading...', 'Title' } } }, config.preview_config)
+    _, loading_buf = popup.create({ { { 'Loading...    ', 'Title' } } }, config.preview_config)
   end, 1000)
 
   if not manager.schedule(bufnr) then
@@ -1003,7 +1004,13 @@ M.blame_line = async.create(1, function(opts)
 
   local fileformat = vim.bo[bufnr].fileformat
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = bcache:get_blame(lnum, opts)
+
+  local result = bcache:get_blame(lnum, opts, vim.schedule_wrap(function(pct)
+    if loading_buf then
+      popup.update(loading_buf, {{{ 'Loading...'..pct..'%', 'Title' }}})
+    end
+  end))
+
   pcall(function()
     loading:close()
   end)
