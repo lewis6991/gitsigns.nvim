@@ -1019,7 +1019,7 @@ M.blame_line = async.create(1, function(opts)
   local blame_linespec = create_blame_fmt(is_committed, opts.full)
 
   if is_committed and opts.full then
-    local body = bcache.git_obj:command(
+    local body = bcache.git_obj.repo:command(
       { 'show', '-s', '--format=%B', result.sha },
       { text = true }
     )

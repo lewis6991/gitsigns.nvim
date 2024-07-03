@@ -199,7 +199,7 @@ function M.run_blame(obj, lines, lnum, revision, opts)
     process_incremental(data, commits, ret)
   end
 
-  local _, stderr = obj:command(args, { stdin = lines, stdout = on_stdout, ignore_error = true })
+  local _, stderr = obj.repo:command(args, { stdin = lines, stdout = on_stdout, ignore_error = true })
 
   if stderr then
     error_once('Error running git-blame: ' .. stderr)
