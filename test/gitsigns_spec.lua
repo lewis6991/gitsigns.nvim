@@ -125,10 +125,10 @@ describe('gitsigns (with screen)', function()
 
     match_debug_messages({
       'attach(1): Attaching (trigger=BufReadPost)',
-      np('run_job: git .* config user.name'),
       np(
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
+      np('run_job: git .* config user.name'),
       n('new: Not in git repo'),
       n('attach(1): Empty git obj'),
     })
@@ -139,10 +139,10 @@ describe('gitsigns (with screen)', function()
 
     match_debug_messages({
       n('attach(1): Attaching (trigger=BufWritePost)'),
-      np('run_job: git .* config user.name'),
       np(
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
+      np('run_job: git .* config user.name'),
       n('new: Not in git repo'),
       n('attach(1): Empty git obj'),
     })
@@ -192,10 +192,10 @@ describe('gitsigns (with screen)', function()
 
       match_debug_messages({
         'attach(1): Attaching (trigger=BufReadPost)',
-        np('run_job: git .* config user.name'),
         np(
           'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
         ),
+        np('run_job: git .* config user.name'),
         np('run_job: git .* ls%-files .*/dummy_ignored.txt'),
         n('attach(1): Cannot resolve file in repo'),
       })
@@ -208,10 +208,10 @@ describe('gitsigns (with screen)', function()
 
       match_debug_messages({
         'attach(1): Attaching (trigger=BufNewFile)',
-        np('run_job: git .* config user.name'),
         np(
           'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
         ),
+        np('run_job: git .* config user.name'),
         np(
           'run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
             .. vim.pesc(newfile)
@@ -288,14 +288,9 @@ describe('gitsigns (with screen)', function()
       feed('gg')
       check({ signs = {} })
 
-      -- Wait until the virtual blame line appears
-      -- screen:sleep(500)
-      -- print(vim.inspect(exec_lua[[return require'gitsigns.cache'.cache[vim.api.nvim_get_current_buf()].compare_text]]))
-      -- print(vim.inspect(exec_lua[[return require'gitsigns.util'.buf_lines(vim.api.nvim_get_current_buf())]]))
-
       screen:expect({
         grid = [[
-        ^{MATCH:This {6: tester, %d seco}}|
+        ^{MATCH:This {6: You, %d second.}}|
         is                  |
         a                   |
         windows             |
@@ -349,11 +344,11 @@ describe('gitsigns (with screen)', function()
       edit(test_file)
       match_debug_messages({
         'attach(1): Attaching (trigger=BufReadPost)',
-        np('run_job: git .* config user.name'),
         np(
           'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
         ),
         np('run_job: git .* rev%-parse %-%-short HEAD'),
+        np('run_job: git .* config user.name'),
         np('run_job: git .* %-%-git%-dir .* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*'),
         n('attach(1): User on_attach() returned false'),
       })
@@ -466,10 +461,10 @@ describe('gitsigns (with screen)', function()
         edit(newfile)
         match_debug_messages({
           'attach(1): Attaching (trigger=BufNewFile)',
-          np('run_job: git .* config user.name'),
           np(
             'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
           ),
+          np('run_job: git .* config user.name'),
           np('run_job: git .* ls%-files .*'),
           n('attach(1): Not a file'),
         })
@@ -477,10 +472,10 @@ describe('gitsigns (with screen)', function()
 
         local messages = {
           'attach(1): Attaching (trigger=BufWritePost)',
-          np('run_job: git .* config user.name'),
           np(
             'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
           ),
+          np('run_job: git .* config user.name'),
           np('run_job: git .* ls%-files .*'),
           n('watch_gitdir(1): Watching git dir'),
         }
