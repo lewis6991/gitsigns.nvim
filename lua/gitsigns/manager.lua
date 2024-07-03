@@ -40,10 +40,7 @@ local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked)
     -- least one sign. Only do this on the first call after an update when we all
     -- the signs have been cleared.
     if clear and i == 1 then
-      signs:add(
-        bufnr,
-        Hunks.calc_signs(hunk, next, hunk.added.start, hunk.added.start, untracked)
-      )
+      signs:add(bufnr, Hunks.calc_signs(hunk, next, hunk.added.start, hunk.added.start, untracked))
     end
 
     if top <= hunk.vend and bot >= hunk.added.start then
