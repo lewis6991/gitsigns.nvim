@@ -46,10 +46,10 @@ describe('gitdir_watcher', function()
 
     match_debug_messages({
       'attach(1): Attaching (trigger=BufReadPost)',
-      np('run_job: git .* config user.name'),
       np(
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
+      np('run_job: git .* config user.name'),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
       n('watch_gitdir(1): Watching git dir'),
       np('run_job: git .* show .*'),

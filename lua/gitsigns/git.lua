@@ -48,6 +48,9 @@ M.Obj = Obj
 --- @field abbrev_head string
 
 --- @class Gitsigns.Repo : Gitsigns.RepoInfo
+---
+--- Username configured for the repo.
+--- Needed for to determine "You" in current line blame.
 --- @field username string
 local Repo = {}
 M.Repo = Repo
@@ -328,7 +331,6 @@ end
 function Repo.new(dir, gitdir, toplevel)
   local self = setmetatable({}, { __index = Repo })
 
-  self.username = git_command({ 'config', 'user.name' }, { ignore_error = true })[1]
   local info = M.get_repo_info(dir, nil, gitdir, toplevel)
   for k, v in
     pairs(info --[[@as table<string,any>]])
@@ -336,6 +338,8 @@ function Repo.new(dir, gitdir, toplevel)
     ---@diagnostic disable-next-line:no-unknown
     self[k] = v
   end
+
+  self.username = self:command({ 'config', 'user.name' }, { ignore_error = true })[1]
 
   return self
 end
