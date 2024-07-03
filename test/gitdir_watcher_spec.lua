@@ -63,7 +63,7 @@ describe('gitdir_watcher', function()
     git({ 'mv', test_file, test_file2 })
 
     match_dag({
-      "watcher_cb(1): Git dir update: 'index.lock' { rename = true } (ignoring)",
+      "watcher_cb(1): Git dir update: 'index.lock' { rename = true }",
       "watcher_cb(1): Git dir update: 'index' { rename = true }",
       "watcher_cb(1): Git dir update: 'index' { rename = true }",
     })
@@ -89,7 +89,7 @@ describe('gitdir_watcher', function()
     git({ 'mv', test_file2, test_file3 })
 
     match_dag({
-      "watcher_cb(1): Git dir update: 'index.lock' { rename = true } (ignoring)",
+      "watcher_cb(1): Git dir update: 'index.lock' { rename = true }",
       "watcher_cb(1): Git dir update: 'index' { rename = true }",
       "watcher_cb(1): Git dir update: 'index' { rename = true }",
     })
@@ -113,7 +113,7 @@ describe('gitdir_watcher', function()
     git({ 'mv', test_file3, test_file })
 
     match_dag({
-      "watcher_cb(1): Git dir update: 'index.lock' { rename = true } (ignoring)",
+      "watcher_cb(1): Git dir update: 'index.lock' { rename = true }",
       "watcher_cb(1): Git dir update: 'index' { rename = true }",
       "watcher_cb(1): Git dir update: 'index' { rename = true }",
     })

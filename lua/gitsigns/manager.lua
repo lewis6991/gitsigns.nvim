@@ -31,7 +31,7 @@ local M = {}
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @param top integer
 --- @param bot integer
---- @param clear boolean
+--- @param clear? boolean
 --- @param untracked boolean
 local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked)
   if clear then
@@ -65,13 +65,9 @@ end
 --- @param bufnr integer
 --- @param top integer
 --- @param bot integer
---- @param clear boolean
+--- @param clear? boolean
 local function apply_win_signs(bufnr, top, bot, clear)
-  local bcache = cache[bufnr]
-  if not bcache then
-    return
-  end
-
+  local bcache = assert(cache[bufnr])
   local untracked = bcache.git_obj.object_name == nil
   apply_win_signs0(bufnr, signs_normal, bcache.hunks, top, bot, clear, untracked)
   if signs_staged then
@@ -318,7 +314,7 @@ function M.show_deleted_in_float(bufnr, nsd, hunk, staged)
     virt_lines_leftcol = true,
   })
 
-  local bcache = cache[bufnr]
+  local bcache = assert(cache[bufnr])
   local pbufnr = api.nvim_create_buf(false, true)
   local text = staged and bcache.compare_text_head or bcache.compare_text
   api.nvim_buf_set_lines(pbufnr, 0, -1, false, assert(text))
@@ -420,7 +416,7 @@ end
 
 --- @param bufnr integer
 local function update_show_deleted(bufnr)
-  local bcache = cache[bufnr]
+  local bcache = assert(cache[bufnr])
 
   clear_deleted(bufnr)
   if config.show_deleted then
@@ -461,7 +457,7 @@ M.update = throttle_by_id(function(bufnr)
   if not M.schedule(bufnr) then
     return
   end
-  local bcache = cache[bufnr]
+  local bcache = assert(cache[bufnr])
   local old_hunks, old_hunks_staged = bcache.hunks, bcache.hunks_staged
   bcache.hunks, bcache.hunks_staged = nil, nil
 
@@ -556,7 +552,7 @@ local function on_win(_cb, _winid, bufnr, topline, botline_guess)
   end
   local botline = math.min(botline_guess, api.nvim_buf_line_count(bufnr))
 
-  apply_win_signs(bufnr, topline + 1, botline + 1, false)
+  apply_win_signs(bufnr, topline + 1, botline + 1)
 
   if not (config.word_diff and config.diff_opts.internal) then
     return false
