@@ -51,7 +51,7 @@ local function expect_hunks(exp_hunks)
 end
 
 describe('actions', function()
-  local config
+  local config --- @type Gitsigns.Config
 
   before_each(function()
     clear()
@@ -308,10 +308,8 @@ describe('actions', function()
     local newfile = helpers.newfile
     exec_lua([[vim.g.editorconfig = false]])
     system("printf 'This is a file with no nl at eof' > " .. newfile)
-    helpers.gitm({
-      { 'add', newfile },
-      { 'commit', '-m', 'commit on main' },
-    })
+    helpers.git({ 'add', newfile })
+    helpers.git({ 'commit', '-m', 'commit on main' })
 
     edit(newfile)
     check({ status = { head = 'master', added = 0, changed = 0, removed = 0 } })

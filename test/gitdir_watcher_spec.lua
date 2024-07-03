@@ -147,8 +147,8 @@ describe('gitdir_watcher', function()
     helpers.write_to_file(f1, { '1', '2', '3' })
     helpers.write_to_file(f2, { '1', '2', '3' })
 
-    helpers.gitf({ 'add', f1, f2 })
-    helpers.gitf({ 'commit', '-m', 'init commit' })
+    git({ 'add', f1, f2 })
+    git({ 'commit', '-m', 'init commit' })
 
     setup_gitsigns(test_config)
 
@@ -165,7 +165,7 @@ describe('gitdir_watcher', function()
     helpers.check({ signs = { changed = 1 } }, b1)
     helpers.check({ signs = { changed = 1 } }, b2)
 
-    helpers.gitf({ 'add', f1, f2 })
+    git({ 'add', f1, f2 })
 
     helpers.check({ signs = {} }, b1)
     helpers.check({ signs = {} }, b2)

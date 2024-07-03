@@ -60,22 +60,14 @@ local test_file_text = {
 }
 
 --- Run a git command
-function M.gitf(args)
+local function git(args)
   system({ 'git', '-C', M.scratch, unpack(args) })
-end
-
---- @param cmds string[][]
-function M.gitm(cmds)
-  for _, cmd in ipairs(cmds) do
-    M.gitf(cmd)
-  end
-  helpers.sleep(10)
 end
 
 --- Run a git command and add a delay
 function M.git(args)
-  M.gitf(args)
-  helpers.sleep(10)
+  git(args)
+  -- helpers.sleep(10)
 end
 
 function M.cleanup()
@@ -83,26 +75,26 @@ function M.cleanup()
 end
 
 function M.git_init()
-  M.gitf({ 'init', '-b', 'master' })
+  git({ 'init', '-b', 'master' })
 
   -- Always force color to test settings don't interfere with gitsigns systems
   -- commands (addresses #23)
-  M.gitf({ 'config', 'color.branch', 'always' })
-  M.gitf({ 'config', 'color.ui', 'always' })
-  M.gitf({ 'config', 'color.diff', 'always' })
-  M.gitf({ 'config', 'color.interactive', 'always' })
-  M.gitf({ 'config', 'color.status', 'always' })
-  M.gitf({ 'config', 'color.grep', 'always' })
-  M.gitf({ 'config', 'color.pager', 'true' })
-  M.gitf({ 'config', 'color.decorate', 'always' })
-  M.gitf({ 'config', 'color.showbranch', 'always' })
+  git({ 'config', 'color.branch', 'always' })
+  git({ 'config', 'color.ui', 'always' })
+  git({ 'config', 'color.diff', 'always' })
+  git({ 'config', 'color.interactive', 'always' })
+  git({ 'config', 'color.status', 'always' })
+  git({ 'config', 'color.grep', 'always' })
+  git({ 'config', 'color.pager', 'true' })
+  git({ 'config', 'color.decorate', 'always' })
+  git({ 'config', 'color.showbranch', 'always' })
 
-  M.gitf({ 'config', 'merge.conflictStyle', 'merge' })
+  git({ 'config', 'merge.conflictStyle', 'merge' })
 
-  M.gitf({ 'config', 'user.email', 'tester@com.com' })
-  M.gitf({ 'config', 'user.name', 'tester' })
+  git({ 'config', 'user.email', 'tester@com.com' })
+  git({ 'config', 'user.name', 'tester' })
 
-  M.gitf({ 'config', 'init.defaultBranch', 'master' })
+  git({ 'config', 'init.defaultBranch', 'master' })
 end
 
 --- Setup a basic git repository in directory `helpers.scratch` with a single file
@@ -116,10 +108,10 @@ function M.setup_test_repo(opts)
   system({ 'touch', M.test_file })
   M.write_to_file(M.test_file, text)
   if not (opts and opts.no_add) then
-    M.gitf({ 'add', M.test_file })
-    M.gitf({ 'commit', '-m', 'init commit' })
+    git({ 'add', M.test_file })
+    git({ 'commit', '-m', 'init commit' })
   end
-  helpers.sleep(20)
+  -- helpers.sleep(20)
 end
 
 --- @param cond fun()

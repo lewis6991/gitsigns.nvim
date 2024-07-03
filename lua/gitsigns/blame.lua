@@ -185,7 +185,7 @@ end
 local show_commit = async.create(3, function(win, open, bcache)
   local cursor = api.nvim_win_get_cursor(win)[1]
   local sha = bcache.blame[cursor].commit.sha
-  local res = bcache.git_obj:command({ 'show', sha })
+  local res = bcache.git_obj.repo:command({ 'show', sha })
   async.scheduler()
   local commit_buf = api.nvim_create_buf(true, true)
   api.nvim_buf_set_name(commit_buf, bcache:get_rev_bufname(sha, true))
