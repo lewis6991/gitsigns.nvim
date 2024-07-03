@@ -1,10 +1,10 @@
 local api = vim.api
 local uv = vim.loop
 
-local Status = require('gitsigns.status')
 local async = require('gitsigns.async')
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
+local Status = require('gitsigns.status')
 
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config

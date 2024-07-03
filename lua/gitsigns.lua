@@ -1,8 +1,8 @@
 local async = require('gitsigns.async')
 local log = require('gitsigns.debug.log')
+local Config = require('gitsigns.config')
 
-local gs_config = require('gitsigns.config')
-local config = gs_config.config
+local config = Config.config
 
 local api = vim.api
 local uv = vim.uv or vim.loop
@@ -204,7 +204,7 @@ end
 --- @param cfg table|nil Configuration for Gitsigns.
 ---     See |gitsigns-usage| for more details.
 function M.setup(cfg)
-  gs_config.build(cfg)
+  Config.build(cfg)
 
   if vim.fn.executable('git') == 0 then
     print('gitsigns: git not in path. Aborting setup')

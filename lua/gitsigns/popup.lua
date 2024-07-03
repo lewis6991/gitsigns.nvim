@@ -1,6 +1,6 @@
-local M = {}
-
 local api = vim.api
+
+local M = {}
 
 --- @param bufnr integer
 --- @param lines string[]

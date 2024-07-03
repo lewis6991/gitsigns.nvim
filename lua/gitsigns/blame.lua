@@ -1,11 +1,9 @@
-local api = vim.api
-
-local cache = require('gitsigns.cache').cache
-local util = require('gitsigns.util')
 local async = require('gitsigns.async')
-
+local cache = require('gitsigns.cache').cache
 local log = require('gitsigns.debug.log')
-local dprint = log.dprint
+local util = require('gitsigns.util')
+
+local api = vim.api
 
 local hash_colors = {} --- @type table<integer,string>
 
@@ -253,7 +251,7 @@ M.blame = function()
   local win = api.nvim_get_current_win()
   local bcache = cache[bufnr]
   if not bcache then
-    dprint('Not attached')
+    log.dprint('Not attached')
     return
   end
 

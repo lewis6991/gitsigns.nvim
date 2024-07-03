@@ -1,22 +1,15 @@
 local async = require('gitsigns.async')
-
-local gs_cache = require('gitsigns.cache')
-local cache = gs_cache.cache
-
+local log = require('gitsigns.debug.log')
+local util = require('gitsigns.util')
+local run_diff = require('gitsigns.diff')
+local Hunks = require('gitsigns.hunks')
 local Signs = require('gitsigns.signs')
 local Status = require('gitsigns.status')
 
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
-local log = require('gitsigns.debug.log')
-local dprint = log.dprint
-
-local util = require('gitsigns.util')
-local run_diff = require('gitsigns.diff')
-
-local gs_hunks = require('gitsigns.hunks')
-
+local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 
 local api = vim.api
@@ -49,12 +42,12 @@ local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked)
     if clear and i == 1 then
       signs:add(
         bufnr,
-        gs_hunks.calc_signs(hunk, next, hunk.added.start, hunk.added.start, untracked)
+        Hunks.calc_signs(hunk, next, hunk.added.start, hunk.added.start, untracked)
       )
     end
 
     if top <= hunk.vend and bot >= hunk.added.start then
-      signs:add(bufnr, gs_hunks.calc_signs(hunk, next, top, bot, untracked))
+      signs:add(bufnr, Hunks.calc_signs(hunk, next, top, bot, untracked))
     end
     if hunk.added.start > bot then
       break
@@ -103,7 +96,7 @@ end
 function M.on_lines(buf, first, last_orig, last_new)
   local bcache = cache[buf]
   if not bcache then
-    dprint('Cache for buffer was nil. Detaching')
+    log.dprint('Cache for buffer was nil. Detaching')
     return true
   end
 
@@ -155,7 +148,7 @@ local function apply_word_diff(bufnr, row)
 
   local lnum = row + 1
 
-  local hunk = gs_hunks.find_hunk(lnum, bcache.hunks)
+  local hunk = Hunks.find_hunk(lnum, bcache.hunks)
   if not hunk then
     -- No hunk at line
     return
@@ -434,15 +427,15 @@ end
 function M.schedule(bufnr, check_compare_text)
   async.scheduler()
   if not api.nvim_buf_is_valid(bufnr) then
-    dprint('Buffer not valid, aborting')
+    log.dprint('Buffer not valid, aborting')
     return false
   end
   if not cache[bufnr] then
-    dprint('Has detached, aborting')
+    log.dprint('Has detached, aborting')
     return false
   end
   if check_compare_text and not cache[bufnr].compare_text then
-    dprint('compare_text was invalid, aborting')
+    log.dprint('compare_text was invalid, aborting')
     return false
   end
   return true
@@ -494,15 +487,15 @@ M.update = throttle_by_id(function(bufnr)
     if not M.schedule(bufnr) then
       return
     end
-    bcache.hunks_staged = gs_hunks.filter_common(hunks_head, bcache.hunks)
+    bcache.hunks_staged = Hunks.filter_common(hunks_head, bcache.hunks)
   end
 
   -- Note the decoration provider may have invalidated bcache.hunks at this
   -- point
   if
     bcache.force_next_update
-    or gs_hunks.compare_heads(bcache.hunks, old_hunks)
-    or gs_hunks.compare_heads(bcache.hunks_staged, old_hunks_staged)
+    or Hunks.compare_heads(bcache.hunks, old_hunks)
+    or Hunks.compare_heads(bcache.hunks_staged, old_hunks_staged)
   then
     -- Apply signs to the window. Other signs will be added by the decoration
     -- provider as they are drawn.
@@ -511,7 +504,7 @@ M.update = throttle_by_id(function(bufnr)
     update_show_deleted(bufnr)
     bcache.force_next_update = false
 
-    local summary = gs_hunks.get_summary(bcache.hunks)
+    local summary = Hunks.get_summary(bcache.hunks)
     summary.head = git_obj.repo.abbrev_head
     Status:update(bufnr, summary)
   end

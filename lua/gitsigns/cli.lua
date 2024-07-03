@@ -1,20 +1,16 @@
-local async = require('gitsigns.async')
-
-local log = require('gitsigns.debug.log')
-local dprintf = log.dprintf
-local message = require('gitsigns.message')
-
-local parse_args = require('gitsigns.cli.argparse').parse_args
-
 local actions = require('gitsigns.actions')
+local argparse = require('gitsigns.cli.argparse')
+local async = require('gitsigns.async')
 local attach = require('gitsigns.attach')
-local gs_debug = require('gitsigns.debug')
+local Debug = require('gitsigns.debug')
+local log = require('gitsigns.debug.log')
+local message = require('gitsigns.message')
 
 --- @type table<table<string,function>,boolean>
 local sources = {
   [actions] = true,
   [attach] = false,
-  [gs_debug] = false,
+  [Debug] = false,
 }
 
 -- try to parse each argument as a lua boolean, nil or number, if fails then
@@ -64,7 +60,7 @@ end
 
 M.run = async.create(1, function(params)
   local __FUNC__ = 'cli.run'
-  local pos_args_raw, named_args_raw = parse_args(params.args)
+  local pos_args_raw, named_args_raw = argparse.parse_args(params.args)
 
   local func = pos_args_raw[1]
 
@@ -79,7 +75,7 @@ M.run = async.create(1, function(params)
   local named_args = vim.tbl_map(parse_to_lua, named_args_raw)
   local args = vim.tbl_extend('error', pos_args, named_args)
 
-  dprintf(
+  log.dprintf(
     "Running action '%s' with arguments %s",
     func,
     vim.inspect(args, { newline = ' ', indent = '' })

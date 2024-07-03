@@ -1,9 +1,9 @@
+local Hunks = require('gitsigns.hunks')
+local util = require('gitsigns.util')
+
+local scheduler = require('gitsigns.async').scheduler
 local config = require('gitsigns.config').config
 local git_diff = require('gitsigns.git').diff
-
-local gs_hunks = require('gitsigns.hunks')
-local util = require('gitsigns.util')
-local scheduler = require('gitsigns.async').scheduler
 
 local M = {}
 -- Async function
@@ -61,7 +61,7 @@ function M.run_diff(text_cmp, text_buf)
 
   for _, line in ipairs(out) do
     if vim.startswith(line, '@@') then
-      results[#results + 1] = gs_hunks.parse_diff_line(line)
+      results[#results + 1] = Hunks.parse_diff_line(line)
     elseif #results > 0 then
       local r = results[#results]
       if line:sub(1, 1) == '-' then

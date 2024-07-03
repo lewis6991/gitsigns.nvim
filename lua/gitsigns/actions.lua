@@ -1,16 +1,14 @@
 local async = require('gitsigns.async')
-local config = require('gitsigns.config').config
-local mk_repeatable = require('gitsigns.repeat').mk_repeatable
+local git = require('gitsigns.git')
+local Hunks = require('gitsigns.hunks')
+local manager = require('gitsigns.manager')
 local popup = require('gitsigns.popup')
 local util = require('gitsigns.util')
-local manager = require('gitsigns.manager')
-local git = require('gitsigns.git')
 local run_diff = require('gitsigns.diff')
 
-local gs_cache = require('gitsigns.cache')
-local cache = gs_cache.cache
-
-local Hunks = require('gitsigns.hunks')
+local config = require('gitsigns.config').config
+local mk_repeatable = require('gitsigns.repeat').mk_repeatable
+local cache = require('gitsigns.cache').cache
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
@@ -416,7 +414,6 @@ end)
 ---     {async}
 M.stage_buffer = async.create(function()
   local bufnr = current_buf()
-
   local bcache = cache[bufnr]
   if not bcache then
     return

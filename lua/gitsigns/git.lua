@@ -1,9 +1,9 @@
 local async = require('gitsigns.async')
-local scheduler = require('gitsigns.async').scheduler
-
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
+
 local system = require('gitsigns.system').system
+local scheduler = require('gitsigns.async').scheduler
 
 local uv = vim.uv or vim.loop
 

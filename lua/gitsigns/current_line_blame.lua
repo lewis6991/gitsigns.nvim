@@ -1,14 +1,13 @@
 local async = require('gitsigns.async')
+local debounce = require('gitsigns.debounce')
+local util = require('gitsigns.util')
+
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local schema = require('gitsigns.config').schema
-local util = require('gitsigns.util')
-
 local error_once = require('gitsigns.message').error_once
 
 local api = vim.api
-
-local debounce = require('gitsigns.debounce')
 
 local namespace = api.nvim_create_namespace('gitsigns_blame')
 
