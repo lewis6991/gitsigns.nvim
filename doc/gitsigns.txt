@@ -106,6 +106,19 @@ setup({cfg})                                                *gitsigns.setup()*
                     {cfg} (table|nil): Configuration for Gitsigns.
                           See |gitsigns-usage| for more details.
 
+statuscolumn()                                       *gitsigns.statuscolumn()*
+                Function that can be used in the 'statuscolumn' option.
+
+                Note calling this function will automatically disable
+                |gitsigns-config-signcolumn|.
+
+                e.g. >lua
+                  vim.o.statuscolumn = "%s%l%C%{%v:lua.require'gitsigns'.statuscolumn()%} "
+<
+
+                Returns: ~
+                    (string)
+
 attach({bufnr}, {ctx}, {callback?})                        *gitsigns.attach()*
                 Attach Gitsigns to the buffer.
 
