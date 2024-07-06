@@ -29,7 +29,7 @@ local function get_gitdir_and_head()
     end
   end
 
-  local info = require('gitsigns.git').get_repo_info(cwd)
+  local info = require('gitsigns.git').Repo.get_info(cwd)
 
   return info.gitdir, info.abbrev_head
 end
@@ -89,7 +89,7 @@ local update_cwd_head = async.create(function()
     100,
     async.create(function()
       local git = require('gitsigns.git')
-      local new_head = git.get_repo_info(cwd).abbrev_head
+      local new_head = git.Repo.get_info(cwd).abbrev_head
       async.scheduler()
       vim.g.gitsigns_head = new_head
     end)
