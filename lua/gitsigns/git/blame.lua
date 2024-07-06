@@ -3,6 +3,35 @@ local uv = vim.uv or vim.loop
 local error_once = require('gitsigns.message').error_once
 local dprintf = require('gitsigns.debug.log').dprintf
 
+--- @class Gitsigns.CommitInfo
+--- @field author string
+--- @field author_mail string
+--- @field author_time integer
+--- @field author_tz string
+--- @field committer string
+--- @field committer_mail string
+--- @field committer_time integer
+--- @field committer_tz string
+--- @field summary string
+--- @field sha string
+--- @field abbrev_sha string
+--- @field boundary? true
+
+--- @class Gitsigns.BlameInfoPublic: Gitsigns.BlameInfo, Gitsigns.CommitInfo
+--- @field body? string[]
+--- @field hunk_no? integer
+--- @field num_hunks? integer
+--- @field hunk? string[]
+--- @field hunk_head? string
+
+--- @class Gitsigns.BlameInfo
+--- @field orig_lnum integer
+--- @field final_lnum integer
+--- @field commit Gitsigns.CommitInfo
+--- @field filename string
+--- @field previous_filename? string
+--- @field previous_sha? string
+
 local NOT_COMMITTED = {
   author = 'Not Committed Yet',
   author_mail = '<not.committed.yet>',
