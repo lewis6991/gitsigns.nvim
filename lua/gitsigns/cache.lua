@@ -17,7 +17,7 @@ local M = {
 --- @field hunks_staged?      Gitsigns.Hunk.Hunk[]
 ---
 --- @field staged_diffs?      Gitsigns.Hunk.Hunk[]
---- @field gitdir_watcher?    uv.uv_fs_event_t
+--- @field deregister_watcher? fun()
 --- @field git_obj            Gitsigns.GitObj
 --- @field blame?             table<integer,Gitsigns.BlameInfo?>
 local CacheEntry = M.CacheEntry
@@ -127,9 +127,8 @@ function CacheEntry:get_blame(lnum, opts)
 end
 
 function CacheEntry:destroy()
-  local w = self.gitdir_watcher
-  if w and not w:is_closing() then
-    w:close()
+  if self.deregister_watcher then
+    self.deregister_watcher()
   end
   self.git_obj.repo:unref()
 end

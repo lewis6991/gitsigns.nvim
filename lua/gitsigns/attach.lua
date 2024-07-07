@@ -11,6 +11,7 @@ local config = require('gitsigns.config').config
 local dprint = log.dprint
 local dprintf = log.dprintf
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
+local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 
 local api = vim.api
 local uv = vim.loop
@@ -216,6 +217,105 @@ local function get_buf_context(bufnr)
   }
 end
 
+--- @param bufnr integer
+--- @param old_relpath string
+local function handle_moved(bufnr, old_relpath)
+  local bcache = assert(cache[bufnr])
+  local git_obj = bcache.git_obj
+
+  local new_name = git_obj:has_moved()
+  if new_name then
+    dprintf('File moved to %s', new_name)
+    git_obj.relpath = new_name
+    if not git_obj.orig_relpath then
+      git_obj.orig_relpath = old_relpath
+    end
+  elseif git_obj.orig_relpath then
+    local orig_file = git_obj.repo.toplevel .. util.path_sep .. git_obj.orig_relpath
+    if not git_obj:file_info(orig_file).relpath then
+      return
+    end
+    --- File was moved in the index, but then reset
+    dprintf('Moved file reset')
+    git_obj.relpath = git_obj.orig_relpath
+    git_obj.orig_relpath = nil
+  else
+    -- File removed from index, do nothing
+    return
+  end
+
+  git_obj.file = git_obj.repo.toplevel .. util.path_sep .. git_obj.relpath
+  bcache.file = git_obj.file
+  git_obj:update()
+  if not manager.schedule(bufnr) then
+    return
+  end
+
+  local bufexists = util.bufexists(bcache.file)
+  local old_name = api.nvim_buf_get_name(bufnr)
+
+  if not bufexists then
+    -- Do not trigger BufFilePre/Post
+    -- TODO(lewis6991): figure out how to avoid reattaching without
+    -- disabling all autocommands.
+    util.noautocmd({ 'BufFilePre', 'BufFilePost' }, function()
+      util.buf_rename(bufnr, bcache.file)
+    end)
+  end
+
+  local msg = bufexists and 'Cannot rename' or 'Renamed'
+  dprintf('%s buffer %d from %s to %s', msg, bufnr, old_name, bcache.file)
+end
+
+--- @async
+--- @param bufnr integer
+local function watcher_handler0(bufnr)
+  local __FUNC__ = 'watcher_handler'
+
+  -- Avoid cache hit for detached buffer
+  -- ref: https://github.com/lewis6991/gitsigns.nvim/issues/956
+  if not manager.schedule(bufnr) then
+    dprint('buffer invalid (1)')
+    return
+  end
+
+  local git_obj = cache[bufnr].git_obj
+
+  Status:update(bufnr, { head = git_obj.repo.abbrev_head })
+
+  local was_tracked = git_obj.object_name ~= nil
+  local old_relpath = git_obj.relpath
+
+  git_obj:update()
+  if not manager.schedule(bufnr) then
+    dprint('buffer invalid (3)')
+    return
+  end
+
+  if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
+    -- File was tracked but is no longer tracked. Must of been removed or
+    -- moved. Check if it was moved and switch to it.
+    handle_moved(bufnr, old_relpath)
+    if not manager.schedule(bufnr) then
+      dprint('buffer invalid (4)')
+      return
+    end
+  end
+
+  cache[bufnr]:invalidate(true)
+
+  require('gitsigns.manager').update(bufnr)
+end
+
+--- Debounce to:
+--- - wait for all changes to the gitdir to complete.
+--- Throttle to:
+--- - ensure handler is only triggered once per git operation.
+--- - prevent updates to the same buffer from interleaving as the handler is
+---   async.
+local watcher_handler =
+  debounce_trailing(200, async.create(1, throttle_by_id(watcher_handler0, true)), 1)
+
 --- Ensure attaches cannot be interleaved for the same buffer.
 --- Since attaches are asynchronous we need to make sure an attach isn't
 --- performed whilst another one is in progress.
@@ -325,8 +425,9 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   })
 
   if config.watch_gitdir.enable then
-    local watcher = require('gitsigns.watcher')
-    cache[cbuf].gitdir_watcher = watcher.watch_gitdir(cbuf, git_obj.repo.gitdir)
+    cache[cbuf].deregister_watcher = git_obj.repo:register_callback(function()
+      watcher_handler(cbuf)
+    end)
   end
 
   if not api.nvim_buf_is_loaded(cbuf) then

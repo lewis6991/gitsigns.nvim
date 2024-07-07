@@ -22,6 +22,7 @@ local uv = vim.uv or vim.loop
 --- Username configured for the repo.
 --- Needed for to determine "You" in current line blame.
 --- @field username string
+--- @field watcher_callbacks table<fun(), true>
 local M = {}
 
 --- Run git command the with the objects gitdir and toplevel
@@ -96,6 +97,48 @@ function M:update_abbrev_head()
   self.abbrev_head = info.abbrev_head
 end
 
+--- vim.inspect but on one line
+--- @param x any
+--- @return string
+local function inspect(x)
+  return vim.inspect(x, { indent = '', newline = ' ' })
+end
+
+function M:_watcher_cb(err, filename, events)
+  if err then
+    log.dprintf('Git dir update error: %s', err)
+    return
+  end
+
+  -- The luv docs say filename is passed as a string but it has been observed
+  -- to sometimes be nil.
+  --    https://github.com/lewis6991/gitsigns.nvim/issues/848
+  if not filename then
+    log.eprint('No filename')
+    return
+  end
+
+  log.dprintf("Git dir update: '%s' %s", filename, inspect(events))
+
+  async.run(function()
+    self:update_abbrev_head()
+
+    for cb in pairs(self.watcher_callbacks) do
+      cb()
+    end
+  end)
+end
+
+--- @param cb fun()
+--- @return fun() deregister
+function M:register_callback(cb)
+  self.watcher_callbacks[cb] = true
+
+  return function()
+    self.watcher_callbacks[cb] = nil
+  end
+end
+
 --- @async
 --- @private
 --- @param info Gitsigns.RepoInfo
@@ -110,6 +153,12 @@ local function new(info)
   end
 
   self.username = self:command({ 'config', 'user.name' }, { ignore_error = true })[1]
+  self.watcher_callbacks = {}
+
+  local w = assert(uv.new_fs_event())
+  w:start(self.gitdir, {}, function(err, filename, events)
+    self:_watcher_cb(err, filename, events)
+  end)
 
   return self
 end
