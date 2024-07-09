@@ -92,14 +92,11 @@ function M:update_abbrev_head()
 end
 
 --- @async
---- @param dir string
---- @param gitdir? string
---- @param toplevel? string
+--- @private
+--- @param info Gitsigns.RepoInfo
 --- @return Gitsigns.Repo
-function M.new(dir, gitdir, toplevel)
+local function new(info)
   local self = setmetatable({}, { __index = M })
-
-  local info = M.get_info(dir, gitdir, toplevel)
   for k, v in
     pairs(info --[[@as table<string,any>]])
   do
@@ -112,10 +109,46 @@ function M.new(dir, gitdir, toplevel)
   return self
 end
 
+--- @type table<string,[integer,Gitsigns.Repo]?>
+local repo_cache = setmetatable({}, { __mode = 'v' })
+
+--- @async
+--- @param dir string
+--- @param gitdir? string
+--- @param toplevel? string
+--- @return Gitsigns.Repo?
+function M.get(dir, gitdir, toplevel)
+  local info = M.get_info(dir, gitdir, toplevel)
+  if not info then
+    return
+  end
+
+  gitdir = info.gitdir
+  if not repo_cache[gitdir] then
+    repo_cache[gitdir] = {1, new(info)}
+  else
+    local refcount = repo_cache[gitdir][1]
+    repo_cache[gitdir][1] = refcount + 1
+  end
+
+  return repo_cache[gitdir][2]
+end
+
+function M:unref()
+  local gitdir = self.gitdir
+  local refcount = repo_cache[gitdir][1]
+  if refcount <= 1 then
+    repo_cache[gitdir] = nil
+  else
+    repo_cache[gitdir][1] = refcount - 1
+  end
+end
+
 local has_cygpath = jit and jit.os == 'Windows' and vim.fn.executable('cygpath') == 1
 
---- @param path? string
---- @return string?
+--- @generic S
+--- @param path S
+--- @return S
 local function normalize_path(path)
   if path and has_cygpath and not uv.fs_stat(path) then
     -- If on windows and path isn't recognizable as a file, try passing it
@@ -157,7 +190,7 @@ end
 --- @param cwd string
 --- @param gitdir? string
 --- @param toplevel? string
---- @return Gitsigns.RepoInfo
+--- @return Gitsigns.RepoInfo?
 function M.get_info(cwd, gitdir, toplevel)
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --    https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
@@ -184,22 +217,26 @@ function M.get_info(cwd, gitdir, toplevel)
     'HEAD',
   })
 
-  local results = git_command(args, {
+  local stdout = git_command(args, {
     ignore_error = true,
     cwd = toplevel or cwd,
   })
 
-  local toplevel_r = normalize_path(results[1])
-  local gitdir_r = normalize_path(results[2])
+  if not stdout[1] then
+    return
+  end
 
-  if gitdir_r and not has_abs_gd then
+  local toplevel_r = normalize_path(stdout[1])
+  local gitdir_r = normalize_path(stdout[2])
+
+  if not has_abs_gd then
     gitdir_r = assert(uv.fs_realpath(gitdir_r))
   end
 
   return {
     toplevel = toplevel_r,
     gitdir = gitdir_r,
-    abbrev_head = process_abbrev_head(gitdir_r, results[3], cwd),
+    abbrev_head = process_abbrev_head(gitdir_r, stdout[3], cwd),
     detached = toplevel_r and gitdir_r ~= toplevel_r .. '/.git',
   }
 end

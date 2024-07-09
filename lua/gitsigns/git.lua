@@ -360,21 +360,22 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
     log.dprint('In git dir')
     return nil
   end
-  local self = setmetatable({}, { __index = Obj })
 
   if not vim.startswith(file, '/') and toplevel then
     file = toplevel .. util.path_sep .. file
   end
 
+  local repo = Repo.get(util.dirname(file), gitdir, toplevel)
+  if not repo then
+    log.dprint('Not in git repo')
+    return
+  end
+
+  local self = setmetatable({}, { __index = Obj })
+  self.repo = repo
   self.file = file
   self.revision = util.norm_base(revision)
   self.encoding = encoding
-  self.repo = Repo.new(util.dirname(file), gitdir, toplevel)
-
-  if not self.repo.gitdir then
-    log.dprint('Not in git repo')
-    return nil
-  end
 
   -- When passing gitdir and toplevel, suppress stderr when resolving the file
   local silent = gitdir ~= nil and toplevel ~= nil
