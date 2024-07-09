@@ -128,7 +128,6 @@ describe('gitsigns (with screen)', function()
       np(
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
-      np('run_job: git .* config user.name'),
       n('new: Not in git repo'),
       n('attach(1): Empty git obj'),
     })
@@ -142,7 +141,6 @@ describe('gitsigns (with screen)', function()
       np(
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
-      np('run_job: git .* config user.name'),
       n('new: Not in git repo'),
       n('attach(1): Empty git obj'),
     })
@@ -471,7 +469,6 @@ describe('gitsigns (with screen)', function()
           np(
             'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
           ),
-          np('run_job: git .* config user.name'),
           np('run_job: git .* ls%-files .*'),
           n('watch_gitdir(1): Watching git dir'),
         }

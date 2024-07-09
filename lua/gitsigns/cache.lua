@@ -131,6 +131,7 @@ function CacheEntry:destroy()
   if w and not w:is_closing() then
     w:close()
   end
+  self.git_obj.repo:unref()
 end
 
 ---@type table<integer,Gitsigns.CacheEntry?>

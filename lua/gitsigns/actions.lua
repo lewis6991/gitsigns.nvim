@@ -1284,8 +1284,8 @@ local function buildqflist(target)
       end
     end
 
-    local repo = git.Repo.new(assert(vim.loop.cwd()))
-    if not repos[repo.gitdir] then
+    local repo = git.Repo.get(assert(vim.loop.cwd()))
+    if repo and not repos[repo.gitdir] then
       repos[repo.gitdir] = repo
     end
 
