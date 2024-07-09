@@ -136,7 +136,12 @@ end
 
 function M:unref()
   local gitdir = self.gitdir
-  local refcount = repo_cache[gitdir][1]
+  local repo = repo_cache[gitdir]
+  if not repo then
+    -- Already reclaimed by GC
+    return
+  end
+  local refcount = repo[1]
   if refcount <= 1 then
     repo_cache[gitdir] = nil
   else
