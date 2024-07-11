@@ -88,7 +88,12 @@ end
 
 --- @async
 function M:update_abbrev_head()
-  self.abbrev_head = M.get_info(self.toplevel).abbrev_head
+  local info = M.get_info(self.toplevel)
+  if not info then
+    log.eprintf('Could not get info for repo at %s', self.gitdir)
+    return
+  end
+  self.abbrev_head = info.abbrev_head
 end
 
 --- @async
