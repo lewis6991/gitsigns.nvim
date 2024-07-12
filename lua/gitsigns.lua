@@ -1,8 +1,8 @@
 local async = require('gitsigns.async')
 local log = require('gitsigns.debug.log')
+local Config = require('gitsigns.config')
 
-local gs_config = require('gitsigns.config')
-local config = gs_config.config
+local config = Config.config
 
 local api = vim.api
 local uv = vim.uv or vim.loop
@@ -12,8 +12,8 @@ local M = {}
 local cwd_watcher ---@type uv.uv_fs_event_t?
 
 --- @async
---- @return string gitdir
---- @return string head
+--- @return string? gitdir
+--- @return string? head
 local function get_gitdir_and_head()
   local cwd = assert(uv.cwd())
 
@@ -29,9 +29,11 @@ local function get_gitdir_and_head()
     end
   end
 
-  local info = require('gitsigns.git').get_repo_info(cwd)
+  local info = require('gitsigns.git').Repo.get_info(cwd)
 
-  return info.gitdir, info.abbrev_head
+  if info then
+    return info.gitdir, info.abbrev_head
+  end
 end
 
 local update_cwd_head = async.create(function()
@@ -89,7 +91,7 @@ local update_cwd_head = async.create(function()
     100,
     async.create(function()
       local git = require('gitsigns.git')
-      local new_head = git.get_repo_info(cwd).abbrev_head
+      local new_head = git.Repo.get_info(cwd).abbrev_head
       async.scheduler()
       vim.g.gitsigns_head = new_head
     end)
@@ -204,7 +206,7 @@ end
 --- @param cfg table|nil Configuration for Gitsigns.
 ---     See |gitsigns-usage| for more details.
 function M.setup(cfg)
-  gs_config.build(cfg)
+  Config.build(cfg)
 
   if vim.fn.executable('git') == 0 then
     print('gitsigns: git not in path. Aborting setup')

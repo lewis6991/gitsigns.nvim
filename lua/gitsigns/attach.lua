@@ -1,20 +1,15 @@
+local Status = require('gitsigns.status')
 local async = require('gitsigns.async')
 local git = require('gitsigns.git')
-
-local manager = require('gitsigns.manager')
-
+local Cache = require('gitsigns.cache')
 local log = require('gitsigns.debug.log')
-local dprintf = log.dprintf
-local dprint = log.dprint
-
-local gs_cache = require('gitsigns.cache')
-local cache = gs_cache.cache
-local Status = require('gitsigns.status')
-
-local config = require('gitsigns.config').config
-
+local manager = require('gitsigns.manager')
 local util = require('gitsigns.util')
 
+local cache = Cache.cache
+local config = require('gitsigns.config').config
+local dprint = log.dprint
+local dprintf = log.dprintf
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
 local api = vim.api
@@ -323,7 +318,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     return
   end
 
-  cache[cbuf] = gs_cache.new({
+  cache[cbuf] = Cache.new({
     bufnr = cbuf,
     file = file,
     git_obj = git_obj,
@@ -357,6 +352,10 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   -- Initial update
   manager.update(cbuf)
+
+  if config.current_line_blame then
+    require('gitsigns.current_line_blame').update(cbuf)
+  end
 end)
 
 --- Detach Gitsigns from all buffers it is attached to.
@@ -391,7 +390,7 @@ function M.detach(bufnr, _keep_signs)
   -- Clear status variables
   Status:clear(bufnr)
 
-  gs_cache.destroy(bufnr)
+  Cache.destroy(bufnr)
 end
 
 --- Attach Gitsigns to the buffer.

@@ -46,10 +46,10 @@ describe('gitdir_watcher', function()
 
     match_debug_messages({
       'attach(1): Attaching (trigger=BufReadPost)',
-      np('run_job: git .* config user.name'),
       np(
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
+      np('run_job: git .* config user.name'),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
       n('watch_gitdir(1): Watching git dir'),
       np('run_job: git .* show .*'),
@@ -63,7 +63,7 @@ describe('gitdir_watcher', function()
     git({ 'mv', test_file, test_file2 })
 
     match_dag({
-      "watcher_cb(1): Git dir update: 'index.lock' { rename = true } (ignoring)",
+      "watcher_cb(1): Git dir update: 'index.lock' { rename = true }",
       "watcher_cb(1): Git dir update: 'index' { rename = true }",
       "watcher_cb(1): Git dir update: 'index' { rename = true }",
     })
@@ -89,7 +89,7 @@ describe('gitdir_watcher', function()
     git({ 'mv', test_file2, test_file3 })
 
     match_dag({
-      "watcher_cb(1): Git dir update: 'index.lock' { rename = true } (ignoring)",
+      "watcher_cb(1): Git dir update: 'index.lock' { rename = true }",
       "watcher_cb(1): Git dir update: 'index' { rename = true }",
       "watcher_cb(1): Git dir update: 'index' { rename = true }",
     })
@@ -113,7 +113,7 @@ describe('gitdir_watcher', function()
     git({ 'mv', test_file3, test_file })
 
     match_dag({
-      "watcher_cb(1): Git dir update: 'index.lock' { rename = true } (ignoring)",
+      "watcher_cb(1): Git dir update: 'index.lock' { rename = true }",
       "watcher_cb(1): Git dir update: 'index' { rename = true }",
       "watcher_cb(1): Git dir update: 'index' { rename = true }",
     })
@@ -147,8 +147,8 @@ describe('gitdir_watcher', function()
     helpers.write_to_file(f1, { '1', '2', '3' })
     helpers.write_to_file(f2, { '1', '2', '3' })
 
-    helpers.gitf({ 'add', f1, f2 })
-    helpers.gitf({ 'commit', '-m', 'init commit' })
+    git({ 'add', f1, f2 })
+    git({ 'commit', '-m', 'init commit' })
 
     setup_gitsigns(test_config)
 
@@ -165,7 +165,7 @@ describe('gitdir_watcher', function()
     helpers.check({ signs = { changed = 1 } }, b1)
     helpers.check({ signs = { changed = 1 } }, b2)
 
-    helpers.gitf({ 'add', f1, f2 })
+    git({ 'add', f1, f2 })
 
     helpers.check({ signs = {} }, b1)
     helpers.check({ signs = {} }, b2)

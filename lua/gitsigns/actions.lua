@@ -1,16 +1,14 @@
 local async = require('gitsigns.async')
-local config = require('gitsigns.config').config
-local mk_repeatable = require('gitsigns.repeat').mk_repeatable
+local git = require('gitsigns.git')
+local Hunks = require('gitsigns.hunks')
+local manager = require('gitsigns.manager')
 local popup = require('gitsigns.popup')
 local util = require('gitsigns.util')
-local manager = require('gitsigns.manager')
-local git = require('gitsigns.git')
 local run_diff = require('gitsigns.diff')
 
-local gs_cache = require('gitsigns.cache')
-local cache = gs_cache.cache
-
-local Hunks = require('gitsigns.hunks')
+local config = require('gitsigns.config').config
+local mk_repeatable = require('gitsigns.repeat').mk_repeatable
+local cache = require('gitsigns.cache').cache
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
@@ -416,7 +414,6 @@ end)
 ---     {async}
 M.stage_buffer = async.create(function()
   local bufnr = current_buf()
-
   local bcache = cache[bufnr]
   if not bcache then
     return
@@ -1019,16 +1016,14 @@ M.blame_line = async.create(1, function(opts)
     return
   end
 
-  assert(result)
-
-  result = util.convert_blame_info(result)
+  result = util.convert_blame_info(assert(result))
 
   local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
 
   local blame_linespec = create_blame_fmt(is_committed, opts.full)
 
   if is_committed and opts.full then
-    local body = bcache.git_obj:command(
+    local body = bcache.git_obj.repo:command(
       { 'show', '-s', '--format=%B', result.sha },
       { text = true }
     )
@@ -1060,9 +1055,13 @@ end
 --- Run git-blame on the current file and open the results
 --- in a scroll-bound vertical split.
 ---
---- <CR> is mapped to open a menu with the actions:
----   - [Show commit] in a vertical split.
----   - [Reblame at commit]
+--- Mappings:
+---   <CR> is mapped to open a menu with the other mappings
+---        Note: <Alt> must be held to activate the mappings whilst the menu is
+---        open.
+---   s   [Show commit] in a vertical split.
+---   S   [Show commit] in a new tab.
+---   r   [Reblame at commit]
 ---
 --- Attributes: ~
 ---     {async}
@@ -1292,8 +1291,8 @@ local function buildqflist(target)
       end
     end
 
-    local repo = git.Repo.new(assert(vim.loop.cwd()))
-    if not repos[repo.gitdir] then
+    local repo = git.Repo.get(assert(vim.loop.cwd()))
+    if repo and not repos[repo.gitdir] then
       repos[repo.gitdir] = repo
     end
 

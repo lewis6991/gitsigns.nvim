@@ -1,14 +1,13 @@
 local async = require('gitsigns.async')
+local debounce = require('gitsigns.debounce')
+local util = require('gitsigns.util')
+
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local schema = require('gitsigns.config').schema
-local util = require('gitsigns.util')
-
 local error_once = require('gitsigns.message').error_once
 
 local api = vim.api
-
-local debounce = require('gitsigns.debounce')
 
 local namespace = api.nvim_create_namespace('gitsigns_blame')
 
@@ -90,7 +89,11 @@ local function get_blame_virt_text(bufnr, blame_info)
     end
 
     local nc_sfx = use_nc and '_nc' or ''
-    error_once('Failed running config.current_line_blame_formatter%s, using default', nc_sfx)
+    error_once(
+      'Failed running config.current_line_blame_formatter%s, using default:\n   %s',
+      nc_sfx,
+      res
+    )
     --- @type string
     clb_formatter = schema.current_line_blame_formatter.default
   end
@@ -203,50 +206,53 @@ end
 local update = async.create(1, debounce.throttle_by_id(update0))
 
 --- @type fun(bufnr: integer)
-local update_debounced
+M.update = nil
 
 function M.setup()
-  local group = api.nvim_create_augroup('gitsigns_blame', {})
-
-  local opts = config.current_line_blame_opts
-  update_debounced = debounce.debounce_trailing(opts.delay, update)
-
-  for k, _ in pairs(cache) do
+  for k in pairs(cache) do
     reset(k)
   end
 
-  if config.current_line_blame then
-    local events = { 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' }
-    if vim.fn.exists('#WinResized') == 1 then
-      -- For nvim 0.9+
-      events[#events + 1] = 'WinResized'
-    end
+  local group = api.nvim_create_augroup('gitsigns_blame', {})
 
-    api.nvim_create_autocmd(events, {
-      group = group,
-      callback = function(args)
-        reset(args.buf)
-        update_debounced(args.buf)
-      end,
-    })
-
-    api.nvim_create_autocmd({ 'InsertEnter', 'FocusLost', 'BufLeave' }, {
-      group = group,
-      callback = function(args)
-        reset(args.buf)
-      end,
-    })
-
-    api.nvim_create_autocmd('OptionSet', {
-      group = group,
-      pattern = { 'fileformat', 'bomb', 'eol' },
-      callback = function(args)
-        reset(args.buf)
-      end,
-    })
-
-    update_debounced(api.nvim_get_current_buf())
+  if not config.current_line_blame then
+    return
   end
+
+  local opts = config.current_line_blame_opts
+  M.update = debounce.debounce_trailing(opts.delay, update)
+
+  -- show current buffer line blame immediately
+  M.update(api.nvim_get_current_buf())
+
+  local events = { 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' }
+  if vim.fn.exists('#WinResized') == 1 then
+    -- For nvim 0.9+
+    events[#events + 1] = 'WinResized'
+  end
+
+  api.nvim_create_autocmd(events, {
+    group = group,
+    callback = function(args)
+      reset(args.buf)
+      M.update(args.buf)
+    end,
+  })
+
+  api.nvim_create_autocmd({ 'InsertEnter', 'FocusLost', 'BufLeave' }, {
+    group = group,
+    callback = function(args)
+      reset(args.buf)
+    end,
+  })
+
+  api.nvim_create_autocmd('OptionSet', {
+    group = group,
+    pattern = { 'fileformat', 'bomb', 'eol' },
+    callback = function(args)
+      reset(args.buf)
+    end,
+  })
 end
 
 return M

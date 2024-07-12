@@ -1,6 +1,7 @@
+local async = require('gitsigns.async')
+
 local create_hunk = require('gitsigns.hunks').create_hunk
 local config = require('gitsigns.config').config
-local async = require('gitsigns.async')
 
 local M = {}
 

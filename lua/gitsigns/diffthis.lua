@@ -1,14 +1,14 @@
-local api = vim.api
-
 local async = require('gitsigns.async')
-local cache = require('gitsigns.cache').cache
-local util = require('gitsigns.util')
 local manager = require('gitsigns.manager')
 local message = require('gitsigns.message')
+local util = require('gitsigns.util')
 local Status = require('gitsigns.status')
 
+local cache = require('gitsigns.cache').cache
 local dprint = require('gitsigns.debug.log').dprint
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
+
+local api = vim.api
 
 local M = {}
 

@@ -1,11 +1,9 @@
-local api = vim.api
-
-local cache = require('gitsigns.cache').cache
-local util = require('gitsigns.util')
 local async = require('gitsigns.async')
-
+local cache = require('gitsigns.cache').cache
 local log = require('gitsigns.debug.log')
-local dprint = log.dprint
+local util = require('gitsigns.util')
+
+local api = vim.api
 
 local hash_colors = {} --- @type table<integer,string>
 
@@ -116,8 +114,9 @@ local function render(blame, win, main_win, buf_sha)
     })
 
     if commit_lines[i] then
-      api.nvim_buf_set_extmark(bufnr, ns, i - 1, win_width - 10, {
-        end_col = win_width,
+      local width = string.len(lines[i])
+      api.nvim_buf_set_extmark(bufnr, ns, i - 1, width - 10, {
+        end_col = width,
         hl_group = 'Title',
       })
     else
@@ -180,14 +179,18 @@ local function reblame(blame, win, revision)
   )
 end
 
---- @param sha string
---- @param git_obj Gitsigns.GitObj
-local show_commit = async.create(2, function(sha, git_obj)
-  local res = git_obj:command({ 'show', sha })
+--- @param win integer
+--- @param open 'vsplit'|'tabnew'
+--- @param bcache Gitsigns.CacheEntry
+local show_commit = async.create(3, function(win, open, bcache)
+  local cursor = api.nvim_win_get_cursor(win)[1]
+  local sha = bcache.blame[cursor].commit.sha
+  local res = bcache.git_obj.repo:command({ 'show', sha })
   async.scheduler()
-  local commit_buf = api.nvim_create_buf(false, true)
+  local commit_buf = api.nvim_create_buf(true, true)
+  api.nvim_buf_set_name(commit_buf, bcache:get_rev_bufname(sha, true))
   api.nvim_buf_set_lines(commit_buf, 0, -1, false, res)
-  vim.cmd.vsplit({ mods = { keepalt = true } })
+  vim.cmd[open]({ mods = { keepalt = true } })
   api.nvim_win_set_buf(0, commit_buf)
   vim.bo[commit_buf].filetype = 'git'
 end)
@@ -225,6 +228,24 @@ local function sync_cursors(augroup, wins)
   end
 end
 
+--- @param name string
+--- @param items [string, string][]
+local function menu(name, items)
+  local max_len = 0
+  for _, item in ipairs(items) do
+    max_len = math.max(max_len, #item[1]) --- @type integer
+  end
+
+  for _, item in ipairs(items) do
+    local item_nm, action = item[1], item[2]
+    local pad = string.rep(' ', max_len - #item_nm)
+    local lhs = string.format('%s%s (%s)', item_nm, pad, action):gsub(' ', [[\ ]])
+    local cmd = string.format('nmenu <silent> ]%s.%s %s', name, lhs, action)
+
+    vim.cmd(cmd)
+  end
+end
+
 --- @async
 M.blame = function()
   local __FUNC__ = 'blame'
@@ -232,7 +253,7 @@ M.blame = function()
   local win = api.nvim_get_current_win()
   local bcache = cache[bufnr]
   if not bcache then
-    dprint('Not attached')
+    log.dprint('Not attached')
     return
   end
 
@@ -253,6 +274,7 @@ M.blame = function()
 
   local blm_bo = vim.bo[blm_bufnr]
   blm_bo.buftype = 'nofile'
+  blm_bo.bufhidden = 'wipe'
   blm_bo.modifiable = false
   blm_bo.filetype = 'gitsigns.blame'
 
@@ -266,6 +288,11 @@ M.blame = function()
   blm_wlo.spell = false
   blm_wlo.winfixwidth = true
   blm_wlo.wrap = false
+
+  if vim.wo[win].winbar ~= '' and blm_wlo.winbar == '' then
+    local name = api.nvim_buf_get_name(bufnr)
+    blm_wlo.winbar = vim.fn.fnamemodify(name, ':.')
+  end
 
   if vim.fn.exists('&winfixbuf') then
     blm_wlo.winfixbuf = true
@@ -285,7 +312,7 @@ M.blame = function()
   vim.cmd.syncbind()
 
   vim.keymap.set('n', '<CR>', function()
-    vim.cmd.popup('GitsignsBlame')
+    vim.cmd.popup(']GitsignsBlame')
   end, {
     desc = 'Open blame context menu',
     buffer = blm_bufnr,
@@ -299,18 +326,24 @@ M.blame = function()
   })
 
   vim.keymap.set('n', 's', function()
-    local cursor = api.nvim_win_get_cursor(blm_win)[1]
-    local sha = blame[cursor].commit.sha
-    show_commit(sha, bcache.git_obj)
+    show_commit(blm_win, 'vsplit', bcache)
   end, {
-    desc = 'Show commit',
+    desc = 'Show commit in a vertical split',
     buffer = blm_bufnr,
   })
 
-  vim.cmd([[
-   :nnoremenu <silent> GitsignsBlame.Reblame\ at\ commit\ \ (r)        r
-   :nnoremenu <silent> GitsignsBlame.Show\ commit\ \ \ \ \ \ \ \ (s)   s
-  ]])
+  vim.keymap.set('n', 'S', function()
+    show_commit(blm_win, 'tabnew', bcache)
+  end, {
+    desc = 'Show commit in a new tab',
+    buffer = blm_bufnr,
+  })
+
+  menu('GitsignsBlame', {
+    { 'Reblame at commit', 'r' },
+    { 'Show commit (vsplit)', 's' },
+    { '            (tab)', 'S' },
+  })
 
   local group = api.nvim_create_augroup('GitsignsBlame', {})
 
