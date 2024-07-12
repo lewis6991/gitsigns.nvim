@@ -83,6 +83,7 @@ end
 --- @param commits table<string,Gitsigns.CommitInfo>
 --- @param result table<integer,Gitsigns.BlameInfo>
 --- @return integer i
+--- @return integer? size
 local function incremental_iter(data_lines, i, commits, result)
   local line = assert(data_lines[i])
   i = i + 1
@@ -152,13 +153,14 @@ local function incremental_iter(data_lines, i, commits, result)
     }
   end
 
-  return i
+  return i, size
 end
 
 --- @param data? string
 --- @param commits table<string,Gitsigns.CommitInfo>
 --- @param result table<integer,Gitsigns.BlameInfo>
-local function process_incremental(data, commits, result)
+--- @param progress_cb? fun(size: number)
+local function process_incremental(data, commits, result, progress_cb)
   if not data then
     return
   end
@@ -167,7 +169,35 @@ local function process_incremental(data, commits, result)
   local i = 1
 
   while i <= #data_lines do
-    i = incremental_iter(data_lines, i, commits, result)
+    local size
+    i, size = incremental_iter(data_lines, i, commits, result)
+    if size and progress_cb then
+      progress_cb(size)
+    end
+  end
+end
+
+--- @param lines string[]
+--- @param progress_cb? fun(pct: integer)
+--- @return fun(size: integer)?
+local function build_progress_cb(lines, progress_cb)
+  if not progress_cb then
+    return
+  end
+
+  local total = #lines
+
+  local processed = 0
+  local last_r --- @type integer?
+
+  return function(size)
+    --- @type integer
+    processed = processed + size
+    local r = math.floor(processed * 100 / total)
+    if r ~= last_r then
+      progress_cb(r)
+    end
+    last_r = r
   end
 end
 
@@ -176,8 +206,9 @@ end
 --- @param lnum? integer
 --- @param revision? string
 --- @param opts? Gitsigns.BlameOpts
+--- @param progress_cb? fun(pct: integer)
 --- @return table<integer, Gitsigns.BlameInfo>
-function M.run_blame(obj, lines, lnum, revision, opts)
+function M.run_blame(obj, lines, lnum, revision, opts, progress_cb)
   local ret = {} --- @type table<integer,Gitsigns.BlameInfo>
 
   if not obj.object_name or obj.repo.abbrev_head == '' then
@@ -223,9 +254,11 @@ function M.run_blame(obj, lines, lnum, revision, opts)
 
   local commits = {} --- @type table<string,Gitsigns.CommitInfo>
 
+  local progress_cb1 = build_progress_cb(lines, progress_cb)
+
   --- @param data string?
   local function on_stdout(_, data)
-    process_incremental(data, commits, ret)
+    process_incremental(data, commits, ret, progress_cb1)
   end
 
   local _, stderr = obj.repo:command(args, { stdin = lines, stdout = on_stdout, ignore_error = true })

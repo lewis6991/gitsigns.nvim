@@ -260,9 +260,10 @@ end
 --- @param lnum? integer
 --- @param revision? string
 --- @param opts? Gitsigns.BlameOpts
+--- @param progress_cb? fun(pct: number)
 --- @return table<integer,Gitsigns.BlameInfo?>
-function Obj:run_blame(lines, lnum, revision, opts)
-  return require('gitsigns.git.blame').run_blame(self, lines, lnum, revision, opts)
+function Obj:run_blame(lines, lnum, revision, opts, progress_cb)
+  return require('gitsigns.git.blame').run_blame(self, lines, lnum, revision, opts, progress_cb)
 end
 
 --- @param obj Gitsigns.GitObj

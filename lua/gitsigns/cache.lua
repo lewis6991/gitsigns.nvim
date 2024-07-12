@@ -75,9 +75,10 @@ local BLAME_THRESHOLD_LEN = 10000
 --- @private
 --- @param lnum? integer
 --- @param opts? Gitsigns.BlameOpts
+--- @param progress_cb? fun(pct: number)
 --- @return table<integer,Gitsigns.BlameInfo?>
 --- @return boolean? full
-function CacheEntry:run_blame(lnum, opts)
+function CacheEntry:run_blame(lnum, opts, progress_cb)
   local bufnr = self.bufnr
   local blame --- @type table<integer,Gitsigns.BlameInfo?>?
   local lnum0 --- @type integer?
@@ -86,7 +87,7 @@ function CacheEntry:run_blame(lnum, opts)
     local tick = vim.b[bufnr].changedtick
     lnum0 = #buftext > BLAME_THRESHOLD_LEN and lnum or nil
     -- TODO(lewis6991): Cancel blame on changedtick
-    blame = self.git_obj:run_blame(buftext, lnum0, self.git_obj.revision, opts)
+    blame = self.git_obj:run_blame(buftext, lnum0, self.git_obj.revision, opts, progress_cb)
     async.scheduler()
     if not vim.api.nvim_buf_is_valid(bufnr) then
       return {}
@@ -99,8 +100,9 @@ end
 --- @async
 --- @param lnum? integer
 --- @param opts? Gitsigns.BlameOpts
+--- @param progress_cb? fun(pct: number)
 --- @return Gitsigns.BlameInfo?
-function CacheEntry:get_blame(lnum, opts)
+function CacheEntry:get_blame(lnum, opts, progress_cb)
   local blame = self.blame
 
   if not blame or (lnum and not blame[lnum]) then
@@ -113,7 +115,7 @@ function CacheEntry:get_blame(lnum, opts)
       blame[lnum] = Blame.get_blame_nc(self.git_obj.relpath, lnum)
     else
       -- Refresh/update cache
-      local b, full = self:run_blame(lnum, opts)
+      local b, full = self:run_blame(lnum, opts, progress_cb)
       if lnum and not full then
         blame[lnum] = b[lnum]
       else

@@ -67,6 +67,7 @@ local function render(blame, win, main_win, buf_sha)
   local max_author_len = 0
 
   for _, blame_info in pairs(blame) do
+    --- @type integer
     max_author_len = math.max(max_author_len, (vim.str_utfindex(blame_info.commit.author)))
   end
 
