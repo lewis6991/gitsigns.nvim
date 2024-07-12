@@ -12,8 +12,8 @@ local M = {}
 local cwd_watcher ---@type uv.uv_fs_event_t?
 
 --- @async
---- @return string gitdir
---- @return string head
+--- @return string? gitdir
+--- @return string? head
 local function get_gitdir_and_head()
   local cwd = assert(uv.cwd())
 
@@ -31,7 +31,9 @@ local function get_gitdir_and_head()
 
   local info = require('gitsigns.git').Repo.get_info(cwd)
 
-  return info.gitdir, info.abbrev_head
+  if info then
+    return info.gitdir, info.abbrev_head
+  end
 end
 
 local update_cwd_head = async.create(function()
