@@ -1,7 +1,7 @@
 local uv = vim.uv or vim.loop
 
 local error_once = require('gitsigns.message').error_once
-local dprintf = require('gitsigns.debug.log').dprintf
+local log = require('gitsigns.debug.log')
 
 --- @class Gitsigns.CommitInfo
 --- @field author string
@@ -78,20 +78,15 @@ local function asinteger(x)
   return assert(tonumber(x))
 end
 
---- @param data_lines string[]
---- @param i integer
+--- @param readline fun(): string?
 --- @param commits table<string,Gitsigns.CommitInfo>
 --- @param result table<integer,Gitsigns.BlameInfo>
---- @return integer i
-local function incremental_iter(data_lines, i, commits, result)
-  local line = assert(data_lines[i])
-  i = i + 1
+local function incremental_iter(readline, commits, result)
+  local line = assert(readline())
 
   --- @type string, string, string, string
   local sha, orig_lnum_str, final_lnum_str, size_str = line:match('(%x+) (%d+) (%d+) (%d+)')
-  if not sha then
-    return i
-  end
+  assert(sha)
 
   local orig_lnum = asinteger(orig_lnum_str)
   local final_lnum = asinteger(final_lnum_str)
@@ -106,13 +101,13 @@ local function incremental_iter(data_lines, i, commits, result)
   --- @type string, string
   local previous_sha, previous_filename
 
+  line = assert(readline())
+
   -- filename terminates the entry
-  while data_lines[i] and not data_lines[i]:match('^filename ') do
-    local l = assert(data_lines[i])
-    i = i + 1
-    local key, value = l:match('^([^%s]+) (.*)')
+  while not line:match('^filename ') do
+    local key, value = line:match('^([^%s]+) (.*)')
     if key == 'previous' then
-      previous_sha, previous_filename = l:match('^previous (%x+) (.*)')
+      previous_sha, previous_filename = line:match('^previous (%x+) (.*)')
     elseif key then
       key = key:gsub('%-', '_') --- @type string
       if vim.endswith(key, '_time') then
@@ -120,14 +115,15 @@ local function incremental_iter(data_lines, i, commits, result)
       end
       commit[key] = value
     else
-      commit[l] = true
-      if l ~= 'boundary' then
-        dprintf("Unknown tag: '%s'", l)
+      commit[line] = true
+      if line ~= 'boundary' then
+        log.dprintf("Unknown tag: '%s'", line)
       end
     end
+    line = assert(readline())
   end
 
-  local filename = assert(data_lines[i]:match('^filename (.*)'))
+  local filename = assert(line:match('^filename (.*)'))
 
   -- New in git 2.41:
   -- The output given by "git blame" that attributes a line to contents
@@ -151,24 +147,51 @@ local function incremental_iter(data_lines, i, commits, result)
       previous_sha = previous_sha,
     }
   end
-
-  return i
 end
 
---- @param data? string
---- @param commits table<string,Gitsigns.CommitInfo>
---- @param result table<integer,Gitsigns.BlameInfo>
-local function process_incremental(data, commits, result)
-  if not data then
-    return
+--- @param data string
+--- @return string[]
+local function data_to_lines(data)
+  local lines = vim.split(data, '\n')
+  if lines[#lines] == '' then
+    lines[#lines] = nil
   end
+  return lines
+end
 
-  local data_lines = vim.split(data, '\n')
-  local i = 1
+--- @param f fun(readline: fun(): string?))
+--- @return fun(data: string?)
+local function bufferred_line_reader(f)
+  --- @param data string?
+  return coroutine.wrap(function(data)
+    if not data then
+      return
+    end
 
-  while i <= #data_lines do
-    i = incremental_iter(data_lines, i, commits, result)
-  end
+    local data_lines = data_to_lines(data)
+    local i = 0
+
+    local function readline(peek)
+      if not data_lines[i + 1] then
+        data = coroutine.yield()
+        if not data then
+          return
+        end
+        data_lines = data_to_lines(data)
+        i = 0
+      end
+
+      if peek then
+        return data_lines[ i+ 1]
+      end
+      i = i + 1
+      return data_lines[i]
+    end
+
+    while readline(true) do
+      f(readline)
+    end
+  end)
 end
 
 --- @param obj Gitsigns.GitObj
@@ -223,9 +246,13 @@ function M.run_blame(obj, lines, lnum, revision, opts)
 
   local commits = {} --- @type table<string,Gitsigns.CommitInfo>
 
+  local reader = bufferred_line_reader(function(readline)
+    incremental_iter(readline, commits, ret)
+  end)
+
   --- @param data string?
   local function on_stdout(_, data)
-    process_incremental(data, commits, ret)
+    reader(data)
   end
 
   local _, stderr = obj.repo:command(args, { stdin = lines, stdout = on_stdout, ignore_error = true })
