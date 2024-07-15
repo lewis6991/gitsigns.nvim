@@ -1240,6 +1240,10 @@ M.show = function(revision, callback)
   diffthis.show(bufnr, revision, callback)
 end
 
+C.show = function(args, _)
+  M.show(args[1])
+end
+
 CP.show = complete_heads
 
 --- @param buf_or_filename string|integer

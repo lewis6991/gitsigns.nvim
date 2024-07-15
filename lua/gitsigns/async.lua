@@ -181,6 +181,7 @@ function M.create(argc_or_func, func)
 
   return function(...)
     local callback = argc and select(argc + 1, ...) or nil
+    assert(not callback or type(callback) == 'function')
     return run(func, callback, unpack({ ... }, 1, argc))
   end
 end
