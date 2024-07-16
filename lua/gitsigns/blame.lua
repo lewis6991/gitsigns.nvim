@@ -152,10 +152,14 @@ end
 --- @param blame table<integer,Gitsigns.BlameInfo?>
 --- @param win integer
 --- @param revision? string
-local function reblame(blame, win, revision)
+--- @param parent? boolean
+local function reblame(blame, win, revision, parent)
   local blm_win = api.nvim_get_current_win()
   local lnum = unpack(api.nvim_win_get_cursor(blm_win))
   local sha = blame[lnum].commit.sha
+  if parent then
+    sha = sha .. '^'
+  end
   if sha == revision then
     return
   end
@@ -324,6 +328,13 @@ M.blame = function()
     buffer = blm_bufnr,
   })
 
+  vim.keymap.set('n', 'R', function()
+    reblame(blame, win, bcache.git_obj.revision, true)
+  end, {
+    desc = 'Reblame at commit parent',
+    buffer = blm_bufnr,
+  })
+
   vim.keymap.set('n', 's', function()
     show_commit(blm_win, 'vsplit', bcache)
   end, {
@@ -340,6 +351,7 @@ M.blame = function()
 
   menu('GitsignsBlame', {
     { 'Reblame at commit', 'r' },
+    { 'Reblame at commit parent', 'R' },
     { 'Show commit (vsplit)', 's' },
     { '            (tab)', 'S' },
   })
