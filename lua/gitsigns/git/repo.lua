@@ -44,18 +44,29 @@ function M:command(args, spec)
   return git_command(args1, spec)
 end
 
+--- @param base string?
 --- @return string[]
-function M:files_changed()
+function M:files_changed(base)
   --- @type string[]
-  local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
+  local results
+  if base and base ~= ':0' then
+    results = self:command({ 'diff', '--name-status', base })
 
-  local ret = {} --- @type string[]
-  for _, line in ipairs(results) do
-    if line:sub(1, 2):match('^.M') then
-      ret[#ret + 1] = line:sub(4, -1)
+    for i, result in ipairs(results) do
+      results[i] = vim.split(string.gsub(result, '\t', ' '), ' ', { plain = true })[2]
     end
+    return results
+  else
+    results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
+
+    local ret = {} --- @type string[]
+    for _, line in ipairs(results) do
+      if line:sub(1, 2):match('^.M') then
+        ret[#ret + 1] = line:sub(4, -1)
+      end
+    end
+    return ret
   end
-  return ret
 end
 
 --- @param encoding string
