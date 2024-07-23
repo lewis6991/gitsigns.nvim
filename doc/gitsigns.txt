@@ -572,6 +572,7 @@ signs                                                  *gitsigns-config-signs*
         • `GitSignsAdd`   (for normal text signs)
         • `GitSignsAddNr` (for signs when `config.numhl == true`)
         • `GitSignsAddLn `(for signs when `config.linehl == true`)
+        • `GitSignsAddCul `(for signs when `config.culhl == true`)
 
       See |gitsigns-highlight-groups|.
 
@@ -683,6 +684,16 @@ linehl                                                *gitsigns-config-linehl*
       Enable/disable line highlights.
 
       When enabled the highlights defined in `signs.*.linehl` are used. If
+      the highlight group does not exist, then it is automatically defined
+      and linked to the corresponding highlight group in `signs.*.hl`.
+
+culhl                                                  *gitsigns-config-culhl*
+      Type: `boolean`, Default: `false`
+
+      Enable/disable highlights for the sign column when the cursor is on
+      the same line.
+
+      When enabled the highlights defined in `signs.*.culhl` are used. If
       the highlight group does not exist, then it is automatically defined
       and linked to the corresponding highlight group in `signs.*.hl`.
 
@@ -1041,6 +1052,36 @@ GitSignsUntrackedLn
         Used for buffer line (when `config.linehl == true`) of 'untracked' signs.
 
         Fallbacks: `GitSignsAddLn`
+                                                        *hl-GitSignsAddCul*
+GitSignsAddCul
+        Used for the text of 'add' signs when the cursor is on the same line as the sign.
+
+        Fallbacks: `GitSignsAdd`
+                                                        *hl-GitSignsChangeCul*
+GitSignsChangeCul
+        Used for the text of 'change' signs when the cursor is on the same line as the sign.
+
+        Fallbacks: `GitSignsChange`
+                                                        *hl-GitSignsDeleteCul*
+GitSignsDeleteCul
+        Used for the text of 'delete' signs when the cursor is on the same line as the sign.
+
+        Fallbacks: `GitSignsDelete`
+                                                        *hl-GitSignsChangedeleteCul*
+GitSignsChangedeleteCul
+        Used for the text of 'changedelete' signs when the cursor is on the same line as the sign.
+
+        Fallbacks: `GitSignsChangeCul`
+                                                        *hl-GitSignsTopdeleteCul*
+GitSignsTopdeleteCul
+        Used for the text of 'topdelete' signs when the cursor is on the same line as the sign.
+
+        Fallbacks: `GitSignsDeleteCul`
+                                                        *hl-GitSignsUntrackedCul*
+GitSignsUntrackedCul
+        Used for the text of 'untracked' signs when the cursor is on the same line as the sign.
+
+        Fallbacks: `GitSignsAddCul`
                                                         *hl-GitSignsAddPreview*
 GitSignsAddPreview
         Used for added lines in previews.
