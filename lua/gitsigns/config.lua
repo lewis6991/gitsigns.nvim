@@ -25,6 +25,7 @@
 --- @field text string
 --- @field numhl string
 --- @field linehl string
+--- @field culhl string
 
 --- @alias Gitsigns.SignType
 --- | 'add'
@@ -60,6 +61,7 @@
 --- @field signcolumn boolean
 --- @field numhl boolean
 --- @field linehl boolean
+--- @field culhl boolean
 --- @field show_deleted boolean
 --- @field sign_priority integer
 --- @field _on_attach_pre fun(bufnr: integer, callback: fun(_: table))
@@ -212,36 +214,47 @@ M.schema = {
     type = validate_signs,
     deep_extend = true,
     default = {
-      add = { hl = 'GitSignsAdd', text = '┃', numhl = 'GitSignsAddNr', linehl = 'GitSignsAddLn' },
+      add = {
+        hl = 'GitSignsAdd',
+        text = '┃',
+        numhl = 'GitSignsAddNr',
+        linehl = 'GitSignsAddLn',
+        culhl = 'GitSignsAddCul',
+      },
       change = {
         hl = 'GitSignsChange',
         text = '┃',
         numhl = 'GitSignsChangeNr',
         linehl = 'GitSignsChangeLn',
+        culhl = 'GitSignsChangeCul',
       },
       delete = {
         hl = 'GitSignsDelete',
         text = '▁',
         numhl = 'GitSignsDeleteNr',
         linehl = 'GitSignsDeleteLn',
+        culhl = 'GitSignsDeleteCul',
       },
       topdelete = {
         hl = 'GitSignsTopdelete',
         text = '▔',
         numhl = 'GitSignsTopdeleteNr',
         linehl = 'GitSignsTopdeleteLn',
+        culhl = 'GitSignsTopdeleteCul',
       },
       changedelete = {
         hl = 'GitSignsChangedelete',
         text = '~',
         numhl = 'GitSignsChangedeleteNr',
         linehl = 'GitSignsChangedeleteLn',
+        culhl = 'GitSignsChangedeleteCul',
       },
       untracked = {
         hl = 'GitSignsUntracked',
         text = '┆',
         numhl = 'GitSignsUntrackedNr',
         linehl = 'GitSignsUntrackedLn',
+        culhl = 'GitSignsUntrackedCul',
       },
     },
     default_help = [[{
@@ -263,6 +276,7 @@ M.schema = {
         • `GitSignsAdd`   (for normal text signs)
         • `GitSignsAddNr` (for signs when `config.numhl == true`)
         • `GitSignsAddLn `(for signs when `config.linehl == true`)
+        • `GitSignsAddCul `(for signs when `config.culhl == true`)
 
       See |gitsigns-highlight-groups|.
     ]],
@@ -277,30 +291,35 @@ M.schema = {
         text = '┃',
         numhl = 'GitSignsStagedAddNr',
         linehl = 'GitSignsStagedAddLn',
+        culhl = 'GitSignsStagedAddCul',
       },
       change = {
         hl = 'GitSignsStagedChange',
         text = '┃',
         numhl = 'GitSignsStagedChangeNr',
         linehl = 'GitSignsStagedChangeLn',
+        culhl = 'GitSignsStagedChangeCul',
       },
       delete = {
         hl = 'GitSignsStagedDelete',
         text = '▁',
         numhl = 'GitSignsStagedDeleteNr',
         linehl = 'GitSignsStagedDeleteLn',
+        culhl = 'GitSignsStagedDeleteCul',
       },
       topdelete = {
         hl = 'GitSignsStagedTopdelete',
         text = '▔',
         numhl = 'GitSignsStagedTopdeleteNr',
         linehl = 'GitSignsStagedTopdeleteLn',
+        culhl = 'GitSignsStagedTopdeleteCul',
       },
       changedelete = {
         hl = 'GitSignsStagedChangedelete',
         text = '~',
         numhl = 'GitSignsStagedChangedeleteNr',
         linehl = 'GitSignsStagedChangedeleteLn',
+        culhl = 'GitSignsStagedChangedeleteCul',
       },
     },
     default_help = [[{
@@ -453,6 +472,19 @@ M.schema = {
       Enable/disable line highlights.
 
       When enabled the highlights defined in `signs.*.linehl` are used. If
+      the highlight group does not exist, then it is automatically defined
+      and linked to the corresponding highlight group in `signs.*.hl`.
+    ]],
+  },
+
+  culhl = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      Enable/disable highlights for the sign column when the cursor is on
+      the same line.
+
+      When enabled the highlights defined in `signs.*.culhl` are used. If
       the highlight group does not exist, then it is automatically defined
       and linked to the corresponding highlight group in `signs.*.hl`.
     ]],

@@ -135,6 +135,48 @@ M.hls = {
     },
   },
 
+  {
+    GitSignsAddCul = {
+      'GitSignsAdd',
+      desc = "Used for the text of 'add' signs when the cursor is on the same line as the sign.",
+    },
+  },
+
+  {
+    GitSignsChangeCul = {
+      'GitSignsChange',
+      desc = "Used for the text of 'change' signs when the cursor is on the same line as the sign.",
+    },
+  },
+
+  {
+    GitSignsDeleteCul = {
+      'GitSignsDelete',
+      desc = "Used for the text of 'delete' signs when the cursor is on the same line as the sign.",
+    },
+  },
+
+  {
+    GitSignsChangedeleteCul = {
+      'GitSignsChangeCul',
+      desc = "Used for the text of 'changedelete' signs when the cursor is on the same line as the sign.",
+    },
+  },
+
+  {
+    GitSignsTopdeleteCul = {
+      'GitSignsDeleteCul',
+      desc = "Used for the text of 'topdelete' signs when the cursor is on the same line as the sign.",
+    },
+  },
+
+  {
+    GitSignsUntrackedCul = {
+      'GitSignsAddCul',
+      desc = "Used for the text of 'untracked' signs when the cursor is on the same line as the sign.",
+    },
+  },
+
   -- Don't set GitSignsDeleteLn by default
   -- {GitSignsDeleteLn = {}},
 
@@ -153,6 +195,11 @@ M.hls = {
   { GitSignsStagedDeleteLn = { 'GitSignsDeleteLn', fg_factor = 0.5, hidden = true } },
   { GitSignsStagedChangedeleteLn = { 'GitSignsChangedeleteLn', fg_factor = 0.5, hidden = true } },
   { GitSignsStagedTopdeleteLn = { 'GitSignsTopdeleteLn', fg_factor = 0.5, hidden = true } },
+  { GitSignsStagedAddCul = { 'GitSignsAddCul', fg_factor = 0.5, hidden = true } },
+  { GitSignsStagedChangeCul = { 'GitSignsChangeCul', fg_factor = 0.5, hidden = true } },
+  { GitSignsStagedDeleteCul = { 'GitSignsDeleteCul', fg_factor = 0.5, hidden = true } },
+  { GitSignsStagedChangedeleteCul = { 'GitSignsStagedChangeCul', fg_factor = 0.5, hidden = true } },
+  { GitSignsStagedTopdeleteCul = { 'GitSignsStagedDeleteCul', fg_factor = 0.5, hidden = true } },
 
   {
     GitSignsAddPreview = {
