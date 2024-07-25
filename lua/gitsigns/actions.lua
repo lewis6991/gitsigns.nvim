@@ -1058,9 +1058,21 @@ end
 ---
 --- Attributes: ~
 ---     {async}
-M.blame = async.create(0, function()
-  return require('gitsigns.blame').blame()
-end)
+---
+--- Parameters: ~
+---     See |gitsigns.blame()|.
+M.blame = function(print_type)
+  if print_type ~= nil then
+    print_type = tostring(print_type)
+  end
+
+  -- set default to simple
+  if print_type ~= 'simple' and print_type ~= 'verbose' then
+    print_type = 'simple'
+  end
+
+  require('gitsigns.blame').blame(print_type)
+end
 
 --- @param bcache Gitsigns.CacheEntry
 --- @param base string?

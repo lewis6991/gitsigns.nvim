@@ -59,40 +59,51 @@ local chars = {
 
 local M = {}
 
+--- @param print_type 'simple' | 'verbose'
 --- @param blame table<integer,Gitsigns.BlameInfo?>
 --- @param win integer
 --- @param main_win integer
 --- @param buf_sha string
-local function render(blame, win, main_win, buf_sha)
+local function render(print_type, blame, win, main_win, buf_sha)
   local max_author_len = 0
 
   for _, blame_info in pairs(blame) do
     max_author_len = math.max(max_author_len, (vim.str_utfindex(blame_info.commit.author)))
   end
 
+  local is_verbose_print = print_type == 'verbose'
   local lines = {} --- @type string[]
   local last_sha --- @type string?
   local cnt = 0
   local commit_lines = {} --- @type table<integer,true>
+
   for i, hl in pairs(blame) do
     local sha = hl.commit.abbrev_sha
-    local next_sha = blame[i + 1] and blame[i + 1].commit.abbrev_sha or nil
-    if sha == last_sha then
-      cnt = cnt + 1
-      local c = sha == next_sha and chars.mid or chars.last
-      lines[i] = cnt == 1 and string.format('%s %s', c, hl.commit.summary) or c
-    else
-      cnt = 0
+    local author_time = util.expand_format('<author_time>', hl.commit)
+    local author = lalign(max_author_len, hl.commit.author)
+
+    if is_verbose_print then
       commit_lines[i] = true
-      lines[i] = string.format(
-        '%s %s %s %s',
-        chars.first,
-        sha,
-        lalign(max_author_len, hl.commit.author),
-        util.expand_format('<author_time>', hl.commit)
-      )
+      lines[i] = string.format('%s %s %s', sha, author_time, author)
+    else
+      local next_sha = blame[i + 1] and blame[i + 1].commit.abbrev_sha or nil
+      if sha == last_sha then
+        cnt = cnt + 1
+        local c = sha == next_sha and chars.mid or chars.last
+        lines[i] = cnt == 1 and string.format('%s %s', c, hl.commit.summary) or c
+      else
+        cnt = 0
+        commit_lines[i] = true
+        lines[i] = string.format(
+          '%s %s %s %s',
+          chars.first,
+          sha,
+          lalign(max_author_len, hl.commit.author),
+          util.expand_format('<author_time>', hl.commit)
+        )
+      end
+      last_sha = sha
     end
-    last_sha = sha
   end
 
   local win_width = #lines[1]
@@ -105,21 +116,35 @@ local function render(blame, win, main_win, buf_sha)
 
   -- Apply highlights
   for i, blame_info in ipairs(blame) do
+    local start_mark_line = i - 1
     local hash_color = get_hash_color(blame_info.commit.abbrev_sha)
+    local commit_line = commit_lines[i]
 
-    api.nvim_buf_set_extmark(bufnr, ns, i - 1, 0, {
-      end_col = commit_lines[i] and 12 or 1,
-      hl_group = hash_color,
-    })
+    if is_verbose_print then
+      api.nvim_buf_set_extmark(bufnr, ns, start_mark_line, 0, {
+        end_col = commit_line and 10 or 1,
+        hl_group = hash_color,
+      })
+    else
+      api.nvim_buf_set_extmark(bufnr, ns, start_mark_line, 0, {
+        end_col = commit_line and 12 or 1,
+        hl_group = hash_color,
+      })
+    end
 
-    if commit_lines[i] then
+    if commit_line then
       local width = string.len(lines[i])
-      api.nvim_buf_set_extmark(bufnr, ns, i - 1, width - 10, {
+      local start_mark_col = width - 10
+      if is_verbose_print then
+        -- Because the abbrev_sha length is 8
+        start_mark_col = 8
+      end
+      api.nvim_buf_set_extmark(bufnr, ns, start_mark_line, start_mark_col, {
         end_col = width,
         hl_group = 'Title',
       })
     else
-      api.nvim_buf_set_extmark(bufnr, ns, i - 1, 2, {
+      api.nvim_buf_set_extmark(bufnr, ns, start_mark_line, 2, {
         end_row = i,
         end_col = 0,
         hl_group = 'Comment',
@@ -127,24 +152,28 @@ local function render(blame, win, main_win, buf_sha)
     end
 
     if buf_sha == blame_info.commit.sha then
-      api.nvim_buf_set_extmark(bufnr, ns, i - 1, 0, {
+      api.nvim_buf_set_extmark(bufnr, ns, start_mark_line, 0, {
         line_hl_group = '@markup.italic',
       })
     end
 
-    if commit_lines[i] and commit_lines[i + 1] then
-      api.nvim_buf_set_extmark(bufnr, ns, i - 1, 0, {
-        virt_lines = {
-          { { chars.last, hash_color }, { ' ' }, { blame[i].commit.summary, 'Comment' } },
-        },
-      })
+    if is_verbose_print then
+      -- omit
+    else
+      if commit_lines[i] and commit_lines[i + 1] then
+        api.nvim_buf_set_extmark(bufnr, ns, start_mark_line, 0, {
+          virt_lines = {
+            { { chars.last, hash_color }, { ' ' }, { blame[i].commit.summary, 'Comment' } },
+          },
+        })
 
-      local fillchar = string.rep(vim.opt.fillchars:get().diff or '-', 1000)
+        local fillchar = string.rep(vim.opt.fillchars:get().diff or '-', 1000)
 
-      api.nvim_buf_set_extmark(main_buf, ns, i - 1, 0, {
-        virt_lines = { { { fillchar, 'Comment' } } },
-        virt_lines_leftcol = true,
-      })
+        api.nvim_buf_set_extmark(main_buf, ns, start_mark_line, 0, {
+          virt_lines = { { { fillchar, 'Comment' } } },
+          virt_lines_leftcol = true,
+        })
+      end
     end
   end
 end
@@ -249,8 +278,9 @@ local function menu(name, items)
   end
 end
 
+--- @param print_type 'simple' | 'verbose'
 --- @async
-M.blame = function()
+M.blame = function(print_type)
   local __FUNC__ = 'blame'
   local bufnr = api.nvim_get_current_buf()
   local win = api.nvim_get_current_win()
@@ -273,7 +303,7 @@ M.blame = function()
   local blm_bufnr = api.nvim_create_buf(false, true)
   api.nvim_win_set_buf(blm_win, blm_bufnr)
 
-  render(blame, blm_win, win, bcache.git_obj.revision)
+  render(print_type, blame, blm_win, win, bcache.git_obj.revision)
 
   local blm_bo = vim.bo[blm_bufnr]
   blm_bo.buftype = 'nofile'
