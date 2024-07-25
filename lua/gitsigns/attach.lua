@@ -41,13 +41,25 @@ end
 --- @return string buffer
 --- @return string? commit
 local function parse_gitsigns_uri(name)
-  -- TODO(lewis6991): Support submodules
-  --- @type any, any, string?, string?, string
-  local _, _, root_path, commit, rel_path = name:find([[^gitsigns://(.*)/%.git/(.*):(.*)]])
+  local _proto, head, tail = unpack(vim.split(name, '//'))
+
+  --- @type any, any, string?, string?
+  local _, _, root_path, sub_path = head:find([[(.*)/%.git(.*)]])
+
+  --- @type any, any, string?, string?
+  local _, _, commit, rel_path = tail:find([[(.*):(.*)]])
+
   commit = util.norm_base(commit)
+
   if root_path then
-    name = root_path .. '/' .. rel_path
+    if sub_path then
+      sub_path = sub_path:gsub('^/modules/', '')
+      name = string.format('%s/%s/%s', root_path, sub_path, rel_path)
+    else
+      name = string.format('%s/%s', root_path, rel_path)
+    end
   end
+
   return name, commit
 end
 
