@@ -5,7 +5,7 @@ local util = require('gitsigns.util')
 local Status = require('gitsigns.status')
 
 local cache = require('gitsigns.cache').cache
-local dprint = require('gitsigns.debug.log').dprint
+local log = require('gitsigns.debug.log')
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
 local api = vim.api
@@ -155,12 +155,14 @@ end
 --- @param _callback? fun()
 M.diffthis = async.create(2, function(base, opts, _callback)
   if vim.wo.diff then
+    log.dprint('diff is disabled')
     return
   end
 
   local bufnr = api.nvim_get_current_buf()
   local bcache = cache[bufnr]
   if not bcache then
+    log.dprintf('buffer %d is not attached', bufnr)
     return
   end
 
@@ -189,6 +191,13 @@ M.show = async.create(2, function(bufnr, base, _callback)
 
   dprint('bufname ' .. bufname)
   vim.cmd.edit(bufname)
+
+  -- Wait for the buffer to attach in case the user passes a callback that
+  -- requires the buffer to be attached.
+  local sbufnr = api.nvim_get_current_buf()
+  vim.wait(2000, function()
+    return cache[sbufnr] ~= nil
+  end)
 end)
 
 --- @param bufnr integer
