@@ -185,11 +185,11 @@ M.show = async.create(2, function(bufnr, base, _callback)
   __FUNC__ = 'show'
   local bufname = create_show_buf(bufnr, base)
   if not bufname then
-    dprint('No bufname for revision ' .. base)
+    log.dprint('No bufname for revision ' .. base)
     return
   end
 
-  dprint('bufname ' .. bufname)
+  log.dprint('bufname ' .. bufname)
   vim.cmd.edit(bufname)
 
   -- Wait for the buffer to attach in case the user passes a callback that
