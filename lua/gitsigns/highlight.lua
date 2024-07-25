@@ -198,8 +198,8 @@ M.hls = {
   { GitSignsStagedAddCul = { 'GitSignsAddCul', fg_factor = 0.5, hidden = true } },
   { GitSignsStagedChangeCul = { 'GitSignsChangeCul', fg_factor = 0.5, hidden = true } },
   { GitSignsStagedDeleteCul = { 'GitSignsDeleteCul', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangedeleteCul = { 'GitSignsStagedChangeCul', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedTopdeleteCul = { 'GitSignsStagedDeleteCul', fg_factor = 0.5, hidden = true } },
+  { GitSignsStagedChangedeleteCul = { 'GitSignsChangedeleteCul', fg_factor = 0.5, hidden = true } },
+  { GitSignsStagedTopdeleteCul = { 'GitSignsTopdeleteCul', fg_factor = 0.5, hidden = true } },
 
   {
     GitSignsAddPreview = {
