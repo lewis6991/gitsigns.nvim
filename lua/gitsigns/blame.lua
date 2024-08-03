@@ -307,6 +307,7 @@ M.blame = function()
   vim.cmd('normal! 0')
 
   local cur_wlo = vim.wo[win][0]
+  local cur_orig_wlo = { cur_wlo.foldenable, cur_wlo.scrollbind, cur_wlo.wrap }
   cur_wlo.foldenable = false
   cur_wlo.scrollbind = true
   cur_wlo.wrap = false
@@ -389,6 +390,7 @@ M.blame = function()
     group = group,
     callback = function()
       api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+      cur_wlo.foldenable, cur_wlo.scrollbind, cur_wlo.wrap = unpack(cur_orig_wlo)
     end,
   })
 
