@@ -309,7 +309,7 @@ M.blame = function(print_type)
   blm_bo.buftype = 'nofile'
   blm_bo.bufhidden = 'wipe'
   blm_bo.modifiable = false
-  blm_bo.filetype = 'gitsigns.blame'
+  blm_bo.filetype = 'gitsigns-blame'
 
   local blm_wlo = vim.wo[blm_win][0]
   blm_wlo.foldcolumn = '0'
@@ -337,6 +337,7 @@ M.blame = function(print_type)
   vim.cmd('normal! 0')
 
   local cur_wlo = vim.wo[win][0]
+  local cur_orig_wlo = { cur_wlo.foldenable, cur_wlo.scrollbind, cur_wlo.wrap }
   cur_wlo.foldenable = false
   cur_wlo.scrollbind = true
   cur_wlo.wrap = false
@@ -419,6 +420,7 @@ M.blame = function(print_type)
     group = group,
     callback = function()
       api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+      cur_wlo.foldenable, cur_wlo.scrollbind, cur_wlo.wrap = unpack(cur_orig_wlo)
     end,
   })
 

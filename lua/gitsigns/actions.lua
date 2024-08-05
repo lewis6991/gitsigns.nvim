@@ -1306,11 +1306,18 @@ local function buildqflist(target)
     end
 
     for _, r in pairs(repos) do
-      for _, f in ipairs(r:files_changed()) do
+      for _, f in ipairs(r:files_changed(config.base)) do
         local f_abs = r.toplevel .. '/' .. f
         local stat = vim.loop.fs_stat(f_abs)
         if stat and stat.type == 'file' then
-          local a = r:get_show_text(':0:' .. f)
+          ---@type string
+          local obj
+          if config.base and config.base ~= ':0' then
+            obj = config.base .. ':' .. f
+          else
+            obj = ':0:' .. f
+          end
+          local a = r:get_show_text(obj)
           async.scheduler()
           local hunks = run_diff(a, util.file_lines(f_abs))
           hunks_to_qflist(f_abs, hunks, qflist)
