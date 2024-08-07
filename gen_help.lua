@@ -469,7 +469,7 @@ end
 --- @return string|fun():string
 local function get_marker_text(marker)
   return ({
-    VERSION = 'v0.9.0', -- x-release-please-version
+    VERSION = 'v1.0.0', -- x-release-please-version
     CONFIG = gen_config_doc,
     FUNCTIONS = function()
       return gen_functions_doc({
