@@ -69,27 +69,37 @@ function Async_T:is_cancelled()
 end
 
 --- @param func function
+--- @param protected boolean
 --- @param callback? fun(...: any)
 --- @param ... any
 --- @return Gitsigns.Async_T
-local function run(func, callback, ...)
+local function run(func, protected, callback, ...)
   local co = coroutine.create(func)
   local handle = Async_T.new(co)
+
+  if protected then
+    assert(type(callback) == 'function')
+  end
 
   local function step(...)
     local ret = { coroutine.resume(co, ...) }
     local stat = ret[1]
 
     if not stat then
-      local err = ret[2] --[[@as string]]
-      error(
-        string.format('The coroutine failed with this message: %s\n%s', err, debug.traceback(co))
-      )
+      local co_err = ret[2] --- @type string
+      local err = debug.traceback(co, string.format('The async coroutine failed: %s', co_err))
+      if protected then
+        --- @cast callback -nil
+        callback(false, err)
+      else
+        error(err)
+      end
     end
 
     if coroutine.status(co) == 'dead' then
       if callback then
-        callback(unpack(ret, 2, table.maxn(ret)))
+        -- Include status if protected
+        callback(unpack(ret, protected and 1 or 2, table.maxn(ret)))
       end
       return
     end
@@ -99,13 +109,21 @@ local function run(func, callback, ...)
 
     assert(type(fn) == 'function', 'type error :: expected func')
 
-    local args = { select(4, unpack(ret)) }
+    --- @type any[]
+    local args = { unpack(ret, 4, table.maxn(ret)) }
     args[nargs] = step
 
-    local r = fn(unpack(args, 1, nargs))
-    if is_Async_T(r) then
-      --- @cast r Gitsigns.Async_T
-      handle._current = r
+    if protected then
+      --- @cast callback -nil
+      xpcall(fn, function(err)
+        callback(false, string.format('The wrapped function failed: %s', err))
+      end, unpack(args, 1, nargs))
+    else
+      local r = fn(unpack(args, 1, nargs))
+      if is_Async_T(r) then
+        --- @cast r Gitsigns.Async_T
+        handle._current = r
+      end
     end
   end
 
@@ -182,7 +200,7 @@ function M.create(argc_or_func, func)
   return function(...)
     local callback = argc and select(argc + 1, ...) or nil
     assert(not callback or type(callback) == 'function')
-    return run(func, callback, unpack({ ... }, 1, argc))
+    return run(func, false, callback, unpack({ ... }, 1, argc))
   end
 end
 
@@ -191,7 +209,16 @@ end
 M.scheduler = M.wrap(1, vim.schedule)
 
 function M.run(func, ...)
-  return run(func, nil, ...)
+  return run(func, false, nil, ...)
+end
+
+--- @param func fun()
+--- @return boolean stat
+--- @return string? err
+function M.pcall(func)
+  return M.wait(1, function(cb)
+    run(func, true, cb)
+  end)
 end
 
 return M
