@@ -343,15 +343,22 @@ function Obj:stage_hunks(hunks, invert)
     end
   end
 
-  self.repo:command({
-    'apply',
-    '--whitespace=nowarn',
-    '--cached',
-    '--unidiff-zero',
-    '-',
-  }, {
-    stdin = patch,
-  })
+  local stat, err = async.pcall(function()
+    self.repo:command({
+      'apply',
+      '--whitespace=nowarn',
+      '--cached',
+      '--unidiff-zero',
+      '-',
+    }, {
+      stdin = patch,
+    })
+  end)
+
+  if not stat then
+    self.lock = nil
+    error(err)
+  end
 
   -- Staging operations cause IO of the git directory so wait some time
   -- for the changes to settle.
