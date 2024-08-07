@@ -81,6 +81,7 @@ local function iconv_supported(encoding)
   return true
 end
 
+--- @async
 --- Get version of file in the index, return array lines
 --- @param object string
 --- @param encoding? string

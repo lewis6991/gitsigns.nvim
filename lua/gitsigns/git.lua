@@ -1,4 +1,5 @@
 local log = require('gitsigns.debug.log')
+local async = require('gitsigns.async')
 local util = require('gitsigns.util')
 local Repo = require('gitsigns.git.repo')
 
@@ -31,6 +32,8 @@ end
 --- @field orig_relpath? string Use for tracking moved files
 --- @field repo Gitsigns.Repo
 --- @field has_conflicts? boolean
+---
+--- @field lock? true
 local Obj = {}
 
 M.Obj = Obj
@@ -61,12 +64,14 @@ function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
   })
 end
 
+--- @async
 --- @param revision? string
 function Obj:update_revision(revision)
   self.revision = util.norm_base(revision)
   self:update()
 end
 
+--- @async
 --- @param update_relpath? boolean
 --- @param silent? boolean
 --- @return boolean
@@ -98,6 +103,7 @@ function Obj:from_tree()
   return self.revision and not vim.startswith(self.revision, ':')
 end
 
+--- @async
 --- @param file? string
 --- @param silent? boolean
 --- @return Gitsigns.FileInfo
@@ -110,6 +116,7 @@ function Obj:file_info(file, silent)
 end
 
 --- @private
+--- @async
 --- Get information about files in the index and the working tree
 --- @param file? string
 --- @param silent? boolean
@@ -177,6 +184,7 @@ function Obj:file_info_index(file, silent)
 end
 
 --- @private
+--- @async
 --- Get information about files in a certain revision
 --- @param file? string
 --- @param silent? boolean
@@ -213,6 +221,7 @@ function Obj:file_info_tree(file, silent)
   }
 end
 
+--- @async
 --- @param revision? string
 --- @return string[] stdout, string? stderr
 function Obj:get_show_text(revision)
@@ -251,11 +260,15 @@ local function autocmd_changed(file)
   end)
 end
 
+--- @async
 function Obj:unstage_file()
+  self.lock = true
   self.repo:command({ 'reset', self.file })
+  self.lock = nil
   autocmd_changed(self.file)
 end
 
+--- @async
 --- @param lines string[]
 --- @param lnum? integer
 --- @param revision? string
@@ -265,28 +278,33 @@ function Obj:run_blame(lines, lnum, revision, opts)
   return require('gitsigns.git.blame').run_blame(self, lines, lnum, revision, opts)
 end
 
---- @param obj Gitsigns.GitObj
-local function ensure_file_in_index(obj)
-  if obj.object_name and not obj.has_conflicts then
+--- @async
+--- @private
+function Obj:ensure_file_in_index()
+  self.lock = true
+  if self.object_name and not self.has_conflicts then
     return
   end
 
-  if not obj.object_name then
+  if not self.object_name then
     -- If there is no object_name then it is not yet in the index so add it
-    obj.repo:command({ 'add', '--intent-to-add', obj.file })
+    self.repo:command({ 'add', '--intent-to-add', self.file })
   else
     -- Update the index with the common ancestor (stage 1) which is what bcache
     -- stores
-    local info = string.format('%s,%s,%s', obj.mode_bits, obj.object_name, obj.relpath)
-    obj.repo:command({ 'update-index', '--add', '--cacheinfo', info })
+    local info = string.format('%s,%s,%s', self.mode_bits, self.object_name, self.relpath)
+    self.repo:command({ 'update-index', '--add', '--cacheinfo', info })
   end
 
-  obj:update()
+  self:update()
+  self.lock = nil
 end
 
+--- @async
 --- Stage 'lines' as the entire contents of the file
 --- @param lines string[]
 function Obj:stage_lines(lines)
+  self.lock = true
   local new_object = self.repo:command({
     'hash-object',
     '-w',
@@ -301,13 +319,20 @@ function Obj:stage_lines(lines)
     string.format('%s,%s,%s', self.mode_bits, new_object, self.relpath),
   })
 
+  self.lock = nil
   autocmd_changed(self.file)
 end
 
+local sleep = async.wrap(2, function(duration, cb)
+  vim.defer_fn(cb, duration)
+end)
+
+--- @async
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @param invert? boolean
 function Obj:stage_hunks(hunks, invert)
-  ensure_file_in_index(self)
+  self.lock = true
+  self:ensure_file_in_index()
 
   local patch = require('gitsigns.hunks').create_patch(self.relpath, hunks, self.mode_bits, invert)
 
@@ -328,9 +353,15 @@ function Obj:stage_hunks(hunks, invert)
     stdin = patch,
   })
 
+  -- Staging operations cause IO of the git directory so wait some time
+  -- for the changes to settle.
+  sleep(100)
+
+  self.lock = nil
   autocmd_changed(self.file)
 end
 
+--- @async
 --- @return string?
 function Obj:has_moved()
   local out = self.repo:command({ 'diff', '--name-status', '-C', '--cached' })
@@ -349,6 +380,7 @@ function Obj:has_moved()
   end
 end
 
+--- @async
 --- @param file string
 --- @param revision string?
 --- @param encoding string

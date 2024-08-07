@@ -448,6 +448,8 @@ M.update = throttle_by_id(function(bufnr)
     return
   end
   local bcache = assert(cache[bufnr])
+  bcache.update_lock = true
+
   local old_hunks, old_hunks_staged = bcache.hunks, bcache.hunks_staged
   bcache.hunks, bcache.hunks_staged = nil, nil
 
@@ -505,6 +507,7 @@ M.update = throttle_by_id(function(bufnr)
     summary.head = git_obj.repo.abbrev_head
     Status:update(bufnr, summary)
   end
+  bcache.update_lock = nil
 end, true)
 
 --- @param bufnr integer
