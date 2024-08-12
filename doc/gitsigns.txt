@@ -822,10 +822,10 @@ current_line_blame_opts              *gitsigns-config-current_line_blame_opts*
       Default: >
         `{
           delay = 1000,
+          use_focus = true,
           virt_text = true,
           virt_text_pos = "eol",
-          virt_text_priority = 100,
-          use_focus = true,
+          virt_text_priority = 100
         }`
 <
       Options for the current line blame annotation.
