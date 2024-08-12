@@ -42,6 +42,7 @@
 --- @field virt_text_pos? 'eol'|'overlay'|'right_align'
 --- @field delay? integer
 --- @field virt_text_priority? integer
+--- @field use_focus? boolean
 
 --- @class (exact) Gitsigns.BlameOpts
 --- @field ignore_whitespace? boolean
@@ -680,6 +681,7 @@ M.schema = {
       virt_text_pos = 'eol',
       virt_text_priority = 100,
       delay = 1000,
+      use_focus = true,
     },
     description = [[
       Options for the current line blame annotation.
@@ -700,6 +702,8 @@ M.schema = {
           Ignore whitespace when running blame.
         • virt_text_priority: integer
           Priority of virtual text.
+        • use_focus: boolean
+          Enable only when buffer is in focus
         • extra_opts: string[]
           Extra options passed to `git-blame`.
     ]],
