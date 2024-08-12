@@ -225,13 +225,18 @@ function M.setup()
   -- show current buffer line blame immediately
   M.update(api.nvim_get_current_buf())
 
-  local events = { 'FocusGained', 'BufEnter', 'CursorMoved', 'CursorMovedI' }
+  local update_events = { 'BufEnter', 'CursorMoved', 'CursorMovedI' }
+  local reset_events = { 'InsertEnter', 'BufLeave' }
   if vim.fn.exists('#WinResized') == 1 then
     -- For nvim 0.9+
-    events[#events + 1] = 'WinResized'
+    update_events[#update_events + 1] = 'WinResized'
+  end
+  if opts.use_focus then
+    update_events[#update_events + 1] = 'FocusGained'
+    reset_events[#reset_events + 1] = 'FocusLost'
   end
 
-  api.nvim_create_autocmd(events, {
+  api.nvim_create_autocmd(update_events, {
     group = group,
     callback = function(args)
       reset(args.buf)
@@ -239,7 +244,7 @@ function M.setup()
     end,
   })
 
-  api.nvim_create_autocmd({ 'InsertEnter', 'FocusLost', 'BufLeave' }, {
+  api.nvim_create_autocmd(reset_events, {
     group = group,
     callback = function(args)
       reset(args.buf)
