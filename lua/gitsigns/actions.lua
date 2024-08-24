@@ -569,6 +569,9 @@ local function get_nav_hunks(bufnr, target, greedy)
     if target == 'all' then
       hunks = hunks_main
       vim.list_extend(hunks, hunks_head)
+      table.sort(hunks, function(h1, h2)
+        return h1.added.start < h2.added.start
+      end)
     elseif target == 'staged' then
       hunks = hunks_head
     end
