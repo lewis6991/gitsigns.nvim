@@ -275,6 +275,11 @@ M.stage_hunk = mk_repeatable(async.create(2, function(range, opts)
     return
   end
 
+  if bcache:locked() then
+    print('Error: busy')
+    return
+  end
+
   if not util.path_exists(bcache.file) then
     print('Error: Cannot stage lines. Please add the file to the working tree.')
     return
@@ -294,7 +299,6 @@ M.stage_hunk = mk_repeatable(async.create(2, function(range, opts)
   end
 
   bcache.git_obj:stage_hunks({ hunk }, invert)
-
   table.insert(bcache.staged_diffs, hunk)
 
   bcache:invalidate(true)
@@ -397,6 +401,11 @@ M.undo_stage_hunk = async.create(function()
     return
   end
 
+  if bcache:locked() then
+    print('Error: busy')
+    return
+  end
+
   local hunk = table.remove(bcache.staged_diffs)
   if not hunk then
     print('No hunks to undo')
@@ -416,6 +425,11 @@ M.stage_buffer = async.create(function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
+    return
+  end
+
+  if bcache:locked() then
+    print('Error: busy')
     return
   end
 
@@ -454,6 +468,11 @@ M.reset_buffer_index = async.create(function()
     return
   end
 
+  if bcache:locked() then
+    print('Error: busy')
+    return
+  end
+
   -- `bcache.staged_diffs` won't contain staged changes outside of current
   -- neovim session so signs added from this unstage won't be complete They will
   -- however be fixed by gitdir watcher and properly updated We should implement
@@ -463,7 +482,6 @@ M.reset_buffer_index = async.create(function()
   bcache.staged_diffs = {}
 
   bcache.git_obj:unstage_file()
-
   bcache:invalidate(true)
   update(bufnr)
 end)
@@ -551,6 +569,9 @@ local function get_nav_hunks(bufnr, target, greedy)
     if target == 'all' then
       hunks = hunks_main
       vim.list_extend(hunks, hunks_head)
+      table.sort(hunks, function(h1, h2)
+        return h1.added.start < h2.added.start
+      end)
     elseif target == 'staged' then
       hunks = hunks_head
     end
