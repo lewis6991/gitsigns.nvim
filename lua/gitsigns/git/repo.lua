@@ -100,9 +100,9 @@ end
 
 --- @async
 function M:update_abbrev_head()
-  local info = M.get_info(self.toplevel)
+  local info, err = M.get_info(self.toplevel)
   if not info then
-    log.eprintf('Could not get info for repo at %s', self.gitdir)
+    log.eprintf('Could not get info for repo at %s: %s', self.gitdir, err or '')
     return
   end
   self.abbrev_head = info.abbrev_head
@@ -212,7 +212,7 @@ end
 --- @param cwd string
 --- @param gitdir? string
 --- @param toplevel? string
---- @return Gitsigns.RepoInfo?
+--- @return Gitsigns.RepoInfo? info, string? err
 function M.get_info(cwd, gitdir, toplevel)
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --    https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
@@ -239,13 +239,13 @@ function M.get_info(cwd, gitdir, toplevel)
     'HEAD',
   })
 
-  local stdout = git_command(args, {
+  local stdout, stderr, code = git_command(args, {
     ignore_error = true,
     cwd = toplevel or cwd,
   })
 
-  if not stdout[1] then
-    return
+  if code > 0 then
+    return nil, string.format('got stderr: %s', stderr or '')
   end
 
   local toplevel_r = normalize_path(stdout[1])

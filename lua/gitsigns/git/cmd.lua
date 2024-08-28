@@ -12,7 +12,7 @@ local asystem = async.wrap(3, system)
 --- @async
 --- @param args string[]
 --- @param spec? Gitsigns.Git.JobSpec
---- @return string[] stdout, string? stderr
+--- @return string[] stdout, string? stderr, integer code
 local function git_command(args, spec)
   spec = spec or {}
 
@@ -66,7 +66,7 @@ local function git_command(args, spec)
     obj.stderr = nil
   end
 
-  return stdout_lines, obj.stderr
+  return stdout_lines, obj.stderr, obj.code
 end
 
 return git_command
