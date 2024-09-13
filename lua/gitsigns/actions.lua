@@ -1199,7 +1199,7 @@ M.diffthis = function(base, opts)
     base = tostring(base)
   end
   opts = opts or {}
-  if not opts.vertical then
+  if opts.vertical == nil then
     opts.vertical = config.diff_opts.vertical
   end
   require('gitsigns.diffthis').diffthis(base, opts)
