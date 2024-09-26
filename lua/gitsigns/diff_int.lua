@@ -3,6 +3,13 @@ local async = require('gitsigns.async')
 local create_hunk = require('gitsigns.hunks').create_hunk
 local config = require('gitsigns.config').config
 
+local decode
+if jit then
+  decode = require('string.buffer').decode
+else
+  decode = vim.mpack.decode
+end
+
 local M = {}
 
 --- @alias Gitsigns.Region {[1]:integer, [2]:string, [3]:integer, [4]:integer}
@@ -57,8 +64,15 @@ local run_diff_xdl_async = async.wrap(
             return bit.band(flags0, bit.lshift(1, pos)) ~= 0
           end
 
+          local encode
+          if jit then
+            encode = require('string.buffer').encode
+          else
+            encode = vim.mpack.encode
+          end
+
           --- @diagnostic disable-next-line:redundant-return-value
-          return vim.mpack.encode(vim.diff(a0, b0, {
+          return encode(vim.diff(a0, b0, {
             result_type = 'indices',
             algorithm = algorithm,
             linematch = linematch0,
@@ -71,7 +85,7 @@ local run_diff_xdl_async = async.wrap(
         end,
         --- @param r string
         function(r)
-          callback(vim.mpack.decode(r) --[[@as Gitsigns.RawHunk[] ]])
+          callback(decode(r) --[[@as Gitsigns.RawHunk[] ]])
         end
       )
       :queue(a, b, opts.algorithm, flags, linematch)
