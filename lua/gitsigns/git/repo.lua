@@ -244,6 +244,11 @@ function M.get_info(cwd, gitdir, toplevel)
     cwd = toplevel or cwd,
   })
 
+  -- If the repo has no commits yet, rev-parse will fail. Ignore this error.
+  if code > 0 and stderr and stderr:match("fatal: ambiguous argument 'HEAD'") then
+    code = 0
+  end
+
   if code > 0 then
     return nil, string.format('got stderr: %s', stderr or '')
   end
