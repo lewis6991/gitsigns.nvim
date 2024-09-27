@@ -4,7 +4,7 @@ local create_hunk = require('gitsigns.hunks').create_hunk
 local config = require('gitsigns.config').config
 
 local decode
-if jit then
+if jit and package.preload['string.buffer'] then
   decode = require('string.buffer').decode
 else
   decode = vim.mpack.decode
@@ -65,7 +65,7 @@ local run_diff_xdl_async = async.wrap(
           end
 
           local encode
-          if jit then
+          if jit and package.preload['string.buffer'] then
             encode = require('string.buffer').encode
           else
             encode = vim.mpack.encode
