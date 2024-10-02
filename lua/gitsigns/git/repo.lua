@@ -136,7 +136,7 @@ local repo_cache = setmetatable({}, { __mode = 'v' })
 --- @return Gitsigns.Repo?
 function M.get(dir, gitdir, toplevel)
   local info = M.get_info(dir, gitdir, toplevel)
-  if not info then
+  if not info or not info.gitdir then
     return
   end
 
