@@ -190,12 +190,24 @@ local show_commit = async.create(3, function(win, open, bcache)
   local sha = bcache.blame[cursor].commit.sha
   local res = bcache.git_obj.repo:command({ 'show', sha })
   async.scheduler()
-  local commit_buf = api.nvim_create_buf(true, true)
-  api.nvim_buf_set_name(commit_buf, bcache:get_rev_bufname(sha, true))
-  api.nvim_buf_set_lines(commit_buf, 0, -1, false, res)
+  local buffer_name = bcache:get_rev_bufname(sha, true)
+  local commit_buf = nil
+  -- find preexisting commit buffer or create a new one
+  for _, bufnr in ipairs(api.nvim_list_bufs()) do
+    if api.nvim_buf_get_name(bufnr) == buffer_name then
+      commit_buf = bufnr
+      break
+    end
+  end
+  if commit_buf == nil then
+    commit_buf = api.nvim_create_buf(true, true)
+    api.nvim_buf_set_name(commit_buf, buffer_name)
+    api.nvim_buf_set_lines(commit_buf, 0, -1, false, res)
+  end
   vim.cmd[open]({ mods = { keepalt = true } })
   api.nvim_win_set_buf(0, commit_buf)
   vim.bo[commit_buf].filetype = 'git'
+  vim.bo[commit_buf].bufhidden = 'wipe'
 end)
 
 --- @param augroup integer
