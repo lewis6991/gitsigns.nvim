@@ -193,7 +193,7 @@ local show_commit = async.create(3, function(win, open, bcache)
   local buffer_name = bcache:get_rev_bufname(sha, true)
   local commit_buf = nil
   -- find preexisting commit buffer or create a new one
-  for _, bufnr in pairs(api.nvim_list_bufs()) do
+  for _, bufnr in ipairs(api.nvim_list_bufs()) do
     if api.nvim_buf_get_name(bufnr) == buffer_name then
       commit_buf = bufnr
       break
