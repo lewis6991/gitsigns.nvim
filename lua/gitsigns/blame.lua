@@ -408,7 +408,7 @@ M.blame = function()
 
   sync_cursors(group, { win, blm_win })
 
-  return { win=blm_win, bufnr=blm_bufnr }
+  return { win = blm_win, bufnr = blm_bufnr }
 end
 
 return M
