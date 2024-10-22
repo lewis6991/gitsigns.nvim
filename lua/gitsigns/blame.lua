@@ -266,6 +266,8 @@ end
 --- @param opts table|nil Additional options:
 ---     • {toggle}: (boolean)
 ---       Open and close the current blame window
+---     • {stay}: (boolean)
+---       Cursor should stay on the current window
 --- @async
 M.blame = function(opts)
   local __FUNC__ = 'blame'
@@ -293,11 +295,14 @@ M.blame = function(opts)
   local top = vim.fn.line('w0') + vim.wo.scrolloff
   local current = vim.fn.line('.')
 
-  vim.cmd.vsplit({ mods = { keepalt = true, split = 'aboveleft' } })
-  local blm_win = api.nvim_get_current_win()
+  local blm_bufnr = api.nvim_create_buf(false, true)
+
+  local blm_win = api.nvim_open_win(blm_bufnr, not opts.stay, {
+    split = 'left',
+    win = win,
+  })
   table.insert(blame_wins, blm_win)
 
-  local blm_bufnr = api.nvim_create_buf(false, true)
   api.nvim_win_set_buf(blm_win, blm_bufnr)
 
   render(blame, blm_win, win, bcache.git_obj.revision)

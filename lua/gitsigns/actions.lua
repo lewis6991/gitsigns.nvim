@@ -1084,6 +1084,8 @@ end
 --- @param opts table|nil Additional options:
 ---     • {toggle}: (boolean)
 ---       Open and close the current blame window
+---     • {stay}: (boolean)
+---       Cursor should stay on the current window
 M.blame = async.create(1, function(opts)
   require('gitsigns.blame').blame(opts)
 end)
