@@ -1079,8 +1079,13 @@ end
 ---
 --- Attributes: ~
 ---     {async}
-M.blame = async.create(0, function()
-  return require('gitsigns.blame').blame()
+---
+---
+--- @param opts table|nil Additional options:
+---     • {toggle}: (boolean)
+---       Open and close the current blame window
+M.blame = async.create(1, function(opts)
+  require('gitsigns.blame').blame(opts)
 end)
 
 --- @param bcache Gitsigns.CacheEntry
