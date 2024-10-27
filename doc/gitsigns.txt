@@ -310,10 +310,10 @@ blame({opts}, {callback?})                              *gitsigns.blame()*
 
                 Parameters: ~
                     {opts} (table|nil) Additional options:
-                        • {toggle}: (boolean)
-                          Open and close the current blame window
-                        • {stay}: (boolean)
-                          Cursor should stay on the current window
+                           • {toggle}: (boolean)
+                             Open and close the current blame window
+                           • {stay}: (boolean)
+                             Cursor should stay on the current window
 
 blame_line({opts}, {callback?})                        *gitsigns.blame_line()*
                 Run git blame on the current line and show the results in a
