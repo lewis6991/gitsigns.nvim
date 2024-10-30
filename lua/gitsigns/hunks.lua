@@ -1,3 +1,4 @@
+local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
 
 local min, max = math.min, math.max
@@ -169,10 +170,10 @@ end
 --- @param untracked boolean
 --- @return Gitsigns.Sign[]
 function M.calc_signs(hunk, next, min_lnum, max_lnum, untracked)
-  assert(
-    not untracked or hunk.type == 'add',
-    string.format('Invalid hunk with untracked=%s hunk="%s"', untracked, hunk.head)
-  )
+  if not (not untracked or hunk.type == 'add') then
+    log.eprintf('Invalid hunk with untracked=%s hunk="%s"', untracked, hunk.head)
+    return {}
+  end
   min_lnum = min_lnum or 1
   max_lnum = max_lnum or math.huge
   local start, added, removed = hunk.added.start, hunk.added.count, hunk.removed.count
