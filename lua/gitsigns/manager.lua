@@ -329,11 +329,11 @@ function M.show_deleted_in_float(bufnr, nsd, hunk, staged)
 
   api.nvim_win_call(pwinid, function()
     -- Expand folds
-    vim.cmd('normal ' .. 'zR')
+    vim.cmd('normal! ' .. 'zR')
 
     -- Navigate to hunk
-    vim.cmd('normal ' .. tostring(hunk.removed.start) .. 'gg')
-    vim.cmd('normal ' .. vim.api.nvim_replace_termcodes('z<CR>', true, false, true))
+    vim.cmd('normal! ' .. tostring(hunk.removed.start) .. 'gg')
+    vim.cmd('normal! ' .. vim.api.nvim_replace_termcodes('z<CR>', true, false, true))
   end)
 
   local last_lnum = api.nvim_buf_line_count(bufnr)
