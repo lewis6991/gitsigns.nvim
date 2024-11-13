@@ -2,6 +2,7 @@ local async = require('gitsigns.async')
 local git = require('gitsigns.git')
 local Hunks = require('gitsigns.hunks')
 local manager = require('gitsigns.manager')
+local message = require('gitsigns.message')
 local popup = require('gitsigns.popup')
 local util = require('gitsigns.util')
 local run_diff = require('gitsigns.diff')
@@ -298,7 +299,11 @@ M.stage_hunk = mk_repeatable(async.create(2, function(range, opts)
     return
   end
 
-  bcache.git_obj:stage_hunks({ hunk }, invert)
+  local err = bcache.git_obj:stage_hunks({ hunk }, invert)
+  if err then
+    message.error(err)
+    return
+  end
   table.insert(bcache.staged_diffs, hunk)
 
   bcache:invalidate(true)
@@ -412,7 +417,11 @@ M.undo_stage_hunk = async.create(function()
     return
   end
 
-  bcache.git_obj:stage_hunks({ hunk }, true)
+  local err = bcache.git_obj:stage_hunks({ hunk }, true)
+  if err then
+    message.error(err)
+    return
+  end
   bcache:invalidate(true)
   update(bufnr)
 end)
@@ -445,7 +454,11 @@ M.stage_buffer = async.create(function()
     return
   end
 
-  bcache.git_obj:stage_hunks(hunks)
+  local err = bcache.git_obj:stage_hunks(hunks)
+  if err then
+    message.error(err)
+    return
+  end
 
   for _, hunk in ipairs(hunks) do
     table.insert(bcache.staged_diffs, hunk)
