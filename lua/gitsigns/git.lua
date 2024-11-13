@@ -330,6 +330,7 @@ end)
 --- @async
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @param invert? boolean
+--- @return string? err
 function Obj:stage_hunks(hunks, invert)
   self.lock = true
   self:ensure_file_in_index()
@@ -357,7 +358,7 @@ function Obj:stage_hunks(hunks, invert)
 
   if not stat then
     self.lock = nil
-    error(err)
+    return err
   end
 
   -- Staging operations cause IO of the git directory so wait some time
