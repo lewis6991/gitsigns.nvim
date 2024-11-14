@@ -14,6 +14,7 @@ local cache = require('gitsigns.cache').cache
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
+--- @class gitsigns.actions
 local M = {}
 
 --- @class Gitsigns.CmdParams.Smods

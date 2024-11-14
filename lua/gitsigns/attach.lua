@@ -15,6 +15,7 @@ local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 local api = vim.api
 local uv = vim.loop
 
+--- @class gitsigns.attach
 local M = {}
 
 --- @param name string

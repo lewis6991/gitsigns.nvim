@@ -7,6 +7,7 @@ local config = Config.config
 local api = vim.api
 local uv = vim.uv or vim.loop
 
+--- @class gitsigns.main
 local M = {}
 
 local cwd_watcher ---@type uv.uv_fs_event_t?
@@ -222,7 +223,8 @@ function M.setup(cfg)
   setup_cwd_head()
 end
 
-return setmetatable(M, {
+--- @type gitsigns.main|gitsigns.actions|gitsigns.attach|gitsigns.debug
+M = setmetatable(M, {
   __index = function(_, f)
     local attach = require('gitsigns.attach')
     if attach[f] then
@@ -242,3 +244,5 @@ return setmetatable(M, {
     end
   end,
 })
+
+return M

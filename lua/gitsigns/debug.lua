@@ -1,5 +1,6 @@
 local log = require('gitsigns.debug.log')
 
+--- @class gitsigns.debug
 local M = {}
 
 --- @param raw_item any
