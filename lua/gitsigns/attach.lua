@@ -365,6 +365,9 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   -- Initial update
   manager.update(cbuf)
+  if config.on_attach_after then
+    config.on_attach_after(cbuf)
+  end
 
   if config.current_line_blame then
     require('gitsigns.current_line_blame').update(cbuf)

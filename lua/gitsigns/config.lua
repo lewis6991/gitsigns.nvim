@@ -67,6 +67,7 @@
 --- @field sign_priority integer
 --- @field _on_attach_pre fun(bufnr: integer, callback: fun(_: table))
 --- @field on_attach fun(bufnr: integer)
+--- @field on_attach_after fun(bufnr: integer)
 --- @field watch_gitdir { enable: boolean, follow_files: boolean }
 --- @field max_file_length integer
 --- @field update_debounce integer
@@ -386,6 +387,26 @@ M.schema = {
           toplevel = ...
         }
       end
+      <
+    ]],
+  },
+
+  on_attach_after = {
+    type = 'function',
+    default = nil,
+    description = [[
+      Callback called after initial update of attached buffer.
+      The buffer number is passed as the only argument.
+
+      Use this callback if you need hunk information,
+      for example to automatically navigate to some hunk
+
+      Example: >lua
+        on_attach_after = function(bufnr)
+          if jump_to_first_hunk then
+            require("gitsigns").nav_hunk("first")
+          end
+        end
       <
     ]],
   },
