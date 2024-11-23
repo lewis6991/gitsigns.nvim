@@ -1,3 +1,5 @@
+**Please do not raise PR's for new features, only bug fixes will be reviewed.**
+
 ## Requirements
 
 - [Luarocks](https://luarocks.org/)
