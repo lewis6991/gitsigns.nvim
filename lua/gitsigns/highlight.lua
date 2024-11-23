@@ -1,10 +1,11 @@
 local api = vim.api
+local config = require('gitsigns.config').config
 
 --- @class Gitsigns.Hldef
 --- @field [integer] string
 --- @field desc string
 --- @field hidden boolean
---- @field fg_factor number
+--- @field derives boolean
 
 local nvim10 = vim.fn.has('nvim-0.10') > 0
 
@@ -180,26 +181,26 @@ M.hls = {
   -- Don't set GitSignsDeleteLn by default
   -- {GitSignsDeleteLn = {}},
 
-  { GitSignsStagedAdd = { 'GitSignsAdd', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChange = { 'GitSignsChange', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedDelete = { 'GitSignsDelete', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangedelete = { 'GitSignsChangedelete', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedTopdelete = { 'GitSignsTopdelete', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedAddNr = { 'GitSignsAddNr', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangeNr = { 'GitSignsChangeNr', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedDeleteNr = { 'GitSignsDeleteNr', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangedeleteNr = { 'GitSignsChangedeleteNr', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedTopdeleteNr = { 'GitSignsTopdeleteNr', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedAddLn = { 'GitSignsAddLn', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangeLn = { 'GitSignsChangeLn', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedDeleteLn = { 'GitSignsDeleteLn', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangedeleteLn = { 'GitSignsChangedeleteLn', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedTopdeleteLn = { 'GitSignsTopdeleteLn', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedAddCul = { 'GitSignsAddCul', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangeCul = { 'GitSignsChangeCul', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedDeleteCul = { 'GitSignsDeleteCul', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangedeleteCul = { 'GitSignsChangedeleteCul', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedTopdeleteCul = { 'GitSignsTopdeleteCul', fg_factor = 0.5, hidden = true } },
+  { GitSignsStagedAdd = { 'GitSignsAdd', derives = true, hidden = true } },
+  { GitSignsStagedChange = { 'GitSignsChange', derives = true, hidden = true } },
+  { GitSignsStagedDelete = { 'GitSignsDelete', derives = true, hidden = true } },
+  { GitSignsStagedChangedelete = { 'GitSignsChangedelete', derives = true, hidden = true } },
+  { GitSignsStagedTopdelete = { 'GitSignsTopdelete', derives = true, hidden = true } },
+  { GitSignsStagedAddNr = { 'GitSignsAddNr', derives = true, hidden = true } },
+  { GitSignsStagedChangeNr = { 'GitSignsChangeNr', derives = true, hidden = true } },
+  { GitSignsStagedDeleteNr = { 'GitSignsDeleteNr', derives = true, hidden = true } },
+  { GitSignsStagedChangedeleteNr = { 'GitSignsChangedeleteNr', derives = true, hidden = true } },
+  { GitSignsStagedTopdeleteNr = { 'GitSignsTopdeleteNr', derives = true, hidden = true } },
+  { GitSignsStagedAddLn = { 'GitSignsAddLn', derives = true, hidden = true } },
+  { GitSignsStagedChangeLn = { 'GitSignsChangeLn', derives = true, hidden = true } },
+  { GitSignsStagedDeleteLn = { 'GitSignsDeleteLn', derives = true, hidden = true } },
+  { GitSignsStagedChangedeleteLn = { 'GitSignsChangedeleteLn', derives = true, hidden = true } },
+  { GitSignsStagedTopdeleteLn = { 'GitSignsTopdeleteLn', derives = true, hidden = true } },
+  { GitSignsStagedAddCul = { 'GitSignsAddCul', derives = true, hidden = true } },
+  { GitSignsStagedChangeCul = { 'GitSignsChangeCul', derives = true, hidden = true } },
+  { GitSignsStagedDeleteCul = { 'GitSignsDeleteCul', derives = true, hidden = true } },
+  { GitSignsStagedChangedeleteCul = { 'GitSignsChangedeleteCul', derives = true, hidden = true } },
+  { GitSignsStagedTopdeleteCul = { 'GitSignsTopdeleteCul', derives = true, hidden = true } },
 
   {
     GitSignsAddPreview = {
@@ -340,11 +341,11 @@ local function derive(hl, hldef)
   for _, d in ipairs(hldef) do
     if is_hl_set(d) then
       dprintf('Deriving %s from %s', hl, d)
-      if hldef.fg_factor then
+      if hldef.derives then
         local dh = get_hl(d)
         api.nvim_set_hl(0, hl, {
           default = true,
-          fg = cmul(dh.fg, hldef.fg_factor),
+          fg = cmul(dh.fg, config.staged_highlight_derivative_factor),
           bg = dh.bg,
         })
       else
@@ -353,7 +354,7 @@ local function derive(hl, hldef)
       return
     end
   end
-  if hldef[1] and not hldef.fg_factor then
+  if hldef[1] and not hldef.derives then
     -- No fallback found which is set. Just link to the first fallback
     -- if there are no modifiers
     dprintf('Deriving %s from %s', hl, hldef[1])

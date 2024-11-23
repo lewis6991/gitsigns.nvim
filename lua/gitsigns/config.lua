@@ -81,6 +81,7 @@
 --- @field worktrees {toplevel: string, gitdir: string}[]
 --- @field word_diff boolean
 --- @field trouble boolean
+--- @field staged_highlight_derivative_factor number
 --- -- Undocumented
 --- @field _refresh_staged_on_update boolean
 --- @field _threaded_diff boolean
@@ -856,6 +857,16 @@ M.schema = {
     ]],
   },
 
+  staged_highlight_derivative_factor = {
+    type = 'number',
+    default = 0.5,
+    description = [[
+    This determines the factor used when deriving highlight for staged
+    from base colors (e.g: GitSignsStagedAdd derives from GitSignsAdd).
+    Between 0 (black) and 1 (same color). The closer to 0 the darker.
+    ]],
+  },
+
   _refresh_staged_on_update = {
     type = 'boolean',
     default = false,
@@ -906,6 +917,14 @@ local function validate_config(config)
         vim.validate({ [k] = { v, ty } })
       end
     end
+  end
+
+  local darken = config['staged_highlight_derivative_factor']
+  if darken and (darken < 0 or darken > 1) then
+    warn(
+      'gitsigns: Ignoring invalid configuration field '
+        + "'staged_highlight_derivative_factor' must be between 0 and 1"
+    )
   end
 end
 
