@@ -26,30 +26,49 @@ local M = {}
 --- @param bot integer
 --- @param clear? boolean
 --- @param untracked boolean
-local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked)
+--- @return Gitsigns.Sign[]
+local function calc_win_signs(bufnr, signs, hunks, top, bot, clear, untracked)
   if clear then
+    -- WARN: Stateful/impure action.
     signs:remove(bufnr) -- Remove all signs
   end
 
-  for i, hunk in ipairs(hunks or {}) do
+  --- @type Gitsigns.Sign[]
+  local win_signs = {}
+
+  if clear and not hunks then
+    --- @type Gitsigns.Hunk.Hunk
+    local hunk = hunks[1]
+
     --- @type Gitsigns.Hunk.Hunk?
-    local next = hunks[i + 1]
+    local next = hunks[2]
 
     -- To stop the sign column width changing too much, if there are signs to be
     -- added but none of them are visible in the window, then make sure to add at
     -- least one sign. Only do this on the first call after an update when we all
     -- the signs have been cleared.
-    if clear and i == 1 then
-      signs:add(bufnr, Hunks.calc_signs(hunk, next, hunk.added.start, hunk.added.start, untracked))
+    for _, s in ipairs(Hunks.calc_signs(hunk, next, hunk.added.start, hunk.added.start, untracked)) do
+      win_signs[#win_signs + 1] = s
     end
+  end
+
+  -- Calculate signs for the visible hunks.
+  for i, hunk in ipairs(hunks or {}) do
+    --- @type Gitsigns.Hunk.Hunk?
+    local next = hunks[i + 1]
 
     if top <= hunk.vend and bot >= hunk.added.start then
-      signs:add(bufnr, Hunks.calc_signs(hunk, next, top, bot, untracked))
+      for _, s in ipairs(Hunks.calc_signs(hunk, next, top, bot, untracked)) do
+        win_signs[#win_signs + 1] = s
+      end
     end
+
     if hunk.added.start > bot then
       break
     end
   end
+
+  return win_signs
 end
 
 --- @param bufnr integer
@@ -59,9 +78,45 @@ end
 local function apply_win_signs(bufnr, top, bot, clear)
   local bcache = assert(cache[bufnr])
   local untracked = bcache.git_obj.object_name == nil
-  apply_win_signs0(bufnr, signs_normal, bcache.hunks, top, bot, clear, untracked)
+
+  -- Collect all normal signs (by line number).
+  --- @type table<integer, Gitsigns.Sign[]>
+  local normal_signs_by_lnum = {}
+  local normal_signs = calc_win_signs(bufnr, signs_normal, bcache.hunks, top, bot, clear, untracked)
+  for _, s in ipairs(normal_signs) do
+    normal_signs_by_lnum[s.lnum] = normal_signs_by_lnum[s.lnum] or {}
+    table.insert(normal_signs_by_lnum[s.lnum], s)
+  end
+
+  -- Collect all staged signs (by line number).
+  --- @type table<integer, Gitsigns.Sign[]>
+  local staged_signs_by_lnum = {}
   if signs_staged then
-    apply_win_signs0(bufnr, signs_staged, bcache.hunks_staged, top, bot, clear, false)
+    local staged_signs =
+      calc_win_signs(bufnr, signs_staged, bcache.hunks_staged, top, bot, clear, false)
+    for _, s in ipairs(staged_signs) do
+      if not normal_signs_by_lnum[s.lnum] then
+        staged_signs_by_lnum[s.lnum] = staged_signs_by_lnum[s.lnum] or {}
+        table.insert(staged_signs_by_lnum[s.lnum], s)
+      end
+    end
+  end
+
+  -- Flatten and sort staged signs by line number.
+  --- @type Gitsigns.Sign[]
+  local staged_signs = {}
+  --- @type integer[]
+  local staged_signs_lnums = vim.tbl_keys(staged_signs_by_lnum)
+  table.sort(staged_signs_lnums)
+  for _, lnum in ipairs(staged_signs_lnums) do
+    for _, s in ipairs(staged_signs_by_lnum[lnum]) do
+      table.insert(staged_signs, s)
+    end
+  end
+
+  signs_normal:add(bufnr, normal_signs)
+  if signs_staged then
+    signs_staged:add(bufnr, staged_signs)
   end
 end
 
