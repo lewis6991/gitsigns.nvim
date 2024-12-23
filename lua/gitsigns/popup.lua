@@ -219,6 +219,7 @@ local function create_win(bufnr, opts, id)
         -- Clear the augroup
         api.nvim_create_augroup(group, {})
         pcall(api.nvim_win_close, winid, true)
+        pcall(api.nvim_buf_delete, bufnr, { force = true })
         return
       end
       old_cursor = cursor
@@ -231,6 +232,7 @@ local function create_win(bufnr, opts, id)
     callback = function()
       -- Clear the augroup
       api.nvim_create_augroup(group, {})
+      pcall(api.nvim_buf_delete, bufnr, { force = true })
     end,
   })
 
