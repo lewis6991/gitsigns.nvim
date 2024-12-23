@@ -145,6 +145,8 @@ local function create_buf(lines, highlights)
   local bufnr = api.nvim_create_buf(false, true)
   assert(bufnr, 'Failed to create buffer')
 
+  vim.bo[bufnr].bufhidden = 'wipe'
+
   -- In case nvim was opened with '-M'
   vim.bo[bufnr].modifiable = true
   api.nvim_buf_set_lines(bufnr, 0, -1, true, lines)
