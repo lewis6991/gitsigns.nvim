@@ -51,6 +51,15 @@
 --- @class (exact) Gitsigns.LineBlameOpts : Gitsigns.BlameOpts
 --- @field full? boolean
 
+--- @alias Gitsigns.FileBlameRegionLineType
+--- | 'start'
+--- | 'continue'
+--- | 'finish'
+
+--- @class (exact) Gitsigns.FileBlameOpts
+--- @field auto_sha_colors boolean
+--- @field lines table<Gitsigns.FileBlameRegionLineType,string>
+
 --- @class (exact) Gitsigns.Config
 --- @field debug_mode boolean
 --- @field diff_opts Gitsigns.DiffOpts
@@ -75,6 +84,7 @@
 --- @field current_line_blame_formatter string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_formatter_nc string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_opts Gitsigns.CurrentLineBlameOpts
+--- @field file_blame_opts Gitsigns.FileBlameOpts
 --- @field preview_config table<string,any>
 --- @field auto_attach boolean
 --- @field attach_to_untracked boolean
@@ -795,6 +805,56 @@ M.schema = {
       |gitsigns-config-current_line_blame| for lines that aren't committed.
 
       See |gitsigns-config-current_line_blame_formatter| for more information.
+    ]],
+  },
+
+  file_blame_opts = {
+    type = 'table',
+    deep_extend = true,
+    default = {
+      auto_sha_colors = true,
+      lines = {
+        start = '┍',
+        continue = '│',
+        finish = '┕',
+      },
+    },
+    default_help = [[{
+      auto_sha_colors = true,
+      lines = {
+        start = '┍',
+        continue = '│',
+        finish = '┕',
+      }
+    }]],
+    description = [[
+      Options for the whole file blame sidebar.
+
+      Fields: ~
+        • `auto_sha_colors`: boolean
+          Whether to generate commit colors from their hashe values or use
+          the user provided highlights.
+        • `lines`: Table containing the glyphs for drawng the commit region lines:
+            • `start`: string
+              Commit region start glyph
+            • `continue`: string
+              Commit region continuation glyph
+            • `finish`: string
+              Commit region end glyph
+
+      Uses the highlights:
+        • `GitSignsFileBlameAuthor` - commit author
+        • `GitSignsFileBlameDate` - commit date
+        • `GitSignsFileBlameSummary` - commit summary
+        • `GitSignsFileBlameCurrent` - commit matching current buffer
+        • `GitSignsFileBlameCursor` - commit under cursor
+        • `GitSignsFileBlameSeparator` - file content separator
+
+      When `auto_sha_colors` is `false` then user provided highlights with names
+      `GitSignsFileBlameHash1`, `GitSignsFileBlameHash2` and so on are used
+      for the commit sha colors. You can provide as many as you like.
+      When the blame results in more commits then the highlights provided then
+      the colors will be reused from the first one.
     ]],
   },
 

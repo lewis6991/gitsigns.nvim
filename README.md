@@ -93,6 +93,14 @@ require('gitsigns').setup {
     use_focus = true,
   },
   current_line_blame_formatter = '<author>, <author_time:%R> - <summary>',
+  file_blame_opts = {
+    auto_sha_colors = true,
+    lines = {
+      start = '┍',
+      continue = '│',
+      finish = '┕',
+    }
+  },
   sign_priority = 6,
   update_debounce = 100,
   status_formatter = nil, -- Use default

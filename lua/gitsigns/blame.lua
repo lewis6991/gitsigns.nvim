@@ -1,11 +1,13 @@
 local async = require('gitsigns.async')
 local cache = require('gitsigns.cache').cache
+local config = require('gitsigns.config').config
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
 
 local api = vim.api
 
-local hash_colors = {} --- @type table<integer,string>
+local hash_colors = {} --- @type table<string,string>
+local hash_colors_current = 1
 
 local ns = api.nvim_create_namespace('gitsigns_blame_win')
 local ns_hl = api.nvim_create_namespace('gitsigns_blame_win_hl')
@@ -28,18 +30,39 @@ end
 --- @param sha string
 --- @return string
 local function get_hash_color(sha)
-  local r, g, b = sha:match('(%x)%x(%x)%x(%x)')
-  local color = mod(r) * 0x10000 + mod(g) * 0x100 + mod(b)
-
   if hash_colors[sha] then
     return hash_colors[sha]
   end
-
-  local hl_name = string.format('GitSignsBlameColor.%s%s%s', r, g, b)
+  local r, g, b = sha:match('(%x)%x(%x)%x(%x)')
+  local color = mod(r) * 0x10000 + mod(g) * 0x100 + mod(b)
+  local hl_name = string.format('GitSignsFileBlameHash.%s%s%s', r, g, b)
   api.nvim_set_hl(0, hl_name, { fg = color })
-  hash_colors[color] = hl_name
-
+  hash_colors[sha] = hl_name
   return hl_name
+end
+
+--- Uses any number of GitSignsFileBlameHashColor1, 2, 3... highlights provided by user
+--- or falls back to get_hash_color if none found
+--- @param sha string
+--- @return string
+local function get_hash_color_predefined(sha)
+  if hash_colors[sha] then
+    return hash_colors[sha]
+  end
+  local hl_name = string.format('GitSignsFileBlameHash%s', hash_colors_current)
+  local hl = api.nvim_get_hl(0, { name = hl_name })
+  if next(hl) == nil then
+    if hash_colors_current == 1 then
+      return get_hash_color(sha)
+    else
+      hash_colors_current = 1
+      return get_hash_color_predefined(sha)
+    end
+  else
+    hash_colors[sha] = hl_name
+    hash_colors_current = hash_colors_current + 1
+  end
+  return hash_colors[sha]
 end
 
 ---@param amount integer
@@ -49,13 +72,6 @@ local function lalign(amount, text)
   local len = vim.str_utfindex(text)
   return text .. string.rep(' ', math.max(0, amount - len))
 end
-
-local chars = {
-  first = '┍',
-  mid = '│',
-  last = '┕',
-  single = '╺',
-}
 
 local M = {}
 
@@ -79,14 +95,15 @@ local function render(blame, win, main_win, buf_sha)
     local next_sha = blame[i + 1] and blame[i + 1].commit.abbrev_sha or nil
     if sha == last_sha then
       cnt = cnt + 1
-      local c = sha == next_sha and chars.mid or chars.last
+      local c = sha == next_sha and config.file_blame_opts.lines.continue
+        or config.file_blame_opts.lines.finish
       lines[i] = cnt == 1 and string.format('%s %s', c, hl.commit.summary) or c
     else
       cnt = 0
       commit_lines[i] = true
       lines[i] = string.format(
         '%s %s %s %s',
-        chars.first,
+        config.file_blame_opts.lines.start,
         sha,
         lalign(max_author_len, hl.commit.author),
         util.expand_format('<author_time>', hl.commit)
@@ -105,7 +122,9 @@ local function render(blame, win, main_win, buf_sha)
 
   -- Apply highlights
   for i, blame_info in ipairs(blame) do
-    local hash_color = get_hash_color(blame_info.commit.abbrev_sha)
+    local hash_color = config.file_blame_opts.auto_sha_colors
+        and get_hash_color(blame_info.commit.abbrev_sha)
+      or get_hash_color_predefined(blame_info.commit.abbrev_sha)
 
     api.nvim_buf_set_extmark(bufnr, ns, i - 1, 0, {
       end_col = commit_lines[i] and 12 or 1,
@@ -114,35 +133,43 @@ local function render(blame, win, main_win, buf_sha)
 
     if commit_lines[i] then
       local width = string.len(lines[i])
+      api.nvim_buf_set_extmark(bufnr, ns, i - 1, 12, {
+        end_col = width - 11,
+        hl_group = 'GitSignsFileBlameAuthor',
+      })
       api.nvim_buf_set_extmark(bufnr, ns, i - 1, width - 10, {
         end_col = width,
-        hl_group = 'Title',
+        hl_group = 'GitSignsFileBlameDate',
       })
     else
       api.nvim_buf_set_extmark(bufnr, ns, i - 1, 2, {
         end_row = i,
         end_col = 0,
-        hl_group = 'Comment',
+        hl_group = 'GitSignsFileBlameSummary',
       })
     end
 
     if buf_sha == blame_info.commit.sha then
       api.nvim_buf_set_extmark(bufnr, ns, i - 1, 0, {
-        line_hl_group = '@markup.italic',
+        line_hl_group = 'GitSignsFileBlameCurrent',
       })
     end
 
     if commit_lines[i] and commit_lines[i + 1] then
       api.nvim_buf_set_extmark(bufnr, ns, i - 1, 0, {
         virt_lines = {
-          { { chars.last, hash_color }, { ' ' }, { blame[i].commit.summary, 'Comment' } },
+          {
+            { config.file_blame_opts.lines.finish, hash_color },
+            { ' ' },
+            { blame[i].commit.summary, 'GitSignsFileBlameSummary' },
+          },
         },
       })
 
       local fillchar = string.rep(vim.opt.fillchars:get().diff or '-', 1000)
 
       api.nvim_buf_set_extmark(main_buf, ns, i - 1, 0, {
-        virt_lines = { { { fillchar, 'Comment' } } },
+        virt_lines = { { { fillchar, 'GitSignsFileBlameSeparator' } } },
         virt_lines_leftcol = true,
       })
     end
@@ -395,7 +422,7 @@ M.blame = function()
       for i, info in pairs(blame) do
         if info.commit.abbrev_sha == cur_sha then
           api.nvim_buf_set_extmark(blm_bufnr, ns_hl, i - 1, 0, {
-            line_hl_group = '@markup.strong',
+            line_hl_group = 'GitSignsFileBlameCursor',
           })
         end
       end

@@ -70,6 +70,14 @@ of the default settings:
         use_focus = true,
       },
       current_line_blame_formatter = '<author>, <author_time:%R> - <summary>',
+      file_blame_opts = {
+        auto_sha_colors = true,
+        lines = {
+          start = '┍',
+          continue = '│',
+          finish = '┕',
+        }
+      },
       sign_priority = 6,
       update_debounce = 100,
       status_formatter = nil, -- Use default
@@ -934,6 +942,46 @@ current_line_blame_formatter_nc
       |gitsigns-config-current_line_blame| for lines that aren't committed.
 
       See |gitsigns-config-current_line_blame_formatter| for more information.
+
+file_blame_opts                              *gitsigns-config-file_blame_opts*
+      Type: `table[extended]`
+      Default: >
+        {
+          auto_sha_colors = true,
+          lines = {
+            start = '┍',
+            continue = '│',
+            finish = '┕',
+          }
+        }
+<
+      Options for the whole file blame sidebar.
+
+      Fields: ~
+        • `auto_sha_colors`: boolean
+          Whether to generate commit colors from their hashe values or use
+          the user provided highlights.
+        • `lines`: Table containing the glyphs for drawng the commit region lines:
+            • `start`: string
+              Commit region start glyph
+            • `continue`: string
+              Commit region continuation glyph
+            • `finish`: string
+              Commit region end glyph
+
+      Uses the highlights:
+        • `GitSignsFileBlameAuthor` - commit author
+        • `GitSignsFileBlameDate` - commit date
+        • `GitSignsFileBlameSummary` - commit summary
+        • `GitSignsFileBlameCurrent` - commit matching current buffer
+        • `GitSignsFileBlameCursor` - commit under cursor
+        • `GitSignsFileBlameSeparator` - file content separator
+
+      When `auto_sha_colors` is `false` then user provided highlights with names
+      `GitSignsFileBlameHash1`, `GitSignsFileBlameHash2` and so on are used
+      for the commit sha colors. You can provide as many as you like.
+      When the blame results in more commits then the highlights provided then
+      the colors will be reused from the first one.
 
 trouble                                              *gitsigns-config-trouble*
       Type: `boolean`, Default: true if installed

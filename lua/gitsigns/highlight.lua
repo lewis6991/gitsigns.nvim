@@ -221,6 +221,25 @@ M.hls = {
 
   { GitSignsCurrentLineBlame = { 'NonText', desc = 'Used for current line blame.' } },
 
+  { GitSignsFileBlameAuthor = { 'Normal', desc = 'Used for file blame commit author.' } },
+  { GitSignsFileBlameDate = { 'Title', desc = 'Used for file blame commit date.' } },
+  { GitSignsFileBlameSummary = { 'Comment', desc = 'Used for file blame commit summary.' } },
+  {
+    GitSignsFileBlameCurrent = {
+      '@markup.italic',
+      desc = 'Used for file blame commit matching current buffer.',
+    },
+  },
+  {
+    GitSignsFileBlameCursor = {
+      '@markup.strong',
+      desc = 'Used for file blame commit under cursor.',
+    },
+  },
+  {
+    GitSignsFileBlameSeparator = { 'Comment', desc = 'Used for file blame file content separator.' },
+  },
+
   {
     GitSignsAddInline = {
       'TermCursor',
