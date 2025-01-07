@@ -253,8 +253,12 @@ function M.get_info(cwd, gitdir, toplevel)
     return nil, string.format('got stderr: %s', stderr or '')
   end
 
-  local toplevel_r = normalize_path(stdout[1])
-  local gitdir_r = normalize_path(stdout[2])
+  if #stdout < 3 then
+    return nil, string.format('incomplete stdout: %s', table.concat(stdout, '\n'))
+  end
+
+  local toplevel_r = assert(normalize_path(stdout[1]))
+  local gitdir_r = assert(normalize_path(stdout[2]))
 
   if not has_abs_gd then
     gitdir_r = assert(uv.fs_realpath(gitdir_r))
@@ -263,7 +267,7 @@ function M.get_info(cwd, gitdir, toplevel)
   return {
     toplevel = toplevel_r,
     gitdir = gitdir_r,
-    abbrev_head = process_abbrev_head(gitdir_r, stdout[3], cwd),
+    abbrev_head = process_abbrev_head(gitdir_r, assert(stdout[3]), cwd),
     detached = toplevel_r and gitdir_r ~= toplevel_r .. '/.git',
   }
 end
