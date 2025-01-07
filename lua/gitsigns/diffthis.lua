@@ -76,14 +76,15 @@ end)
 --- @param bufnr integer
 --- @param base string?
 --- @return string? buf Buffer name
-local function create_show_buf(bufnr, base)
+--- @return integer? bufnr Buffer number
+local function create_revision_buf(bufnr, base)
   local bcache = assert(cache[bufnr])
   base = util.norm_base(base)
 
   local bufname = bcache:get_rev_bufname(base)
 
   if util.bufexists(bufname) then
-    return bufname
+    return bufname, vim.fn.bufnr(bufname)
   end
 
   local dbuf = api.nvim_create_buf(false, true)
@@ -121,7 +122,7 @@ local function create_show_buf(bufnr, base)
     vim.bo[dbuf].modifiable = false
   end
 
-  return bufname
+  return bufname, dbuf
 end
 
 --- @class Gitsigns.DiffthisOpts
@@ -134,20 +135,46 @@ end
 local function diffthis_rev(base, opts)
   local bufnr = api.nvim_get_current_buf()
 
-  local bufname = create_show_buf(bufnr, base)
+  local bufname, dbuf = create_revision_buf(bufnr, base)
   if not bufname then
     return
   end
 
   opts = opts or {}
 
-  vim.cmd(table.concat({
-    'keepalt',
-    opts.split or 'aboveleft',
-    opts.vertical and 'vertical' or '',
-    'diffsplit',
+  local cwin = api.nvim_get_current_win()
+
+  vim.cmd.diffsplit({
     bufname,
-  }, ' '))
+    mods = {
+      vertical = opts.vertical,
+      split = opts.split or 'aboveleft',
+      keepalt = true
+    }
+  })
+
+  api.nvim_set_current_win(cwin)
+
+  -- Reset 'diff' option for the current window if the diff buffer is hidden
+  api.nvim_create_autocmd('BufHidden', {
+    buffer = assert(dbuf),
+    callback = function()
+      local tabpage = api.nvim_win_get_tabpage(cwin)
+
+      local disable_cwin_diff = true
+      for _, w in ipairs(api.nvim_tabpage_list_wins(tabpage)) do
+        if w ~= cwin and vim.wo[w].diff then
+          -- If there is another diff window open, don't disable diff
+          disable_cwin_diff = false
+          break
+        end
+      end
+
+      if disable_cwin_diff then
+        vim.wo[cwin].diff = false
+      end
+    end
+  })
 end
 
 --- @param base string?
@@ -166,16 +193,13 @@ M.diffthis = async.create(2, function(base, opts, _callback)
     return
   end
 
-  local cwin = api.nvim_get_current_win()
   if not base and bcache.git_obj.has_conflicts then
     diffthis_rev(':2', opts)
-    api.nvim_set_current_win(cwin)
     opts.split = 'belowright'
     diffthis_rev(':3', opts)
   else
     diffthis_rev(base, opts)
   end
-  api.nvim_set_current_win(cwin)
 end)
 
 --- @param bufnr integer
@@ -183,7 +207,7 @@ end)
 --- @param _callback? fun()
 M.show = async.create(2, function(bufnr, base, _callback)
   __FUNC__ = 'show'
-  local bufname = create_show_buf(bufnr, base)
+  local bufname = create_revision_buf(bufnr, base)
   if not bufname then
     log.dprint('No bufname for revision ' .. base)
     return
@@ -215,6 +239,14 @@ local function should_reload(bufnr)
   return response == 'L'
 end
 
+--- @param name string
+--- @return boolean
+local function is_fugitive_diff_window(name)
+  return vim.startswith(name, 'fugitive://')
+  and vim.fn.exists('*FugitiveParse')
+  and vim.fn.FugitiveParse(name)[1] ~= ':'
+end
+
 -- This function needs to be throttled as there is a call to vim.ui.input
 --- @param bufnr integer
 --- @param _callback? fun()
@@ -231,10 +263,7 @@ M.update = throttle_by_id(async.create(1, function(bufnr, _callback)
     if api.nvim_win_is_valid(w) then
       local b = api.nvim_win_get_buf(w)
       local bname = api.nvim_buf_get_name(b)
-      local is_fugitive_diff_window = vim.startswith(bname, 'fugitive://')
-        and vim.fn.exists('*FugitiveParse')
-        and vim.fn.FugitiveParse(bname)[1] ~= ':'
-      if bname == bufname or is_fugitive_diff_window then
+      if bname == bufname or is_fugitive_diff_window(bname) then
         if should_reload(b) then
           api.nvim_buf_call(b, function()
             vim.cmd.doautocmd('BufReadCmd')
