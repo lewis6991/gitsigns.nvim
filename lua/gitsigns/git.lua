@@ -323,7 +323,7 @@ function Obj:stage_lines(lines)
   autocmd_changed(self.file)
 end
 
-local sleep = async.wrap(2, function(duration, cb)
+local sleep = async.awrap(2, function(duration, cb)
   vim.defer_fn(cb, duration)
 end)
 

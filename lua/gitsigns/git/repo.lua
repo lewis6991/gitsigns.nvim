@@ -6,9 +6,6 @@ local util = require('gitsigns.util')
 local system = require('gitsigns.system').system
 local check_version = require('gitsigns.git.version').check
 
---- @type fun(cmd: string[], opts?: vim.SystemOpts): vim.SystemCompleted
-local asystem = async.wrap(3, system)
-
 local uv = vim.uv or vim.loop
 
 --- @class Gitsigns.RepoInfo
@@ -28,7 +25,9 @@ local M = {}
 --- @async
 --- @param args string[]
 --- @param spec? Gitsigns.Git.JobSpec
---- @return string[] stdout, string? stderr
+--- @return string[] stdout
+--- @return string? stderr
+--- @return integer code
 function M:command(args, spec)
   spec = spec or {}
   spec.cwd = self.toplevel
@@ -168,6 +167,7 @@ end
 
 local has_cygpath = jit and jit.os == 'Windows' and vim.fn.executable('cygpath') == 1
 
+--- @async
 --- @generic S
 --- @param path S
 --- @return S
@@ -175,7 +175,8 @@ local function normalize_path(path)
   if path and has_cygpath and not uv.fs_stat(path) then
     -- If on windows and path isn't recognizable as a file, try passing it
     -- through cygpath
-    path = asystem({ 'cygpath', '-aw', path }).stdout
+    --- @type string
+    path = async.await(3, system, { 'cygpath', '-aw', path }).stdout
   end
   return path
 end

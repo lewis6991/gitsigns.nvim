@@ -4,7 +4,7 @@ local log = require('gitsigns.debug.log')
 local system = require('gitsigns.system').system
 
 --- @type fun(cmd: string[], opts?: vim.SystemOpts): vim.SystemCompleted
-local asystem = async.wrap(3, system)
+local asystem = async.awrap(3, system)
 
 --- @class Gitsigns.Git.JobSpec : vim.SystemOpts
 --- @field ignore_error? boolean

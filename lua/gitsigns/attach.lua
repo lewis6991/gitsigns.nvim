@@ -130,7 +130,7 @@ local function on_attach_pre(bufnr)
   local gitdir, toplevel
   if config._on_attach_pre then
     --- @type {gitdir: string?, toplevel: string?}
-    local res = async.wait(2, config._on_attach_pre, bufnr)
+    local res = async.await(2, config._on_attach_pre, bufnr)
     dprintf('ran on_attach_pre with result %s', vim.inspect(res))
     if type(res) == 'table' then
       if type(res.gitdir) == 'string' then
