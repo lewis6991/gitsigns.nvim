@@ -52,6 +52,8 @@ describe('gitsigns (with screen)', function()
       [8] = { foreground = Screen.colors.White, background = Screen.colors.Red },
       [9] = { foreground = Screen.colors.SeaGreen, bold = true },
       [10] = { foreground = Screen.colors.Red },
+      [11] = { foreground = Screen.colors.NvimDarkRed, background = Screen.colors.WebGray },
+      [12] = { foreground = Screen.colors.NvimDarkCyan, background = Screen.colors.WebGray },
     }
 
     -- Use the classic vim colorscheme, not the new defaults in nvim >= 0.10
@@ -715,31 +717,53 @@ describe('gitsigns (with screen)', function()
 
     feed('x')
 
-    screen:expect({
-      grid = [[
-      {2:~ }^orem ipsum        |
-      {6:~                   }|
-    ]],
-    })
+    if fn.has('nvim-0.11') > 0 then
+      screen:expect({
+        grid = [[
+        {12:~ }^orem ipsum        |
+        {6:~                   }|
+        ]],
+      })
+    else
+      screen:expect({
+        grid = [[
+        {2:~ }^orem ipsum        |
+        {6:~                   }|
+        ]],
+      })
+    end
   end)
 
   it('handle #521', function()
     screen:detach()
-    screen:attach({ ext_messages = false })
-    screen:try_resize(20, 3)
+    screen:attach()
+    screen:try_resize(20, 4)
     setup_test_repo()
     setup_gitsigns(config)
     edit(test_file)
     feed('dd')
 
     local function check_screen()
-      screen:expect({
-        grid = [[
-        {4:^ }^is                |
-        {1:  }a                 |
-        {1:  }file              |
-      ]],
-      })
+      if fn.has('nvim-0.11') > 0 then
+        -- TODO(lewis6991): ???
+        screen:expect({
+          grid = [[
+          {11:^ }^is                |
+          {1:  }a                 |
+          {1:  }file              |
+                              |
+        ]],
+        })
+      else
+        screen:expect({
+          grid = [[
+          {4:^ }^is                |
+          {1:  }a                 |
+          {1:  }file              |
+          {1:  }used              |
+        ]],
+        })
+      end
     end
 
     check_screen()
