@@ -3,8 +3,8 @@ export PJ_ROOT=$(PWD)
 
 FILTER ?= .*
 
-export NVIM_RUNNER_VERSION := v0.10.0
-export NVIM_TEST_VERSION ?= v0.10.0
+export NVIM_RUNNER_VERSION := v0.10.3
+export NVIM_TEST_VERSION ?= v0.10.3
 
 ifeq ($(shell uname -s),Darwin)
     UNAME ?= MACOS
@@ -29,10 +29,19 @@ test: nvim-test
 	-@stty sane
 
 .PHONY: test-all
-test-all:
-	$(MAKE) test NVIM_TEST_VERSION=v0.9.5
-	$(MAKE) test NVIM_TEST_VERSION=v0.10.0
-	$(MAKE) test NVIM_TEST_VERSION=nightly
+test-all: test-095 test-010 test-nightly
+
+.PHONY: test-095
+test-095:
+	$(MAKE) $(MAKEFLAGS) test NVIM_TEST_VERSION=v0.9.5
+
+.PHONY: test-010
+test-010:
+	$(MAKE) $(MAKEFLAGS) test NVIM_TEST_VERSION=v0.10.3
+
+.PHONY: test-nightly
+test-nightly:
+	$(MAKE) $(MAKEFLAGS) test NVIM_TEST_VERSION=nightly
 
 export XDG_DATA_HOME ?= $(HOME)/.data
 

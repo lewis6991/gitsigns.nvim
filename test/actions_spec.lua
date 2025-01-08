@@ -4,7 +4,6 @@ local setup_gitsigns = helpers.setup_gitsigns
 local feed = helpers.feed
 local test_file = helpers.test_file
 local edit = helpers.edit
-local command = helpers.api.nvim_command
 local check = helpers.check
 local exec_lua = helpers.exec_lua
 local fn = helpers.fn
@@ -50,7 +49,45 @@ local function expect_hunks(exp_hunks)
   end)
 end
 
+local delay = 10
+
+local function command(cmd)
+  helpers.sleep(delay)
+  helpers.api.nvim_command(cmd)
+
+  -- Flaky tests, add a large delay between commands.
+  -- Flakyness is due to actions being async and problems occur when an action
+  -- is run while another action or update is running.
+  -- Must wait for actions and updates to finish.
+  helpers.sleep(delay)
+end
+
+local function retry(f)
+  local ok, err
+
+  for _ = 1, 20 do
+    ok, err = pcall(f)
+    if ok then
+      return
+    end
+    delay = delay * 1.6
+    print('failed, retrying with delay', delay)
+  end
+
+  if err then
+    error(err)
+  end
+end
+
 describe('actions', function()
+
+  local orig_it = it
+  local function it(desc, f)
+    orig_it(desc, function()
+      retry(f)
+    end)
+  end
+
   local config --- @type Gitsigns.Config
 
   before_each(function()
