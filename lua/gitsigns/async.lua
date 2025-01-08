@@ -162,7 +162,7 @@ function M.wait(argc, func, ...)
 end
 
 --- Creates an async function with a callback style function.
---- @param argc number The number of arguments of func. Must be included.
+--- @param argc integer The number of arguments of func. Must be included.
 --- @param func function A callback style function to be converted. The last argument must be the callback.
 --- @return function: Returns an async function
 function M.wrap(argc, func)
