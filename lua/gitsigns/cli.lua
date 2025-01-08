@@ -65,7 +65,7 @@ M.run = async.create(1, function(params)
   local func = pos_args_raw[1]
 
   if not func then
-    func = async.wait(3, vim.ui.select, M.complete('', 'Gitsigns '), {}) --[[@as string]]
+    func = async.await(3, vim.ui.select, M.complete('', 'Gitsigns '), {}) --[[@as string]]
     if not func then
       return
     end

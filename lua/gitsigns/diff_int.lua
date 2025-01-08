@@ -33,7 +33,7 @@ local run_diff_xdl = function(a, b, linematch)
 end
 
 --- @type Gitsigns.RawDifffn
-local run_diff_xdl_async = async.wrap(
+local run_diff_xdl_async = async.awrap(
   4,
   --- @param a string
   --- @param b string
