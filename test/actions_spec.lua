@@ -80,7 +80,6 @@ local function retry(f)
 end
 
 describe('actions', function()
-
   local orig_it = it
   local function it(desc, f)
     orig_it(desc, function()

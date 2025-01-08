@@ -3,7 +3,7 @@ local start_time = vim.loop.hrtime()
 local M = {
   debug_mode = false,
   verbose = false,
-  messages = {} --- @type [number, string, string, string][]
+  messages = {}, --- @type [number, string, string, string][]
 }
 
 --- @param name string
@@ -65,7 +65,7 @@ local function get_context(lvl)
     or getvarvalue('cbuf', lvl)
     or getvarvalue('buf', lvl)
 
-  return {name=name, bufnr=bufnr}
+  return { name = name, bufnr = bufnr }
 end
 
 -- If called in a callback then make sure the callback defines a __FUNC__
@@ -83,7 +83,7 @@ local function cprint(kind, obj, lvl)
   if ctx.bufnr then
     ctx1 = string.format('%s(%s)', ctx1, ctx.bufnr)
   end
-  table.insert(M.messages, {time, kind, ctx1, msg})
+  table.insert(M.messages, { time, kind, ctx1, msg })
 end
 
 function M.dprint(obj)
@@ -161,10 +161,10 @@ local function build_msg(m)
   local hl = sev_to_hl[kind]
   return {
     { string.format('%.2f ', time), 'Comment' },
-    { kind:upper():sub(1,1), hl },
-    { string.format(' %s:', ctx), 'Tag'},
+    { kind:upper():sub(1, 1), hl },
+    { string.format(' %s:', ctx), 'Tag' },
     { ' ' },
-    { msg }
+    { msg },
   }
 end
 
@@ -181,9 +181,9 @@ function M.get()
     local e = build_msg(m)
     local e1 = {} --- @type string[]
     for _, x in ipairs(e) do
-      e1[#e1+1] = x[1]
+      e1[#e1 + 1] = x[1]
     end
-    r[#r+1] = table.concat(e1)
+    r[#r + 1] = table.concat(e1)
   end
   return r
 end

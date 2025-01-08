@@ -182,7 +182,7 @@ local function bufferred_line_reader(f)
       end
 
       if peek then
-        return data_lines[ i+ 1]
+        return data_lines[i + 1]
       end
       i = i + 1
       return data_lines[i]
@@ -255,7 +255,8 @@ function M.run_blame(obj, lines, lnum, revision, opts)
     reader(data)
   end
 
-  local _, stderr = obj.repo:command(args, { stdin = lines, stdout = on_stdout, ignore_error = true })
+  local _, stderr =
+    obj.repo:command(args, { stdin = lines, stdout = on_stdout, ignore_error = true })
 
   if stderr then
     error_once('Error running git-blame: ' .. stderr)

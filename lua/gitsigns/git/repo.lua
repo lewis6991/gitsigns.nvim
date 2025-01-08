@@ -72,9 +72,7 @@ end
 --- @return boolean
 local function iconv_supported(encoding)
   -- TODO(lewis6991): needs https://github.com/neovim/neovim/pull/21924
-  if vim.startswith(encoding, 'utf-16') then
-    return false
-  elseif vim.startswith(encoding, 'utf-32') then
+  if vim.startswith(encoding, 'utf-16') or vim.startswith(encoding, 'utf-32') then
     return false
   end
   return true
@@ -141,7 +139,7 @@ function M.get(dir, gitdir, toplevel)
 
   gitdir = info.gitdir
   if not repo_cache[gitdir] then
-    repo_cache[gitdir] = {1, new(info)}
+    repo_cache[gitdir] = { 1, new(info) }
   else
     local refcount = repo_cache[gitdir][1]
     repo_cache[gitdir][1] = refcount + 1
@@ -187,26 +185,24 @@ end
 --- @param cwd string
 --- @return string
 local function process_abbrev_head(gitdir, head_str, cwd)
-  if not gitdir then
+  if not gitdir or head_str ~= 'HEAD' then
     return head_str
   end
-  if head_str == 'HEAD' then
-    local short_sha = git_command({ 'rev-parse', '--short', 'HEAD' }, {
-      ignore_error = true,
-      cwd = cwd,
-    })[1] or ''
-    if log.debug_mode and short_sha ~= '' then
-      short_sha = 'HEAD'
-    end
-    if
-      util.path_exists(gitdir .. '/rebase-merge')
-      or util.path_exists(gitdir .. '/rebase-apply')
-    then
-      return short_sha .. '(rebasing)'
-    end
-    return short_sha
+
+  local short_sha = git_command({ 'rev-parse', '--short', 'HEAD' }, {
+    ignore_error = true,
+    cwd = cwd,
+  })[1] or ''
+
+  if log.debug_mode and short_sha ~= '' then
+    short_sha = 'HEAD'
   end
-  return head_str
+
+  if util.path_exists(gitdir .. '/rebase-merge') or util.path_exists(gitdir .. '/rebase-apply') then
+    return short_sha .. '(rebasing)'
+  end
+
+  return short_sha
 end
 
 --- @async

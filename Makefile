@@ -66,16 +66,15 @@ $(STYLUA_ZIP):
 stylua: $(STYLUA_ZIP)
 	unzip $<
 
+LUA_FILES := $(shell git ls-files lua test)
+
 .PHONY: stylua-check
 stylua-check: stylua
-	./stylua --check lua/**/*.lua
+	./stylua --check $(LUA_FILES)
 
 .PHONY: stylua-run
 stylua-run: stylua
-	./stylua \
-		lua/**/*.lua \
-		lua/*.lua \
-		test/*.lua
+	./stylua $(LUA_FILES)
 
 .PHONY: build
 build: gen_help stylua-run
