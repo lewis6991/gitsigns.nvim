@@ -219,9 +219,14 @@ M.show = async.create(2, function(bufnr, base, _callback)
   -- Wait for the buffer to attach in case the user passes a callback that
   -- requires the buffer to be attached.
   local sbufnr = api.nvim_get_current_buf()
-  vim.wait(2000, function()
+
+  local attached = vim.wait(2000, function()
     return cache[sbufnr] ~= nil
   end)
+
+  if not attached then
+    log.eprintf("Show buffer '%s' did not attach", bufname)
+  end
 end)
 
 --- @param bufnr integer
