@@ -19,82 +19,21 @@ local uv = vim.loop
 local M = {}
 
 --- @param name string
---- @return string? buffer
+--- @return string? rel_path
 --- @return string? commit
-local function parse_fugitive_uri(name)
-  if vim.fn.exists('*FugitiveReal') == 0 then
-    dprint('Fugitive not installed')
+--- @return string? gitdir
+local function parse_git_path(name)
+  if not vim.startswith(name, 'fugitive://') and not vim.startswith(name, 'gitsigns://') then
     return
   end
 
-  ---@type string
-  local path = vim.fn.FugitiveReal(name)
-  ---@type string?
-  local commit = vim.fn.FugitiveParse(name)[1]:match('([^:]+):.*')
-  if commit == '0' then
-    -- '0' means the index so clear commit so we attach normally
-    commit = nil
-  end
-  return path, commit
-end
-
---- @param name string
---- @return string buffer
---- @return string? commit
-local function parse_gitsigns_uri(name)
-  local _proto, head, tail = unpack(vim.split(name, '//'))
-
-  --- @type any, any, string?, string?
-  local _, _, root_path, sub_path = head:find([[(.*)/%.git(.*)]])
-
-  --- @type any, any, string?, string?
-  local _, _, commit, rel_path = tail:find([[(.*):(.*)]])
-
-  commit = util.norm_base(commit)
-
-  if root_path then
-    if sub_path then
-      sub_path = sub_path:gsub('^/modules/', '')
-      name = string.format('%s/%s/%s', root_path, sub_path, rel_path)
-    else
-      name = string.format('%s/%s', root_path, rel_path)
-    end
-  end
-
-  return name, commit
-end
-
---- @param bufnr integer
---- @return string buffer
---- @return string? commit
---- @return boolean? force_attach
-local function get_buf_path(bufnr)
-  local file = uv.fs_realpath(api.nvim_buf_get_name(bufnr))
-    or api.nvim_buf_call(bufnr, function()
-      return vim.fn.expand('%:p')
-    end)
-
-  if vim.startswith(file, 'fugitive://') then
-    local path, commit = parse_fugitive_uri(file)
-    dprintf("Fugitive buffer for file '%s' from path '%s'", path, file)
-    if path then
-      local realpath = uv.fs_realpath(path)
-      if realpath and vim.fn.isdirectory(realpath) == 0 then
-        return realpath, commit, true
-      end
-    end
-  end
-
-  if vim.startswith(file, 'gitsigns://') then
-    local path, commit = parse_gitsigns_uri(file)
-    dprintf("Gitsigns buffer for file '%s' from path '%s' on commit '%s'", path, file, commit)
-    local realpath = uv.fs_realpath(path)
-    if realpath then
-      return realpath, commit, true
-    end
-  end
-
-  return file
+  local proto, gitdir, tail = unpack(vim.split(name, '//'))
+  assert(proto and gitdir and tail)
+  local plugin = proto:sub(1, 1):upper() .. proto:sub(2, -2)
+  local commit, rel_path = unpack(vim.split(tail, ':'))
+  rel_path = rel_path or tail
+  dprintf("%s buffer for file '%s' from path '%s' on commit '%s'", plugin, rel_path, file, commit)
+  return rel_path, commit, gitdir
 end
 
 local function on_lines(_, bufnr, _, first, last_orig, last_new, byte_count)
@@ -202,24 +141,30 @@ local function get_buf_context(bufnr)
     return nil, 'Exceeds max_file_length'
   end
 
-  local file, commit, force_attach = get_buf_path(bufnr)
+  local file = uv.fs_realpath(api.nvim_buf_get_name(bufnr))
+    or api.nvim_buf_call(bufnr, function()
+      return vim.fn.expand('%:p')
+    end)
 
-  if vim.bo[bufnr].buftype ~= '' and not force_attach then
-    return nil, 'Non-normal buffer'
+  local rel_path, commit, gitdir_from_bufname = parse_git_path(file)
+
+  if not gitdir_from_bufname then
+    if vim.bo[bufnr].buftype ~= '' then
+      return nil, 'Non-normal buffer'
+    end
+
+    local file_dir = util.dirname(file)
+    if not file_dir or not util.path_exists(file_dir) then
+      return nil, 'Not a path'
+    end
   end
 
-  local file_dir = util.dirname(file)
-
-  if not file_dir or not util.path_exists(file_dir) then
-    return nil, 'Not a path'
-  end
-
-  local gitdir, toplevel = on_attach_pre(bufnr)
+  local gitdir_oap, toplevel_oap = on_attach_pre(bufnr)
 
   return {
-    file = file,
-    gitdir = gitdir,
-    toplevel = toplevel,
+    file = rel_path or file,
+    gitdir = gitdir_oap or gitdir_from_bufname,
+    toplevel = toplevel_oap,
     -- Stage buffers always compare against the common ancestor (':1')
     -- :0: index
     -- :1: common ancestor
