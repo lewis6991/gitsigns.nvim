@@ -30,7 +30,16 @@ local function parse_git_path(name)
   local proto, gitdir, tail = unpack(vim.split(name, '//'))
   assert(proto and gitdir and tail)
   local plugin = proto:sub(1, 1):upper() .. proto:sub(2, -2)
-  local commit, rel_path = unpack(vim.split(tail, ':'))
+
+  local commit, rel_path --- @type string, string
+  if plugin == 'Gitsigns' then
+    commit = tail:match('^(:?[^:]+):')
+    rel_path = tail:match('^:?[^:]+:(.*)')
+  else -- Fugitive
+    commit = tail:match('^([^/]+)/')
+    rel_path = tail:match('^[^/]+/(.*)')
+  end
+
   rel_path = rel_path or tail
   dprintf("%s buffer for file '%s' from path '%s' on commit '%s'", plugin, rel_path, file, commit)
   return rel_path, commit, gitdir
