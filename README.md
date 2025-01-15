@@ -232,50 +232,6 @@ set statusline+=%{get(b:,'gitsigns_status','')}
 
 For the current branch use the variable `b:gitsigns_head`.
 
-## Comparison with [vim-gitgutter]
-
-Feature                                                  | gitsigns.nvim        | vim-gitgutter                                 | Note
----------------------------------------------------------|----------------------|-----------------------------------------------|--------
-Shows signs for added, modified, and removed lines       | :white_check_mark:   | :white_check_mark:                            |
-Asynchronous                                             | :white_check_mark:   | :white_check_mark:                            |
-Runs diffs in-process (no IO or pipes)                   | :white_check_mark: * |                                               | * Via [lua](https://github.com/neovim/neovim/pull/14536) or FFI.
-Supports Nvim's diff-linematch                           | :white_check_mark: * |                                               | * Via [diff-linematch]
-Only adds signs for drawn lines                          | :white_check_mark: * |                                               | * Via Neovims decoration API
-Updates immediately                                      | :white_check_mark:   | *                                             | * Triggered on CursorHold
-Ensures signs are always up to date                      | :white_check_mark: * |                                               | * Watches the git dir to do so
-Never saves the buffer                                   | :white_check_mark:   | :white_check_mark: :heavy_exclamation_mark: * | * Writes [buffer](https://github.com/airblade/vim-gitgutter/blob/0f98634b92da9a35580b618c11a6d2adc42d9f90/autoload/gitgutter/diff.vim#L106) (and index) to short lived temp files
-Quick jumping between hunks                              | :white_check_mark:   | :white_check_mark:                            |
-Stage/reset/preview individual hunks                     | :white_check_mark:   | :white_check_mark:                            |
-Preview hunks directly in the buffer (inline)            | :white_check_mark: * |                                               | * Via `preview_hunk_inline`
-Stage/reset hunks in range/selection                     | :white_check_mark:   | :white_check_mark: :heavy_exclamation_mark: * | * Only stage
-Stage/reset all hunks in buffer                          | :white_check_mark:   |                                               |
-Undo staged hunks                                        | :white_check_mark:   |                                               |
-Word diff in buffer                                      | :white_check_mark:   |                                               |
-Word diff in hunk preview                                | :white_check_mark:   | :white_check_mark:                            |
-Show deleted/changes lines directly in buffer            | :white_check_mark: * |                                               | * Via [virtual lines]
-Stage partial hunks                                      | :white_check_mark:   |                                               |
-Hunk text object                                         | :white_check_mark:   | :white_check_mark:                            |
-Diff against index or any commit                         | :white_check_mark:   | :white_check_mark:                            |
-Folding of unchanged text                                |                      | :white_check_mark:                            |
-Fold text showing whether folded lines have been changed |                      | :white_check_mark:                            |
-Load hunk locations into the quickfix or location list   | :white_check_mark:   | :white_check_mark:                            |
-Optional line highlighting                               | :white_check_mark:   | :white_check_mark:                            |
-Optional line number highlighting                        | :white_check_mark:   | :white_check_mark:                            |
-Optional counts on signs                                 | :white_check_mark:   |                                               |
-Customizable signs and mappings                          | :white_check_mark:   | :white_check_mark:                            |
-Customizable extra diff arguments                        | :white_check_mark:   | :white_check_mark:                            |
-Can be toggled globally or per buffer                    | :white_check_mark: * | :white_check_mark:                            | * Through the detach/attach functions
-Statusline integration                                   | :white_check_mark:   | :white_check_mark:                            |
-Live blame in buffer (using virtual text)                | :white_check_mark:   |                                               |
-Blame preview                                            | :white_check_mark:   |                                               |
-Automatically follows open files moved with `git mv`     | :white_check_mark:   |                                               |
-CLI with completion                                      | :white_check_mark:   | *                                             | * Provides individual commands for some actions
-Open diffview with any revision/commit                   | :white_check_mark:   |                                               |
-
-As of 2022-09-01
-
-## Integrations
-
 ### [vim-fugitive]
 
 When viewing revisions of a file (via `:0Gclog` for example), Gitsigns will attach to the fugitive buffer with the base set to the commit immediately before the commit of that revision.
