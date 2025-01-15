@@ -39,14 +39,15 @@ end
 
 ---@param bufnr integer
 ---@param signs Gitsigns.Sign[]
-function M:add(bufnr, signs)
+--- @param filter? fun(line: integer):boolean
+function M:add(bufnr, signs, filter)
   if not config.signcolumn and not config.numhl and not config.linehl then
     -- Don't place signs if it won't show anything
     return
   end
 
   for _, s in ipairs(signs) do
-    if not self:contains(bufnr, s.lnum) then
+    if (not filter or filter(s.lnum)) and not self:contains(bufnr, s.lnum) then
       local cs = self.config[s.type]
       local text = cs.text
       if config.signcolumn and cs.show_count and s.count then
@@ -58,7 +59,7 @@ function M:add(bufnr, signs)
 
       local hls = self.hls[s.type]
 
-      local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, self.ns, s.lnum - 1, -1, {
+      local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, self.ns, s.lnum - 1, 0, {
         id = s.lnum,
         sign_text = config.signcolumn and text or '',
         priority = config.sign_priority,
@@ -89,7 +90,7 @@ function M:contains(bufnr, start, last)
     bufnr,
     self.ns,
     { start - 1, 0 },
-    { last or start, 0 },
+    { last or start - 1, 0 },
     { limit = 1 }
   )
   return #marks > 0

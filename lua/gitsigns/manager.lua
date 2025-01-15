@@ -26,7 +26,8 @@ local M = {}
 --- @param bot integer
 --- @param clear? boolean
 --- @param untracked boolean
-local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked)
+--- @param filter? fun(line: integer):boolean
+local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked, filter)
   if clear then
     signs:remove(bufnr) -- Remove all signs
   end
@@ -40,11 +41,15 @@ local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked)
     -- least one sign. Only do this on the first call after an update when we all
     -- the signs have been cleared.
     if clear and i == 1 then
-      signs:add(bufnr, Hunks.calc_signs(hunk, next, hunk.added.start, hunk.added.start, untracked))
+      signs:add(
+        bufnr,
+        Hunks.calc_signs(hunk, next, hunk.added.start, hunk.added.start, untracked),
+        filter
+      )
     end
 
     if top <= hunk.vend and bot >= hunk.added.start then
-      signs:add(bufnr, Hunks.calc_signs(hunk, next, top, bot, untracked))
+      signs:add(bufnr, Hunks.calc_signs(hunk, next, top, bot, untracked), filter)
     end
     if hunk.added.start > bot then
       break
@@ -61,7 +66,18 @@ local function apply_win_signs(bufnr, top, bot, clear)
   local untracked = bcache.git_obj.object_name == nil
   apply_win_signs0(bufnr, signs_normal, bcache.hunks, top, bot, clear, untracked)
   if signs_staged then
-    apply_win_signs0(bufnr, signs_staged, bcache.hunks_staged, top, bot, clear, false)
+    apply_win_signs0(
+      bufnr,
+      signs_staged,
+      bcache.hunks_staged,
+      top,
+      bot,
+      clear,
+      false,
+      function(lnum)
+        return not signs_normal:contains(bufnr, lnum)
+      end
+    )
   end
 end
 
