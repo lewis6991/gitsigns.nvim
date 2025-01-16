@@ -425,6 +425,9 @@ local function gen_highlights_doc()
           fallbacks_tbl[#fallbacks_tbl + 1] = string.format('`%s`', f)
         end
         local fallbacks = table.concat(fallbacks_tbl, ', ')
+        if spec.fg_factor then
+          fallbacks = fallbacks .. (' (fg=%d%%)'):format(spec.fg_factor * 100)
+        end
         res[#res + 1] = string.format('%s*hl-%s*', string.rep(' ', 56), name)
         res[#res + 1] = string.format('%s', name)
         if spec.desc then
