@@ -13,194 +13,101 @@ local M = {}
 --- Use array of dict so we can iterate deterministically
 --- Export for docgen
 --- @type table<string,Gitsigns.Hldef>[]
-M.hls = {
-  {
-    GitSignsAdd = {
-      'GitGutterAdd',
-      'SignifySignAdd',
-      'DiffAddedGutter',
-      nvim10 and 'Added' or 'diffAdded',
-      'DiffAdd',
-      desc = "Used for the text of 'add' signs.",
-    },
-  },
+M.hls = {}
 
-  {
-    GitSignsChange = {
-      'GitGutterChange',
-      'SignifySignChange',
-      'DiffModifiedGutter',
-      nvim10 and 'Changed' or 'diffChanged',
-      'DiffChange',
-      desc = "Used for the text of 'change' signs.",
-    },
-  },
+--- @param s string
+--- @return string
+local function capitalise(s)
+  return s:sub(1, 1):upper() .. s:sub(2)
+end
 
-  {
-    GitSignsDelete = {
-      'GitGutterDelete',
-      'SignifySignDelete',
-      'DiffRemovedGutter',
-      nvim10 and 'Removed' or 'diffRemoved',
-      'DiffDelete',
-      desc = "Used for the text of 'delete' signs.",
-    },
-  },
+---@param staged boolean
+---@param kind ''|'Nr'|'Ln'|'Cul'
+---@param ty 'add'|'change'|'delete'|'changedelete'|'topdelete'|'untracked'
+---@return string? highlight
+---@return Gitsigns.Hldef? spec
+local function gen_hl(staged, kind, ty)
+  local cty = capitalise(ty)
+  local hl = ('GitSigns%s%s%s'):format(staged and 'Staged' or '', cty, kind)
 
-  {
-    GitSignsChangedelete = {
-      'GitSignsChange',
-      desc = "Used for the text of 'changedelete' signs.",
-    },
-  },
+  if kind == 'Ln' and (ty == 'delete' or 'ty' == 'topdelete') then
+    return
+  end
 
-  { GitSignsTopdelete = { 'GitSignsDelete', desc = "Used for the text of 'topdelete' signs." } },
+  local what --- @type string
+  if kind == 'Nr' then
+    what = 'number column (when `config.numhl == true`)'
+  elseif kind == 'Ln' then
+    what = 'buffer line (when `config.linehl == true`)'
+  elseif kind == 'Cul' then
+    what = 'the text (when the cursor is on the same line as the sign)'
+  else
+    what = 'the text'
+  end
 
-  { GitSignsUntracked = { 'GitSignsAdd', desc = "Used for the text of 'untracked' signs." } },
+  local fallbacks --- @type string[]
+  if staged then
+    fallbacks = { ('GitSigns%s%s'):format(cty, kind) }
+  elseif ty == 'changedelete' then
+    fallbacks = { 'GitSignsChange' .. kind }
+  elseif ty == 'topdelete' then
+    fallbacks = { 'GitSignsDelete' .. kind }
+  elseif ty == 'untracked' then
+    fallbacks = { 'GitSignsAdd' .. kind }
+  elseif kind == 'Nr' then
+    fallbacks = {
+      ('GitGutter%sLineNr'):format(cty),
+      ('GitSigns%s'):format(cty),
+    }
+  elseif kind == 'Ln' then
+    fallbacks = {
+      ('GitGutter%sLine'):format(cty),
+      ('SignifyLine%s'):format(cty),
+      ('Diff%s'):format(cty),
+    }
+  elseif kind == 'Cul' then
+    fallbacks = { ('GitSigns%s'):format(cty) }
+  else
+    fallbacks = {
+      ('GitGutter%s'):format(cty),
+      ('SignifySign%s'):format(cty),
 
-  {
-    GitSignsAddNr = {
-      'GitGutterAddLineNr',
-      'GitSignsAdd',
-      desc = "Used for number column (when `config.numhl == true`) of 'add' signs.",
-    },
-  },
+      ty == 'add' and 'DiffAddedGutter'
+        or ty == 'delete' and 'DiffRemovedGutter'
+        or ty == 'change' and 'DiffModifiedGutter'
+        or '???',
 
-  {
-    GitSignsChangeNr = {
-      'GitGutterChangeLineNr',
-      'GitSignsChange',
-      desc = "Used for number column (when `config.numhl == true`) of 'change' signs.",
-    },
-  },
+      ty == 'add' and (nvim10 and 'Added' or 'diffAdded')
+        or ty == 'delete' and (nvim10 and 'Removed' or 'diffRemoved')
+        or ty == 'change' and (nvim10 and 'Changed' or 'diffChanged')
+        or '???',
 
-  {
-    GitSignsDeleteNr = {
-      'GitGutterDeleteLineNr',
-      'GitSignsDelete',
-      desc = "Used for number column (when `config.numhl == true`) of 'delete' signs.",
-    },
-  },
+      ('Diff%s'):format(cty),
+    }
+  end
 
-  {
-    GitSignsChangedeleteNr = {
-      'GitSignsChangeNr',
-      desc = "Used for number column (when `config.numhl == true`) of 'changedelete' signs.",
-    },
-  },
+  local sty = (staged and 'staged ' or '')
 
-  {
-    GitSignsTopdeleteNr = {
-      'GitSignsDeleteNr',
-      desc = "Used for number column (when `config.numhl == true`) of 'topdelete' signs.",
-    },
-  },
+  return hl,
+    {
+      desc = ("Used for %s of '%s' %ssigns."):format(what, ty, sty),
+      fg_factor = staged and 0.5 or nil,
+      unpack(fallbacks),
+    }
+end
 
-  {
-    GitSignsUntrackedNr = {
-      'GitSignsAddNr',
-      desc = "Used for number column (when `config.numhl == true`) of 'untracked' signs.",
-    },
-  },
+for _, staged in ipairs({ false, true }) do
+  for _, kind in ipairs({ '', 'Nr', 'Ln', 'Cul' }) do
+    for _, ty in ipairs({ 'add', 'change', 'delete', 'changedelete', 'topdelete', 'untracked' }) do
+      local hl, spec = gen_hl(staged, kind, ty)
+      if hl then
+        table.insert(M.hls, { [hl] = spec })
+      end
+    end
+  end
+end
 
-  {
-    GitSignsAddLn = {
-      'GitGutterAddLine',
-      'SignifyLineAdd',
-      'DiffAdd',
-      desc = "Used for buffer line (when `config.linehl == true`) of 'add' signs.",
-    },
-  },
-
-  {
-    GitSignsChangeLn = {
-      'GitGutterChangeLine',
-      'SignifyLineChange',
-      'DiffChange',
-      desc = "Used for buffer line (when `config.linehl == true`) of 'change' signs.",
-    },
-  },
-
-  {
-    GitSignsChangedeleteLn = {
-      'GitSignsChangeLn',
-      desc = "Used for buffer line (when `config.linehl == true`) of 'changedelete' signs.",
-    },
-  },
-
-  {
-    GitSignsUntrackedLn = {
-      'GitSignsAddLn',
-      desc = "Used for buffer line (when `config.linehl == true`) of 'untracked' signs.",
-    },
-  },
-
-  {
-    GitSignsAddCul = {
-      'GitSignsAdd',
-      desc = "Used for the text of 'add' signs when the cursor is on the same line as the sign.",
-    },
-  },
-
-  {
-    GitSignsChangeCul = {
-      'GitSignsChange',
-      desc = "Used for the text of 'change' signs when the cursor is on the same line as the sign.",
-    },
-  },
-
-  {
-    GitSignsDeleteCul = {
-      'GitSignsDelete',
-      desc = "Used for the text of 'delete' signs when the cursor is on the same line as the sign.",
-    },
-  },
-
-  {
-    GitSignsChangedeleteCul = {
-      'GitSignsChangeCul',
-      desc = "Used for the text of 'changedelete' signs when the cursor is on the same line as the sign.",
-    },
-  },
-
-  {
-    GitSignsTopdeleteCul = {
-      'GitSignsDeleteCul',
-      desc = "Used for the text of 'topdelete' signs when the cursor is on the same line as the sign.",
-    },
-  },
-
-  {
-    GitSignsUntrackedCul = {
-      'GitSignsAddCul',
-      desc = "Used for the text of 'untracked' signs when the cursor is on the same line as the sign.",
-    },
-  },
-
-  -- Don't set GitSignsDeleteLn by default
-  -- {GitSignsDeleteLn = {}},
-
-  { GitSignsStagedAdd = { 'GitSignsAdd', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChange = { 'GitSignsChange', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedDelete = { 'GitSignsDelete', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangedelete = { 'GitSignsChangedelete', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedTopdelete = { 'GitSignsTopdelete', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedAddNr = { 'GitSignsAddNr', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangeNr = { 'GitSignsChangeNr', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedDeleteNr = { 'GitSignsDeleteNr', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangedeleteNr = { 'GitSignsChangedeleteNr', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedTopdeleteNr = { 'GitSignsTopdeleteNr', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedAddLn = { 'GitSignsAddLn', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangeLn = { 'GitSignsChangeLn', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedDeleteLn = { 'GitSignsDeleteLn', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangedeleteLn = { 'GitSignsChangedeleteLn', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedTopdeleteLn = { 'GitSignsTopdeleteLn', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedAddCul = { 'GitSignsAddCul', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangeCul = { 'GitSignsChangeCul', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedDeleteCul = { 'GitSignsDeleteCul', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedChangedeleteCul = { 'GitSignsChangedeleteCul', fg_factor = 0.5, hidden = true } },
-  { GitSignsStagedTopdeleteCul = { 'GitSignsTopdeleteCul', fg_factor = 0.5, hidden = true } },
-
+vim.list_extend(M.hls, {
   {
     GitSignsAddPreview = {
       'GitGutterAddLine',
@@ -291,7 +198,7 @@ M.hls = {
       desc = 'Used for line numbers in inline hunks previews.',
     },
   },
-}
+})
 
 ---@param name string
 ---@return table<string, any>
