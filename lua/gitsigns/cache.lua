@@ -101,6 +101,29 @@ function CacheEntry:run_blame(lnum, opts)
   return blame, lnum0 == nil
 end
 
+--- @private
+--- @param lnum? integer
+--- @return boolean
+function CacheEntry:blame_valid(lnum)
+  local blame = self.blame
+  if not blame then
+    return false
+  end
+
+  if lnum then
+    return blame[lnum] ~= nil
+  end
+
+  -- Need to check we have blame info for all lines
+  for i = 1, vim.api.nvim_buf_line_count(self.bufnr) do
+    if not blame[i] then
+      return false
+    end
+  end
+
+  return true
+end
+
 --- If lnum is nil then run blame for the entire buffer.
 --- @async
 --- @param lnum? integer
@@ -109,7 +132,7 @@ end
 function CacheEntry:get_blame(lnum, opts)
   local blame = self.blame
 
-  if not blame or (lnum and not blame[lnum]) then
+  if not blame or not self:blame_valid(lnum) then
     self:wait_for_hunks()
     blame = blame or {}
     local Hunks = require('gitsigns.hunks')
