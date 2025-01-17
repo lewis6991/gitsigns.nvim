@@ -267,7 +267,7 @@ local function menu(name, items)
 end
 
 --- @async
-M.blame = function()
+function M.blame()
   local __FUNC__ = 'blame'
   local bufnr = api.nvim_get_current_buf()
   local win = api.nvim_get_current_win()
