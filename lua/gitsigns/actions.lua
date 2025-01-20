@@ -134,6 +134,7 @@ M.toggle_current_line_blame = function(value)
   return config.current_line_blame
 end
 
+--- @deprecated Use |gitsigns.preview_hunk_inline()|
 --- Toggle |gitsigns-config-show_deleted|
 ---
 --- @param value boolean|nil Value to set toggle. If `nil`
@@ -393,6 +394,7 @@ M.reset_buffer = function()
   end
 end
 
+--- @deprecated use |gitsigns.stage_hunk()| on staged signs
 --- Undo the last call of stage_hunk().
 ---
 --- Note: only the calls to stage_hunk() performed in the current
@@ -887,12 +889,8 @@ M.preview_hunk_inline = async.create(function()
 
   local winid --- @type integer
   manager.show_added(bufnr, ns_inline, hunk)
-  if config._inline2 then
-    if hunk.removed.count > 0 then
-      winid = manager.show_deleted_in_float(bufnr, ns_inline, hunk, staged)
-    end
-  else
-    manager.show_deleted(bufnr, ns_inline, hunk)
+  if hunk.removed.count > 0 then
+    winid = manager.show_deleted_in_float(bufnr, ns_inline, hunk, staged)
   end
 
   api.nvim_create_autocmd({ 'CursorMoved', 'InsertEnter' }, {

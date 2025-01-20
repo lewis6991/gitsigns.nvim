@@ -84,7 +84,6 @@
 --- -- Undocumented
 --- @field _refresh_staged_on_update boolean
 --- @field _threaded_diff boolean
---- @field _inline2 boolean
 --- @field _git_version string
 --- @field _verbose boolean
 --- @field _test_mode boolean
@@ -493,6 +492,7 @@ M.schema = {
 
   show_deleted = {
     type = 'boolean',
+    deprecated = true,
     default = false,
     description = [[
       Show the old version of hunks inline in the buffer (via virtual lines).
@@ -871,14 +871,6 @@ M.schema = {
     default = true,
     description = [[
       Run diffs on a separate thread
-    ]],
-  },
-
-  _inline2 = {
-    type = 'boolean',
-    default = true,
-    description = [[
-      Enable enhanced version of preview_hunk_inline()
     ]],
   },
 
