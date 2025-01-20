@@ -134,9 +134,13 @@ function M.set_lines(bufnr, start_row, end_row, lines)
   if vim.bo[bufnr].fileformat == 'dos' then
     lines = M.strip_cr(lines)
   end
-  if start_row == 0 and end_row == -1 and lines[#lines] == '' then
-    lines = vim.deepcopy(lines)
-    lines[#lines] = nil
+  if start_row == 0 and end_row == -1 then
+    if lines[#lines] == '' then
+      lines = vim.deepcopy(lines)
+      lines[#lines] = nil
+    else
+      vim.bo[bufnr].eol = false
+    end
   end
   vim.api.nvim_buf_set_lines(bufnr, start_row, end_row, false, lines)
 end

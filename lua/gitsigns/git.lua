@@ -308,13 +308,18 @@ end
 --- @param lines string[]
 function Obj:stage_lines(lines)
   self.lock = true
+
+  -- Concatenate the lines into a single string to ensure EOL
+  -- is respected
+  local text = table.concat(lines, '\n')
+
   local new_object = self.repo:command({
     'hash-object',
     '-w',
     '--path',
     self.relpath,
     '--stdin',
-  }, { stdin = lines })[1]
+  }, { stdin = text })[1]
 
   self.repo:command({
     'update-index',

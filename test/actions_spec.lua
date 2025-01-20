@@ -63,6 +63,7 @@ local function command(cmd)
 end
 
 local function retry(f)
+  local orig_delay = delay
   local ok, err
 
   for _ = 1, 20 do
@@ -75,6 +76,7 @@ local function retry(f)
   end
 
   if err then
+    delay = orig_delay
     error(err)
   end
 end
