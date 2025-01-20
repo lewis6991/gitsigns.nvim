@@ -454,6 +454,7 @@ function M.schedule(bufnr, check_compare_text)
   return true
 end
 
+--- @async
 --- Ensure updates cannot be interleaved.
 --- Since updates are asynchronous we need to make sure an update isn't performed
 --- whilst another one is in progress. If this happens then schedule another

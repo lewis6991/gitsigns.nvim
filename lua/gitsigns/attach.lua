@@ -124,7 +124,9 @@ local setup = util.once(function()
         return
       end
       bcache:invalidate(true)
-      manager.update(buf)
+      async.run(function()
+        manager.update(buf)
+      end)
     end,
   })
 
