@@ -99,8 +99,9 @@ end
 --- @field object_name? string
 --- @field has_conflicts? true
 
+--- @return boolean
 function Obj:from_tree()
-  return self.revision and not vim.startswith(self.revision, ':')
+  return self.revision ~= nil and not vim.startswith(self.revision, ':')
 end
 
 --- @async

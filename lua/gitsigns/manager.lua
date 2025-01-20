@@ -490,9 +490,24 @@ M.update = throttle_by_id(function(bufnr)
     return
   end
 
-  if config.signs_staged_enable and not file_mode then
+  local rev_from_index = not git_obj:from_tree()
+  local buf_is_editable_file = vim.bo[bufnr].buftype == ''
+
+  if
+    config.signs_staged_enable
+    and not file_mode
+    and (rev_from_index or not buf_is_editable_file)
+  then
     if not bcache.compare_text_head or config._refresh_staged_on_update then
-      local staged_rev = git_obj:from_tree() and git_obj.revision .. '^' or 'HEAD'
+      -- When the revision is from the index, we compare against HEAD to
+      -- show the staged changes.
+      --
+      -- When showing a revision buffer (a buffer that represents the revision
+      -- of a specific file and does not have a corresponding file on disk), we
+      -- utilize the staged signs to represent the changes introduced in that
+      -- revision. Therefore we compare against the previous commit. Note there
+      -- should not be any normal signs for these buffers.
+      local staged_rev = rev_from_index and 'HEAD' or git_obj.revision .. '^'
       bcache.compare_text_head = git_obj:get_show_text(staged_rev)
       if not M.schedule(bufnr, true) then
         return
