@@ -203,13 +203,4 @@ function M.run(func, ...)
   return run(func, nil, ...)
 end
 
---- @param func fun()
---- @return boolean stat
---- @return string? err
-function M.pcall(func)
-  return M.await(1, function(cb)
-    run(func, cb)
-  end)
-end
-
 return M

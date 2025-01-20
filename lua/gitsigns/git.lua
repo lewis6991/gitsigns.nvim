@@ -352,7 +352,7 @@ function Obj:stage_hunks(hunks, invert)
     end
   end
 
-  local stat, err = async.pcall(function()
+  local stat, err = pcall(function()
     self.repo:command({
       'apply',
       '--whitespace=nowarn',
