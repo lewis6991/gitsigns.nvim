@@ -99,7 +99,7 @@ local function create_revision_buf(bufnr, base)
   end
 
   -- allow editing the index revision
-  if not bcache.git_obj.revision then
+  if not base then
     vim.bo[dbuf].buftype = 'acwrite'
 
     api.nvim_create_autocmd('BufReadCmd', {
