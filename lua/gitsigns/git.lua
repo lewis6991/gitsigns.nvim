@@ -125,7 +125,7 @@ end
 --- @param silent? boolean
 --- @return Gitsigns.FileInfo
 function Obj:file_info_index(file, silent)
-  local has_eol = check_version({ 2, 9 })
+  local has_eol = check_version(2, 9)
 
   -- --others + --exclude-standard means ignored files won't return info, but
   -- untracked files will. Unlike file_info_tree which won't return untracked
@@ -272,13 +272,13 @@ function Obj:unstage_file()
 end
 
 --- @async
---- @param lines string[]
+--- @param contents? string[]
 --- @param lnum? integer
 --- @param revision? string
 --- @param opts? Gitsigns.BlameOpts
 --- @return table<integer,Gitsigns.BlameInfo?>
-function Obj:run_blame(lines, lnum, revision, opts)
-  return require('gitsigns.git.blame').run_blame(self, lines, lnum, revision, opts)
+function Obj:run_blame(contents, lnum, revision, opts)
+  return require('gitsigns.git.blame').run_blame(self, contents, lnum, revision, opts)
 end
 
 --- @async

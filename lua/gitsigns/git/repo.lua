@@ -213,7 +213,7 @@ end
 function M.get_info(cwd, gitdir, toplevel)
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --    https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
-  local has_abs_gd = check_version({ 2, 13 })
+  local has_abs_gd = check_version(2, 13)
 
   -- Wait for internal scheduler to settle before running command (#215)
   async.scheduler()

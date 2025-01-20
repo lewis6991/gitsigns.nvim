@@ -87,12 +87,23 @@ function CacheEntry:run_blame(lnum, opts)
   local bufnr = self.bufnr
   local blame --- @type table<integer,Gitsigns.BlameInfo?>?
   local lnum0 --- @type integer?
+
+  -- Always send contents if buffer represents an editable file on disk.
+  -- Otherwise do not sent contents buffer revision is from tree and git version
+  -- is below 2.41.
+  --
+  -- This avoids the error:
+  --   "fatal: cannot use --contents with final commit object name"
+  local send_contents = vim.bo[bufnr].buftype == ''
+    or (not self.git_obj:from_tree() and not require('gitsigns.git.version').check(2, 41))
+
   repeat
     local buftext = util.buf_lines(bufnr, true)
+    local contents = send_contents and buftext or nil
     local tick = vim.b[bufnr].changedtick
     lnum0 = #buftext > BLAME_THRESHOLD_LEN and lnum or nil
     -- TODO(lewis6991): Cancel blame on changedtick
-    blame = self.git_obj:run_blame(buftext, lnum0, self.git_obj.revision, opts)
+    blame = self.git_obj:run_blame(contents, lnum0, self.git_obj.revision, opts)
     async.scheduler()
     if not vim.api.nvim_buf_is_valid(bufnr) then
       return {}
