@@ -39,9 +39,9 @@ end
 --- @param out fun(_: string?)
 local function gen_config_doc_deprecated(dep_info, out)
   if type(dep_info) == 'table' and dep_info.hard then
-    out('   HARD-DEPRECATED')
+    out('      HARD-DEPRECATED')
   else
-    out('   DEPRECATED')
+    out('      DEPRECATED')
   end
   if type(dep_info) == 'table' then
     if dep_info.message then
