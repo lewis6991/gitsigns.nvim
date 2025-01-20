@@ -3,7 +3,7 @@ local async = require('gitsigns.async')
 local create_hunk = require('gitsigns.hunks').create_hunk
 local config = require('gitsigns.config').config
 
-local decode
+local decode --- @type fun(data: string): any
 if jit and package.preload['string.buffer'] then
   decode = require('string.buffer').decode
 else
@@ -64,7 +64,7 @@ local run_diff_xdl_async = async.awrap(
             return bit.band(flags0, bit.lshift(1, pos)) ~= 0
           end
 
-          local encode
+          local encode --- @type fun(data: any): string
           if jit and package.preload['string.buffer'] then
             encode = require('string.buffer').encode
           else

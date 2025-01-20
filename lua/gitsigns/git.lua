@@ -45,7 +45,9 @@ local git_command = require('gitsigns.git.cmd')
 --- @param file_buf string
 --- @param indent_heuristic? boolean
 --- @param diff_algo string
---- @return string[] stdout, string? stderr
+--- @return string[] stdout
+--- @return string? stderr
+--- @return integer code
 function M.diff(file_cmp, file_buf, indent_heuristic, diff_algo)
   return git_command({
     '-c',
