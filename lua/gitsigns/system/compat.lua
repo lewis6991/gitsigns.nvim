@@ -333,6 +333,7 @@ local function system(cmd, opts, on_exit)
   if opts.timeout then
     state.timer = timer_oneshot(opts.timeout, function()
       if state.handle and state.handle:is_active() then
+        --- @diagnostic disable-next-line: invisible
         obj:_timeout()
       end
     end)
