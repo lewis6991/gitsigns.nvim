@@ -348,8 +348,14 @@ get_hunks({bufnr})                                      *gitsigns.get_hunks()*
                           • `"start"`: Line number (1-based)
                           • `"count"`: Line count
 
-select_hunk()                                         *gitsigns.select_hunk()*
+select_hunk({opts})                                   *gitsigns.select_hunk()*
                 Select the hunk under the cursor.
+
+                Parameters: ~
+                    {opts} (table|nil): Additional options:
+                           • {greedy}: (boolean)
+                             Select all contiguous hunks. Only useful if 'diff_opts'
+                             contains `linematch`. Defaults to `true`.
 
 preview_hunk_inline()                         *gitsigns.preview_hunk_inline()*
                 Preview the hunk at the cursor position inline in the buffer.

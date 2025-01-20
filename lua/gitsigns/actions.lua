@@ -913,8 +913,15 @@ M.preview_hunk_inline = async.create(function()
 end)
 
 --- Select the hunk under the cursor.
-M.select_hunk = function()
-  local hunk = get_cursor_hunk()
+---
+--- @param opts table|nil Additional options:
+---             • {greedy}: (boolean)
+---               Select all contiguous hunks. Only useful if 'diff_opts'
+---               contains `linematch`. Defaults to `true`.
+M.select_hunk = function(opts)
+  local bufnr = current_buf()
+  opts = opts or {}
+  local hunk = get_hunk(bufnr, nil, opts.greedy ~= false)
   if not hunk then
     return
   end
