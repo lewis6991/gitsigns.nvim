@@ -128,11 +128,6 @@ local function setup_cli()
   })
 end
 
-local function setup_debug()
-  log.debug_mode = config.debug_mode
-  log.verbose = config._verbose
-end
-
 --- @async
 local function setup_attach()
   if not config.auto_attach then
@@ -216,7 +211,7 @@ function M.setup(cfg)
 
   api.nvim_create_augroup('gitsigns', {})
 
-  setup_debug()
+  log.setup(config)
   setup_cli()
   require('gitsigns.highlight').setup()
   setup_attach()

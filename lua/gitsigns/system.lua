@@ -11,9 +11,7 @@ local system = vim.fn.has('nvim-0.11') == 1 and vim.system or require('gitsigns.
 --- @return vim.SystemObj
 function M.system(cmd, opts, on_exit)
   local __FUNC__ = 'run_job'
-  if log.debug_mode then
-    log.dprint(table.concat(cmd, ' '))
-  end
+  log.dprint(unpack(cmd))
   return system(cmd, opts, on_exit)
 end
 
