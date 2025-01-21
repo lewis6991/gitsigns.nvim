@@ -188,4 +188,10 @@ function M.get()
   return r
 end
 
+--- @param Gitsigns.Config
+function M.setup(config)
+  M.debug_mode = config.debug_mode
+  M.verbose = config._verbose
+end
+
 return M
