@@ -1,9 +1,13 @@
-local start_time = vim.loop.hrtime()
+local uv = vim.uv or vim.loop
 
+local start_time = uv.hrtime()
+
+--- @class Gitsigns.log
+--- @field private messages [number, string, string, string][]
 local M = {
   debug_mode = false,
   verbose = false,
-  messages = {}, --- @type [number, string, string, string][]
+  messages = {},
 }
 
 --- @param name string
@@ -68,17 +72,24 @@ local function get_context(lvl)
   return { name = name, bufnr = bufnr }
 end
 
+local function tostring(obj)
+  return type(obj) == 'string' and obj or vim.inspect(obj)
+end
+
 -- If called in a callback then make sure the callback defines a __FUNC__
 -- variable which can be used to identify the name of the function.
 --- @param kind string
---- @param obj any
 --- @param lvl integer
-local function cprint(kind, obj, lvl)
+--- @param ... any
+local function cprint(kind, lvl, ...)
   lvl = lvl + 1
-  --- @type string
-  local msg = type(obj) == 'string' and obj or vim.inspect(obj)
+  local msgs = {} --- @type string[]
+  for i = 1, select('#', ...) do
+    msgs[i] = tostring(select(i, ...))
+  end
+  local msg = table.concat(msgs, ' ')
   local ctx = get_context(lvl)
-  local time = (vim.loop.hrtime() - start_time) / 1e6
+  local time = (uv.hrtime() - start_time) / 1e6
   local ctx1 = ctx.name
   if ctx.bufnr then
     ctx1 = string.format('%s(%s)', ctx1, ctx.bufnr)
@@ -86,38 +97,40 @@ local function cprint(kind, obj, lvl)
   table.insert(M.messages, { time, kind, ctx1, msg })
 end
 
-function M.dprint(obj)
+function M.dprint(...)
   if not M.debug_mode then
     return
   end
-  cprint('debug', obj, 2)
+  cprint('debug', 2, ...)
 end
 
 function M.dprintf(obj, ...)
   if not M.debug_mode then
     return
   end
-  cprint('debug', obj:format(...), 2)
+  cprint('debug', 2, obj:format(...))
 end
 
-function M.vprint(obj)
+function M.vprint(...)
   if not (M.debug_mode and M.verbose) then
     return
   end
-  cprint('info', obj, 2)
+  cprint('info', 2, ...)
 end
 
 function M.vprintf(obj, ...)
   if not (M.debug_mode and M.verbose) then
     return
   end
-  cprint('info', obj:format(...), 2)
+  cprint('info', 2, obj:format(...))
 end
 
+--- @param msg string
+--- @param level integer
 local function eprint(msg, level)
   local info = debug.getinfo(level + 2, 'Sl')
   local ctx = info and string.format('%s<%d>', info.short_src, info.currentline) or '???'
-  local time = (vim.loop.hrtime() - start_time) / 1e6
+  local time = (uv.hrtime() - start_time) / 1e6
   table.insert(M.messages, { time, 'error', ctx, debug.traceback(msg) })
   if M.debug_mode then
     error(msg, 3)
@@ -188,7 +201,7 @@ function M.get()
   return r
 end
 
---- @param Gitsigns.Config
+--- @param config Gitsigns.Config
 function M.setup(config)
   M.debug_mode = config.debug_mode
   M.verbose = config._verbose
