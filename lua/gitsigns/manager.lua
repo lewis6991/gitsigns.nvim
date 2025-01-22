@@ -33,8 +33,8 @@ local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked,
   end
 
   for i, hunk in ipairs(hunks or {}) do
-    --- @type Gitsigns.Hunk.Hunk?
-    local next = hunks[i + 1]
+    --- @type Gitsigns.Hunk.Hunk?, Gitsigns.Hunk.Hunk?
+    local prev_hunk, next_hunk = hunks[i - 1], hunks[i + 1]
 
     -- To stop the sign column width changing too much, if there are signs to be
     -- added but none of them are visible in the window, then make sure to add at
@@ -43,14 +43,12 @@ local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked,
     if clear and i == 1 then
       signs:add(
         bufnr,
-        Hunks.calc_signs(hunk, next, hunk.added.start, hunk.added.start, untracked),
+        Hunks.calc_signs(prev_hunk, hunk, next_hunk, hunk.added.start, hunk.added.start, untracked),
         filter
       )
     end
 
-    if top <= hunk.vend and bot >= hunk.added.start then
-      signs:add(bufnr, Hunks.calc_signs(hunk, next, top, bot, untracked), filter)
-    end
+    signs:add(bufnr, Hunks.calc_signs(prev_hunk, hunk, next_hunk, top, bot, untracked), filter)
     if hunk.added.start > bot then
       break
     end

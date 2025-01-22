@@ -87,6 +87,7 @@
 --- @field _git_version string
 --- @field _verbose boolean
 --- @field _test_mode boolean
+--- @field _new_sign_calc boolean
 
 local M = {
   Config = {
@@ -871,6 +872,14 @@ M.schema = {
     default = true,
     description = [[
       Run diffs on a separate thread
+    ]],
+  },
+
+  _new_sign_calc = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      Use new sign calculation method
     ]],
   },
 
