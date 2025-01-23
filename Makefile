@@ -45,9 +45,11 @@ test-nightly:
 
 export XDG_DATA_HOME ?= $(HOME)/.data
 
+NVIM := $(XDG_DATA_HOME)/nvim-test/nvim-runner-$(NVIM_RUNNER_VERSION)/bin/nvim
+
 .PHONY: gen_help
 gen_help: nvim-test
-	$(XDG_DATA_HOME)/nvim-test/nvim-runner-$(NVIM_RUNNER_VERSION)/bin/nvim -l ./gen_help.lua
+	$(NVIM) -l ./gen_help.lua
 	@echo Updated help
 
 STYLUA_PLATFORM_MACOS := macos-aarch64
@@ -103,7 +105,7 @@ luals:
 luals-check: luals nvim-test
 	VIMRUNTIME=$(XDG_DATA_HOME)/nvim-test/nvim-test-$(NVIM_TEST_VERSION)/share/nvim/runtime \
 		luals/bin/lua-language-server \
-			--logpath=luals_check \
+			--check_out_path=check.json \
 			--configpath=../.luarc.json \
 			--check=lua
-	@grep '^\[\]$$' luals_check/check.json
+	cat check.json | $(NVIM) -l ./lualsreport.lua
