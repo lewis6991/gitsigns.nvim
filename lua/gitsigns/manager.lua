@@ -492,11 +492,12 @@ M.update = throttle_by_id(function(bufnr)
   end
 
   local bufname = api.nvim_buf_get_name(bufnr)
+  local rev_is_index = not git_obj:from_tree()
 
   if
     config.signs_staged_enable
     and not file_mode
-    and (bufname:match('^fugitive://') or bufname:match('^gitsigns://'))
+    and (rev_is_index or bufname:match('^fugitive://') or bufname:match('^gitsigns://'))
   then
     if not bcache.compare_text_head or config._refresh_staged_on_update then
       -- When the revision is from the index, we compare against HEAD to
@@ -507,7 +508,7 @@ M.update = throttle_by_id(function(bufnr)
       -- utilize the staged signs to represent the changes introduced in that
       -- revision. Therefore we compare against the previous commit. Note there
       -- should not be any normal signs for these buffers.
-      local staged_rev = git_obj:from_tree() and git_obj.revision .. '^' or 'HEAD'
+      local staged_rev = rev_is_index and 'HEAD' or git_obj.revision .. '^'
       bcache.compare_text_head = git_obj:get_show_text(staged_rev)
       if not M.schedule(bufnr, true) then
         return
