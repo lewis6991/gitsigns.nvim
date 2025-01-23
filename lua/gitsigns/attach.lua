@@ -36,7 +36,9 @@ local function parse_git_path(name)
     commit = tail:match('^(:?[^:]+):')
     rel_path = tail:match('^:?[^:]+:(.*)')
   else -- Fugitive
-    commit = tail:match('^([^/]+)/')
+    if commit:match('^[0-3]$') then
+      commit = ':' .. commit
+    end
     rel_path = tail:match('^[^/]+/(.*)')
   end
 
