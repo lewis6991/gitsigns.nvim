@@ -31,12 +31,12 @@ local function parse_git_path(name)
   assert(proto and gitdir and tail)
   local plugin = proto:sub(1, 1):upper() .. proto:sub(2, -2)
 
-  local commit, rel_path --- @type string, string
+  local commit, rel_path --- @type string?, string
   if plugin == 'Gitsigns' then
     commit = tail:match('^(:?[^:]+):')
     rel_path = tail:match('^:?[^:]+:(.*)')
   else -- Fugitive
-    if commit:match('^[0-3]$') then
+    if commit and commit:match('^[0-3]$') then
       commit = ':' .. commit
     end
     rel_path = tail:match('^[^/]+/(.*)')
