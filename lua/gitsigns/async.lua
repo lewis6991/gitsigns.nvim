@@ -150,8 +150,17 @@ function M.wait_sync(argc, func, ...)
   return unpack(ret, 1, table.maxn(ret))
 end
 
+--- @generic R
+--- @param argc integer The number of arguments of func. Must be included.
+--- @param func fun(): R
+--- @param ... any
+--- @return R
+function M.sync(argc, func, ...)
+  return M.wait_sync(argc + 1, M.create(argc, func), ...)
+end
+
 --- Creates an async function with a callback style function.
---- @param argc number The number of arguments of func. Must be included.
+--- @param argc integer The number of arguments of func. Must be included.
 --- @param func function A callback style function to be converted. The last argument must be the callback.
 --- @return function: Returns an async function
 function M.awrap(argc, func)

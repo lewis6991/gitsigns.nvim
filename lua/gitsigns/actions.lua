@@ -222,6 +222,7 @@ local function get_hunks(bufnr, bcache, greedy, staged)
   return vim.deepcopy(bcache.hunks)
 end
 
+--- @async
 --- @param bufnr integer
 --- @param range? {[1]: integer, [2]: integer}
 --- @param greedy? boolean
@@ -859,6 +860,7 @@ local function feedkeys(keys)
   api.nvim_feedkeys(cy, 'n', false)
 end
 
+--- @async
 --- @param bufnr integer
 --- @param greedy? boolean
 --- @return Gitsigns.Hunk.Hunk? hunk
@@ -921,7 +923,7 @@ end)
 M.select_hunk = function(opts)
   local bufnr = current_buf()
   opts = opts or {}
-  local hunk = get_hunk(bufnr, nil, opts.greedy ~= false)
+  local hunk = async.sync(4, get_hunk, bufnr, nil, opts.greedy ~= false)
   if not hunk then
     return
   end
