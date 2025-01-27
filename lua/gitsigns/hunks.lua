@@ -234,7 +234,7 @@ function M.calc_signs(prev_hunk, hunk, next_hunk, min_lnum, max_lnum, untracked)
     log.eprintf('Invalid hunk with untracked=%s hunk="%s"', untracked, hunk.head)
     return {}
   end
-  min_lnum = min_lnum or 1
+  min_lnum = math.max(1, min_lnum or 1)
   max_lnum = max_lnum or math.huge
 
   if not config._new_sign_calc then
