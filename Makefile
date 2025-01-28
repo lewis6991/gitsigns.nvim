@@ -15,7 +15,7 @@ endif
 .DEFAULT_GOAL := build
 
 nvim-test:
-	git clone https://github.com/lewis6991/nvim-test
+	git clone https://github.com/dundargoc/nvim-test.git
 	nvim-test/bin/nvim-test --init
 
 .PHONY: test
