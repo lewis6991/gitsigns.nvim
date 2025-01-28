@@ -893,6 +893,15 @@ M.schema = {
   },
 }
 
+local function validate(k, v, ty)
+  if vim.fn.has('nvim-0.11') == 1 then
+    --- @diagnostic disable-next-line: redundant-parameter,param-type-mismatch
+    vim.validate(k, v, ty)
+  else
+    vim.validate({ [k] = { v, ty } })
+  end
+end
+
 --- @param config Gitsigns.Config
 local function validate_config(config)
   for k, v in
@@ -904,7 +913,7 @@ local function validate_config(config)
     else
       local ty = kschema.type
       if type(ty) == 'string' or type(ty) == 'function' then
-        vim.validate({ [k] = { v, ty } })
+        validate(k, v, ty)
       end
     end
   end
