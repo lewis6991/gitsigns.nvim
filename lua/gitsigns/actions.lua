@@ -243,12 +243,35 @@ local function get_hunk(bufnr, range, greedy, staged)
   table.sort(range)
   local top, bot = range[1], range[2]
   local hunk = Hunks.create_partial_hunk(hunks or {}, top, bot)
-  hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
-  hunk.removed.lines = vim.list_slice(
-    bcache.compare_text,
-    hunk.removed.start,
-    hunk.removed.start + hunk.removed.count - 1
-  )
+  if not hunk then
+    return
+  end
+
+  if staged then
+    local staged_top, staged_bot = top, bot
+    for _, h in ipairs(bcache.hunks) do
+      if top > h.vend then
+        staged_top = staged_top - (h.added.count - h.removed.count)
+      end
+      if bot > h.vend then
+        staged_bot = staged_bot - (h.added.count - h.removed.count)
+      end
+    end
+
+    hunk.added.lines = vim.list_slice(bcache.compare_text, staged_top, staged_bot)
+    hunk.removed.lines = vim.list_slice(
+      bcache.compare_text_head,
+      hunk.removed.start,
+      hunk.removed.start + hunk.removed.count - 1
+    )
+  else
+    hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
+    hunk.removed.lines = vim.list_slice(
+      bcache.compare_text,
+      hunk.removed.start,
+      hunk.removed.start + hunk.removed.count - 1
+    )
+  end
   return hunk
 end
 
