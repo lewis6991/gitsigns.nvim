@@ -56,7 +56,7 @@ local function command(cmd)
   helpers.api.nvim_command(cmd)
 
   -- Flaky tests, add a large delay between commands.
-  -- Flakyness is due to actions being async and problems occur when an action
+  -- Flakiness is due to actions being async and problems occur when an action
   -- is run while another action or update is running.
   -- Must wait for actions and updates to finish.
   helpers.sleep(delay)

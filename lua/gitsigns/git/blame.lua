@@ -161,7 +161,7 @@ end
 
 --- @param f fun(readline: fun(): string?))
 --- @return fun(data: string?)
-local function bufferred_line_reader(f)
+local function buffered_line_reader(f)
   --- @param data string?
   return coroutine.wrap(function(data)
     if not data then
@@ -250,7 +250,7 @@ function M.run_blame(obj, contents, lnum, revision, opts)
 
   local commits = {} --- @type table<string,Gitsigns.CommitInfo>
 
-  local reader = bufferred_line_reader(function(readline)
+  local reader = buffered_line_reader(function(readline)
     incremental_iter(readline, commits, ret)
   end)
 
