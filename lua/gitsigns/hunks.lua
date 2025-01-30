@@ -55,9 +55,10 @@ end
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @param top integer
 --- @param bot integer
---- @return Gitsigns.Hunk.Hunk
+--- @return Gitsigns.Hunk.Hunk?
 function M.create_partial_hunk(hunks, top, bot)
   local pretop, precount = top, bot - top + 1
+  local unused = 0
   for _, h in ipairs(hunks) do
     local added_in_hunk = h.added.count - h.removed.count
 
@@ -80,6 +81,9 @@ function M.create_partial_hunk(hunks, top, bot)
         -- Range within hunk
         added_in_range = added_above_bot - added_above_top
         pretop = pretop - added_above_top
+      else
+        -- No intersection
+        unused = unused + 1
       end
 
       if top > h.vend then
@@ -88,6 +92,11 @@ function M.create_partial_hunk(hunks, top, bot)
     end
 
     precount = precount - added_in_range
+  end
+
+  if unused == #hunks then
+    -- top and bot are not in any hunk
+    return
   end
 
   if precount == 0 then
