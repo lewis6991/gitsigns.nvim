@@ -246,13 +246,15 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     gitdir = git_obj.repo.gitdir,
   })
 
-  if not passed_ctx and (not util.path_exists(file) or uv.fs_stat(file).type == 'directory') then
-    dprint('Not a file')
+  if not git_obj.relpath then
+    dprint('Cannot resolve file in repo')
     return
   end
 
-  if not git_obj.relpath then
-    dprint('Cannot resolve file in repo')
+  local abs_file = git_obj.repo.toplevel .. util.path_sep .. git_obj.relpath
+
+  if util.path_exists(abs_file) then
+    dprint('Not a file ', abs_file)
     return
   end
 
