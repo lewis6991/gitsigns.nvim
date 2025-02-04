@@ -951,7 +951,11 @@ M.select_hunk = function(opts)
     return
   end
 
-  vim.cmd('normal! ' .. hunk.added.start .. 'GV' .. hunk.vend .. 'G')
+  if vim.fn.mode():find('v') ~= nil then
+    vim.cmd('normal! ' .. hunk.added.start .. 'GoV' .. hunk.vend .. 'G')
+  else
+    vim.cmd('normal! ' .. hunk.added.start .. 'GV' .. hunk.vend .. 'G')
+  end
 end
 
 --- Get hunk array for specified buffer.
