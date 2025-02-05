@@ -16,21 +16,20 @@ local dprint = log.dprint
 local dprintf = log.dprintf
 
 --- @param bufnr integer
---- @param old_relpath string
+--- @param old_relpath? string
 local function handle_moved(bufnr, old_relpath)
   local bcache = assert(cache[bufnr])
   local git_obj = bcache.git_obj
 
-  local new_name = git_obj:has_moved()
+  git_obj.orig_relpath = assert(git_obj.orig_relpath or old_relpath)
+  local new_name = git_obj.repo:rename_status()[git_obj.orig_relpath]
   if new_name then
     dprintf('File moved to %s', new_name)
     git_obj.relpath = new_name
-    if not git_obj.orig_relpath then
-      git_obj.orig_relpath = old_relpath
-    end
+    git_obj.file = git_obj.repo.toplevel .. '/' .. new_name
   elseif git_obj.orig_relpath then
     local orig_file = git_obj.repo.toplevel .. util.path_sep .. git_obj.orig_relpath
-    if not git_obj:file_info(orig_file).relpath then
+    if not git_obj.repo:file_info(orig_file, git_obj.revision) then
       return
     end
     --- File was moved in the index, but then reset

@@ -46,26 +46,23 @@ end
 --- @param base string?
 --- @return string[]
 function M:files_changed(base)
-  --- @type string[]
-  local results
   if base and base ~= ':0' then
-    results = self:command({ 'diff', '--name-status', base })
-
+    local results = self:command({ 'diff', '--name-status', base })
     for i, result in ipairs(results) do
-      results[i] = vim.split(string.gsub(result, '\t', ' '), ' ', { plain = true })[2]
+      results[i] = vim.split(result:gsub('\t', ' '), ' ', { plain = true })[2]
     end
     return results
-  else
-    results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
-
-    local ret = {} --- @type string[]
-    for _, line in ipairs(results) do
-      if line:sub(1, 2):match('^.M') then
-        ret[#ret + 1] = line:sub(4, -1)
-      end
-    end
-    return ret
   end
+
+  local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
+
+  local ret = {} --- @type string[]
+  for _, line in ipairs(results) do
+    if line:sub(1, 2):match('^.M') then
+      ret[#ret + 1] = line:sub(4, -1)
+    end
+  end
+  return ret
 end
 
 --- @param encoding string
@@ -141,8 +138,7 @@ function M.get(dir, gitdir, toplevel)
   if not repo_cache[gitdir] then
     repo_cache[gitdir] = { 1, new(info) }
   else
-    local refcount = repo_cache[gitdir][1]
-    repo_cache[gitdir][1] = refcount + 1
+    repo_cache[gitdir][1] = repo_cache[gitdir][1] + 1
   end
 
   return repo_cache[gitdir][2]
@@ -267,6 +263,201 @@ function M.get_info(cwd, gitdir, toplevel)
     abbrev_head = process_abbrev_head(gitdir_r, assert(stdout[3]), cwd),
     detached = toplevel_r and gitdir_r ~= toplevel_r .. '/.git',
   }
+end
+
+--- @class (exact) Gitsigns.Repo.LsTree.Result
+--- @field relpath string
+--- @field mode_bits? string
+--- @field object_name? string
+--- @field object_type? 'blob'|'tree'|'commit'
+
+--- @param path string
+--- @param revision string
+--- @return Gitsigns.Repo.LsTree.Result? info
+--- @return string? err
+function M:ls_tree(path, revision)
+  local results, stderr, code = self:command({
+    '-c',
+    'core.quotepath=off',
+    'ls-tree',
+    revision,
+    path,
+  }, { ignore_error = true })
+
+  if code > 0 then
+    return nil, stderr or tostring(code)
+  end
+
+  local info, relpath = unpack(vim.split(results[1], '\t'))
+  local mode_bits, object_type, object_name = unpack(vim.split(info, '%s+'))
+
+  return {
+    relpath = relpath,
+    mode_bits = mode_bits,
+    object_name = object_name,
+    object_type = object_type,
+  }
+end
+
+--- @class (exact) Gitsigns.Repo.LsFiles.Result
+--- @field relpath? string nil if file is not in working tree
+--- @field mode_bits? string
+--- @field object_name? string nil if file is untracked
+--- @field i_crlf? boolean (requires git version >= 2.9)
+--- @field w_crlf? boolean (requires git version >= 2.9)
+--- @field has_conflicts? true
+
+--- @async
+--- Get information about files in the index and the working tree
+--- @param file string
+--- @return Gitsigns.Repo.LsFiles.Result? info
+--- @return string? err
+function M:ls_files(file)
+  local has_eol = check_version(2, 9)
+
+  -- --others + --exclude-standard means ignored files won't return info, but
+  -- untracked files will. Unlike file_info_tree which won't return untracked
+  -- files.
+  local cmd = {
+    '-c',
+    'core.quotepath=off',
+    'ls-files',
+    '--stage',
+    '--others',
+    '--exclude-standard',
+  }
+
+  if has_eol then
+    cmd[#cmd + 1] = '--eol'
+  end
+
+  cmd[#cmd + 1] = file
+
+  local results, stderr, code = self:command(cmd, { ignore_error = true })
+
+  -- ignore_error for the cases when we run:
+  --    git ls-files --others exists/nonexist
+  if
+    code > 0
+    and (
+      not stderr
+      or not stderr:match('^warning: could not open directory .*: No such file or directory')
+    )
+  then
+    return nil, stderr or tostring(code)
+  end
+
+  local relpath_idx = has_eol and 2 or 1
+
+  local result = {}
+  for _, line in ipairs(results) do
+    local parts = vim.split(line, '\t')
+    if #parts > relpath_idx then -- tracked file
+      local attrs = vim.split(parts[1], '%s+')
+      local stage = tonumber(attrs[3])
+      if stage <= 1 then
+        result.mode_bits = attrs[1]
+        result.object_name = attrs[2]
+      else
+        result.has_conflicts = true
+      end
+
+      if has_eol then
+        result.relpath = parts[3]
+        local eol = vim.split(parts[2], '%s+')
+        result.i_crlf = eol[1] == 'i/crlf'
+        result.w_crlf = eol[2] == 'w/crlf'
+      else
+        result.relpath = parts[2]
+      end
+    else -- untracked file
+      result.relpath = parts[relpath_idx]
+    end
+  end
+
+  return result
+end
+
+--- @param revision? string
+--- @return boolean
+function M.from_tree(revision)
+  return revision ~= nil and not vim.startswith(revision, ':')
+end
+
+--- @async
+--- @param file string
+--- @param revision? string
+--- @return Gitsigns.Repo.LsFiles.Result? info
+--- @return string? err
+function M:file_info(file, revision)
+  if M.from_tree(revision) then
+    local info, err = self:ls_tree(file, assert(revision))
+    if err then
+      return nil, err
+    end
+
+    if info and info.object_type == 'blob' then
+      return {
+        relpath = info.relpath,
+        mode_bits = info.mode_bits,
+        object_name = info.object_name,
+      }
+    end
+  else
+    local info, err = self:ls_files(file)
+    if err then
+      return nil, err
+    end
+
+    return info
+  end
+end
+
+--- @param mode_bits string
+--- @param object string
+--- @param path string
+--- @param add? boolean
+function M:update_index(mode_bits, object, path, add)
+  local cmd = { 'update-index' }
+  if add then
+    cmd[#cmd + 1] = '--add'
+  end
+  cmd[#cmd + 1] = '--cacheinfo'
+  cmd[#cmd + 1] = ('%s,%s,%s'):format(mode_bits, object, path)
+  self:command(cmd)
+end
+
+--- @param path string
+--- @param lines string[]
+--- @return string
+function M:hash_object(path, lines)
+  -- Concatenate the lines into a single string to ensure EOL
+  -- is respected
+  local text = table.concat(lines, '\n')
+  return self:command({ 'hash-object', '-w', '--path', path, '--stdin' }, { stdin = text })[1]
+end
+
+--- @async
+--- @return string[]
+function M:rename_status()
+  local out = self:command({
+    'diff',
+    '--name-status',
+    '--find-renames',
+    '--find-copies',
+    '--cached',
+  })
+  local ret = {} --- @type table<string,string>
+  for _, l in ipairs(out) do
+    local parts = vim.split(l, '%s+')
+    if #parts == 3 then
+      local stat, orig_file, new_file = parts[1], parts[2], parts[3]
+      if vim.startswith(stat, 'R') then
+        ret[orig_file] = new_file
+      end
+    end
+  end
+  return ret
 end
 
 return M
