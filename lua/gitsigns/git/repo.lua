@@ -204,9 +204,9 @@ end
 --- @async
 --- @param cwd string
 --- @param gitdir? string
---- @param toplevel? string
+--- @param worktree? string
 --- @return Gitsigns.RepoInfo? info, string? err
-function M.get_info(cwd, gitdir, toplevel)
+function M.get_info(cwd, gitdir, worktree)
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --    https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
   local has_abs_gd = check_version(2, 13)
@@ -216,12 +216,21 @@ function M.get_info(cwd, gitdir, toplevel)
 
   local args = {}
 
-  if gitdir then
-    vim.list_extend(args, { '--git-dir', gitdir })
-  end
-
-  if toplevel then
-    vim.list_extend(args, { '--work-tree', toplevel })
+  if gitdir and worktree then
+    -- gitdir and worktree must be provided together from `man git`:
+    -- > Specifying the location of the ".git" directory using this option (or GIT_DIR environment
+    -- > variable) turns off the repository discovery that tries to find a directory with ".git"
+    -- > subdirectory (which is how the repository and the top-level of the working tree are
+    -- > discovered), and tells Git that you are at the top level of the working tree. If you are
+    -- > not at the top-level directory of the working tree, you should tell Git where the
+    -- > top-level of the working tree is, with the --work-tree=<path> option (or GIT_WORK_TREE
+    -- > environment variable)
+    vim.list_extend(args, {
+      '--git-dir',
+      gitdir,
+      '--work-tree',
+      worktree,
+    })
   end
 
   vim.list_extend(args, {
@@ -234,7 +243,7 @@ function M.get_info(cwd, gitdir, toplevel)
 
   local stdout, stderr, code = git_command(args, {
     ignore_error = true,
-    cwd = toplevel or cwd,
+    cwd = worktree or cwd,
   })
 
   -- If the repo has no commits yet, rev-parse will fail. Ignore this error.
@@ -255,6 +264,10 @@ function M.get_info(cwd, gitdir, toplevel)
 
   if not has_abs_gd then
     gitdir_r = assert(uv.fs_realpath(gitdir_r))
+  end
+
+  if gitdir and not worktree and gitdir ~= gitdir_r then
+    log.eprintf('expected gitdir to be %s, got %s', gitdir, gitdir_r)
   end
 
   return {
