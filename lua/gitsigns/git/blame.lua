@@ -220,33 +220,9 @@ function M.run_blame(obj, contents, lnum, revision, opts)
     return ret
   end
 
-  local args = { 'blame', '--incremental' }
-  if contents then
-    vim.list_extend(args, { '--contents', '-' })
-  end
-
   opts = opts or {}
 
-  if opts.ignore_whitespace then
-    args[#args + 1] = '-w'
-  end
-
-  if lnum then
-    vim.list_extend(args, { '-L', lnum .. ',+1' })
-  end
-
-  if opts.extra_opts then
-    vim.list_extend(args, opts.extra_opts)
-  end
-
   local ignore_file = obj.repo.toplevel .. '/.git-blame-ignore-revs'
-  if uv.fs_stat(ignore_file) then
-    vim.list_extend(args, { '--ignore-revs-file', ignore_file })
-  end
-
-  args[#args + 1] = revision
-  args[#args + 1] = '--'
-  args[#args + 1] = obj.file
 
   local commits = {} --- @type table<string,Gitsigns.CommitInfo>
 
@@ -261,8 +237,22 @@ function M.run_blame(obj, contents, lnum, revision, opts)
 
   local contents_str = contents and table.concat(contents, '\n') or nil
 
-  local _, stderr =
-    obj.repo:command(args, { stdin = contents_str, stdout = on_stdout, ignore_error = true })
+  local _, stderr = obj.repo:command({
+    'blame',
+    '--incremental',
+    contents and { '--contents', '-' },
+    opts.ignore_whitespace and '-w',
+    lnum and { '-L', lnum .. ',+1' },
+    opts.extra_opts,
+    uv.fs_stat(ignore_file) and { '--ignore-revs-file', ignore_file },
+    revision,
+    '--',
+    obj.file,
+  }, {
+    stdin = contents_str,
+    stdout = on_stdout,
+    ignore_error = true,
+  })
 
   if stderr then
     error_once('Error running git-blame: ' .. stderr)
