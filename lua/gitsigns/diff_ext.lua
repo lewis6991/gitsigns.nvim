@@ -3,10 +3,9 @@ local util = require('gitsigns.util')
 
 local scheduler = require('gitsigns.async').scheduler
 local config = require('gitsigns.config').config
-local git_diff = require('gitsigns.git').diff
+local git_command = require('gitsigns.git.cmd')
 
 local M = {}
--- Async function
 
 --- @param path string
 --- @param text string[]
@@ -57,7 +56,21 @@ function M.run_diff(text_cmp, text_buf)
   -- "core.safecrlf=false"' argument to git-diff.
 
   local opts = config.diff_opts
-  local out = git_diff(file_cmp, file_buf, opts.indent_heuristic, opts.algorithm)
+  local out = git_command({
+    '-c',
+    'core.safecrlf=false',
+    'diff',
+    '--color=never',
+    '--' .. (opts.indent_heuristic and '' or 'no-') .. 'indent-heuristic',
+    '--diff-algorithm=' .. opts.algorithm,
+    '--patch-with-raw',
+    '--unified=0',
+    file_cmp,
+    file_buf,
+  }, {
+    -- git-diff implies --exit-code
+    ignore_error = true,
+  })
 
   for _, line in ipairs(out) do
     if vim.startswith(line, '@@') then

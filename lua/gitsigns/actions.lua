@@ -1132,7 +1132,7 @@ end)
 local function update_buf_base(bcache, base)
   bcache.file_mode = base == 'FILE'
   if not bcache.file_mode then
-    bcache.git_obj:update_revision(base)
+    bcache.git_obj:update(base)
   end
   bcache:invalidate(true)
   update(bcache.bufnr)
