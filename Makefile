@@ -91,21 +91,23 @@ else
     LUALS_ARCH ?= x64
 endif
 
-LUALS_VERSION := 3.13.5
-LUALS_TARBALL := lua-language-server-$(LUALS_VERSION)-$(shell uname -s)-$(LUALS_ARCH).tar.gz
+LUALS_VERSION := 3.13.6
+LUALS := lua-language-server-$(LUALS_VERSION)-$(shell uname -s)-$(LUALS_ARCH)
+LUALS_TARBALL := $(LUALS).tar.gz
 LUALS_URL := https://github.com/LuaLS/lua-language-server/releases/download/$(LUALS_VERSION)/$(LUALS_TARBALL)
 
-luals:
+.PHONY: luals
+luals: $(LUALS)
+
+$(LUALS):
 	wget $(LUALS_URL)
-	mkdir luals
-	tar -xf $(LUALS_TARBALL) -C luals
+	mkdir $@
+	tar -xf $(LUALS_TARBALL) -C $@
 	rm -rf $(LUALS_TARBALL)
 
 .PHONY: luals-check
-luals-check: luals nvim-test
+luals-check: $(LUALS) nvim-test
 	VIMRUNTIME=$(XDG_DATA_HOME)/nvim-test/nvim-test-$(NVIM_TEST_VERSION)/share/nvim/runtime \
-		luals/bin/lua-language-server \
-			--check_out_path=check.json \
+		$(LUALS)/bin/lua-language-server \
 			--configpath=../.luarc.json \
 			--check=lua
-	cat check.json | $(NVIM) -l ./lualsreport.lua

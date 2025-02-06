@@ -4,6 +4,5 @@ scratch/dummy_ignored.txt
 
 nvim-test
 stylua
-luals
+lua-language-server-*
 luals_check
-/check.json
