@@ -258,6 +258,7 @@ function M.setup_gitsigns(config, on_attach)
         end
       end
       require('gitsigns').setup(config)
+      vim.o.diffopt= 'internal,filler,closeoff'
     ]],
     config,
     on_attach
