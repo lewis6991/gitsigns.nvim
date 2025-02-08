@@ -1,7 +1,7 @@
 local helpers = require('test.gs_helpers')
 
 local clear = helpers.clear
-local exec_lua = helpers.exec_lua
+local system = helpers.fn.system
 local edit = helpers.edit
 local eq = helpers.eq
 local setup_test_repo = helpers.setup_test_repo
@@ -28,10 +28,7 @@ end
 describe('gitdir_watcher', function()
   before_each(function()
     clear()
-
-    -- Make gitisigns available
-    exec_lua('package.path = ...', package.path)
-    command('cd ' .. helpers.fn.system({ 'dirname', os.tmpname() }))
+    command('cd ' .. system({ 'dirname', os.tmpname() }))
   end)
 
   after_each(function()
@@ -60,7 +57,7 @@ describe('gitdir_watcher', function()
     command('Gitsigns clear_debug')
 
     local test_file2 = test_file .. '2'
-    git({ 'mv', test_file, test_file2 })
+    git('mv', test_file, test_file2)
 
     match_dag({
       "watcher_cb(1): Git dir update: 'index.lock' { rename = true }",
@@ -86,7 +83,7 @@ describe('gitdir_watcher', function()
 
     local test_file3 = test_file .. '3'
 
-    git({ 'mv', test_file2, test_file3 })
+    git('mv', test_file2, test_file3)
 
     match_dag({
       "watcher_cb(1): Git dir update: 'index.lock' { rename = true }",
@@ -110,7 +107,7 @@ describe('gitdir_watcher', function()
 
     command('Gitsigns clear_debug')
 
-    git({ 'mv', test_file3, test_file })
+    git('mv', test_file3, test_file)
 
     match_dag({
       "watcher_cb(1): Git dir update: 'index.lock' { rename = true }",
@@ -135,8 +132,6 @@ describe('gitdir_watcher', function()
   end)
 
   it('can debounce and throttle updates per buffer', function()
-    local system = helpers.fn.system
-
     helpers.cleanup()
     system({ 'mkdir', helpers.scratch })
     helpers.git_init()
@@ -147,8 +142,8 @@ describe('gitdir_watcher', function()
     helpers.write_to_file(f1, { '1', '2', '3' })
     helpers.write_to_file(f2, { '1', '2', '3' })
 
-    git({ 'add', f1, f2 })
-    git({ 'commit', '-m', 'init commit' })
+    git('add', f1, f2)
+    git('commit', '-m', 'init commit')
 
     setup_gitsigns(test_config)
 
@@ -165,7 +160,7 @@ describe('gitdir_watcher', function()
     helpers.check({ signs = { changed = 1 } }, b1)
     helpers.check({ signs = { changed = 1 } }, b2)
 
-    git({ 'add', f1, f2 })
+    git('add', f1, f2)
 
     helpers.check({ signs = {} }, b1)
     helpers.check({ signs = {} }, b2)

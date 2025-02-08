@@ -11,7 +11,6 @@ local buf_get_var = helpers.api.nvim_buf_get_var
 local system = helpers.fn.system
 
 M.scratch = os.getenv('PJ_ROOT') .. '/scratch'
-M.gitdir = M.scratch .. '/.git'
 M.test_file = M.scratch .. '/dummy.txt'
 M.newfile = M.scratch .. '/newfile.txt'
 
@@ -60,14 +59,9 @@ local test_file_text = {
 }
 
 --- Run a git command
-local function git(args)
-  system({ 'git', '-C', M.scratch, unpack(args) })
-end
-
---- Run a git command and add a delay
-function M.git(args)
-  git(args)
-  -- helpers.sleep(10)
+--- @param ... string
+function M.git(...)
+  system({ 'git', '-C', M.scratch, ... })
 end
 
 function M.cleanup()
@@ -75,26 +69,26 @@ function M.cleanup()
 end
 
 function M.git_init()
-  git({ 'init', '-b', 'master' })
+  M.git('init', '-b', 'main')
 
   -- Always force color to test settings don't interfere with gitsigns systems
   -- commands (addresses #23)
-  git({ 'config', 'color.branch', 'always' })
-  git({ 'config', 'color.ui', 'always' })
-  git({ 'config', 'color.diff', 'always' })
-  git({ 'config', 'color.interactive', 'always' })
-  git({ 'config', 'color.status', 'always' })
-  git({ 'config', 'color.grep', 'always' })
-  git({ 'config', 'color.pager', 'true' })
-  git({ 'config', 'color.decorate', 'always' })
-  git({ 'config', 'color.showbranch', 'always' })
+  M.git('config', 'color.branch', 'always')
+  M.git('config', 'color.ui', 'always')
+  M.git('config', 'color.diff', 'always')
+  M.git('config', 'color.interactive', 'always')
+  M.git('config', 'color.status', 'always')
+  M.git('config', 'color.grep', 'always')
+  M.git('config', 'color.pager', 'true')
+  M.git('config', 'color.decorate', 'always')
+  M.git('config', 'color.showbranch', 'always')
 
-  git({ 'config', 'merge.conflictStyle', 'merge' })
+  M.git('config', 'merge.conflictStyle', 'merge')
 
-  git({ 'config', 'user.email', 'tester@com.com' })
-  git({ 'config', 'user.name', 'tester' })
+  M.git('config', 'user.email', 'tester@com.com')
+  M.git('config', 'user.name', 'tester')
 
-  git({ 'config', 'init.defaultBranch', 'master' })
+  M.git('config', 'init.defaultBranch', 'main')
 end
 
 --- Setup a basic git repository in directory `helpers.scratch` with a single file
@@ -108,10 +102,9 @@ function M.setup_test_repo(opts)
   system({ 'touch', M.test_file })
   M.write_to_file(M.test_file, text)
   if not (opts and opts.no_add) then
-    git({ 'add', M.test_file })
-    git({ 'commit', '-m', 'init commit' })
+    M.git('add', M.test_file)
+    M.git('commit', '-m', 'init commit')
   end
-  -- helpers.sleep(20)
 end
 
 --- @param cond fun()
@@ -120,6 +113,7 @@ function M.expectf(cond, interval)
   local duration = 0
   interval = interval or 1
   while duration < timeout do
+    --- @type boolean, boolean?
     local ok, ret = pcall(cond)
     if ok and (ret == nil or ret == true) then
       return
@@ -131,6 +125,7 @@ function M.expectf(cond, interval)
   cond()
 end
 
+--- @param path string
 function M.edit(path)
   helpers.api.nvim_command('edit ' .. path)
 end
@@ -182,13 +177,17 @@ function M.match_lines(lines, spec)
 
   if i < #spec + 1 then
     local unmatched_msg = table.concat(
+      --- @param v any
+      --- @return string
       vim.tbl_map(function(v)
-        return string.format('    - %s', v.text or v)
+        return ('    - %s'):format(v.text or v)
       end, spec),
       '\n'
     )
 
     local lines_msg = table.concat(
+      --- @param v any
+      --- @return string
       vim.tbl_map(function(v)
         return string.format('    - %s', v)
       end, lines),
@@ -240,53 +239,37 @@ function M.match_debug_messages(spec)
   end)
 end
 
+--- @param config? table
+--- @param on_attach? boolean
 function M.setup_gitsigns(config, on_attach)
-  exec_lua(
-    [[
-      local config, on_attach = ...
-      if config and config.on_attach then
-        local maps = config.on_attach
-        config.on_attach = function(bufnr)
-          for _, map in ipairs(maps) do
-            vim.keymap.set(map[1], map[2], map[3], {buffer = bufnr})
-          end
+  exec_lua(function(path, config0, on_attach0)
+    package.path = path
+    if config0 and config0.on_attach then
+      local maps = config0.on_attach --[[@as [string,string,string][] ]]
+      config0.on_attach = function(bufnr)
+        for _, map in ipairs(maps) do
+          vim.keymap.set(map[1], map[2], map[3], { buffer = bufnr })
         end
       end
-      if on_attach then
-        config.on_attach = function()
-          return false
-        end
+    end
+    if on_attach0 then
+      config0.on_attach = function()
+        return false
       end
-      require('gitsigns').setup(config)
-      vim.o.diffopt= 'internal,filler,closeoff'
-    ]],
-    config,
-    on_attach
-  )
-end
-
---- @param bufnr integer
---- @param x string
---- @return any
-local function buf_var(bufnr, x)
-  return exec_lua(
-    [[
-    local bufnr, x = ...
-    return vim.b[bufnr][x]
-  ]],
-    bufnr,
-    x
-  )
+    end
+    require('gitsigns').setup(config0)
+    vim.o.diffopt = 'internal,filler,closeoff'
+  end, package.path, config, on_attach)
 end
 
 --- @param status table<string,string|integer>
 --- @param bufnr integer
 local function check_status(status, bufnr)
   if next(status) == nil then
-    eq(vim.NIL, buf_var(bufnr, 'gitsigns_head'), 'b:gitsigns_head is unexpectedly set')
+    eq(false, pcall(buf_get_var, bufnr, 'gitsigns_head'), 'b:gitsigns_head is unexpectedly set')
     eq(
-      vim.NIL,
-      buf_var(bufnr, 'gitsigns_status_dict'),
+      false,
+      pcall(buf_get_var, bufnr, 'gitsigns_status_dict'),
       'b:gitsigns_status_dict is unexpectedly set'
     )
     return
@@ -344,16 +327,13 @@ function M.check(attrs, bufnr)
     return
   end
 
-  local status = attrs.status
-  local signs = attrs.signs
-
   M.expectf(function()
-    if status then
-      check_status(status, bufnr)
+    if attrs.status then
+      check_status(attrs.status, bufnr)
     end
 
-    if signs then
-      check_signs(signs, bufnr)
+    if attrs.signs then
+      check_signs(attrs.signs, bufnr)
     end
   end)
 end

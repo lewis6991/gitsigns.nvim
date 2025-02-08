@@ -64,9 +64,10 @@ end
 
 local function retry(f)
   local orig_delay = delay
-  local ok, err
+  local ok, err --- @type boolean, string?
 
   for _ = 1, 20 do
+    --- @type boolean, string?
     ok, err = pcall(f)
     if ok then
       return
@@ -89,15 +90,10 @@ describe('actions', function()
     end)
   end
 
-  local config --- @type Gitsigns.Config
-
   before_each(function()
     clear()
-    -- Make gitisigns available
-    exec_lua('package.path = ...', package.path)
-    config = vim.deepcopy(test_config)
     command('cd ' .. system({ 'dirname', os.tmpname() }))
-    setup_gitsigns(config)
+    setup_gitsigns(test_config)
   end)
 
   it('works with commands', function()
@@ -106,19 +102,19 @@ describe('actions', function()
 
     feed('jjjccEDIT<esc>')
     check({
-      status = { head = 'master', added = 0, changed = 1, removed = 0 },
+      status = { head = 'main', added = 0, changed = 1, removed = 0 },
       signs = { changed = 1 },
     })
 
     command('Gitsigns stage_hunk')
     check({
-      status = { head = 'master', added = 0, changed = 0, removed = 0 },
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
       signs = {},
     })
 
     command('Gitsigns undo_stage_hunk')
     check({
-      status = { head = 'master', added = 0, changed = 1, removed = 0 },
+      status = { head = 'main', added = 0, changed = 1, removed = 0 },
       signs = { changed = 1 },
     })
 
@@ -126,25 +122,25 @@ describe('actions', function()
     feed('ggccThat<esc>')
 
     check({
-      status = { head = 'master', added = 0, changed = 2, removed = 0 },
+      status = { head = 'main', added = 0, changed = 2, removed = 0 },
       signs = { changed = 2 },
     })
 
     command('Gitsigns stage_buffer')
     check({
-      status = { head = 'master', added = 0, changed = 0, removed = 0 },
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
       signs = {},
     })
 
     command('Gitsigns reset_buffer_index')
     check({
-      status = { head = 'master', added = 0, changed = 2, removed = 0 },
+      status = { head = 'main', added = 0, changed = 2, removed = 0 },
       signs = { changed = 2 },
     })
 
     command('Gitsigns reset_hunk')
     check({
-      status = { head = 'master', added = 0, changed = 1, removed = 0 },
+      status = { head = 'main', added = 0, changed = 1, removed = 0 },
       signs = { changed = 1 },
     })
   end)
@@ -156,7 +152,7 @@ describe('actions', function()
     end)
 
     before_each(function()
-      helpers.git({ 'reset', '--hard' })
+      helpers.git('reset', '--hard')
       edit(test_file)
     end)
 
@@ -346,14 +342,14 @@ describe('actions', function()
     local newfile = helpers.newfile
     exec_lua([[vim.g.editorconfig = false]])
     system("printf 'This is a file with no nl at eof' > " .. newfile)
-    helpers.git({ 'add', newfile })
-    helpers.git({ 'commit', '-m', 'commit on main' })
+    helpers.git('add', newfile)
+    helpers.git('commit', '-m', 'commit on main')
 
     edit(newfile)
-    check({ status = { head = 'master', added = 0, changed = 0, removed = 0 } })
+    check({ status = { head = 'main', added = 0, changed = 0, removed = 0 } })
     feed('x')
-    check({ status = { head = 'master', added = 0, changed = 1, removed = 0 } })
+    check({ status = { head = 'main', added = 0, changed = 1, removed = 0 } })
     command('Gitsigns stage_hunk')
-    check({ status = { head = 'master', added = 0, changed = 0, removed = 0 } })
+    check({ status = { head = 'main', added = 0, changed = 0, removed = 0 } })
   end)
 end)
