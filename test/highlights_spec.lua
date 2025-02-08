@@ -46,9 +46,6 @@ describe('highlights', function()
 
     screen:set_default_attr_ids(default_attrs)
 
-    -- Make gitisigns available
-    exec_lua('package.path = ...', package.path)
-    exec_lua('gs = require("gitsigns")')
     config = vim.deepcopy(test_config)
   end)
 

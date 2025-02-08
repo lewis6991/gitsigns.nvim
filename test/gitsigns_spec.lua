@@ -1,5 +1,3 @@
--- vim: foldnestmax=5 foldminlines=1
-
 local Screen = require('nvim-test.screen')
 local helpers = require('test.gs_helpers')
 
@@ -68,8 +66,6 @@ describe('gitsigns (with screen)', function()
 
     screen:set_default_attr_ids(default_attrs)
 
-    -- Make gitsigns available
-    exec_lua('package.path = ...', package.path)
     config = vim.deepcopy(test_config)
     command('cd ' .. system({ 'dirname', os.tmpname() }))
   end)
@@ -112,7 +108,7 @@ describe('gitsigns (with screen)', function()
       signs = { untracked = nvim_ver == 9 and 8 or 7 },
     })
 
-    git({ 'add', test_file })
+    git('add', test_file)
 
     check({
       status = { head = '', added = 0, changed = 0, removed = 0 },
@@ -200,7 +196,7 @@ describe('gitsigns (with screen)', function()
         n('attach(1): Cannot resolve file in repo'),
       })
 
-      check({ status = { head = 'master' } })
+      check({ status = { head = 'main' } })
     end)
 
     it("doesn't attach to non-existent files", function()
@@ -219,7 +215,7 @@ describe('gitsigns (with screen)', function()
         n('attach(1): Not a file'),
       })
 
-      check({ status = { head = 'master' } })
+      check({ status = { head = 'main' } })
     end)
 
     it("doesn't attach to non-existent files with non-existent sub-dirs", function()
@@ -272,15 +268,15 @@ describe('gitsigns (with screen)', function()
       setup_test_repo()
       exec_lua([[vim.g.editorconfig = false]])
 
-      git({ 'config', 'core.autocrlf', autocrlf })
+      git('config', 'core.autocrlf', autocrlf)
       if file_ending == 'dos' then
         system("printf 'This\r\nis\r\na\r\nwindows\r\nfile\r\n' > " .. newfile)
       else
         system("printf 'This\nis\na\nwindows\nfile\n' > " .. newfile)
       end
 
-      git({ 'add', newfile })
-      git({ 'commit', '-m', 'commit on main' })
+      git('add', newfile)
+      git('commit', '-m', 'commit on main')
 
       edit(newfile)
       feed('gg')
@@ -361,21 +357,21 @@ describe('gitsigns (with screen)', function()
       feed('oEDIT<esc>')
       command('write')
 
-      git({ 'add', test_file })
-      git({ 'commit', '-m', 'commit on main' })
+      git('add', test_file)
+      git('commit', '-m', 'commit on main')
 
       -- Don't setup gitsigns until the repo has two commits
       setup_gitsigns(config)
 
       check({
-        status = { head = 'master', added = 0, changed = 0, removed = 0 },
+        status = { head = 'main', added = 0, changed = 0, removed = 0 },
         signs = {},
       })
 
       command('Gitsigns change_base ~')
 
       check({
-        status = { head = 'master', added = 1, changed = 0, removed = 0 },
+        status = { head = 'main', added = 1, changed = 0, removed = 0 },
         signs = { added = 1 },
       })
     end)
@@ -406,7 +402,7 @@ describe('gitsigns (with screen)', function()
         feed('ddx') -- Change delete
 
         check({
-          status = { head = 'master', added = 1, changed = 2, removed = 3 },
+          status = { head = 'main', added = 1, changed = 2, removed = 3 },
           signs = { topdelete = 1, changedelete = 1, added = 1, delete = 1, changed = 1 },
         })
       end)
@@ -482,7 +478,7 @@ describe('gitsigns (with screen)', function()
         match_debug_messages(messages)
 
         check({
-          status = { head = 'master', added = 1, changed = 0, removed = 0 },
+          status = { head = 'main', added = 1, changed = 0, removed = 0 },
           signs = { untracked = 1 },
         })
       end)
@@ -492,19 +488,19 @@ describe('gitsigns (with screen)', function()
 
         edit(newfile)
         feed('iline<esc>')
-        check({ status = { head = 'master' } })
+        check({ status = { head = 'main' } })
 
         command('write')
 
         check({
-          status = { head = 'master', added = 1, changed = 0, removed = 0 },
+          status = { head = 'main', added = 1, changed = 0, removed = 0 },
           signs = { untracked = 1 },
         })
 
         feed('mhs') -- Stage the file (add file to index)
 
         check({
-          status = { head = 'master', added = 0, changed = 0, removed = 0 },
+          status = { head = 'main', added = 0, changed = 0, removed = 0 },
           signs = {},
         })
       end)
@@ -518,21 +514,21 @@ describe('gitsigns (with screen)', function()
         command('write')
 
         check({
-          status = { head = 'master', added = 1, changed = 0, removed = 0 },
+          status = { head = 'main', added = 1, changed = 0, removed = 0 },
           signs = { untracked = 1 },
         })
 
-        git({ 'add', newfile })
+        git('add', newfile)
 
         check({
-          status = { head = 'master', added = 0, changed = 0, removed = 0 },
+          status = { head = 'main', added = 0, changed = 0, removed = 0 },
           signs = {},
         })
 
-        git({ 'reset' })
+        git('reset')
 
         check({
-          status = { head = 'master', added = 1, changed = 0, removed = 0 },
+          status = { head = 'main', added = 1, changed = 0, removed = 0 },
           signs = { untracked = 1 },
         })
       end)
@@ -553,7 +549,7 @@ describe('gitsigns (with screen)', function()
         feed('ddx') -- Change delete
 
         check({
-          status = { head = 'master', added = 1, changed = 2, removed = 3 },
+          status = { head = 'main', added = 1, changed = 2, removed = 3 },
           signs = { topdelete = 1, added = 1, changed = 1, delete = 1, changedelete = 1 },
         })
 
@@ -568,18 +564,18 @@ describe('gitsigns (with screen)', function()
 
         -- Edit a file and commit it on main branch
         edit(test_file)
-        check({ status = { head = 'master', added = 0, changed = 0, removed = 0 } })
+        check({ status = { head = 'main', added = 0, changed = 0, removed = 0 } })
         feed('iedit')
-        check({ status = { head = 'master', added = 0, changed = 1, removed = 0 } })
+        check({ status = { head = 'main', added = 0, changed = 1, removed = 0 } })
         command('write')
         command('bwipe')
 
-        git({ 'add', test_file })
-        git({ 'commit', '-m', 'commit on main' })
+        git('add', test_file)
+        git('commit', '-m', 'commit on main')
 
         -- Create a branch, remove last commit, edit file again
-        git({ 'checkout', '-B', 'abranch' })
-        git({ 'reset', '--hard', 'HEAD~1' })
+        git('checkout', '-B', 'abranch')
+        git('reset', '--hard', 'HEAD~1')
 
         edit(test_file)
         check({ status = { head = 'abranch', added = 0, changed = 0, removed = 0 } })
@@ -588,9 +584,9 @@ describe('gitsigns (with screen)', function()
         command('write')
         command('bwipe')
 
-        git({ 'add', test_file })
-        git({ 'commit', '-m', 'commit on branch' })
-        git({ 'rebase', 'master' })
+        git('add', test_file)
+        git('commit', '-m', 'commit on branch')
+        git('rebase', 'main')
 
         -- test_file should have a conflict
         edit(test_file)
@@ -618,15 +614,15 @@ describe('gitsigns (with screen)', function()
         edit(spacefile)
 
         check({
-          status = { head = 'master', added = 3, removed = 0, changed = 0 },
+          status = { head = 'main', added = 3, removed = 0, changed = 0 },
           signs = { untracked = 3 },
         })
 
-        git({ 'add', spacefile })
+        git('add', spacefile)
         edit(spacefile)
 
         check({
-          status = { head = 'master', added = 0, removed = 0, changed = 0 },
+          status = { head = 'main', added = 0, removed = 0, changed = 0 },
           signs = {},
         })
       end)
@@ -671,7 +667,7 @@ describe('gitsigns (with screen)', function()
 
   it('show short SHA when detached head', function()
     setup_test_repo()
-    git({ 'checkout', '--detach' })
+    git('checkout', '--detach')
 
     -- Disable debug_mode so the sha is calculated
     config.debug_mode = false
@@ -705,8 +701,8 @@ describe('gitsigns (with screen)', function()
 
     write_to_file(uni_filename, { 'Lorem ipsum' })
 
-    git({ 'add', uni_filename })
-    git({ 'commit', '-m', 'another commit' })
+    git('add', uni_filename)
+    git('commit', '-m', 'another commit')
 
     edit(uni_filename)
 
@@ -743,7 +739,7 @@ describe('gitsigns (with screen)', function()
     edit(test_file)
     feed('dd')
 
-    local function check_screen()
+    local function check_screen(unchanged)
       if fn.has('nvim-0.11') > 0 then
         -- TODO(lewis6991): ???
         screen:expect({
@@ -753,6 +749,7 @@ describe('gitsigns (with screen)', function()
           {1:  }file              |
                               |
         ]],
+          unchanged = unchanged,
         })
       else
         screen:expect({
@@ -762,6 +759,7 @@ describe('gitsigns (with screen)', function()
           {1:  }file              |
           {1:  }used              |
         ]],
+          unchanged = unchanged,
         })
       end
     end
@@ -770,12 +768,12 @@ describe('gitsigns (with screen)', function()
 
     -- Write over the text with itself. This will remove all the signs but the
     -- calculated hunks won't change.
-    exec_lua([[
+    exec_lua(function()
       local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)
       vim.api.nvim_buf_set_lines(0, 0, -1, true, text)
-    ]])
+    end)
 
-    check_screen()
+    check_screen(true)
   end)
 end)
 
@@ -784,9 +782,6 @@ describe('gitsigns', function()
 
   before_each(function()
     clear()
-
-    -- Make gitisigns available
-    exec_lua('package.path = ...', package.path)
     config = vim.deepcopy(test_config)
     command('cd ' .. system({ 'dirname', os.tmpname() }))
   end)
@@ -803,13 +798,13 @@ describe('gitsigns', function()
     local path2 = subdir .. '/cargo.toml'
 
     write_to_file(path1, { 'some text' })
-    git({ 'add', path1 })
-    git({ 'commit', '-m', 'add cargo' })
+    git('add', path1)
+    git('commit', '-m', 'add cargo')
 
     -- move file and stage move
     system({ 'mkdir', subdir })
     system({ 'mv', path1, path2 })
-    git({ 'add', path1, path2 })
+    git('add', path1, path2)
 
     config.base = 'HEAD'
     setup_gitsigns(config)
