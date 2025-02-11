@@ -273,7 +273,7 @@ end
 local function pmap(mode, lhs, cb, opts)
   opts.expr = true
 
-  vim.keymap.set(mode , lhs, function()
+  vim.keymap.set(mode, lhs, function()
     vim.schedule(function()
       cb()
     end)
