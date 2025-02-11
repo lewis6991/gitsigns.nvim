@@ -266,6 +266,25 @@ local function menu(name, items)
   end
 end
 
+--- @param mode string
+--- @param lhs string
+--- @param cb fun()
+--- @param opts vim.keymap.set.Opts
+local function pmap(mode, lhs, cb, opts)
+  opts.expr = true
+
+  vim.keymap.set(mode , lhs, function()
+    vim.schedule(function()
+      cb()
+    end)
+    if vim.fn.pumvisible() == 0 then
+      return '<nop>'
+    else
+      return '<esc>'
+    end
+  end, opts)
+end
+
 --- @async
 function M.blame()
   local __FUNC__ = 'blame'
@@ -339,28 +358,28 @@ function M.blame()
     buffer = blm_bufnr,
   })
 
-  vim.keymap.set('n', 'r', function()
+  pmap('n', 'r', function()
     reblame(blame, win, bcache.git_obj.revision)
   end, {
     desc = 'Reblame at commit',
     buffer = blm_bufnr,
   })
 
-  vim.keymap.set('n', 'R', function()
+  pmap('n', 'R', function()
     reblame(blame, win, bcache.git_obj.revision, true)
   end, {
     desc = 'Reblame at commit parent',
     buffer = blm_bufnr,
   })
 
-  vim.keymap.set('n', 's', function()
+  pmap('n', 's', function()
     show_commit(blm_win, 'vsplit', bcache)
   end, {
     desc = 'Show commit in a vertical split',
     buffer = blm_bufnr,
   })
 
-  vim.keymap.set('n', 'S', function()
+  pmap('n', 'S', function()
     show_commit(blm_win, 'tabnew', bcache)
   end, {
     desc = 'Show commit in a new tab',
