@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.1](https://github.com/lewis6991/gitsigns.nvim/compare/v1.0.0...v1.0.1) (2025-02-15)
+
+
+### Bug Fixes
+
+* **blame:** fix popup menu shortcut mappings ([420b199](https://github.com/lewis6991/gitsigns.nvim/commit/420b19971c22ba7558dfd39ec1c1c2735c7db93f)), closes [#1215](https://github.com/lewis6991/gitsigns.nvim/issues/1215)
+* **current_line_blame:** last line show not committed ([8b00147](https://github.com/lewis6991/gitsigns.nvim/commit/8b00147519d6f8353867d5d0b55f587306b0cfb6)), closes [#1213](https://github.com/lewis6991/gitsigns.nvim/issues/1213)
+* stylua ([2bc3b47](https://github.com/lewis6991/gitsigns.nvim/commit/2bc3b472bbc2484214549af4d9f38c127b886a55))
+
 ## [1.0.0](https://github.com/lewis6991/gitsigns.nvim/compare/v0.9.0...v1.0.0) (2025-02-07)
 
 
