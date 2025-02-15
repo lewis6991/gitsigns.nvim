@@ -71,9 +71,8 @@ local function add_bom(x, encoding)
 end
 
 --- @param bufnr integer
---- @param noendofline? boolean
 --- @return string[]
-function M.buf_lines(bufnr, noendofline)
+function M.buf_lines(bufnr)
   -- nvim_buf_get_lines strips carriage returns if fileformat==dos
   local buftext = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
@@ -85,7 +84,7 @@ function M.buf_lines(bufnr, noendofline)
     end
   end
 
-  if not noendofline and vim.bo[bufnr].endofline then
+  if vim.bo[bufnr].endofline then
     -- Add CR to the last line
     if dos then
       buftext[#buftext] = buftext[#buftext] .. '\r'
