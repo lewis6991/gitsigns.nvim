@@ -108,7 +108,7 @@ local setup = util.once(function()
         return
       end
       bcache:invalidate(true)
-      async.run(function()
+      async.arun(function()
         manager.update(buf)
       end)
     end,
@@ -235,7 +235,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     return
   end
 
-  async.scheduler()
+  async.schedule()
   if not api.nvim_buf_is_valid(cbuf) then
     return
   end
@@ -263,7 +263,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   -- On windows os.tmpname() crashes in callback threads so initialise this
   -- variable on the main thread.
-  async.scheduler()
+  async.schedule()
   if not api.nvim_buf_is_valid(cbuf) then
     return
   end

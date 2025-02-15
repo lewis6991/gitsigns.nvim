@@ -49,7 +49,7 @@ local function set_version()
 
   --- @type vim.SystemCompleted
   local obj = asystem({ 'git', '--version' })
-  async.scheduler()
+  async.schedule()
 
   local line = vim.split(obj.stdout or '', '\n')[1]
   if not line then

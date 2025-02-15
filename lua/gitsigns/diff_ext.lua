@@ -1,7 +1,7 @@
 local Hunks = require('gitsigns.hunks')
 local util = require('gitsigns.util')
 
-local scheduler = require('gitsigns.async').scheduler
+local scheduler = require('gitsigns.async').schedule
 local config = require('gitsigns.config').config
 local git_command = require('gitsigns.git.cmd')
 

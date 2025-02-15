@@ -155,7 +155,7 @@ end
 --- Update function, must be called in async context
 --- @param bufnr integer
 local function update0(bufnr)
-  async.scheduler()
+  async.schedule()
   if not api.nvim_buf_is_valid(bufnr) then
     return
   end

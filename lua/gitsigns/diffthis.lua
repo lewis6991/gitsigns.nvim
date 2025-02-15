@@ -28,7 +28,7 @@ local function bufread(bufnr, dbufnr, base)
     if err then
       error(err, 2)
     end
-    async.scheduler()
+    async.schedule()
     if not api.nvim_buf_is_valid(bufnr) then
       return
     end
@@ -53,12 +53,12 @@ end
 --- @param dbufnr integer
 --- @param base string?
 --- @param _callback? fun()
-local bufwrite = async.create(3, function(bufnr, dbufnr, base, _callback)
+local bufwrite = async.async(function(bufnr, dbufnr, base, _callback)
   local bcache = assert(cache[bufnr])
   local buftext = util.buf_lines(dbufnr)
   base = util.norm_base(base)
   bcache.git_obj:stage_lines(buftext)
-  async.scheduler()
+  async.schedule()
   if not api.nvim_buf_is_valid(bufnr) then
     return
   end
@@ -93,7 +93,7 @@ local function create_revision_buf(bufnr, base)
   local ok, err = pcall(bufread, bufnr, dbuf, base)
   if not ok then
     message.error(err --[[@as string]])
-    async.scheduler()
+    async.schedule()
     api.nvim_buf_delete(dbuf, { force = true })
     return
   end
@@ -106,7 +106,7 @@ local function create_revision_buf(bufnr, base)
       group = 'gitsigns',
       buffer = dbuf,
       callback = function()
-        async.run(bufread, bufnr, dbuf, base)
+        async.arun(bufread, bufnr, dbuf, base)
       end,
     })
 

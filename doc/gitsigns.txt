@@ -141,7 +141,7 @@ detach({bufnr})                                            *gitsigns.detach()*
 detach_all()                                           *gitsigns.detach_all()*
                 Detach Gitsigns from all buffers it is attached to.
 
-refresh()                                                 *gitsigns.refresh()*
+refresh({callback?})                                      *gitsigns.refresh()*
                 Refresh all buffers.
 
                 Attributes: ~
@@ -357,7 +357,7 @@ select_hunk({opts})                                   *gitsigns.select_hunk()*
                              Select all contiguous hunks. Only useful if 'diff_opts'
                              contains `linematch`. Defaults to `true`.
 
-preview_hunk_inline()                         *gitsigns.preview_hunk_inline()*
+preview_hunk_inline({callback?})              *gitsigns.preview_hunk_inline()*
                 Preview the hunk at the cursor position inline in the buffer.
 
 preview_hunk()                                       *gitsigns.preview_hunk()*
@@ -423,7 +423,7 @@ nav_hunk({direction}, {opts}, {callback?})                 *gitsigns.nav_hunk()*
                                 • {count}: (integer)
                                   Number of times to advance. Defaults to |v:count1|.
 
-reset_buffer_index()                           *gitsigns.reset_buffer_index()*
+reset_buffer_index({callback?})                *gitsigns.reset_buffer_index()*
                 Unstage all hunks for current buffer in the index. Note:
                 Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
                 stages, this runs an `git reset` on current buffers file.
@@ -431,13 +431,13 @@ reset_buffer_index()                           *gitsigns.reset_buffer_index()*
                 Attributes: ~
                     {async}
 
-stage_buffer()                                       *gitsigns.stage_buffer()*
+stage_buffer({callback?})                            *gitsigns.stage_buffer()*
                 Stage all hunks in current buffer.
 
                 Attributes: ~
                     {async}
 
-undo_stage_hunk()                                 *gitsigns.undo_stage_hunk()*
+undo_stage_hunk({callback?})                      *gitsigns.undo_stage_hunk()*
                 DEPRECATED: use |gitsigns.stage_hunk()| on staged signs
 
                 Undo the last call of stage_hunk().

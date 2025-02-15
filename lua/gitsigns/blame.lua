@@ -177,7 +177,7 @@ local function reblame(blame, win, revision, parent)
       if not ok then
         error('Timeout waiting for attach')
       end
-      async.run(M.blame)
+      async.arun(M.blame)
     end)
   )
 end
@@ -185,11 +185,11 @@ end
 --- @param win integer
 --- @param open 'vsplit'|'tabnew'
 --- @param bcache Gitsigns.CacheEntry
-local show_commit = async.create(3, function(win, open, bcache)
+local show_commit = async.async(function(win, open, bcache)
   local cursor = api.nvim_win_get_cursor(win)[1]
   local sha = bcache.blame[cursor].commit.sha
   local res = bcache.git_obj.repo:command({ 'show', sha })
-  async.scheduler()
+  async.schedule()
   local buffer_name = bcache:get_rev_bufname(sha, true)
   local commit_buf = nil
   -- find preexisting commit buffer or create a new one

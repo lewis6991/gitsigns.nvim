@@ -209,7 +209,7 @@ function M.get_info(cwd, gitdir, worktree)
   local has_abs_gd = check_version(2, 13)
 
   -- Wait for internal scheduler to settle before running command (#215)
-  async.scheduler()
+  async.schedule()
 
   -- gitdir and worktree must be provided together from `man git`:
   -- > Specifying the location of the ".git" directory using this option (or GIT_DIR environment
