@@ -20,7 +20,7 @@ local function get_gitdir_and_head()
 
   -- Run on the main loop to avoid:
   --   https://github.com/LazyVim/LazyVim/discussions/3407#discussioncomment-9622211
-  async.scheduler()
+  async.schedule()
 
   -- Look in the cache first
   for _, bcache in pairs(require('gitsigns.cache').cache) do
@@ -37,7 +37,7 @@ local function get_gitdir_and_head()
   end
 end
 
-local update_cwd_head = async.create(function()
+local update_cwd_head = async.async(function()
   local cwd = uv.cwd()
 
   if not cwd then
@@ -55,7 +55,7 @@ local update_cwd_head = async.create(function()
   end
 
   local gitdir, head = get_gitdir_and_head()
-  async.scheduler()
+  async.schedule()
 
   api.nvim_exec_autocmds('User', {
     pattern = 'GitSignsUpdate',
@@ -75,7 +75,7 @@ local update_cwd_head = async.create(function()
     -- TODO(lewis6991): (#1027) Running `fs_event:stop()` -> `fs_event:start()`
     -- in the same loop event, on Windows, causes Nvim to hang on quit.
     if vim.fn.has('win32') then
-      async.scheduler()
+      async.schedule()
     end
   else
     cwd_watcher = assert(uv.new_fs_event())
@@ -90,10 +90,10 @@ local update_cwd_head = async.create(function()
 
   local update_head = debounce_trailing(
     100,
-    async.create(function()
+    async.async(function()
       local git = require('gitsigns.git')
       local new_head = git.Repo.get_info(cwd).abbrev_head
-      async.scheduler()
+      async.schedule()
       vim.g.gitsigns_head = new_head
     end)
   )
@@ -102,7 +102,7 @@ local update_cwd_head = async.create(function()
   cwd_watcher:start(
     towatch,
     {},
-    async.create(function(err)
+    async.async(function(err)
       local __FUNC__ = 'cwd_watcher_cb'
       if err then
         log.dprintf('Git dir update error: %s', err)

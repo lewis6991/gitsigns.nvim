@@ -426,7 +426,7 @@ end
 ---
 --- Attributes: ~
 ---     {async}
-M.undo_stage_hunk = async.create(function()
+M.undo_stage_hunk = async.create(0, function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
@@ -457,7 +457,7 @@ end)
 ---
 --- Attributes: ~
 ---     {async}
-M.stage_buffer = async.create(function()
+M.stage_buffer = async.create(0, function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
@@ -501,7 +501,7 @@ end)
 ---
 --- Attributes: ~
 ---     {async}
-M.reset_buffer_index = async.create(function()
+M.reset_buffer_index = async.create(0, function()
   local bufnr = current_buf()
   local bcache = cache[bufnr]
   if not bcache then
@@ -901,7 +901,7 @@ local function get_hunk_with_staged(bufnr, greedy)
 end
 
 --- Preview the hunk at the cursor position inline in the buffer.
-M.preview_hunk_inline = async.create(function()
+M.preview_hunk_inline = async.create(0, function()
   local bufnr = current_buf()
 
   local hunk, staged = get_hunk_with_staged(bufnr, true)
@@ -946,7 +946,14 @@ end)
 M.select_hunk = function(opts)
   local bufnr = current_buf()
   opts = opts or {}
-  local hunk = async.sync(4, get_hunk, bufnr, nil, opts.greedy ~= false)
+
+  local hunk --- @type Gitsigns.Hunk.Hunk?
+  async
+    .arun(function()
+      hunk = get_hunk(bufnr, nil, opts.greedy ~= false)
+    end)
+    :wait()
+
   if not hunk then
     return
   end
@@ -1375,7 +1382,7 @@ local function buildqflist(target)
             obj = ':0:' .. f
           end
           local a = r:get_show_text(obj)
-          async.scheduler()
+          async.schedule()
           local hunks = run_diff(a, util.file_lines(f_abs))
           hunks_to_qflist(f_abs, hunks, qflist)
         end
@@ -1420,7 +1427,7 @@ M.setqflist = async.create(2, function(target, opts)
     items = buildqflist(target),
     title = 'Hunks',
   }
-  async.scheduler()
+  async.schedule()
   if opts.use_location_list then
     local nr = opts.nr or 0
     vim.fn.setloclist(nr, {}, ' ', qfopts)
@@ -1524,7 +1531,7 @@ end
 ---
 --- Attributes: ~
 ---     {async}
-M.refresh = async.create(function()
+M.refresh = async.create(0, function()
   manager.reset_signs()
   require('gitsigns.highlight').setup_highlights()
   require('gitsigns.current_line_blame').setup()

@@ -436,7 +436,7 @@ end
 --- @param check_compare_text? boolean
 --- @return boolean
 function M.schedule(bufnr, check_compare_text)
-  async.scheduler()
+  async.schedule()
   if not api.nvim_buf_is_valid(bufnr) then
     log.dprint('Buffer not valid, aborting')
     return false

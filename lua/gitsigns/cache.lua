@@ -101,7 +101,7 @@ function CacheEntry:run_blame(lnum, opts)
     local lnum0 = vim.api.nvim_buf_line_count(bufnr) > BLAME_THRESHOLD_LEN and lnum or nil
     -- TODO(lewis6991): Cancel blame on changedtick
     local blame = self.git_obj:run_blame(contents, lnum0, self.git_obj.revision, opts)
-    async.scheduler()
+    async.schedule()
     if not vim.api.nvim_buf_is_valid(bufnr) then
       return {}
     end
