@@ -135,7 +135,7 @@ local function render(blame, win, main_win, buf_sha)
     if commit_lines[i] and commit_lines[i + 1] then
       api.nvim_buf_set_extmark(bufnr, ns, i - 1, 0, {
         virt_lines = {
-          { { chars.last, hash_color }, { ' ' }, { blame[i].commit.summary, 'Comment' } },
+          { { chars.last, hash_color }, { ' ' }, { blame_info.commit.summary, 'Comment' } },
         },
       })
 

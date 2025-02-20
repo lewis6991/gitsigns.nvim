@@ -149,7 +149,8 @@ function CacheEntry:get_blame(lnum, opts)
     if lnum and Hunks.find_hunk(lnum, self.hunks) then
       --- Bypass running blame (which can be expensive) if we know lnum is in a hunk
       local Blame = require('gitsigns.git.blame')
-      blame[lnum] = Blame.get_blame_nc(self.git_obj.relpath, lnum)
+      local relpath = assert(self.git_obj.relpath)
+      blame[lnum] = Blame.get_blame_nc(relpath, lnum)
     else
       -- Refresh/update cache
       local b, full = self:run_blame(lnum, opts)
@@ -178,7 +179,7 @@ M.cache = {}
 
 --- @param bufnr integer
 function M.destroy(bufnr)
-  M.cache[bufnr]:destroy()
+  assert(M.cache[bufnr]):destroy()
   M.cache[bufnr] = nil
 end
 

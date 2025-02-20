@@ -126,8 +126,8 @@ local function create_revision_buf(bufnr, base)
 end
 
 --- @class Gitsigns.DiffthisOpts
---- @field vertical boolean
---- @field split string
+--- @field vertical? boolean
+--- @field split? string
 
 --- @async
 --- @param base string?

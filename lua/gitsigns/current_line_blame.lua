@@ -220,7 +220,9 @@ function M.setup()
   end
 
   local opts = config.current_line_blame_opts
-  M.update = debounce.debounce_trailing(opts.delay, update)
+  -- TODO(lewis6991): opts.delay is always defined as the schema set
+  -- deep_extend=true
+  M.update = debounce.debounce_trailing(assert(opts.delay), update)
 
   -- show current buffer line blame immediately
   M.update(api.nvim_get_current_buf())

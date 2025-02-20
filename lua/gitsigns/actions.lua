@@ -170,6 +170,7 @@ local function get_cursor_hunk(bufnr, hunks)
   return Hunks.find_hunk(lnum, hunks)
 end
 
+--- @async
 --- @param bufnr integer
 local function update(bufnr)
   manager.update(bufnr)
@@ -224,7 +225,7 @@ end
 
 --- @async
 --- @param bufnr integer
---- @param range? {[1]: integer, [2]: integer}
+--- @param range? [integer,integer]
 --- @param greedy? boolean
 --- @param staged? boolean
 --- @return Gitsigns.Hunk.Hunk?
@@ -249,7 +250,7 @@ local function get_hunk(bufnr, range, greedy, staged)
 
   if staged then
     local staged_top, staged_bot = top, bot
-    for _, h in ipairs(bcache.hunks) do
+    for _, h in ipairs(assert(bcache.hunks)) do
       if top > h.vend then
         staged_top = staged_top - (h.added.count - h.removed.count)
       end
@@ -592,6 +593,7 @@ local function has_preview_inline(bufnr)
   return #api.nvim_buf_get_extmarks(bufnr, ns_inline, 0, -1, { limit = 1 }) > 0
 end
 
+--- @async
 --- @param bufnr integer
 --- @param target 'unstaged'|'staged'|'all'
 --- @param greedy boolean
@@ -719,6 +721,7 @@ end
 ---     • {count}: (integer)
 ---       Number of times to advance. Defaults to |v:count1|.
 M.nav_hunk = async.create(2, function(direction, opts)
+  --- @cast opts Gitsigns.NavOpts?
   nav_hunk(direction, opts)
 end)
 
@@ -860,6 +863,7 @@ M.preview_hunk = noautocmd(function()
     return
   end
 
+  --- @type Gitsigns.LineSpec
   local preview_linespec = {
     { { 'Hunk <hunk_no> of <num_hunks>', 'Title' } },
     unpack(linespec_for_hunk(hunk, vim.bo[bufnr].fileformat)),
@@ -1002,6 +1006,7 @@ M.get_hunks = function(bufnr)
   return ret
 end
 
+--- @async
 --- @param repo Gitsigns.Repo
 --- @param info Gitsigns.BlameInfoPublic
 --- @return Gitsigns.Hunk.Hunk?, integer?, integer
@@ -1138,6 +1143,7 @@ M.blame = async.create(0, function()
   return require('gitsigns.blame').blame()
 end)
 
+--- @async
 --- @param bcache Gitsigns.CacheEntry
 --- @param base string?
 local function update_buf_base(bcache, base)
@@ -1324,7 +1330,7 @@ CP.show = complete_heads
 
 --- @param buf_or_filename string|integer
 --- @param hunks Gitsigns.Hunk.Hunk[]
---- @param qflist table[]?
+--- @param qflist table[]
 local function hunks_to_qflist(buf_or_filename, hunks, qflist)
   for i, hunk in ipairs(hunks) do
     qflist[#qflist + 1] = {
@@ -1336,6 +1342,7 @@ local function hunks_to_qflist(buf_or_filename, hunks, qflist)
   end
 end
 
+--- @async
 --- @param target 'all'|'attached'|integer|nil
 --- @return table[]?
 local function buildqflist(target)
@@ -1353,7 +1360,7 @@ local function buildqflist(target)
     hunks_to_qflist(bufnr, cache[bufnr].hunks, qflist)
   elseif target == 'attached' then
     for bufnr, bcache in pairs(cache) do
-      hunks_to_qflist(bufnr, bcache.hunks, qflist)
+      hunks_to_qflist(bufnr, assert(bcache.hunks), qflist)
     end
   elseif target == 'all' then
     local repos = {} --- @type table<string,Gitsigns.Repo>

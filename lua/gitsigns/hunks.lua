@@ -376,7 +376,7 @@ function M.get_summary(hunks)
 end
 
 --- @param lnum integer
---- @param hunks Gitsigns.Hunk.Hunk[]
+--- @param hunks Gitsigns.Hunk.Hunk[]?
 --- @return Gitsigns.Hunk.Hunk?, integer?
 function M.find_hunk(lnum, hunks)
   for i, hunk in ipairs(hunks or {}) do

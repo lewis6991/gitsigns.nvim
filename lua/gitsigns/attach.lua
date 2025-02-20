@@ -61,7 +61,7 @@ end
 --- @param bufnr integer
 local function on_reload(_, bufnr)
   local __FUNC__ = 'on_reload'
-  cache[bufnr]:invalidate()
+  assert(cache[bufnr]):invalidate()
   dprint('Reload')
   manager.update_debounced(bufnr)
 end
@@ -169,6 +169,7 @@ local function get_buf_context(bufnr)
   }
 end
 
+--- @async
 --- Ensure attaches cannot be interleaved for the same buffer.
 --- Since attaches are asynchronous we need to make sure an attach isn't
 --- performed whilst another one is in progress.

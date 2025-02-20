@@ -46,7 +46,7 @@ end
 local Task = {}
 Task.__index = Task
 
---- @private
+--- @package
 --- @param func function
 --- @return Gitsigns.async.Task
 function Task._new(func)
