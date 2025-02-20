@@ -80,6 +80,9 @@ function Task:_completed()
   return (self._err or self._result) ~= nil
 end
 
+-- Use max 32-bit signed int value to avoid overflow on 32-bit systems.
+local MAX_TIMEOUT = 2 ^ 31 - 1
+
 --- Synchronously wait (protected) for a task to finish (blocking)
 ---
 --- If an error is returned, `Task:traceback()` can be used to get the
@@ -96,7 +99,7 @@ end
 --- @return boolean status
 --- @return any ... result or error
 function Task:pwait(timeout)
-  local done = vim.wait(timeout or math.huge, function()
+  local done = vim.wait(timeout or MAX_TIMEOUT, function()
     -- Note we use self:_completed() instead of self:await() to avoid creating a
     -- callback. This avoids having to cleanup/unregister any callback in the
     -- case of a timeout.
