@@ -367,11 +367,19 @@ function M.blame()
     buffer = blm_bufnr,
   })
 
+  vim.keymap.set('n', 'q', function()
+    api.nvim_buf_delete(blm_bufnr, { force = true })
+  end, {
+    desc = 'Closes the blame buffer',
+    buffer = blm_bufnr,
+  })
+
   menu('GitsignsBlame', {
     { 'Reblame at commit', 'r' },
     { 'Reblame at commit parent', 'R' },
     { 'Show commit (vsplit)', 's' },
     { '            (tab)', 'S' },
+    { 'Close blame', 'q' },
   })
 
   local group = api.nvim_create_augroup('GitsignsBlame', {})
