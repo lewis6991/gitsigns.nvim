@@ -5,12 +5,18 @@ local M = {
   CacheEntry = {},
 }
 
+--- @class (exact) Gitsigns.CacheEntry.Blame
+--- @field [integer] Gitsigns.BlameInfo?
+--- @field max_time? integer
+--- @field min_time? integer
+
 --- @class (exact) Gitsigns.CacheEntry
 --- @field bufnr              integer
 --- @field file               string
 --- @field compare_text?      string[]
 --- @field hunks?             Gitsigns.Hunk.Hunk[]
 --- @field force_next_update? boolean
+--- @field has_heat_map_marks? boolean
 --- @field file_mode?         boolean
 ---
 --- @field compare_text_head? string[]
@@ -19,7 +25,8 @@ local M = {
 --- @field staged_diffs?      Gitsigns.Hunk.Hunk[]
 --- @field gitdir_watcher?    uv.uv_fs_event_t
 --- @field git_obj            Gitsigns.GitObj
---- @field blame?             table<integer,Gitsigns.BlameInfo?>
+--- @field blame?             Gitsigns.CacheEntry.Blame
+--- @field commits?           table<string,Gitsigns.CommitInfo?>
 ---
 --- @field update_lock?       true Update in progress
 local CacheEntry = M.CacheEntry
@@ -43,6 +50,7 @@ function CacheEntry:invalidate(all)
   self.hunks = nil
   self.hunks_staged = nil
   self.blame = nil
+  self.commits = nil
   if all then
     -- The below doesn't need to be invalidated
     -- if the buffer changes
@@ -82,6 +90,7 @@ local BLAME_THRESHOLD_LEN = 10000
 --- @param lnum? integer
 --- @param opts? Gitsigns.BlameOpts
 --- @return table<integer,Gitsigns.BlameInfo?>
+--- @return table<string,Gitsigns.CommitInfo?>
 --- @return boolean? full
 function CacheEntry:run_blame(lnum, opts)
   local bufnr = self.bufnr
@@ -100,13 +109,13 @@ function CacheEntry:run_blame(lnum, opts)
     local tick = vim.b[bufnr].changedtick
     local lnum0 = vim.api.nvim_buf_line_count(bufnr) > BLAME_THRESHOLD_LEN and lnum or nil
     -- TODO(lewis6991): Cancel blame on changedtick
-    local blame = self.git_obj:run_blame(contents, lnum0, self.git_obj.revision, opts)
+    local blame, commits = self.git_obj:run_blame(contents, lnum0, self.git_obj.revision, opts)
     async.schedule()
     if not vim.api.nvim_buf_is_valid(bufnr) then
-      return {}
+      return {}, {}
     end
     if vim.b[bufnr].changedtick == tick then
-      return blame, lnum0 == nil
+      return blame, commits, lnum0 == nil
     end
   end
 end
@@ -153,7 +162,8 @@ function CacheEntry:get_blame(lnum, opts)
       blame[lnum] = Blame.get_blame_nc(relpath, lnum)
     else
       -- Refresh/update cache
-      local b, full = self:run_blame(lnum, opts)
+      local b, commits, full = self:run_blame(lnum, opts)
+      self.commits = vim.tbl_extend('force', self.commits or {}, commits)
       if lnum and not full then
         blame[lnum] = b[lnum]
       else
@@ -164,6 +174,25 @@ function CacheEntry:get_blame(lnum, opts)
   end
 
   return blame[lnum]
+end
+
+--- @async
+function CacheEntry:update_blame_times()
+  self:get_blame()
+  local blame = assert(self.blame)
+
+  if blame.max_time and blame.min_time then
+    return
+  end
+
+  local min_time = math.huge
+  for _, c in pairs(assert(self.commits)) do
+    min_time = math.min(min_time, c.author_time)
+  end
+
+  blame.min_time = min_time
+  --- @diagnostic disable-next-line: undefined-field
+  blame.max_time = vim.uv.clock_gettime('realtime').sec
 end
 
 function CacheEntry:destroy()
