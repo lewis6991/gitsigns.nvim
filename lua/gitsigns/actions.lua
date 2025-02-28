@@ -115,7 +115,7 @@ M.toggle_word_diff = function(value)
     config.word_diff = not config.word_diff
   end
   -- Don't use refresh() to avoid flicker
-  util.redraw({ buf = 0, range = { vim.fn.line('w0') - 1, vim.fn.line('w$') } })
+  util.redraw({ range = { 0, -1 } })
   return config.word_diff
 end
 
@@ -148,6 +148,23 @@ M.toggle_deleted = function(value)
   end
   M.refresh()
   return config.show_deleted
+end
+
+--- Toggle |gitsigns-config-heat_map|
+---
+--- @param value boolean|nil Value to set toggle. If `nil`
+---     the toggle value is inverted.
+--- @return boolean : Current value of |gitsigns-config-heat_map|
+M.toggle_heatmap = function(value)
+  if value ~= nil then
+    config.heat_map = value
+  else
+    config.heat_map = not config.heat_map
+  end
+
+  M.refresh()
+
+  return config.heat_map
 end
 
 --- @param bufnr? integer
@@ -1545,6 +1562,9 @@ M.refresh = async.create(0, function()
   for k, v in pairs(cache) do
     v:invalidate(true)
     manager.update(k)
+  end
+  for k in pairs(cache) do
+    util.redraw({ buf = k, range = { 0, -1 } })
   end
 end)
 
