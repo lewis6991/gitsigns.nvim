@@ -307,4 +307,36 @@ function M.setup()
   })
 end
 
+do --- temperature highlight
+  local temp_colors = {} --- @type table<integer,string>
+  local normal_bg --- @type [integer,integer,integer]?
+
+  --- @param min integer
+  --- @param max integer
+  --- @param t integer
+  --- @param alpha number 0-1
+  --- @param fg? boolean
+  --- @return string
+  function M.get_temp_hl(min, max, t, alpha, fg)
+    local Color = require('gitsigns.color')
+
+    local normalized_t = (t - min) / (math.max(max, t) - min)
+    local raw_temp_color = Color.temp(normalized_t)
+
+    normal_bg = normal_bg or Color.int_to_rgb(assert(api.nvim_get_hl(0, { name = 'Normal' }).bg))
+
+    local color = Color.rgb_to_int(Color.blend(raw_temp_color, normal_bg, alpha))
+
+    if temp_colors[color] then
+      return temp_colors[color]
+    end
+
+    local fgs = fg and 'fg' or 'bg'
+    local hl_name = ('GitSignsColorTemp.%s.%d'):format(fgs, color)
+    api.nvim_set_hl(0, hl_name, { [fgs] = color })
+    temp_colors[color] = hl_name
+    return hl_name
+  end
+end
+
 return M

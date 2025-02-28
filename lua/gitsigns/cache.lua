@@ -9,6 +9,11 @@ local M = {
   CacheEntry = {},
 }
 
+--- @class (exact) Gitsigns.CacheEntry.Blame
+--- @field entries table<integer,Gitsigns.BlameInfo?>
+--- @field max_time? integer
+--- @field min_time? integer
+
 --- @class (exact) Gitsigns.CacheEntry
 --- @field bufnr              integer
 --- @field file               string
@@ -23,17 +28,22 @@ local M = {
 --- @field staged_diffs       Gitsigns.Hunk.Hunk[]
 --- @field gitdir_watcher?    uv.uv_fs_event_t
 --- @field git_obj            Gitsigns.GitObj
---- @field blame?             table<integer,Gitsigns.BlameInfo?>
+--- @field blame?             Gitsigns.CacheEntry.Blame
+--- @field commits?           table<string,Gitsigns.CommitInfo?>
 ---
 --- @field update_lock?       true Update in progress
 local CacheEntry = M.CacheEntry
 
-function CacheEntry:get_rev_bufname(rev, nofile)
+--- @param rev? string
+--- @param filename? false|string
+--- @return string
+function CacheEntry:get_rev_bufname(rev, filename)
   rev = rev or self.git_obj.revision or ':0'
-  if nofile then
-    return string.format('gitsigns://%s//%s', self.git_obj.repo.gitdir, rev)
+  local gitdir = self.git_obj.repo.gitdir
+  if filename == false then
+    return ('gitsigns://%s//%s'):format(gitdir, rev)
   end
-  return string.format('gitsigns://%s//%s:%s', self.git_obj.repo.gitdir, rev, self.git_obj.relpath)
+  return ('gitsigns://%s//%s:%s'):format(gitdir, rev, filename or self.git_obj.relpath)
 end
 
 function CacheEntry:locked()
@@ -47,6 +57,7 @@ function CacheEntry:invalidate(all)
   self.hunks = nil
   self.hunks_staged = nil
   self.blame = nil
+  self.commits = nil
   if all then
     -- The below doesn't need to be invalidated
     -- if the buffer changes
@@ -92,6 +103,7 @@ local BLAME_THRESHOLD_LEN = 10000
 --- @param lnum? integer
 --- @param opts? Gitsigns.BlameOpts
 --- @return table<integer,Gitsigns.BlameInfo?>
+--- @return table<string,Gitsigns.CommitInfo?>
 --- @return boolean? full
 function CacheEntry:run_blame(lnum, opts)
   local bufnr = self.bufnr
@@ -110,13 +122,13 @@ function CacheEntry:run_blame(lnum, opts)
     local tick = vim.b[bufnr].changedtick
     local lnum0 = api.nvim_buf_line_count(bufnr) > BLAME_THRESHOLD_LEN and lnum or nil
     -- TODO(lewis6991): Cancel blame on changedtick
-    local blame = self.git_obj:run_blame(contents, lnum0, self.git_obj.revision, opts)
+    local blame, commits = self.git_obj:run_blame(contents, lnum0, self.git_obj.revision, opts)
     async.schedule()
     if not api.nvim_buf_is_valid(bufnr) then
-      return {}
+      return {}, {}
     end
     if vim.b[bufnr].changedtick == tick then
-      return blame, lnum0 == nil
+      return blame, commits, lnum0 == nil
     end
   end
   error('unreachable')
@@ -132,12 +144,12 @@ function CacheEntry:blame_valid(lnum)
   end
 
   if lnum then
-    return blame[lnum] ~= nil
+    return blame.entries[lnum] ~= nil
   end
 
   -- Need to check we have blame info for all lines
   for i = 1, api.nvim_buf_line_count(self.bufnr) do
-    if not blame[i] then
+    if not blame.entries[i] then
       return false
     end
   end
@@ -155,26 +167,29 @@ function CacheEntry:get_blame(lnum, opts)
 
   if not blame or not self:blame_valid(lnum) then
     self:wait_for_hunks()
-    blame = blame or {}
+    blame = blame or { entries = {} }
     local Hunks = require('gitsigns.hunks')
     if lnum and Hunks.find_hunk(lnum, self.hunks) then
       --- Bypass running blame (which can be expensive) if we know lnum is in a hunk
       local Blame = require('gitsigns.git.blame')
       local relpath = assert(self.git_obj.relpath)
-      blame[lnum] = Blame.get_blame_nc(relpath, lnum)
+      local info = Blame.get_blame_nc(relpath, lnum)
+      blame.entries[lnum] = info
+      blame.max_time = info.commit.author_time
     else
       -- Refresh/update cache
-      local b, full = self:run_blame(lnum, opts)
+      local b, commits, full = self:run_blame(lnum, opts)
+      self.commits = vim.tbl_extend('force', self.commits or {}, commits)
       if lnum and not full then
-        blame[lnum] = b[lnum]
+        blame.entries[lnum] = b[lnum]
       else
-        blame = b
+        blame.entries = b
       end
     end
     self.blame = blame
   end
 
-  return blame[lnum]
+  return blame.entries[lnum]
 end
 
 --- @async
@@ -295,6 +310,35 @@ function CacheEntry:get_hunk(range, greedy, staged)
       vim.list_slice(compare_text, hunk.removed.start, hunk.removed.start + hunk.removed.count - 1)
   end
   return hunk
+end
+
+function CacheEntry:get_blame_times()
+  local blame = assert(self.blame)
+
+  if blame.max_time and blame.min_time then
+    return blame.min_time, blame.max_time
+  end
+
+  local min_time = math.huge --[[@as integer]]
+  for _, c in pairs(assert(self.commits)) do
+    min_time = math.min(min_time, c.author_time)
+  end
+
+  blame.min_time = min_time
+
+  -- If the buffer can be edited, then always set the max time to now.
+  -- For read-only buffers, set the max time to the latest commit time.
+  if vim.bo[self.bufnr].modifiable then
+    blame.max_time = os.time()
+  else
+    local max_time = 0 --[[@as integer]]
+    for _, c in pairs(assert(self.commits)) do
+      max_time = math.max(max_time, c.author_time)
+    end
+    blame.max_time = max_time
+  end
+
+  return blame.min_time, blame.max_time
 end
 
 function CacheEntry:destroy()

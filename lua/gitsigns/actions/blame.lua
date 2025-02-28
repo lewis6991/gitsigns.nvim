@@ -3,6 +3,8 @@ local cache = require('gitsigns.cache').cache
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
 
+local get_temp_hl = require('gitsigns.highlight').get_temp_hl
+
 local api = vim.api
 
 local hash_colors = {} --- @type table<integer,string>
@@ -20,6 +22,20 @@ local ns_hl = api.nvim_create_namespace('gitsigns_blame_win_hl')
 local function mod(x)
   local y = assert(tonumber(x, 16))
   return math.min(0xdf, 0x20 + math.floor((y * 0x10 + (15 - y)) * 0.75))
+end
+
+--- Highlight a line in the blame window
+--- @param bufnr integer
+--- @param nsl integer
+--- @param lnum integer
+--- @param hl_group string
+local function hl_line(bufnr, nsl, lnum, hl_group)
+  api.nvim_buf_set_extmark(bufnr, nsl, lnum - 1, 0, {
+    end_row = lnum,
+    hl_eol = true,
+    end_col = 0,
+    hl_group = hl_group,
+  })
 end
 
 --- Taken from vim-fugitive
@@ -47,8 +63,7 @@ end
 ---@param text string
 ---@return string
 local function lalign(amount, text)
-  --- @diagnostic disable-next-line: missing-parameter
-  local len = vim.str_utfindex(text)
+  local len = vim.str_utfindex(text, 'utf-8')
   return text .. string.rep(' ', math.max(0, amount - len))
 end
 
@@ -61,38 +76,44 @@ local chars = {
 
 local M = {}
 
---- @param blame table<integer,Gitsigns.BlameInfo?>
+--- @param blame Gitsigns.CacheEntry.Blame
 --- @param win integer
 --- @param main_win integer
 --- @param buf_sha? string
+--- @return table<integer,true> commit_lines
 local function render(blame, win, main_win, buf_sha)
   local max_author_len = 0
+  local entries = blame.entries
 
-  for _, blame_info in pairs(blame) do
-    --- @diagnostic disable-next-line: missing-parameter
-    max_author_len = math.max(max_author_len, (vim.str_utfindex(blame_info.commit.author)))
+  for _, b in pairs(entries) do
+    max_author_len = math.max(max_author_len, (vim.str_utfindex(b.commit.author, 'utf-8')))
   end
 
   local lines = {} --- @type string[]
   local last_sha --- @type string?
   local cnt = 0
   local commit_lines = {} --- @type table<integer,true>
-  for i, hl in pairs(blame) do
-    local sha = hl.commit.abbrev_sha
-    local next_sha = blame[i + 1] and blame[i + 1].commit.abbrev_sha or nil
+
+  for i, b in pairs(entries) do
+    local commit = b.commit
+    local sha = commit.abbrev_sha
+    local next_sha = entries[i + 1] and entries[i + 1].commit.abbrev_sha or nil
     if sha == last_sha then
       cnt = cnt + 1
       local c = sha == next_sha and chars.mid or chars.last
-      lines[i] = cnt == 1 and string.format('%s %s', c, hl.commit.summary) or c
+      lines[i] = cnt == 1 and ('%s %s'):format(c, commit.summary) or c
+      if commit_lines[i - 1] then
+        assert(lines[i - 1], 'Previous line should exist')
+        lines[i - 1] = chars.first .. lines[i - 1]:sub(#chars.single + 1)
+      end
     else
       cnt = 0
       commit_lines[i] = true
-      lines[i] = string.format(
-        '%s %s %s %s',
-        chars.first,
+      lines[i] = ('%s %s %s %s'):format(
+        chars.single,
         sha,
-        lalign(max_author_len, hl.commit.author),
-        util.expand_format('<author_time>', hl.commit)
+        lalign(max_author_len, commit.author),
+        util.expand_format('<author_time>', commit)
       )
     end
     last_sha = sha
@@ -105,23 +126,28 @@ local function render(blame, win, main_win, buf_sha)
   local main_buf = api.nvim_win_get_buf(main_win)
 
   api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+  local min_time, max_time = assert(cache[main_buf]):get_blame_times()
 
   -- Apply highlights
-  for i, blame_info in ipairs(blame) do
-    local hash_color = get_hash_color(blame_info.commit.abbrev_sha)
+  for i, blame_info in ipairs(entries) do
+    local hash_hl = get_hash_color(blame_info.commit.abbrev_sha)
 
     api.nvim_buf_set_extmark(bufnr, ns, i - 1, 0, {
       end_col = commit_lines[i] and 12 or 1,
-      hl_group = hash_color,
+      hl_group = hash_hl,
     })
 
-    if commit_lines[i] then
-      local width = #(assert(lines[i]))
-      api.nvim_buf_set_extmark(bufnr, ns, i - 1, width - 10, {
-        end_col = width,
-        hl_group = 'Title',
-      })
-    else
+    api.nvim_buf_set_extmark(bufnr, ns, i - 1, 0, {
+      virt_text_win_col = win_width,
+      virt_text = {
+        {
+          '┃',
+          get_temp_hl(min_time, max_time, blame_info.commit.author_time, 0.5, true),
+        },
+      },
+    })
+
+    if not commit_lines[i] then
       api.nvim_buf_set_extmark(bufnr, ns, i - 1, 2, {
         end_row = i,
         end_col = 0,
@@ -130,35 +156,21 @@ local function render(blame, win, main_win, buf_sha)
     end
 
     if buf_sha == blame_info.commit.sha then
-      api.nvim_buf_set_extmark(bufnr, ns, i - 1, 0, {
-        line_hl_group = '@markup.italic',
-      })
-    end
-
-    if commit_lines[i] and commit_lines[i + 1] then
-      api.nvim_buf_set_extmark(bufnr, ns, i - 1, 0, {
-        virt_lines = {
-          { { chars.last, hash_color }, { ' ' }, { blame_info.commit.summary, 'Comment' } },
-        },
-      })
-
-      local fillchar = string.rep(vim.opt.fillchars:get().diff or '-', 1000)
-
-      api.nvim_buf_set_extmark(main_buf, ns, i - 1, 0, {
-        virt_lines = { { { fillchar, 'Comment' } } },
-        virt_lines_leftcol = true,
-      })
+      hl_line(bufnr, ns, i, '@markup.italic')
     end
   end
+
+  return commit_lines
 end
 
+--- @async
 --- @param blame table<integer,Gitsigns.BlameInfo?>
 --- @param win integer
 --- @param revision? string
 --- @param parent? boolean
 local function reblame(blame, win, revision, parent)
   local blm_win = api.nvim_get_current_win()
-  local lnum = unpack(api.nvim_win_get_cursor(blm_win))
+  local lnum = api.nvim_win_get_cursor(blm_win)[1]
   local sha = assert(blame[lnum]).commit.sha
   if parent then
     sha = sha .. '^'
@@ -170,19 +182,12 @@ local function reblame(blame, win, revision, parent)
   vim.cmd.quit()
   api.nvim_set_current_win(win)
 
-  require('gitsigns').show(
-    sha,
-    vim.schedule_wrap(function()
-      local bufnr = api.nvim_get_current_buf()
-      local ok = vim.wait(1000, function()
-        return cache[bufnr] ~= nil
-      end)
-      if not ok then
-        error('Timeout waiting for attach')
-      end
-      async.run(M.blame):raise_on_error()
-    end)
-  )
+  local did_attach = require('gitsigns.actions.diffthis').show(nil, sha)
+  if not did_attach then
+    return
+  end
+  async.schedule()
+  M.blame()
 end
 
 --- @async
@@ -193,7 +198,7 @@ end
 local function show_commit(win, bwin, open, bcache)
   local cursor = api.nvim_win_get_cursor(bwin)[1]
   local blame = assert(bcache.blame)
-  local sha = assert(blame[cursor]).commit.sha
+  local sha = assert(blame.entries[cursor]).commit.sha
   api.nvim_set_current_win(win)
   require('gitsigns.actions.show_commit')(sha, open)
 end
@@ -211,7 +216,7 @@ local function sync_cursors(augroup, wins)
       group = augroup,
       callback = function()
         if api.nvim_win_is_valid(w) then
-          cursor_save = unpack(api.nvim_win_get_cursor(w))
+          cursor_save = api.nvim_win_get_cursor(w)[1]
         end
       end,
     })
@@ -251,6 +256,60 @@ local function menu(name, items)
     local cmd = string.format('nmenu <silent> ]%s.%s %s', name, lhs, action)
 
     vim.cmd(cmd)
+  end
+end
+
+--- @param bufnr integer
+--- @param blm_win integer
+--- @param blame table<integer,Gitsigns.BlameInfo?>
+--- @param commit_lines table<integer,true>
+local function on_cursor_moved(bufnr, blm_win, blame, commit_lines)
+  local blm_bufnr = api.nvim_get_current_buf()
+  local lnum = api.nvim_win_get_cursor(blm_win)[1]
+  local cur_sha = assert(blame[lnum]).commit.abbrev_sha
+  for i, info in pairs(blame) do
+    if info.commit.abbrev_sha == cur_sha then
+      hl_line(blm_bufnr, ns_hl, i, 'CursorLine')
+      hl_line(blm_bufnr, ns_hl, i, '@markup.strong')
+      hl_line(bufnr, ns_hl, i, 'CursorLine')
+    end
+  end
+
+  if commit_lines[lnum] and commit_lines[lnum + 1] then
+    local blame_info = assert(blame[lnum])
+    local hash_hl = get_hash_color(blame_info.commit.abbrev_sha)
+    api.nvim_buf_set_extmark(blm_bufnr, ns_hl, lnum - 1, 0, {
+      virt_text = { { chars.first, hash_hl } },
+      virt_text_pos = 'overlay',
+    })
+    api.nvim_buf_set_extmark(blm_bufnr, ns_hl, lnum - 1, 0, {
+      virt_lines = {
+        { { chars.last, hash_hl }, { ' ' }, { blame_info.commit.summary, 'Comment' } },
+      },
+    })
+
+    local fillchar = string.rep(vim.opt.fillchars:get().diff or '-', 1000)
+
+    api.nvim_buf_set_extmark(bufnr, ns_hl, lnum - 1, 0, {
+      virt_lines = { { { fillchar, 'Comment' } } },
+      virt_lines_leftcol = true,
+    })
+  end
+end
+
+--- @async
+--- @param bufnr integer
+--- @param blm_win integer
+--- @param blame table<integer,Gitsigns.BlameInfo?>
+local function diff(bufnr, blm_win, blame)
+  local lnum = api.nvim_win_get_cursor(blm_win)[1]
+  local info = assert(blame[lnum])
+
+  vim.cmd.tabnew()
+  api.nvim_set_current_buf(bufnr)
+  require('gitsigns.actions.diffthis').show(bufnr, info.commit.sha, info.filename)
+  if info.previous_sha then
+    require('gitsigns.actions').diffthis(info.previous_sha)
   end
 end
 
@@ -296,7 +355,7 @@ function M.blame()
 
   local revision = bcache.git_obj.revision
 
-  render(blame, blm_win, win, revision)
+  local commit_lines = render(blame, blm_win, win, revision)
 
   local blm_bo = vim.bo[blm_bufnr]
   blm_bo.buftype = 'nofile'
@@ -346,14 +405,21 @@ function M.blame()
   })
 
   pmap('n', 'r', function()
-    reblame(blame, win, bcache.git_obj.revision)
+    async.run(reblame, blame.entries, win, bcache.git_obj.revision):raise_on_error()
   end, {
     desc = 'Reblame at commit',
     buffer = blm_bufnr,
   })
 
+  pmap('n', 'd', function()
+    async.run(diff, bufnr, blm_win, blame.entries):raise_on_error()
+  end, {
+    desc = 'Diff (tab)',
+    buffer = blm_bufnr,
+  })
+
   pmap('n', 'R', function()
-    reblame(blame, win, bcache.git_obj.revision, true)
+    async.run(reblame, blame.entries, win, bcache.git_obj.revision, true):raise_on_error()
   end, {
     desc = 'Reblame at commit parent',
     buffer = blm_bufnr,
@@ -376,6 +442,7 @@ function M.blame()
   menu('GitsignsBlame', {
     { 'Reblame at commit', 'r' },
     { 'Reblame at commit parent', 'R' },
+    { 'Diff (tab)', 'd' },
     { 'Show commit (vsplit)', 's' },
     { '            (tab)', 'S' },
   })
@@ -396,15 +463,7 @@ function M.blame()
     buffer = blm_bufnr,
     group = group,
     callback = function()
-      local cursor = unpack(api.nvim_win_get_cursor(blm_win))
-      local cur_sha = assert(blame[cursor]).commit.abbrev_sha
-      for i, info in pairs(blame) do
-        if info.commit.abbrev_sha == cur_sha then
-          api.nvim_buf_set_extmark(blm_bufnr, ns_hl, i - 1, 0, {
-            line_hl_group = '@markup.strong',
-          })
-        end
-      end
+      on_cursor_moved(bufnr, blm_win, blame.entries, commit_lines)
     end,
   })
 

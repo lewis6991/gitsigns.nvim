@@ -25,7 +25,6 @@
     "ignoreDir": [
       ".luarocks",
       "deps"
-    ],
-    "enableReindex": true
+    ]
   }
 }

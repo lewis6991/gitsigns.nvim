@@ -202,7 +202,7 @@ show_commit({revision}, {open}, {callback?})              *gitsigns.show_commit(
                     {revision?} (string?): (default: 'HEAD')
                     {open?}     ('vsplit'|'tabnew'):
 
-show({revision}, {callback})                                 *gitsigns.show()*
+show({revision}, {callback?})                                *gitsigns.show()*
                 Show revision {base} of the current file, if it is given, or
                 with the currently set base (index by default).
 
@@ -224,10 +224,9 @@ show({revision}, {callback})                                 *gitsigns.show()*
                     {async}
 
                 Parameters: ~
-                    {revision}  (string?):
-                    {callback?} (fun()):
+                    {revision} (string?):
 
-diffthis({base}, {opts})                                 *gitsigns.diffthis()*
+diffthis({base}, {opts}, {callback?})                    *gitsigns.diffthis()*
                 Perform a |vimdiff| on the given file with {base} if it is
                 given, or with the currently set base (index by default).
 
