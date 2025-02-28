@@ -18,7 +18,7 @@ return function(base, open)
 
   local res = bcache.git_obj.repo:command({ 'show', base })
   async.schedule()
-  local buffer_name = bcache:get_rev_bufname(base, true)
+  local buffer_name = bcache:get_rev_bufname(base, false)
   local commit_buf = nil
   -- find preexisting commit buffer or create a new one
   for _, buf in ipairs(api.nvim_list_bufs()) do

@@ -16,7 +16,8 @@ local M = {}
 --- @param bufnr integer
 --- @param dbufnr integer
 --- @param base string?
-local function bufread(bufnr, dbufnr, base)
+--- @param relpath string?
+local function bufread(bufnr, dbufnr, base, relpath)
   local bcache = assert(cache[bufnr])
   base = util.norm_base(base)
   local text --- @type string[]
@@ -24,7 +25,7 @@ local function bufread(bufnr, dbufnr, base)
     text = assert(bcache.compare_text)
   else
     local err
-    text, err = bcache.git_obj:get_show_text(base)
+    text, err = bcache.git_obj:get_show_text(base, relpath)
     if err then
       error(err, 2)
     end
@@ -75,13 +76,14 @@ end
 --- Create a gitsigns buffer for a certain revision of a file
 --- @param bufnr integer
 --- @param base string?
---- @return string? buf Buffer name
+--- @param relpath string?
+--- @return string? bufname Buffer name
 --- @return integer? bufnr Buffer number
-local function create_revision_buf(bufnr, base)
+local function create_revision_buf(bufnr, base, relpath)
   local bcache = assert(cache[bufnr])
   base = util.norm_base(base)
 
-  local bufname = bcache:get_rev_bufname(base)
+  local bufname = bcache:get_rev_bufname(base, relpath)
 
   if util.bufexists(bufname) then
     return bufname, vim.fn.bufnr(bufname)
@@ -90,7 +92,7 @@ local function create_revision_buf(bufnr, base)
   local dbuf = api.nvim_create_buf(false, true)
   api.nvim_buf_set_name(dbuf, bufname)
 
-  local ok, err = pcall(bufread, bufnr, dbuf, base)
+  local ok, err = pcall(bufread, bufnr, dbuf, base, relpath)
   if not ok then
     message.error(err --[[@as string]])
     async.schedule()
@@ -106,7 +108,7 @@ local function create_revision_buf(bufnr, base)
       group = 'gitsigns',
       buffer = dbuf,
       callback = function()
-        async.run(bufread, bufnr, dbuf, base):raise_on_error()
+        async.run(bufread, bufnr, dbuf, base, relpath):raise_on_error()
       end,
     })
 
@@ -177,10 +179,10 @@ local function diffthis_rev(base, opts)
   })
 end
 
+--- @async
 --- @param base string?
 --- @param opts Gitsigns.DiffthisOpts
---- @param _callback? fun()
-M.diffthis = async.create(2, function(base, opts, _callback)
+function M.diffthis(base, opts)
   if vim.wo.diff then
     log.dprint('diff is disabled')
     return
@@ -200,17 +202,27 @@ M.diffthis = async.create(2, function(base, opts, _callback)
   else
     diffthis_rev(base, opts)
   end
-end)
+end
 
---- @param bufnr integer
+--- @async
+--- @param bufnr integer?
 --- @param base string?
---- @param _callback? fun()
-M.show = async.create(2, function(bufnr, base, _callback)
+--- @param relpath string?
+--- @return boolean did_attach
+function M.show(bufnr, base, relpath)
   __FUNC__ = 'show'
-  local bufname = create_revision_buf(bufnr, base)
+
+  bufnr = bufnr or api.nvim_get_current_buf()
+
+  if not cache[bufnr] then
+    print('Error: Buffer is not attached.')
+    return false
+  end
+
+  local bufname = create_revision_buf(bufnr, base, relpath)
   if not bufname then
     log.dprint('No bufname for revision ' .. base)
-    return
+    return false
   end
 
   log.dprint('bufname ' .. bufname)
@@ -226,8 +238,10 @@ M.show = async.create(2, function(bufnr, base, _callback)
 
   if not attached then
     log.eprintf("Show buffer '%s' did not attach", bufname)
+    return false
   end
-end)
+  return true
+end
 
 --- @async
 --- @param bufnr integer

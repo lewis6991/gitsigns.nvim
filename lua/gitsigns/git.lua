@@ -72,9 +72,10 @@ end
 
 --- @async
 --- @param revision? string
+--- @param relpath? string
 --- @return string[] stdout, string? stderr
-function Obj:get_show_text(revision)
-  local relpath = self.relpath
+function Obj:get_show_text(revision, relpath)
+  relpath = relpath or self.relpath
   if revision and not relpath then
     log.dprint('no relpath')
     return {}
@@ -100,7 +101,7 @@ function Obj:get_show_text(revision)
   then
     --- @cast relpath -?
     log.dprintf('%s not found in %s looking for renames', relpath, revision)
-    local old_path = self.repo:rename_status(revision, true)[relpath]
+    local old_path = self.repo:log_rename_status(revision, relpath)
     if old_path then
       log.dprintf('found rename %s -> %s', old_path, relpath)
       stdout, stderr = self.repo:get_show_text(revision .. ':' .. old_path, self.encoding)
@@ -143,6 +144,7 @@ end
 --- @param revision? string
 --- @param opts? Gitsigns.BlameOpts
 --- @return table<integer,Gitsigns.BlameInfo?>
+--- @return table<string,Gitsigns.CommitInfo?>
 function Obj:run_blame(contents, lnum, revision, opts)
   return require('gitsigns.git.blame').run_blame(self, contents, lnum, revision, opts)
 end

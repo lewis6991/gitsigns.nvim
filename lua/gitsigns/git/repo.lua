@@ -294,7 +294,7 @@ function M:ls_tree(path, revision)
   if not res then
     -- Not found, see if it was renamed
     log.dprintf('%s not found in %s looking for renames', path, revision)
-    local old_path = self:rename_status(revision, true)[path]
+    local old_path = self:diff_rename_status(revision, true)[path]
     if old_path then
       log.dprintf('found rename %s -> %s', old_path, path)
       return self:ls_tree(old_path, revision)
@@ -445,10 +445,32 @@ function M:hash_object(path, lines)
 end
 
 --- @async
+--- @param revision string
+--- @param path string
+--- @return string?
+function M:log_rename_status(revision, path)
+  local out = self:command({
+    'log',
+    '--follow',
+    '--name-status',
+    '--diff-filter=R',
+    '--format=',
+    revision .. '..HEAD',
+    '--',
+    path,
+  })
+  local line = out[#out]
+  if not line then
+    return
+  end
+  return vim.split(line, '%s+')[2]
+end
+
+--- @async
 --- @param revision? string
 --- @param invert? boolean
 --- @return table<string,string>
-function M:rename_status(revision, invert)
+function M:diff_rename_status(revision, invert)
   local out = self:command({
     'diff',
     '--name-status',

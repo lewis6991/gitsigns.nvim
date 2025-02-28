@@ -23,7 +23,7 @@ local function handle_moved(bufnr, old_relpath)
 
   local orig_relpath = assert(git_obj.orig_relpath or old_relpath)
   git_obj.orig_relpath = orig_relpath
-  local new_name = git_obj.repo:rename_status()[orig_relpath]
+  local new_name = git_obj.repo:diff_rename_status()[orig_relpath]
   if new_name then
     dprintf('File moved to %s', new_name)
     git_obj.relpath = new_name

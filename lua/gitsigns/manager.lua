@@ -115,7 +115,9 @@ function M.on_lines(buf, first, last_orig, last_new)
     return true
   end
 
-  on_lines_blame(bcache.blame, first, last_orig, last_new)
+  if bcache.blame then
+    on_lines_blame(bcache.blame.entries, first, last_orig, last_new)
+  end
 
   signs_normal:on_lines(buf, first, last_orig, last_new)
   if signs_staged then
