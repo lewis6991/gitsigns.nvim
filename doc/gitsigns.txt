@@ -495,6 +495,16 @@ stage_hunk({range}, {opts}, {callback?})               *gitsigns.stage_hunk()*
                               Stage all contiguous hunks. Only useful if 'diff_opts'
                               contains `linematch`. Defaults to `true`.
 
+toggle_heatmap({value})                            *gitsigns.toggle_heatmap()*
+                Toggle |gitsigns-config-heat_map|
+
+                Parameters: ~
+                    {value} (boolean|nil): Value to set toggle. If `nil`
+                            the toggle value is inverted.
+
+                Returns: ~
+                    (boolean): Current value of |gitsigns-config-heat_map|
+
 toggle_deleted({value})                            *gitsigns.toggle_deleted()*
                 DEPRECATED: Use |gitsigns.preview_hunk_inline()|
 
@@ -723,6 +733,17 @@ show_deleted                                    *gitsigns-config-show_deleted*
       Show the old version of hunks inline in the buffer (via virtual lines).
 
       Note: Virtual lines currently use the highlight `GitSignsDeleteVirtLn`.
+
+heat_map                                            *gitsigns-config-heat_map*
+      Type: `table`
+      Default: >
+        `{
+          alpha = "auto",
+          enable = false,
+          style = "sign"
+        }`
+<
+      Show a blame heatmap for the current buffer.
 
 diff_opts                                          *gitsigns-config-diff_opts*
       Type: `table[extended]`, Default: derived from 'diffopt'

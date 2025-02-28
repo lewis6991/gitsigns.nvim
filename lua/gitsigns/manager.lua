@@ -6,6 +6,8 @@ local Hunks = require('gitsigns.hunks')
 local Signs = require('gitsigns.signs')
 local Status = require('gitsigns.status')
 
+local get_temp_hl = require('gitsigns.highlight').get_temp_hl
+
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
@@ -115,7 +117,9 @@ function M.on_lines(buf, first, last_orig, last_new)
     return true
   end
 
-  on_lines_blame(bcache.blame, first, last_orig, last_new)
+  if bcache.blame then
+    on_lines_blame(bcache.blame.entries, first, last_orig, last_new)
+  end
 
   signs_normal:on_lines(buf, first, last_orig, last_new)
   if signs_staged then
@@ -140,6 +144,7 @@ function M.on_lines(buf, first, last_orig, last_new)
 end
 
 local ns = api.nvim_create_namespace('gitsigns')
+local nsh = api.nvim_create_namespace('gitsigns-heatmap')
 
 --- @param bufnr integer
 --- @param row integer
@@ -213,6 +218,51 @@ local function apply_word_diff(bufnr, row)
 
     api.nvim_buf_set_extmark(bufnr, ns, row, scol, opts)
     util.redraw({ buf = bufnr, range = { row, row + 1 } })
+  end
+end
+
+--- @param bufnr integer
+--- @param row integer
+local function apply_heat_map(bufnr, row)
+  local bcache = cache[bufnr]
+
+  if not bcache then
+    return
+  end
+
+  local blame = bcache.blame
+  if not blame then
+    return
+  end
+
+  local blame_info = blame.entries[row + 1]
+  if not blame_info then
+    return
+  end
+
+  local min_time, max_time = bcache:get_blame_times()
+
+  local alpha = config.heat_map.alpha
+  if alpha == 'auto' then
+    alpha = config.heat_map.style == 'line' and 0.9 or 0.6
+  end
+
+  local hl = get_temp_hl(min_time, max_time, blame_info.commit.author_time, alpha)
+
+  api.nvim_buf_clear_namespace(bufnr, nsh, row, row + 1)
+  if config.heat_map.style == 'line' then
+    api.nvim_buf_set_extmark(bufnr, nsh, row, 0, {
+      end_row = row + 1,
+      end_col = 0,
+      hl_group = hl,
+      hl_eol = true,
+      priority = 900,
+    })
+  elseif config.heat_map.style == 'sign' then
+    api.nvim_buf_set_extmark(bufnr, nsh, row, 0, {
+      sign_hl_group = hl,
+      sign_text = ' ',
+    })
   end
 end
 
@@ -354,6 +404,13 @@ M.update = throttle_by_id(function(bufnr)
     bcache.hunks_staged = Hunks.filter_common(hunks_head, bcache.hunks)
   end
 
+  if config.heat_map.enable then
+    bcache:get_blame()
+    for row = vim.fn.line('w0') - 1, vim.fn.line('w$') - 1 do
+      apply_heat_map(bufnr, row)
+    end
+  end
+
   -- Note the decoration provider may have invalidated bcache.hunks at this
   -- point
   if
@@ -372,6 +429,7 @@ M.update = throttle_by_id(function(bufnr)
     summary.head = git_obj.repo.abbrev_head
     Status:update(bufnr, summary)
   end
+
   bcache.update_lock = nil
 end, true)
 
@@ -395,6 +453,9 @@ function M.reset_signs()
   -- Remove all signs
   signs_normal:reset()
   signs_staged:reset()
+  for _, buf in ipairs(api.nvim_list_bufs()) do
+    api.nvim_buf_clear_namespace(buf, nsh, 0, -1)
+  end
 end
 
 --- @param bufnr integer
@@ -410,9 +471,15 @@ local function on_win(bufnr, topline, botline_guess)
 
   apply_win_signs(bufnr, topline + 1, botline + 1)
 
-  if not (config.word_diff and config.diff_opts.internal) then
-    return false
+  if config.word_diff and config.diff_opts.internal then
+    return
   end
+
+  if config.heat_map.enable then
+    return
+  end
+
+  return false
 end
 
 function M.setup()
@@ -423,7 +490,12 @@ function M.setup()
       return on_win(bufnr, topline, botline)
     end,
     on_line = function(_, _winid, bufnr, row)
-      apply_word_diff(bufnr, row)
+      if config.word_diff then
+        apply_word_diff(bufnr, row)
+      end
+      if config.heat_map.enable then
+        apply_heat_map(bufnr, row)
+      end
     end,
   })
 

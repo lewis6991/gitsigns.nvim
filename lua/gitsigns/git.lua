@@ -143,6 +143,7 @@ end
 --- @param revision? string
 --- @param opts? Gitsigns.BlameOpts
 --- @return table<integer,Gitsigns.BlameInfo?>
+--- @return table<string,Gitsigns.CommitInfo?>
 function Obj:run_blame(contents, lnum, revision, opts)
   return require('gitsigns.git.blame').run_blame(self, contents, lnum, revision, opts)
 end
