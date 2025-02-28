@@ -61,6 +61,7 @@
 --- @field linehl boolean
 --- @field culhl boolean
 --- @field show_deleted boolean
+--- @field heat_map boolean
 --- @field sign_priority integer
 --- @field _on_attach_pre? fun(bufnr: integer, callback: fun(_: table))
 --- @field on_attach? fun(bufnr: integer): boolean?
@@ -426,6 +427,14 @@ M.schema = {
       Show the old version of hunks inline in the buffer (via virtual lines).
 
       Note: Virtual lines currently use the highlight `GitSignsDeleteVirtLn`.
+    ]],
+  },
+
+  heat_map = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      Show a blame heatmap for the current buffer.
     ]],
   },
 

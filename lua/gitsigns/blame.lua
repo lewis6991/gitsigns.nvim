@@ -47,8 +47,7 @@ end
 ---@param text string
 ---@return string
 local function lalign(amount, text)
-  --- @diagnostic disable-next-line: missing-parameter
-  local len = vim.str_utfindex(text)
+  local len = vim.str_utfindex(text, 'utf-8')
   return text .. string.rep(' ', math.max(0, amount - len))
 end
 
@@ -68,22 +67,23 @@ local M = {}
 local function render(blame, win, main_win, buf_sha)
   local max_author_len = 0
 
-  for _, blame_info in pairs(blame) do
-    --- @diagnostic disable-next-line: missing-parameter
-    max_author_len = math.max(max_author_len, (vim.str_utfindex(blame_info.commit.author)))
+  for _, b in pairs(blame) do
+    max_author_len = math.max(max_author_len, (vim.str_utfindex(b.commit.author, 'utf-8')))
   end
 
   local lines = {} --- @type string[]
   local last_sha --- @type string?
   local cnt = 0
   local commit_lines = {} --- @type table<integer,true>
-  for i, hl in pairs(blame) do
-    local sha = hl.commit.abbrev_sha
+
+  for i, b in pairs(blame) do
+    local commit = b.commit
+    local sha = commit.abbrev_sha
     local next_sha = blame[i + 1] and blame[i + 1].commit.abbrev_sha or nil
     if sha == last_sha then
       cnt = cnt + 1
       local c = sha == next_sha and chars.mid or chars.last
-      lines[i] = cnt == 1 and string.format('%s %s', c, hl.commit.summary) or c
+      lines[i] = cnt == 1 and string.format('%s %s', c, commit.summary) or c
     else
       cnt = 0
       commit_lines[i] = true
@@ -91,8 +91,8 @@ local function render(blame, win, main_win, buf_sha)
         '%s %s %s %s',
         chars.first,
         sha,
-        lalign(max_author_len, hl.commit.author),
-        util.expand_format('<author_time>', hl.commit)
+        lalign(max_author_len, commit.author),
+        util.expand_format('<author_time>', commit)
       )
     end
     last_sha = sha
@@ -312,7 +312,7 @@ function M.blame()
 
   local revision = bcache.git_obj.revision
 
-  render(blame, blm_win, win, revision)
+  render(blame.entries, blm_win, win, revision)
 
   local blm_bo = vim.bo[blm_bufnr]
   blm_bo.buftype = 'nofile'
