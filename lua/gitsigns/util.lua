@@ -1,7 +1,9 @@
+local uv = vim.uv or vim.loop --- @diagnostic disable-line: deprecated
+
 local M = {}
 
 function M.path_exists(path)
-  return vim.loop.fs_stat(path) and true or false
+  return uv.fs_stat(path) and true or false
 end
 
 local jit_os --- @type string
@@ -199,8 +201,9 @@ end
 --- @param opts vim.api.keyset.redraw
 function M.redraw(opts)
   if vim.fn.has('nvim-0.10') == 1 then
+    --- @diagnostic disable-next-line: access-invisible
     vim.api.nvim__redraw(opts)
-  else
+  elseif opts.range then
     vim.api.nvim__buf_redraw_range(opts.buf, opts.range[1], opts.range[2])
   end
 end
@@ -210,6 +213,8 @@ end
 local function is_dos(xs)
   -- Do not check CR at EOF
   for i = 1, #xs - 1 do
+    --- CppCXY/emmylua-analyzer-rust#169
+    --- @diagnostic disable-next-line: missing-parameter
     if xs[i]:sub(-1) ~= '\r' then
       return false
     end
@@ -279,6 +284,8 @@ function M.expand_format(fmt, info)
     end
     --- @cast key string
 
+    --- CppCXY/emmylua-analyzer-rust#169
+    --- @diagnostic disable-next-line: missing-parameter
     ret[#ret + 1], fmt = fmt:sub(1, scol - 1), fmt:sub(ecol + 1)
 
     local v = info[key]
@@ -326,10 +333,15 @@ end
 ---
 --- Based on https://stackoverflow.com/questions/12394841/safely-remove-items-from-an-array-table-while-iterating/53038524#53038524
 ---
----@param t any[]
+--- Works on lists with holes.
+---
+---@generic T
+---@param t table<integer, T>
 ---@param first integer
 ---@param last integer
 function M.list_remove(t, first, last)
+  --- CppCXY/emmylua-analyzer-rust#166
+  --- @diagnostic disable-next-line: access-invisible
   local n = table.maxn(t)
   for i = 0, n - first do
     t[first + i] = t[last + 1 + i]
@@ -343,13 +355,18 @@ end
 --- every iteration, instead this function will re-index  the table exactly
 --- once.
 ---
+--- Works on lists with holes.
+---
 --- Based on https://stackoverflow.com/questions/12394841/safely-remove-items-from-an-array-table-while-iterating/53038524#53038524
 ---
----@param t any[]
+---@generic T
+---@param t table<integer, T>
 ---@param first integer
 ---@param last integer
 ---@param v any
 function M.list_insert(t, first, last, v)
+  --- CppCXY/emmylua-analyzer-rust#166
+  --- @diagnostic disable-next-line: access-invisible
   local n = table.maxn(t)
 
   -- Shift table forward

@@ -1,5 +1,5 @@
 local api = vim.api
-local uv = vim.loop
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 local async = require('gitsigns.async')
 local log = require('gitsigns.debug.log')
@@ -15,6 +15,7 @@ local manager = require('gitsigns.manager')
 local dprint = log.dprint
 local dprintf = log.dprintf
 
+--- @async
 --- @param bufnr integer
 --- @param old_relpath? string
 local function handle_moved(bufnr, old_relpath)
@@ -76,7 +77,9 @@ local function watcher_handler0(bufnr)
     return
   end
 
-  local git_obj = cache[bufnr].git_obj
+  local bcache = assert(cache[bufnr])
+
+  local git_obj = bcache.git_obj
 
   git_obj.repo:update_abbrev_head()
 
@@ -106,7 +109,7 @@ local function watcher_handler0(bufnr)
     end
   end
 
-  cache[bufnr]:invalidate(true)
+  bcache:invalidate(true)
 
   require('gitsigns.manager').update(bufnr)
 end
