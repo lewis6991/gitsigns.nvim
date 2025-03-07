@@ -6,8 +6,9 @@ local Hunks = require('gitsigns.hunks')
 local Signs = require('gitsigns.signs')
 local Status = require('gitsigns.status')
 
-local debounce_trailing = require('gitsigns.debounce').debounce_trailing
-local throttle_by_id = require('gitsigns.debounce').throttle_by_id
+local Debounce = require('gitsigns.debounce')
+local debounce_trailing = Debounce.debounce_trailing
+local throttle_by_id = Debounce.throttle_by_id
 
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
@@ -21,7 +22,7 @@ local M = {}
 
 --- @param bufnr integer
 --- @param signs Gitsigns.Signs
---- @param hunks Gitsigns.Hunk.Hunk[]
+--- @param hunks Gitsigns.Hunk.Hunk[]?
 --- @param top integer
 --- @param bot integer
 --- @param clear? boolean
@@ -32,7 +33,9 @@ local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked,
     signs:remove(bufnr) -- Remove all signs
   end
 
-  for i, hunk in ipairs(hunks or {}) do
+  hunks = hunks or {}
+
+  for i, hunk in ipairs(hunks) do
     --- @type Gitsigns.Hunk.Hunk?, Gitsigns.Hunk.Hunk?
     local prev_hunk, next_hunk = hunks[i - 1], hunks[i + 1]
 
@@ -62,7 +65,7 @@ end
 local function apply_win_signs(bufnr, top, bot, clear)
   local bcache = assert(cache[bufnr])
   local untracked = bcache.git_obj.object_name == nil
-  apply_win_signs0(bufnr, signs_normal, bcache.hunks, top, bot, clear, untracked)
+  apply_win_signs0(bufnr, signs_normal, assert(bcache.hunks), top, bot, clear, untracked)
   if signs_staged then
     apply_win_signs0(
       bufnr,

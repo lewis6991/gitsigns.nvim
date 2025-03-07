@@ -434,7 +434,7 @@ function M:hash_object(path, lines)
 end
 
 --- @async
---- @return string[]
+--- @return table<string,string>
 function M:rename_status()
   local out = self:command({
     'diff',

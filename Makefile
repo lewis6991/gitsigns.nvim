@@ -120,3 +120,6 @@ luals-check: $(LUALS) $(NVIM_TEST)
 		$(LUALS)/bin/lua-language-server \
 			--configpath=../.luarc.json \
 			--check=lua
+
+luv:
+	git clone https://github.com/LuaCATS/luv

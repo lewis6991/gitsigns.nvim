@@ -11,13 +11,13 @@ local config = require('gitsigns.config').config
 --- @field hls table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field name string
 --- @field group string
---- @field config table<string,Gitsigns.SignConfig>
+--- @field config table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field ns integer
 local M = {}
 
 --- @param buf integer
---- @param last_orig? integer
---- @param last_new? integer
+--- @param last_orig integer
+--- @param last_new integer
 function M:on_lines(buf, _, last_orig, last_new)
   -- Remove extmarks on line deletions to mimic
   -- the behaviour of vim signs.
@@ -106,6 +106,7 @@ end
 --    return x:sub(1, 1):upper()..x:sub(2)
 -- end
 
+--- @param cfg table<Gitsigns.SignType,Gitsigns.SignConfig>
 function M.new(cfg, name)
   local __FUNC__ = 'signs.init'
 

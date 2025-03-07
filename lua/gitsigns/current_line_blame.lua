@@ -3,8 +3,9 @@ local debounce = require('gitsigns.debounce')
 local util = require('gitsigns.util')
 
 local cache = require('gitsigns.cache').cache
-local config = require('gitsigns.config').config
-local schema = require('gitsigns.config').schema
+local Config = require('gitsigns.config')
+local config = Config.config
+local schema = Config.schema
 local error_once = require('gitsigns.message').error_once
 
 local api = vim.api

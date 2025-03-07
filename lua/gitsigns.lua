@@ -5,7 +5,7 @@ local Config = require('gitsigns.config')
 local config = Config.config
 
 local api = vim.api
-local uv = vim.uv or vim.loop
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 --- @class gitsigns.main
 local M = {}
@@ -92,7 +92,12 @@ local update_cwd_head = async.async(function()
     100,
     async.async(function()
       local git = require('gitsigns.git')
-      local new_head = git.Repo.get_info(cwd).abbrev_head
+      local info, err = git.Repo.get_info(cwd)
+      if not info then
+        log.eprint(assert(err))
+        return
+      end
+      local new_head = info.abbrev_head
       async.schedule()
       vim.g.gitsigns_head = new_head
     end)
@@ -128,7 +133,6 @@ local function setup_cli()
   })
 end
 
---- @async
 local function setup_attach()
   if not config.auto_attach then
     return
