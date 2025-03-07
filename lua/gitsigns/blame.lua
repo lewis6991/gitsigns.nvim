@@ -18,7 +18,7 @@ local ns_hl = api.nvim_create_namespace('gitsigns_blame_win_hl')
 --- @param x string hex char
 --- @return integer
 local function mod(x)
-  local y = tonumber(x, 16)
+  local y = assert(tonumber(x, 16))
   return math.min(0xdf, 0x20 + math.floor((y * 0x10 + (15 - y)) * 0.75))
 end
 
@@ -31,8 +31,8 @@ local function get_hash_color(sha)
   local r, g, b = sha:match('(%x)%x(%x)%x(%x)')
   local color = mod(r) * 0x10000 + mod(g) * 0x100 + mod(b)
 
-  if hash_colors[sha] then
-    return hash_colors[sha]
+  if hash_colors[color] then
+    return hash_colors[color]
   end
 
   local hl_name = string.format('GitSignsBlameColor.%s%s%s', r, g, b)
@@ -156,7 +156,7 @@ end
 local function reblame(blame, win, revision, parent)
   local blm_win = api.nvim_get_current_win()
   local lnum = unpack(api.nvim_win_get_cursor(blm_win))
-  local sha = blame[lnum].commit.sha
+  local sha = assert(blame[lnum]).commit.sha
   if parent then
     sha = sha .. '^'
   end
@@ -187,7 +187,8 @@ end
 --- @param bcache Gitsigns.CacheEntry
 local show_commit = async.async(function(win, open, bcache)
   local cursor = api.nvim_win_get_cursor(win)[1]
-  local sha = bcache.blame[cursor].commit.sha
+  local blame = assert(bcache.blame)
+  local sha = assert(blame[cursor]).commit.sha
   local res = bcache.git_obj.repo:command({ 'show', sha })
   async.schedule()
   local buffer_name = bcache:get_rev_bufname(sha, true)

@@ -47,11 +47,13 @@ local Task = {}
 Task.__index = Task
 
 --- @package
---- @param func function
+--- @generic T
+--- @param func async fun(...:T...)
 --- @return Gitsigns.async.Task
 function Task._new(func)
   local thread = coroutine.create(func)
 
+  --- @type Gitsigns.async.Task
   local self = setmetatable({
     _closing = false,
     _thread = thread,
@@ -202,8 +204,9 @@ function Task:close(callback)
   end
 
   if callback then
+    local c = callback
     self:await(function()
-      callback()
+      c()
     end)
   end
 
@@ -282,13 +285,14 @@ function Task:_log(...)
   print(self._thread, ...)
 end
 
---- @return 'running'|'suspended'|'normal'|'dead'?
+--- @return 'running'|'suspended'|'normal'|'dead'
 function Task:status()
   return coroutine.status(self._thread)
 end
 
---- @param func function
---- @param ... any
+--- @generic T
+--- @param func async fun(...:T...)
+--- @param ... T...
 --- @return Gitsigns.async.Task
 function M.arun(func, ...)
   local task = Task._new(func)
@@ -297,6 +301,9 @@ function M.arun(func, ...)
 end
 
 --- Create an async function
+--- @generic T, R
+--- @param func async fun(...:T...):R...
+--- @return fun(...:T...)
 function M.async(func)
   return function(...)
     return M.arun(func, ...)
@@ -315,14 +322,16 @@ function M.status(task)
   end
 end
 
---- @generic R1, R2, R3, R4
---- @param fun fun(callback: fun(r1: R1, r2: R2, r3: R3, r4: R4)): any?
---- @return R1, R2, R3, R4
+--- @async
+--- @generic R
+--- @param fun fun(callback: fun(...:R...)): any?
+--- @return R...
 local function yield(fun)
   assert(type(fun) == 'function', 'Expected function')
   return coroutine.yield(fun)
 end
 
+--- @async
 --- @param task Gitsigns.async.Task
 --- @return any ...
 local function await_task(task)
@@ -359,6 +368,7 @@ local function await_cbfun(argc, func, ...)
   end)
 end
 
+--- @async
 --- Asynchronous blocking wait
 --- @overload fun(task: Gitsigns.async.Task): any ...
 --- @overload fun(argc: integer, func: Gitsigns.async.CallbackFn, ...:any): any ...
@@ -396,10 +406,10 @@ end
 ---
 --- If argc is not provided, then the created async function cannot be continued
 ---
---- @generic F: function
+--- @generic T
 --- @param argc integer
---- @param func F
---- @return F
+--- @param func async fun(...:T...)
+--- @return fun(...:T...): Gitsigns.async.Task
 function M.create(argc, func)
   assert(type(argc) == 'number')
   assert(type(func) == 'function')

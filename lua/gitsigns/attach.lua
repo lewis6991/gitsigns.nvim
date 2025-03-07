@@ -13,7 +13,7 @@ local dprintf = log.dprintf
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
 local api = vim.api
-local uv = vim.loop
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 --- @class gitsigns.attach
 local M = {}
@@ -44,7 +44,7 @@ local function parse_git_path(name)
     rel_path = tail:match('^[^/]+/(.*)')
   end
 
-  dprintf("%s buffer for file '%s' from path '%s' on commit '%s'", plugin, rel_path, file, commit)
+  dprintf("%s buffer for file '%s' from path '%s' on commit '%s'", plugin, rel_path, name, commit)
   return rel_path, commit, gitdir
 end
 
@@ -136,6 +136,7 @@ local function get_buf_context(bufnr)
     return nil, 'Exceeds max_file_length'
   end
 
+  --- @type string
   local file = uv.fs_realpath(api.nvim_buf_get_name(bufnr))
     or api.nvim_buf_call(bufnr, function()
       return vim.fn.expand('%:p')

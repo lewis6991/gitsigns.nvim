@@ -1,7 +1,9 @@
+local uv = vim.uv or vim.loop --- @diagnostic disable-line: deprecated
+
 local M = {}
 
 function M.path_exists(path)
-  return vim.loop.fs_stat(path) and true or false
+  return uv.fs_stat(path) and true or false
 end
 
 local jit_os --- @type string
@@ -200,7 +202,7 @@ end
 function M.redraw(opts)
   if vim.fn.has('nvim-0.10') == 1 then
     vim.api.nvim__redraw(opts)
-  else
+  elseif opts.range then
     vim.api.nvim__buf_redraw_range(opts.buf, opts.range[1], opts.range[2])
   end
 end
@@ -326,7 +328,10 @@ end
 ---
 --- Based on https://stackoverflow.com/questions/12394841/safely-remove-items-from-an-array-table-while-iterating/53038524#53038524
 ---
----@param t any[]
+--- Works on lists with holes.
+---
+---@generic T
+---@param t table<integer, T>
 ---@param first integer
 ---@param last integer
 function M.list_remove(t, first, last)
@@ -343,9 +348,12 @@ end
 --- every iteration, instead this function will re-index  the table exactly
 --- once.
 ---
+--- Works on lists with holes.
+---
 --- Based on https://stackoverflow.com/questions/12394841/safely-remove-items-from-an-array-table-while-iterating/53038524#53038524
 ---
----@param t any[]
+---@generic T
+---@param t table<integer, T>
 ---@param first integer
 ---@param last integer
 ---@param v any

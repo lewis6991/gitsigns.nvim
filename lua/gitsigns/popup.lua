@@ -57,7 +57,7 @@ end
 --- @field end_col? integer
 
 --- Each element represents a multi-line segment
---- @alias Gitsigns.LineSpec { [1]: string, [2]: Gitsigns.HlMark[]}[][]
+--- @alias Gitsigns.LineSpec [string, string|Gitsigns.HlMark[]][][]
 
 --- @param hlmarks Gitsigns.HlMark[]
 --- @param row_offset integer

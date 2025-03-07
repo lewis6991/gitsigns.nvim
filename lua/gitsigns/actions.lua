@@ -14,6 +14,8 @@ local cache = require('gitsigns.cache').cache
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+
 --- @class gitsigns.actions
 local M = {}
 
@@ -167,6 +169,7 @@ local function get_cursor_hunk(bufnr, hunks)
   end
 
   local lnum = api.nvim_win_get_cursor(0)[1]
+
   return Hunks.find_hunk(lnum, hunks)
 end
 
@@ -248,6 +251,8 @@ local function get_hunk(bufnr, range, greedy, staged)
     return
   end
 
+  local compare_text = assert(bcache.compare_text)
+
   if staged then
     local staged_top, staged_bot = top, bot
     for _, h in ipairs(assert(bcache.hunks)) do
@@ -259,16 +264,16 @@ local function get_hunk(bufnr, range, greedy, staged)
       end
     end
 
-    hunk.added.lines = vim.list_slice(bcache.compare_text, staged_top, staged_bot)
+    hunk.added.lines = vim.list_slice(compare_text, staged_top, staged_bot)
     hunk.removed.lines = vim.list_slice(
-      bcache.compare_text_head,
+      assert(bcache.compare_text_head),
       hunk.removed.start,
       hunk.removed.start + hunk.removed.count - 1
     )
   else
     hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
     hunk.removed.lines = vim.list_slice(
-      bcache.compare_text,
+      compare_text,
       hunk.removed.start,
       hunk.removed.start + hunk.removed.count - 1
     )
@@ -331,7 +336,7 @@ M.stage_hunk = mk_repeatable(async.create(2, function(range, opts)
     message.error(err)
     return
   end
-  table.insert(bcache.staged_diffs, hunk)
+  table.insert(assert(bcache.staged_diffs), hunk)
 
   bcache:invalidate(true)
   update(bufnr)
@@ -439,7 +444,7 @@ M.undo_stage_hunk = async.create(0, function()
     return
   end
 
-  local hunk = table.remove(bcache.staged_diffs)
+  local hunk = table.remove(assert(bcache.staged_diffs))
   if not hunk then
     print('No hunks to undo')
     return
@@ -488,8 +493,9 @@ M.stage_buffer = async.create(0, function()
     return
   end
 
+  local staged_diffs = assert(bcache.staged_diffs)
   for _, hunk in ipairs(hunks) do
-    table.insert(bcache.staged_diffs, hunk)
+    table.insert(staged_diffs, hunk)
   end
 
   bcache:invalidate(true)
@@ -574,11 +580,12 @@ local function process_nav_opts(opts)
     opts.target = 'unstaged'
   end
 
+  --- @cast opts -table
   return opts
 end
 
 -- Defer function to the next main event
---- @param fn function
+--- @param fn fun()
 local function defer(fn)
   if vim.in_fast_event() then
     vim.schedule(fn)
@@ -784,7 +791,7 @@ end
 --- @param fileformat string
 --- @return Gitsigns.LineSpec
 local function linespec_for_hunk(hunk, fileformat)
-  local hls = {} --- @type Gitsigns.LineSpec
+  local hls = {} --- @type [string, Gitsigns.HlMark[]][][]
 
   local removed, added = hunk.removed.lines, hunk.added.lines
 
@@ -866,12 +873,12 @@ M.preview_hunk = noautocmd(function()
   --- @type Gitsigns.LineSpec
   local preview_linespec = {
     { { 'Hunk <hunk_no> of <num_hunks>', 'Title' } },
-    unpack(linespec_for_hunk(hunk, vim.bo[bufnr].fileformat)),
   }
+  vim.list_extend(preview_linespec, linespec_for_hunk(hunk, vim.bo[bufnr].fileformat))
 
   local lines_spec = lines_format(preview_linespec, {
     hunk_no = index,
-    num_hunks = #cache[bufnr].hunks,
+    num_hunks = #assert(cache[bufnr]).hunks,
   })
 
   popup.create(lines_spec, config.preview_config, 'hunk')
@@ -949,12 +956,12 @@ end)
 ---               contains `linematch`. Defaults to `true`.
 M.select_hunk = function(opts)
   local bufnr = current_buf()
-  opts = opts or {}
+  local opts0 = opts or {}
 
   local hunk --- @type Gitsigns.Hunk.Hunk?
   async
     .arun(function()
-      hunk = get_hunk(bufnr, nil, opts.greedy ~= false)
+      hunk = get_hunk(bufnr, nil, opts0.greedy ~= false)
     end)
     :wait()
 
@@ -1023,7 +1030,7 @@ local function get_blame_hunk(repo, info)
 end
 
 --- @param is_committed boolean
---- @param full boolean
+--- @param full? boolean
 --- @return {[1]: string, [2]: string}[][]
 local function create_blame_fmt(is_committed, full)
   if not is_committed then
@@ -1102,6 +1109,7 @@ M.blame_line = async.create(1, function(opts)
       { text = true }
     )
     local hunk, hunk_no, num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
+
     assert(hunk and hunk_no and num_hunks)
 
     result.hunk_no = hunk_no
@@ -1140,7 +1148,7 @@ end
 --- Attributes: ~
 ---     {async}
 M.blame = async.create(0, function()
-  return require('gitsigns.blame').blame()
+  require('gitsigns.blame').blame()
 end)
 
 --- @async
@@ -1255,6 +1263,7 @@ end
 ---       'aboveleft'. If running via command line, then this is taken
 ---       from the command modifiers.
 M.diffthis = function(base, opts)
+  --- @cast opts Gitsigns.DiffthisOpts
   -- TODO(lewis6991): can't pass numbers as strings from the command line
   if base ~= nil then
     base = tostring(base)
@@ -1357,7 +1366,7 @@ local function buildqflist(target)
     if not cache[bufnr] then
       return
     end
-    hunks_to_qflist(bufnr, cache[bufnr].hunks, qflist)
+    hunks_to_qflist(bufnr, assert(cache[bufnr].hunks), qflist)
   elseif target == 'attached' then
     for bufnr, bcache in pairs(cache) do
       hunks_to_qflist(bufnr, assert(bcache.hunks), qflist)
@@ -1371,7 +1380,7 @@ local function buildqflist(target)
       end
     end
 
-    local repo = git.Repo.get(assert(vim.loop.cwd()))
+    local repo = git.Repo.get(assert(uv.cwd()))
     if repo and not repos[repo.gitdir] then
       repos[repo.gitdir] = repo
     end
@@ -1379,7 +1388,7 @@ local function buildqflist(target)
     for _, r in pairs(repos) do
       for _, f in ipairs(r:files_changed(config.base)) do
         local f_abs = r.toplevel .. '/' .. f
-        local stat = vim.loop.fs_stat(f_abs)
+        local stat = uv.fs_stat(f_abs)
         if stat and stat.type == 'file' then
           ---@type string
           local obj
@@ -1405,7 +1414,7 @@ end
 --- Attributes: ~
 ---     {async}
 ---
---- @param target integer|string
+--- @param target integer|'attached'|'all'
 ---     Specifies which files hunks are collected from.
 ---     Possible values.
 ---     • [integer]: The buffer with the matching buffer
@@ -1472,7 +1481,7 @@ end
 ---
 --- @param nr? integer Window number or the |window-ID|.
 ---     `0` for the current window (default).
---- @param target integer|string See |gitsigns.setqflist()|.
+--- @param target integer|'attached'|'all' See |gitsigns.setqflist()|.
 M.setloclist = function(nr, target)
   M.setqflist(target, {
     nr = nr,
@@ -1512,7 +1521,7 @@ M.get_actions = function()
     actions_l[#actions_l + 1] = 'blame_line'
   end
 
-  if not vim.tbl_isempty(bcache.staged_diffs) then
+  if not next(assert(bcache.staged_diffs)) then
     actions_l[#actions_l + 1] = 'undo_stage_hunk'
   end
 
