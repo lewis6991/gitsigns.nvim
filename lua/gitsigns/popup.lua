@@ -179,6 +179,8 @@ local function create_win(bufnr, opts, id)
   id = id or true
 
   -- Close any popups not matching id
+  --- CppCXY/emmylua-analyzer-rust#171
+  --- @diagnostic disable-next-line: param-type-not-match
   close_all_but(id)
 
   local lines = api.nvim_buf_get_lines(bufnr, 0, -1, true)

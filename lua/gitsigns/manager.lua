@@ -21,7 +21,7 @@ local M = {}
 
 --- @param bufnr integer
 --- @param signs Gitsigns.Signs
---- @param hunks Gitsigns.Hunk.Hunk[]
+--- @param hunks Gitsigns.Hunk.Hunk[]?
 --- @param top integer
 --- @param bot integer
 --- @param clear? boolean
@@ -32,7 +32,9 @@ local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked,
     signs:remove(bufnr) -- Remove all signs
   end
 
-  for i, hunk in ipairs(hunks or {}) do
+  hunks = hunks or {}
+
+  for i, hunk in ipairs(hunks) do
     --- @type Gitsigns.Hunk.Hunk?, Gitsigns.Hunk.Hunk?
     local prev_hunk, next_hunk = hunks[i - 1], hunks[i + 1]
 
@@ -62,7 +64,7 @@ end
 local function apply_win_signs(bufnr, top, bot, clear)
   local bcache = assert(cache[bufnr])
   local untracked = bcache.git_obj.object_name == nil
-  apply_win_signs0(bufnr, signs_normal, bcache.hunks, top, bot, clear, untracked)
+  apply_win_signs0(bufnr, signs_normal, assert(bcache.hunks), top, bot, clear, untracked)
   if signs_staged then
     apply_win_signs0(
       bufnr,
@@ -150,6 +152,9 @@ local function apply_word_diff(bufnr, row)
   if not bcache or not bcache.hunks then
     return
   end
+
+  -- CppCXY/emmylua-analyzer-rust#165
+  bcache = assert(bcache)
 
   local line = api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1]
   if not line then

@@ -16,12 +16,14 @@ local config = require('gitsigns.config').config
 local M = {}
 
 --- @param buf integer
---- @param last_orig? integer
---- @param last_new? integer
+--- @param last_orig integer
+--- @param last_new integer
 function M:on_lines(buf, _, last_orig, last_new)
   -- Remove extmarks on line deletions to mimic
   -- the behaviour of vim signs.
   if last_orig > last_new then
+    -- CppCXY/emmylua-analyzer-rust#166
+    ---@diagnostic disable-next-line: param-type-not-match
     self:remove(buf, last_new + 1, last_orig)
   end
 end
@@ -71,6 +73,8 @@ function M:add(bufnr, signs, filter)
 
       if not ok and config.debug_mode then
         vim.schedule(function()
+          --- CppCXY/emmylua-analyzer-rust#170
+          --- @cast err string
           error(table.concat({
             string.format('Error placing extmark on line %d', s.lnum),
             err,
