@@ -3,7 +3,7 @@ local uv = vim.uv or vim.loop
 local start_time = uv.hrtime()
 
 --- @class Gitsigns.log
---- @field private messages [number, string, string, string][]
+--- @field package messages [number, string, string, string][]
 local M = {
   debug_mode = false,
   verbose = false,

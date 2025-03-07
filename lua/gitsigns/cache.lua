@@ -5,7 +5,7 @@ local M = {
   CacheEntry = {},
 }
 
---- @class (exact) Gitsigns.CacheEntry
+--- @class Gitsigns.CacheEntry
 --- @field bufnr              integer
 --- @field file               string
 --- @field compare_text?      string[]
