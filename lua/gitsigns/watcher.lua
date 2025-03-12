@@ -10,7 +10,6 @@ local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
-local manager = require('gitsigns.manager')
 
 local dprint = log.dprint
 local dprintf = log.dprintf
@@ -44,7 +43,7 @@ local function handle_moved(bufnr, old_relpath)
   git_obj.file = git_obj.repo.toplevel .. util.path_sep .. git_obj.relpath
   bcache.file = git_obj.file
   git_obj:refresh()
-  if not manager.schedule(bufnr) then
+  if not bcache:schedule() then
     return
   end
 
@@ -69,18 +68,23 @@ end
 local function watcher_handler0(bufnr)
   local __FUNC__ = 'watcher_handler'
 
+  local bcache = cache[bufnr]
+  if not bcache then
+    return
+  end
+
   -- Avoid cache hit for detached buffer
   -- ref: https://github.com/lewis6991/gitsigns.nvim/issues/956
-  if not manager.schedule(bufnr) then
+  if not bcache:schedule() then
     dprint('buffer invalid (1)')
     return
   end
 
-  local git_obj = cache[bufnr].git_obj
+  local git_obj = bcache.git_obj
 
   git_obj.repo:update_abbrev_head()
 
-  if not manager.schedule(bufnr) then
+  if not bcache:schedule() then
     dprint('buffer invalid (2)')
     return
   end
@@ -91,7 +95,7 @@ local function watcher_handler0(bufnr)
   local old_relpath = git_obj.relpath
 
   git_obj:refresh()
-  if not manager.schedule(bufnr) then
+  if not bcache:schedule() then
     dprint('buffer invalid (3)')
     return
   end
@@ -100,7 +104,7 @@ local function watcher_handler0(bufnr)
     -- File was tracked but is no longer tracked. Must of been removed or
     -- moved. Check if it was moved and switch to it.
     handle_moved(bufnr, old_relpath)
-    if not manager.schedule(bufnr) then
+    if not bcache:schedule() then
       dprint('buffer invalid (4)')
       return
     end

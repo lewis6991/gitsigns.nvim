@@ -17,6 +17,7 @@ local api = vim.api
 local signs_normal --- @type Gitsigns.Signs
 local signs_staged --- @type Gitsigns.Signs
 
+--- @class gitsigns.manager
 local M = {}
 
 --- @param bufnr integer
@@ -227,7 +228,7 @@ end
 --- @param bufnr integer
 --- @param nsd integer
 --- @param hunk Gitsigns.Hunk.Hunk
-function M.show_deleted(bufnr, nsd, hunk)
+local function show_deleted(bufnr, nsd, hunk)
   local virt_lines = {} --- @type [string, string][][]
 
   for i, line in ipairs(hunk.removed.lines) do
@@ -272,184 +273,15 @@ function M.show_deleted(bufnr, nsd, hunk)
   })
 end
 
---- @param win integer
---- @param lnum integer
---- @param width integer
---- @return string str
---- @return {group:string, start:integer}[]? highlights
-local function build_lno_str(win, lnum, width)
-  local has_col, statuscol =
-    pcall(api.nvim_get_option_value, 'statuscolumn', { win = win, scope = 'local' })
-  if has_col and statuscol and statuscol ~= '' then
-    local ok, data = pcall(api.nvim_eval_statusline, statuscol, {
-      winid = win,
-      use_statuscol_lnum = lnum,
-      highlights = true,
-    })
-    if ok then
-      return data.str, data.highlights
-    end
-  end
-  return string.format('%' .. width .. 'd', lnum)
-end
-
 --- @param bufnr integer
---- @param nsd integer
---- @param hunk Gitsigns.Hunk.Hunk
---- @param staged boolean?
---- @return integer winid
-function M.show_deleted_in_float(bufnr, nsd, hunk, staged)
-  local cwin = api.nvim_get_current_win()
-  local virt_lines = {} --- @type [string, string][][]
-  local textoff = vim.fn.getwininfo(cwin)[1].textoff --[[@as integer]]
-  for i = 1, hunk.removed.count do
-    local sc = build_lno_str(cwin, hunk.removed.start + i, textoff - 1)
-    virt_lines[i] = { { sc, 'LineNr' } }
-  end
-
-  local topdelete = hunk.added.start == 0 and hunk.type == 'delete'
-  local virt_lines_above = hunk.type ~= 'delete' or topdelete
-
-  local row = topdelete and 0 or hunk.added.start - 1
-  api.nvim_buf_set_extmark(bufnr, nsd, row, -1, {
-    virt_lines = virt_lines,
-    -- TODO(lewis6991): Note virt_lines_above doesn't work on row 0 neovim/neovim#16166
-    virt_lines_above = virt_lines_above,
-    virt_lines_leftcol = true,
-  })
-
-  local bcache = assert(cache[bufnr])
-  local pbufnr = api.nvim_create_buf(false, true)
-  local text = staged and bcache.compare_text_head or bcache.compare_text
-  api.nvim_buf_set_lines(pbufnr, 0, -1, false, assert(text))
-
-  local width = api.nvim_win_get_width(0)
-
-  local bufpos_offset = virt_lines_above and not topdelete and 1 or 0
-
-  local pwinid = api.nvim_open_win(pbufnr, false, {
-    relative = 'win',
-    win = cwin,
-    width = width - textoff,
-    height = hunk.removed.count,
-    anchor = 'SW',
-    bufpos = { hunk.added.start - bufpos_offset, 0 },
-    style = 'minimal',
-  })
-
-  vim.bo[pbufnr].filetype = vim.bo[bufnr].filetype
-  vim.bo[pbufnr].bufhidden = 'wipe'
-  vim.wo[pwinid].scrolloff = 0
-
-  api.nvim_win_call(pwinid, function()
-    -- Expand folds
-    vim.cmd('normal! ' .. 'zR')
-
-    -- Navigate to hunk
-    vim.cmd('normal! ' .. tostring(hunk.removed.start) .. 'gg')
-    vim.cmd('normal! ' .. vim.api.nvim_replace_termcodes('z<CR>', true, false, true))
-  end)
-
-  local last_lnum = api.nvim_buf_line_count(bufnr)
-
-  -- Apply highlights
-
-  for i = hunk.removed.start, hunk.removed.start + hunk.removed.count do
-    api.nvim_buf_set_extmark(pbufnr, nsd, i - 1, 0, {
-      hl_group = 'GitSignsDeleteVirtLn',
-      hl_eol = true,
-      end_row = i,
-      strict = i == last_lnum,
-      priority = 1000,
-    })
-  end
-
-  local removed_regions =
-    require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
-
-  for _, region in ipairs(removed_regions) do
-    local start_row = (hunk.removed.start - 1) + (region[1] - 1)
-    local start_col = region[3] - 1
-    local end_col = region[4] - 1
-    api.nvim_buf_set_extmark(pbufnr, nsd, start_row, start_col, {
-      hl_group = 'GitSignsDeleteVirtLnInline',
-      end_col = end_col,
-      end_row = start_row,
-      priority = 1001,
-    })
-  end
-
-  return pwinid
-end
-
---- @param bufnr integer
---- @param nsw integer
---- @param hunk Gitsigns.Hunk.Hunk
-function M.show_added(bufnr, nsw, hunk)
-  local start_row = hunk.added.start - 1
-
-  for offset = 0, hunk.added.count - 1 do
-    local row = start_row + offset
-    api.nvim_buf_set_extmark(bufnr, nsw, row, 0, {
-      end_row = row + 1,
-      hl_group = 'GitSignsAddPreview',
-      hl_eol = true,
-      priority = 1000,
-    })
-  end
-
-  local _, added_regions =
-    require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
-
-  for _, region in ipairs(added_regions) do
-    local offset, rtype, scol, ecol = region[1] - 1, region[2], region[3] - 1, region[4] - 1
-
-    -- Special case to handle cr at eol in buffer but not in show text
-    local cr_at_eol_change = rtype == 'change' and vim.endswith(hunk.added.lines[offset + 1], '\r')
-
-    api.nvim_buf_set_extmark(bufnr, nsw, start_row + offset, scol, {
-      end_col = ecol,
-      strict = not cr_at_eol_change,
-      hl_group = rtype == 'add' and 'GitSignsAddInline'
-        or rtype == 'change' and 'GitSignsChangeInline'
-        or 'GitSignsDeleteInline',
-      priority = 1001,
-    })
-  end
-end
-
---- @param bufnr integer
-local function update_show_deleted(bufnr)
-  local bcache = assert(cache[bufnr])
-
+--- @param hunks? Gitsigns.Hunk.Hunk[]
+local function update_show_deleted(bufnr, hunks)
   clear_deleted(bufnr)
   if config.show_deleted then
-    for _, hunk in ipairs(bcache.hunks or {}) do
-      M.show_deleted(bufnr, ns_rm, hunk)
+    for _, hunk in ipairs(hunks or {}) do
+      show_deleted(bufnr, ns_rm, hunk)
     end
   end
-end
-
---- @async
---- @nodiscard
---- @param bufnr integer
---- @param check_compare_text? boolean
---- @return boolean
-function M.schedule(bufnr, check_compare_text)
-  async.schedule()
-  if not api.nvim_buf_is_valid(bufnr) then
-    log.dprint('Buffer not valid, aborting')
-    return false
-  end
-  if not cache[bufnr] then
-    log.dprint('Has detached, aborting')
-    return false
-  end
-  if check_compare_text and not cache[bufnr].compare_text then
-    log.dprint('compare_text was invalid, aborting')
-    return false
-  end
-  return true
 end
 
 --- @async
@@ -459,10 +291,10 @@ end
 --- update after the current one has completed.
 --- @param bufnr integer
 M.update = throttle_by_id(function(bufnr)
-  if not M.schedule(bufnr) then
+  local bcache = cache[bufnr]
+  if not bcache or not bcache:schedule() then
     return
   end
-  local bcache = assert(cache[bufnr])
   bcache.update_lock = true
 
   local old_hunks, old_hunks_staged = bcache.hunks, bcache.hunks_staged
@@ -477,7 +309,7 @@ M.update = throttle_by_id(function(bufnr)
     else
       bcache.compare_text = git_obj:get_show_text()
     end
-    if not M.schedule(bufnr, true) then
+    if not bcache:schedule(true) then
       return
     end
   end
@@ -485,7 +317,7 @@ M.update = throttle_by_id(function(bufnr)
   local buftext = util.buf_lines(bufnr)
 
   bcache.hunks = run_diff(bcache.compare_text, buftext)
-  if not M.schedule(bufnr) then
+  if not bcache:schedule() then
     return
   end
 
@@ -508,12 +340,12 @@ M.update = throttle_by_id(function(bufnr)
       -- should not be any normal signs for these buffers.
       local staged_rev = rev_is_index and 'HEAD' or git_obj.revision .. '^'
       bcache.compare_text_head = git_obj:get_show_text(staged_rev)
-      if not M.schedule(bufnr, true) then
+      if not bcache:schedule(true) then
         return
       end
     end
     local hunks_head = run_diff(bcache.compare_text_head, buftext)
-    if not M.schedule(bufnr) then
+    if not bcache:schedule() then
       return
     end
     bcache.hunks_staged = Hunks.filter_common(hunks_head, bcache.hunks)
@@ -530,7 +362,7 @@ M.update = throttle_by_id(function(bufnr)
     -- provider as they are drawn.
     apply_win_signs(bufnr, vim.fn.line('w0'), vim.fn.line('w$'), true)
 
-    update_show_deleted(bufnr)
+    update_show_deleted(bufnr, bcache.hunks)
     bcache.force_next_update = false
 
     local summary = Hunks.get_summary(bcache.hunks)

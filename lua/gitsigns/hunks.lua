@@ -29,6 +29,7 @@ local min, max = math.min, math.max
 --- @field added Gitsigns.Hunk.Node
 --- @field removed Gitsigns.Hunk.Node
 
+--- @class gitsigns.hunks
 local M = {}
 
 --- @param old_start integer
@@ -546,6 +547,62 @@ function M.filter_common(a, b)
   end
 
   return ret
+end
+
+--- @param hunk Gitsigns.Hunk.Hunk
+--- @param fileformat string
+--- @return Gitsigns.LineSpec
+function M.linespec_for_hunk(hunk, fileformat)
+  local hls = {} --- @type [string, Gitsigns.HlMark[]][][]
+
+  local removed, added = hunk.removed.lines, hunk.added.lines
+
+  for _, spec in ipairs({
+    { sym = '-', lines = removed, hl = 'GitSignsDeletePreview' },
+    { sym = '+', lines = added, hl = 'GitSignsAddPreview' },
+  }) do
+    for _, l in ipairs(spec.lines) do
+      if fileformat == 'dos' then
+        l = l:gsub('\r$', '') --[[@as string]]
+      end
+      hls[#hls + 1] = {
+        {
+          spec.sym .. l,
+          {
+            {
+              hl_group = spec.hl,
+              end_row = 1, -- Highlight whole line
+            },
+          },
+        },
+      }
+    end
+  end
+
+  if config.diff_opts.internal then
+    local removed_regions, added_regions =
+      require('gitsigns.diff_int').run_word_diff(removed, added)
+
+    for _, region in ipairs(removed_regions) do
+      local i = region[1]
+      table.insert(hls[i][1][2], {
+        hl_group = 'GitSignsDeleteInline',
+        start_col = region[3],
+        end_col = region[4],
+      })
+    end
+
+    for _, region in ipairs(added_regions) do
+      local i = hunk.removed.count + region[1]
+      table.insert(hls[i][1][2], {
+        hl_group = 'GitSignsAddInline',
+        start_col = region[3],
+        end_col = region[4],
+      })
+    end
+  end
+
+  return hls
 end
 
 return M

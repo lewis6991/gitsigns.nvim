@@ -1,3 +1,5 @@
+local util = require('gitsigns.util')
+
 local api = vim.api
 
 local M = {}
@@ -279,6 +281,21 @@ function M.focus_open(id)
     api.nvim_set_current_win(winid)
   end
   return winid
+end
+
+--- @param fmt Gitsigns.LineSpec
+--- @param info table
+--- @return Gitsigns.LineSpec
+function M.lines_format(fmt, info)
+  local ret = vim.deepcopy(fmt)
+
+  for _, line in ipairs(ret) do
+    for _, s in ipairs(line) do
+      s[1] = util.expand_format(s[1], info)
+    end
+  end
+
+  return ret
 end
 
 return M
