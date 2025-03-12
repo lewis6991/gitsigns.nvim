@@ -228,10 +228,10 @@ end
 --- @param nsd integer
 --- @param hunk Gitsigns.Hunk.Hunk
 function M.show_deleted(bufnr, nsd, hunk)
-  local virt_lines = {} --- @type {[1]: string, [2]: string}[][]
+  local virt_lines = {} --- @type [string, string][][]
 
   for i, line in ipairs(hunk.removed.lines) do
-    local vline = {} --- @type {[1]: string, [2]: string}[]
+    local vline = {} --- @type [string, string][]
     local last_ecol = 1
 
     if config.word_diff then
@@ -300,7 +300,7 @@ end
 --- @return integer winid
 function M.show_deleted_in_float(bufnr, nsd, hunk, staged)
   local cwin = api.nvim_get_current_win()
-  local virt_lines = {} --- @type {[1]: string, [2]: string}[][]
+  local virt_lines = {} --- @type [string, string][][]
   local textoff = vim.fn.getwininfo(cwin)[1].textoff --[[@as integer]]
   for i = 1, hunk.removed.count do
     local sc = build_lno_str(cwin, hunk.removed.start + i, textoff - 1)

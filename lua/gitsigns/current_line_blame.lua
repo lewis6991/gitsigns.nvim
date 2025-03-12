@@ -33,7 +33,7 @@ local function expand_blame_format(fmt, name, info)
   return util.expand_format(fmt, info)
 end
 
---- @param virt_text {[1]: string, [2]: string}[]
+--- @param virt_text [string, string][]
 --- @return string
 local function flatten_virt_text(virt_text)
   local res = {} ---@type string[]
