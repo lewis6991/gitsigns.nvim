@@ -902,7 +902,7 @@ local function validate(k, v, ty)
   end
 end
 
---- @param config Gitsigns.Config
+--- @param config table
 local function validate_config(config)
   for k, v in
     pairs(config --[[@as table<string,any>]])
@@ -953,7 +953,7 @@ local function build_field(k, v, user_val)
   end
 end
 
---- @param user_config Gitsigns.Config|nil
+--- @param user_config table?
 function M.build(user_config)
   user_config = user_config or {}
 
