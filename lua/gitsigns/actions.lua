@@ -1,5 +1,4 @@
 local async = require('gitsigns.async')
-local git = require('gitsigns.git')
 local Hunks = require('gitsigns.hunks')
 local manager = require('gitsigns.manager')
 local message = require('gitsigns.message')
@@ -38,8 +37,6 @@ local M = {}
 local C = {}
 
 local CP = {}
-
-local ns_inline = api.nvim_create_namespace('gitsigns_preview_inline')
 
 --- @param arglead string
 --- @return string[]
@@ -150,31 +147,16 @@ M.toggle_deleted = function(value)
   return config.show_deleted
 end
 
---- @param bufnr? integer
---- @param hunks? Gitsigns.Hunk.Hunk[]?
---- @return Gitsigns.Hunk.Hunk? hunk
---- @return integer? index
-local function get_cursor_hunk(bufnr, hunks)
-  bufnr = bufnr or current_buf()
-
-  if not hunks then
-    if not cache[bufnr] then
-      return
-    end
-    hunks = {}
-    vim.list_extend(hunks, cache[bufnr].hunks or {})
-    vim.list_extend(hunks, cache[bufnr].hunks_staged or {})
-  end
-
-  local lnum = api.nvim_win_get_cursor(0)[1]
-  return Hunks.find_hunk(lnum, hunks)
-end
-
 --- @async
 --- @param bufnr integer
 local function update(bufnr)
+  local bcache = cache[bufnr]
+  if not bcache then
+    return
+  end
+
   manager.update(bufnr)
-  if not manager.schedule(bufnr) then
+  if not bcache:schedule() then
     return
   end
   if vim.wo.diff then
@@ -182,98 +164,14 @@ local function update(bufnr)
   end
 end
 
+--- @param params Gitsigns.CmdParams
+--- @return [integer,integer]? range Range of lines to operate on.
 local function get_range(params)
   local range --- @type [integer, integer]?
   if params.range > 0 then
     range = { params.line1, params.line2 }
   end
   return range
-end
-
---- @async
---- @param bufnr integer
---- @param bcache Gitsigns.CacheEntry
---- @param greedy? boolean
---- @param staged? boolean
---- @return Gitsigns.Hunk.Hunk[]? hunks
-local function get_hunks(bufnr, bcache, greedy, staged)
-  if greedy and config.diff_opts.linematch then
-    -- Re-run the diff without linematch
-    local buftext = util.buf_lines(bufnr)
-    local text --- @type string[]?
-    if staged then
-      text = bcache.compare_text_head
-    else
-      text = bcache.compare_text
-    end
-    if not text then
-      return
-    end
-    local hunks = run_diff(text, buftext, false)
-    if not manager.schedule(bufnr) then
-      return
-    end
-    return hunks
-  end
-
-  if staged then
-    return vim.deepcopy(bcache.hunks_staged)
-  end
-
-  return vim.deepcopy(bcache.hunks)
-end
-
---- @async
---- @param bufnr integer
---- @param range? [integer,integer]
---- @param greedy? boolean
---- @param staged? boolean
---- @return Gitsigns.Hunk.Hunk?
-local function get_hunk(bufnr, range, greedy, staged)
-  local bcache = cache[bufnr]
-  if not bcache then
-    return
-  end
-  local hunks = get_hunks(bufnr, bcache, greedy, staged)
-
-  if not range then
-    local hunk = get_cursor_hunk(bufnr, hunks)
-    return hunk
-  end
-
-  table.sort(range)
-  local top, bot = range[1], range[2]
-  local hunk = Hunks.create_partial_hunk(hunks or {}, top, bot)
-  if not hunk then
-    return
-  end
-
-  if staged then
-    local staged_top, staged_bot = top, bot
-    for _, h in ipairs(assert(bcache.hunks)) do
-      if top > h.vend then
-        staged_top = staged_top - (h.added.count - h.removed.count)
-      end
-      if bot > h.vend then
-        staged_bot = staged_bot - (h.added.count - h.removed.count)
-      end
-    end
-
-    hunk.added.lines = vim.list_slice(bcache.compare_text, staged_top, staged_bot)
-    hunk.removed.lines = vim.list_slice(
-      bcache.compare_text_head,
-      hunk.removed.start,
-      hunk.removed.start + hunk.removed.count - 1
-    )
-  else
-    hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
-    hunk.removed.lines = vim.list_slice(
-      bcache.compare_text,
-      hunk.removed.start,
-      hunk.removed.start + hunk.removed.count - 1
-    )
-  end
-  return hunk
 end
 
 --- Stage the hunk at the cursor position, or all lines in the
@@ -313,12 +211,12 @@ M.stage_hunk = mk_repeatable(async.create(2, function(range, opts)
     return
   end
 
-  local hunk = get_hunk(bufnr, range, opts.greedy ~= false, false)
+  local hunk = bcache:get_hunk(range, opts.greedy ~= false, false)
 
   local invert = false
   if not hunk then
     invert = true
-    hunk = get_hunk(bufnr, range, opts.greedy ~= false, true)
+    hunk = bcache:get_hunk(range, opts.greedy ~= false, true)
   end
 
   if not hunk then
@@ -386,7 +284,7 @@ M.reset_hunk = mk_repeatable(async.create(2, function(range, opts)
     return
   end
 
-  local hunk = get_hunk(bufnr, range, opts.greedy ~= false, false)
+  local hunk = bcache:get_hunk(range, opts.greedy ~= false, false)
 
   if not hunk then
     api.nvim_echo({ { 'No hunk to reset', 'WarningMsg' } }, false, {})
@@ -527,170 +425,6 @@ M.reset_buffer_index = async.create(0, function()
   update(bufnr)
 end)
 
---- @class Gitsigns.NavOpts
---- @field wrap boolean
---- @field foldopen boolean
---- @field navigation_message boolean
---- @field greedy boolean
---- @field preview boolean
---- @field count integer
---- @field target 'unstaged'|'staged'|'all'
-
---- @param x string
---- @param word string
---- @return boolean
-local function findword(x, word)
-  return string.find(x, '%f[%w_]' .. word .. '%f[^%w_]') ~= nil
-end
-
---- @param opts? Gitsigns.NavOpts
---- @return Gitsigns.NavOpts
-local function process_nav_opts(opts)
-  opts = opts or {}
-
-  -- show navigation message
-  if opts.navigation_message == nil then
-    opts.navigation_message = vim.o.shortmess:find('S') == nil
-  end
-
-  -- wrap around
-  if opts.wrap == nil then
-    opts.wrap = vim.o.wrapscan
-  end
-
-  if opts.foldopen == nil then
-    opts.foldopen = findword(vim.o.foldopen, 'search')
-  end
-
-  if opts.greedy == nil then
-    opts.greedy = true
-  end
-
-  if opts.count == nil then
-    opts.count = vim.v.count1
-  end
-
-  if opts.target == nil then
-    opts.target = 'unstaged'
-  end
-
-  return opts
-end
-
--- Defer function to the next main event
---- @param fn function
-local function defer(fn)
-  if vim.in_fast_event() then
-    vim.schedule(fn)
-  else
-    vim.defer_fn(fn, 1)
-  end
-end
-
---- @param bufnr integer
---- @return boolean
-local function has_preview_inline(bufnr)
-  return #api.nvim_buf_get_extmarks(bufnr, ns_inline, 0, -1, { limit = 1 }) > 0
-end
-
---- @async
---- @param bufnr integer
---- @param target 'unstaged'|'staged'|'all'
---- @param greedy boolean
---- @return Gitsigns.Hunk.Hunk[]
-local function get_nav_hunks(bufnr, target, greedy)
-  local bcache = assert(cache[bufnr])
-  local hunks_main = get_hunks(bufnr, bcache, greedy, false) or {}
-
-  local hunks --- @type Gitsigns.Hunk.Hunk[]
-  if target == 'unstaged' then
-    hunks = hunks_main
-  else
-    local hunks_head = get_hunks(bufnr, bcache, greedy, true) or {}
-    hunks_head = Hunks.filter_common(hunks_head, hunks_main) or {}
-    if target == 'all' then
-      hunks = hunks_main
-      vim.list_extend(hunks, hunks_head)
-      table.sort(hunks, function(h1, h2)
-        return h1.added.start < h2.added.start
-      end)
-    elseif target == 'staged' then
-      hunks = hunks_head
-    end
-  end
-  return hunks
-end
-
---- @async
---- @param direction 'first'|'last'|'next'|'prev'
---- @param opts? Gitsigns.NavOpts
-local function nav_hunk(direction, opts)
-  opts = process_nav_opts(opts)
-  local bufnr = current_buf()
-  local bcache = cache[bufnr]
-  if not bcache then
-    return
-  end
-
-  local hunks = get_nav_hunks(bufnr, opts.target, opts.greedy)
-
-  if not hunks or vim.tbl_isempty(hunks) then
-    if opts.navigation_message then
-      api.nvim_echo({ { 'No hunks', 'WarningMsg' } }, false, {})
-    end
-    return
-  end
-
-  local line = api.nvim_win_get_cursor(0)[1]
-  local index --- @type integer?
-
-  local forwards = direction == 'next' or direction == 'last'
-
-  for _ = 1, opts.count do
-    index = Hunks.find_nearest_hunk(line, hunks, direction, opts.wrap)
-
-    if not index then
-      if opts.navigation_message then
-        api.nvim_echo({ { 'No more hunks', 'WarningMsg' } }, false, {})
-      end
-      local _, col = vim.fn.getline(line):find('^%s*')
-      api.nvim_win_set_cursor(0, { line, col })
-      return
-    end
-
-    line = forwards and hunks[index].added.start or hunks[index].vend
-  end
-
-  -- Handle topdelete
-  line = math.max(line, 1)
-
-  vim.cmd([[ normal! m' ]]) -- add current cursor position to the jump list
-
-  local _, col = vim.fn.getline(line):find('^%s*')
-  api.nvim_win_set_cursor(0, { line, col })
-
-  if opts.foldopen then
-    vim.cmd('silent! foldopen!')
-  end
-
-  if opts.preview or popup.is_open('hunk') ~= nil then
-    -- Use defer so the cursor change can settle, otherwise the popup might
-    -- appear in the old position
-    defer(function()
-      -- Close the popup in case one is open which will cause it to focus the
-      -- popup
-      popup.close('hunk')
-      M.preview_hunk()
-    end)
-  elseif has_preview_inline(bufnr) then
-    defer(M.preview_hunk_inline)
-  end
-
-  if index and opts.navigation_message then
-    api.nvim_echo({ { string.format('Hunk %d of %d', index, #hunks), 'None' } }, false, {})
-  end
-end
-
 --- Jump to hunk in the current buffer. If a hunk preview
 --- (popup or inline) was previously opened, it will be re-opened
 --- at the next hunk.
@@ -722,7 +456,7 @@ end
 ---       Number of times to advance. Defaults to |v:count1|.
 M.nav_hunk = async.create(2, function(direction, opts)
   --- @cast opts Gitsigns.NavOpts?
-  nav_hunk(direction, opts)
+  require('gitsigns.nav').nav_hunk(direction, opts)
 end)
 
 C.nav_hunk = function(args, _)
@@ -740,7 +474,7 @@ end
 --- Parameters: ~
 ---     See |gitsigns.nav_hunk()|.
 M.next_hunk = async.create(1, function(opts)
-  nav_hunk('next', opts)
+  require('gitsigns.nav').nav_hunk('next', opts)
 end)
 
 C.next_hunk = function(args, _)
@@ -758,187 +492,23 @@ end
 --- Parameters: ~
 ---     See |gitsigns.nav_hunk()|.
 M.prev_hunk = async.create(1, function(opts)
-  nav_hunk('prev', opts)
+  require('gitsigns.nav').nav_hunk('prev', opts)
 end)
 
 C.prev_hunk = function(args, _)
   M.nav_hunk('prev', args)
 end
 
---- @param fmt Gitsigns.LineSpec
---- @param info table
---- @return Gitsigns.LineSpec
-local function lines_format(fmt, info)
-  local ret = vim.deepcopy(fmt)
-
-  for _, line in ipairs(ret) do
-    for _, s in ipairs(line) do
-      s[1] = util.expand_format(s[1], info)
-    end
-  end
-
-  return ret
-end
-
---- @param hunk Gitsigns.Hunk.Hunk
---- @param fileformat string
---- @return Gitsigns.LineSpec
-local function linespec_for_hunk(hunk, fileformat)
-  local hls = {} --- @type [string, Gitsigns.HlMark[]][][]
-
-  local removed, added = hunk.removed.lines, hunk.added.lines
-
-  for _, spec in ipairs({
-    { sym = '-', lines = removed, hl = 'GitSignsDeletePreview' },
-    { sym = '+', lines = added, hl = 'GitSignsAddPreview' },
-  }) do
-    for _, l in ipairs(spec.lines) do
-      if fileformat == 'dos' then
-        l = l:gsub('\r$', '') --[[@as string]]
-      end
-      hls[#hls + 1] = {
-        {
-          spec.sym .. l,
-          {
-            {
-              hl_group = spec.hl,
-              end_row = 1, -- Highlight whole line
-            },
-          },
-        },
-      }
-    end
-  end
-
-  if config.diff_opts.internal then
-    local removed_regions, added_regions =
-      require('gitsigns.diff_int').run_word_diff(removed, added)
-
-    for _, region in ipairs(removed_regions) do
-      local i = region[1]
-      table.insert(hls[i][1][2], {
-        hl_group = 'GitSignsDeleteInline',
-        start_col = region[3],
-        end_col = region[4],
-      })
-    end
-
-    for _, region in ipairs(added_regions) do
-      local i = hunk.removed.count + region[1]
-      table.insert(hls[i][1][2], {
-        hl_group = 'GitSignsAddInline',
-        start_col = region[3],
-        end_col = region[4],
-      })
-    end
-  end
-
-  return hls
-end
-
-local function noautocmd(f)
-  return function()
-    local ei = vim.o.eventignore
-    vim.o.eventignore = 'all'
-    f()
-    vim.o.eventignore = ei
-  end
-end
-
 --- Preview the hunk at the cursor position in a floating
 --- window. If the preview is already open, calling this
 --- will cause the window to get focus.
-M.preview_hunk = noautocmd(function()
-  -- Wrap in noautocmd so vim-repeat continues to work
-
-  if popup.focus_open('hunk') then
-    return
-  end
-
-  local bufnr = current_buf()
-
-  local hunk, index = get_cursor_hunk(bufnr)
-
-  if not hunk then
-    return
-  end
-
-  --- @type Gitsigns.LineSpec
-  local preview_linespec = {
-    { { 'Hunk <hunk_no> of <num_hunks>', 'Title' } },
-    unpack(linespec_for_hunk(hunk, vim.bo[bufnr].fileformat)),
-  }
-
-  local lines_spec = lines_format(preview_linespec, {
-    hunk_no = index,
-    num_hunks = #cache[bufnr].hunks,
-  })
-
-  popup.create(lines_spec, config.preview_config, 'hunk')
-end)
-
-local function clear_preview_inline(bufnr)
-  api.nvim_buf_clear_namespace(bufnr, ns_inline, 0, -1)
-end
-
---- @param keys string
-local function feedkeys(keys)
-  local cy = api.nvim_replace_termcodes(keys, true, false, true)
-  api.nvim_feedkeys(cy, 'n', false)
-end
-
---- @async
---- @param bufnr integer
---- @param greedy? boolean
---- @return Gitsigns.Hunk.Hunk? hunk
---- @return boolean? staged
-local function get_hunk_with_staged(bufnr, greedy)
-  local hunk = get_hunk(bufnr, nil, greedy, false)
-  if hunk then
-    return hunk, false
-  end
-
-  hunk = get_hunk(bufnr, nil, greedy, true)
-  if hunk then
-    return hunk, true
-  end
+M.preview_hunk = function()
+  require('gitsigns.preview').preview_hunk()
 end
 
 --- Preview the hunk at the cursor position inline in the buffer.
 M.preview_hunk_inline = async.create(0, function()
-  local bufnr = current_buf()
-
-  local hunk, staged = get_hunk_with_staged(bufnr, true)
-
-  if not hunk then
-    return
-  end
-
-  clear_preview_inline(bufnr)
-
-  local winid --- @type integer
-  manager.show_added(bufnr, ns_inline, hunk)
-  if hunk.removed.count > 0 then
-    winid = manager.show_deleted_in_float(bufnr, ns_inline, hunk, staged)
-  end
-
-  api.nvim_create_autocmd({ 'CursorMoved', 'InsertEnter' }, {
-    buffer = bufnr,
-    desc = 'Clear gitsigns inline preview',
-    callback = function()
-      if winid then
-        pcall(api.nvim_win_close, winid, true)
-      end
-      clear_preview_inline(bufnr)
-    end,
-    once = true,
-  })
-
-  -- Virtual lines will be hidden if they are placed on the top row, so
-  -- automatically scroll the viewport.
-  if hunk.added.start <= 1 then
-    feedkeys(hunk.removed.count .. '<C-y>')
-  end
+  require('gitsigns.preview').preview_hunk_inline()
 end)
 
 --- Select the hunk under the cursor.
@@ -949,12 +519,17 @@ end)
 ---               contains `linematch`. Defaults to `true`.
 M.select_hunk = function(opts)
   local bufnr = current_buf()
+  local bcache = cache[bufnr]
+  if not bcache then
+    return
+  end
+
   opts = opts or {}
 
   local hunk --- @type Gitsigns.Hunk.Hunk?
   async
     .arun(function()
-      hunk = get_hunk(bufnr, nil, opts.greedy ~= false)
+      hunk = bcache:get_hunk(nil, opts.greedy ~= false)
     end)
     :wait()
 
@@ -1075,7 +650,7 @@ M.blame_line = async.create(1, function(opts)
     popup.create({ { { 'Loading...', 'Title' } } }, config.preview_config)
   end, 1000)
 
-  if not manager.schedule(bufnr) then
+  if not bcache:schedule() then
     return
   end
 
@@ -1086,7 +661,7 @@ M.blame_line = async.create(1, function(opts)
     loading:close()
   end)
 
-  if not manager.schedule(bufnr) then
+  if not bcache:schedule() then
     return
   end
 
@@ -1111,15 +686,15 @@ M.blame_line = async.create(1, function(opts)
 
     vim.list_extend(blame_linespec, {
       { { 'Hunk <hunk_no> of <num_hunks>', 'Title' }, { ' <hunk_head>', 'LineNr' } },
-      unpack(linespec_for_hunk(hunk, fileformat)),
+      unpack(Hunks.linespec_for_hunk(hunk, fileformat)),
     })
   end
 
-  if not manager.schedule(bufnr) then
+  if not bcache:schedule() then
     return
   end
 
-  popup.create(lines_format(blame_linespec, result), config.preview_config, 'blame')
+  popup.create(popup.lines_format(blame_linespec, result), config.preview_config, 'blame')
 end)
 
 C.blame_line = function(args, _)
@@ -1328,77 +903,6 @@ end
 
 CP.show = complete_heads
 
---- @param buf_or_filename string|integer
---- @param hunks Gitsigns.Hunk.Hunk[]
---- @param qflist table[]
-local function hunks_to_qflist(buf_or_filename, hunks, qflist)
-  for i, hunk in ipairs(hunks) do
-    qflist[#qflist + 1] = {
-      bufnr = type(buf_or_filename) == 'number' and buf_or_filename or nil,
-      filename = type(buf_or_filename) == 'string' and buf_or_filename or nil,
-      lnum = hunk.added.start,
-      text = string.format('Lines %d-%d (%d/%d)', hunk.added.start, hunk.vend, i, #hunks),
-    }
-  end
-end
-
---- @async
---- @param target 'all'|'attached'|integer|nil
---- @return table[]?
-local function buildqflist(target)
-  target = target or current_buf()
-  if target == 0 then
-    target = current_buf()
-  end
-  local qflist = {} --- @type table[]
-
-  if type(target) == 'number' then
-    local bufnr = target
-    if not cache[bufnr] then
-      return
-    end
-    hunks_to_qflist(bufnr, cache[bufnr].hunks, qflist)
-  elseif target == 'attached' then
-    for bufnr, bcache in pairs(cache) do
-      hunks_to_qflist(bufnr, assert(bcache.hunks), qflist)
-    end
-  elseif target == 'all' then
-    local repos = {} --- @type table<string,Gitsigns.Repo>
-    for _, bcache in pairs(cache) do
-      local repo = bcache.git_obj.repo
-      if not repos[repo.gitdir] then
-        repos[repo.gitdir] = repo
-      end
-    end
-
-    local repo = git.Repo.get(assert(vim.loop.cwd()))
-    if repo and not repos[repo.gitdir] then
-      repos[repo.gitdir] = repo
-    end
-
-    for _, r in pairs(repos) do
-      for _, f in ipairs(r:files_changed(config.base)) do
-        local f_abs = r.toplevel .. '/' .. f
-        local stat = vim.loop.fs_stat(f_abs)
-        if stat and stat.type == 'file' then
-          ---@type string
-          local obj
-          if config.base and config.base ~= ':0' then
-            obj = config.base .. ':' .. f
-          else
-            obj = ':0:' .. f
-          end
-          local a = r:get_show_text(obj)
-          async.schedule()
-          local hunks = run_diff(a, util.file_lines(f_abs))
-          hunks_to_qflist(f_abs, hunks, qflist)
-        end
-      end
-    end
-  end
-  return qflist
-end
-
 --- Populate the quickfix list with hunks. Automatically opens the
 --- quickfix window.
 ---
@@ -1426,35 +930,7 @@ end
 ---       Open the quickfix/location list viewer.
 ---       Defaults to `true`.
 M.setqflist = async.create(2, function(target, opts)
-  opts = opts or {}
-  if opts.open == nil then
-    opts.open = true
-  end
-  local qfopts = {
-    items = buildqflist(target),
-    title = 'Hunks',
-  }
-  async.schedule()
-  if opts.use_location_list then
-    local nr = opts.nr or 0
-    vim.fn.setloclist(nr, {}, ' ', qfopts)
-    if opts.open then
-      if config.trouble then
-        require('trouble').open('loclist')
-      else
-        vim.cmd.lopen()
-      end
-    end
-  else
-    vim.fn.setqflist({}, ' ', qfopts)
-    if opts.open then
-      if config.trouble then
-        require('trouble').open('quickfix')
-      else
-        vim.cmd.copen()
-      end
-    end
-  end
+  require('gitsigns.qflist').setqflist(target, opts)
 end)
 
 C.setqflist = function(args, _)
@@ -1496,7 +972,7 @@ M.get_actions = function()
   if not bcache then
     return
   end
-  local hunk = get_cursor_hunk()
+  local hunk = bcache:get_cursor_hunk()
 
   --- @type string[]
   local actions_l = {}

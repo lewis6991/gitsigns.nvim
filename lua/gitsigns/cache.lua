@@ -1,5 +1,9 @@
 local async = require('gitsigns.async')
+local config = require('gitsigns.config').config
+local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
+
+local api = vim.api
 
 local M = {
   CacheEntry = {},
@@ -98,11 +102,11 @@ function CacheEntry:run_blame(lnum, opts)
   while true do
     local contents = send_contents and util.buf_lines(bufnr) or nil
     local tick = vim.b[bufnr].changedtick
-    local lnum0 = vim.api.nvim_buf_line_count(bufnr) > BLAME_THRESHOLD_LEN and lnum or nil
+    local lnum0 = api.nvim_buf_line_count(bufnr) > BLAME_THRESHOLD_LEN and lnum or nil
     -- TODO(lewis6991): Cancel blame on changedtick
     local blame = self.git_obj:run_blame(contents, lnum0, self.git_obj.revision, opts)
     async.schedule()
-    if not vim.api.nvim_buf_is_valid(bufnr) then
+    if not api.nvim_buf_is_valid(bufnr) then
       return {}
     end
     if vim.b[bufnr].changedtick == tick then
@@ -125,7 +129,7 @@ function CacheEntry:blame_valid(lnum)
   end
 
   -- Need to check we have blame info for all lines
-  for i = 1, vim.api.nvim_buf_line_count(self.bufnr) do
+  for i = 1, api.nvim_buf_line_count(self.bufnr) do
     if not blame[i] then
       return false
     end
@@ -164,6 +168,121 @@ function CacheEntry:get_blame(lnum, opts)
   end
 
   return blame[lnum]
+end
+
+--- @async
+--- @nodiscard
+--- @param check_compare_text? boolean
+--- @return boolean
+function CacheEntry:schedule(check_compare_text)
+  async.schedule()
+  local bufnr = self.bufnr
+  if not api.nvim_buf_is_valid(bufnr) then
+    log.dprint('Buffer not valid, aborting')
+    return false
+  end
+
+  if not M.cache[bufnr] then
+    log.dprint('Has detached, aborting')
+    return false
+  end
+
+  if check_compare_text and not M.cache[bufnr].compare_text then
+    log.dprint('compare_text was invalid, aborting')
+    return false
+  end
+
+  return true
+end
+
+--- @async
+function CacheEntry:get_hunks(greedy, staged)
+  if greedy and config.diff_opts.linematch then
+    -- Re-run the diff without linematch
+    local buftext = util.buf_lines(self.bufnr)
+    local text --- @type string[]?
+    if staged then
+      text = self.compare_text_head
+    else
+      text = self.compare_text
+    end
+    if not text then
+      return
+    end
+    local run_diff = require('gitsigns.diff')
+    local hunks = run_diff(text, buftext, false)
+    if not self:schedule() then
+      return
+    end
+    return hunks
+  end
+
+  if staged then
+    return vim.deepcopy(self.hunks_staged)
+  end
+
+  return vim.deepcopy(self.hunks)
+end
+
+--- @return Gitsigns.Hunk.Hunk? hunk
+--- @return integer? index
+function CacheEntry:get_cursor_hunk()
+  local hunks = {}
+  vim.list_extend(hunks, self.hunks or {})
+  vim.list_extend(hunks, self.hunks_staged or {})
+
+  local lnum = api.nvim_win_get_cursor(0)[1]
+  local Hunks = require('gitsigns.hunks')
+  return Hunks.find_hunk(lnum, hunks)
+end
+
+--- @async
+--- @param range? [integer,integer]
+--- @param greedy? boolean
+--- @param staged? boolean
+--- @return Gitsigns.Hunk.Hunk?
+function CacheEntry:get_hunk(range, greedy, staged)
+  local Hunks = require('gitsigns.hunks')
+
+  local hunks = self:get_hunks(greedy, staged)
+
+  if not range then
+    return self:get_cursor_hunk()
+  end
+
+  table.sort(range)
+  local top, bot = range[1], range[2]
+  local hunk = Hunks.create_partial_hunk(hunks or {}, top, bot)
+  if not hunk then
+    return
+  end
+
+  if staged then
+    local staged_top, staged_bot = top, bot
+    for _, h in ipairs(assert(self.hunks)) do
+      if top > h.vend then
+        staged_top = staged_top - (h.added.count - h.removed.count)
+      end
+      if bot > h.vend then
+        staged_bot = staged_bot - (h.added.count - h.removed.count)
+      end
+    end
+
+    hunk.added.lines = vim.list_slice(self.compare_text, staged_top, staged_bot)
+    hunk.removed.lines = vim.list_slice(
+      self.compare_text_head,
+      hunk.removed.start,
+      hunk.removed.start + hunk.removed.count - 1
+    )
+  else
+    hunk.added.lines = api.nvim_buf_get_lines(self.bufnr, top - 1, bot, false)
+    hunk.removed.lines = vim.list_slice(
+      self.compare_text,
+      hunk.removed.start,
+      hunk.removed.start + hunk.removed.count - 1
+    )
+  end
+  return hunk
 end
 
 function CacheEntry:destroy()
