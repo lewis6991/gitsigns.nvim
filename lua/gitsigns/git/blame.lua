@@ -200,6 +200,7 @@ end
 --- @param revision? string
 --- @param opts? Gitsigns.BlameOpts
 --- @return table<integer, Gitsigns.BlameInfo>
+--- @return table<string, Gitsigns.CommitInfo>
 function M.run_blame(obj, contents, lnum, revision, opts)
   local ret = {} --- @type table<integer,Gitsigns.BlameInfo>
 
@@ -217,7 +218,7 @@ function M.run_blame(obj, contents, lnum, revision, opts)
         filename = obj.file,
       }
     end
-    return ret
+    return ret, {}
   end
 
   opts = opts or {}
@@ -256,10 +257,9 @@ function M.run_blame(obj, contents, lnum, revision, opts)
 
   if stderr then
     error_once('Error running git-blame: ' .. stderr)
-    return {}
   end
 
-  return ret
+  return ret, commits
 end
 
 return M
