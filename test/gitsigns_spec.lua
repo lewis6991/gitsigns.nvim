@@ -75,6 +75,24 @@ describe('gitsigns (with screen)', function()
     screen:detach()
   end)
 
+  it('q closes the blame buffer', function()
+    setup_test_repo()
+    setup_gitsigns(test_config)
+
+    edit(test_file)
+    helpers.sleep(100)
+
+    eq(1, #helpers.api.nvim_list_bufs())
+
+    command('Gitsigns blame')
+    helpers.sleep(100)
+    eq(2, #helpers.api.nvim_list_bufs())
+
+    feed('q')
+    helpers.sleep(100)
+    eq(1, #helpers.api.nvim_list_bufs())
+  end)
+
   it('can run basic setup', function()
     setup_gitsigns()
     check({ status = {}, signs = {} })
