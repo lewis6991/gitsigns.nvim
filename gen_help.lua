@@ -240,8 +240,8 @@ end
 --- @param state EmmyState
 --- @param doc_comment string
 --- @param desc string[]
---- @param params {[1]: string, [2]: string, [3]: string[]}[]
---- @param returns {[1]: string, [2]: string, [3]: string[]}[]
+--- @param params [string, string, string[]][]
+--- @param returns [string, string, string[]][]
 --- @return EmmyState
 local function process_doc_comment(state, doc_comment, desc, params, returns)
   if state == 'none' then
@@ -284,8 +284,8 @@ end
 
 --- @param header string
 --- @param block string[]
---- @param params {[1]: string, [2]: string, [3]: string[]}[]
---- @param returns {[1]: string, [2]: string, [3]: string[]}[]
+--- @param params [string, string, string[]][]
+--- @param returns [string, string, string[]][]
 --- @param deprecated string?
 --- @return string[]?
 local function render_block(header, block, params, returns, deprecated)
@@ -306,7 +306,7 @@ local function render_block(header, block, params, returns, deprecated)
 
   -- filter arguments beginning with '_'
   params = vim.tbl_filter(
-    --- @param v {[1]: string, [2]: string, [3]: string[]}
+    --- @param v [string, string, string[]]
     --- @return boolean
     function(v)
       return not startswith(v[1], '_')
@@ -354,8 +354,8 @@ local function gen_functions_doc_from_file(path)
   --- @alias EmmyState 'none'|'in_block'|'in_param'|'in_return'
   local state = 'none' --- @type EmmyState
   local desc = {} --- @type string[]
-  local params = {} --- @type {[1]: string, [2]: string, [3]: string[]}[]
-  local returns = {} --- @type {[1]: string, [2]: string, [3]: string[]}[]
+  local params = {} --- @type [string, string, string[]][]
+  local returns = {} --- @type [string, string, string[]][]
   local deprecated --- @type string?
 
   for l in i do

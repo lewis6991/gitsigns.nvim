@@ -183,7 +183,7 @@ local function update(bufnr)
 end
 
 local function get_range(params)
-  local range --- @type {[1]: integer, [2]: integer}?
+  local range --- @type [integer, integer]?
   if params.range > 0 then
     range = { params.line1, params.line2 }
   end
@@ -294,7 +294,7 @@ end
 ---               Stage all contiguous hunks. Only useful if 'diff_opts'
 ---               contains `linematch`. Defaults to `true`.
 M.stage_hunk = mk_repeatable(async.create(2, function(range, opts)
-  --- @cast range {[1]: integer, [2]: integer}?
+  --- @cast range [integer, integer]?
 
   opts = opts or {}
   local bufnr = current_buf()
@@ -377,7 +377,7 @@ end
 ---       Stage all contiguous hunks. Only useful if 'diff_opts'
 ---       contains `linematch`. Defaults to `true`.
 M.reset_hunk = mk_repeatable(async.create(2, function(range, opts)
-  --- @cast range {[1]: integer, [2]: integer}?
+  --- @cast range [integer, integer]?
 
   opts = opts or {}
   local bufnr = current_buf()
@@ -863,7 +863,7 @@ M.preview_hunk = noautocmd(function()
     return
   end
 
-  --- @type {[1]: string, [2]: string|Gitsigns.HlMark[]}[][]
+  --- @type Gitsigns.LineSpec
   local preview_linespec = {
     { { 'Hunk <hunk_no> of <num_hunks>', 'Title' } },
     unpack(linespec_for_hunk(hunk, vim.bo[bufnr].fileformat)),
@@ -1024,7 +1024,7 @@ end
 
 --- @param is_committed boolean
 --- @param full boolean
---- @return {[1]: string, [2]: string}[][]
+--- @return [string, string][][]
 local function create_blame_fmt(is_committed, full)
   if not is_committed then
     return {
