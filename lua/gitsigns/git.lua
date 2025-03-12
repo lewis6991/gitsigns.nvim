@@ -48,11 +48,17 @@ local function in_git_dir(file)
 end
 
 --- @async
---- @return string? err
 --- @param revision? string
-function Obj:update(revision)
-  revision = revision and util.norm_base(revision) or self.revision
-  local info, err = self.repo:file_info(self.file, revision)
+--- @return string? err
+function Obj:change_revision(revision)
+  self.revision = util.norm_base(revision)
+  return self:refresh()
+end
+
+--- @async
+--- @return string? err
+function Obj:refresh()
+  local info, err = self.repo:file_info(self.file, self.revision)
 
   if err then
     log.eprint(err)
@@ -62,7 +68,6 @@ function Obj:update(revision)
     return err
   end
 
-  self.revision = revision
   self.relpath = info.relpath
   self.object_name = info.object_name
   self.mode_bits = info.mode_bits
@@ -150,7 +155,7 @@ function Obj:ensure_file_in_index()
     self.repo:update_index(self.mode_bits, self.object_name, self.relpath, true)
   end
 
-  self:update()
+  self:refresh()
   self.lock = nil
 end
 
