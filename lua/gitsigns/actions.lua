@@ -784,7 +784,7 @@ end
 --- @param fileformat string
 --- @return Gitsigns.LineSpec
 local function linespec_for_hunk(hunk, fileformat)
-  local hls = {} --- @type Gitsigns.LineSpec
+  local hls = {} --- @type [string, Gitsigns.HlMark[]][][]
 
   local removed, added = hunk.removed.lines, hunk.added.lines
 
@@ -863,7 +863,7 @@ M.preview_hunk = noautocmd(function()
     return
   end
 
-  --- @type Gitsigns.LineSpec
+  --- @type {[1]: string, [2]: string|Gitsigns.HlMark[]}[][]
   local preview_linespec = {
     { { 'Hunk <hunk_no> of <num_hunks>', 'Title' } },
     unpack(linespec_for_hunk(hunk, vim.bo[bufnr].fileformat)),
@@ -1149,7 +1149,7 @@ end)
 local function update_buf_base(bcache, base)
   bcache.file_mode = base == 'FILE'
   if not bcache.file_mode then
-    bcache.git_obj:update(base)
+    bcache.git_obj:change_revision(base)
   end
   bcache:invalidate(true)
   update(bcache.bufnr)

@@ -57,7 +57,7 @@ end
 --- @field end_col? integer
 
 --- Each element represents a multi-line segment
---- @alias Gitsigns.LineSpec { [1]: string, [2]: Gitsigns.HlMark[]}[][]
+--- @alias Gitsigns.LineSpec [string, string|Gitsigns.HlMark[]][][]
 
 --- @param hlmarks Gitsigns.HlMark[]
 --- @param row_offset integer
@@ -250,7 +250,7 @@ local function create_win(bufnr, opts, id)
   return winid
 end
 
---- @param lines_spec {[1]: string, [2]: string|Gitsigns.HlMark[]}[][]
+--- @param lines_spec Gitsigns.LineSpec
 --- @param opts table
 --- @param id? string
 --- @return integer winid, integer bufnr
