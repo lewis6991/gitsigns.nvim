@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/lewis6991/gitsigns.nvim/compare/v1.0.1...v1.0.2) (2025-03-12)
+
+
+### Bug Fixes
+
+* change_base with empty base ([751bfae](https://github.com/lewis6991/gitsigns.nvim/commit/751bfae26a3561394afcafdf92b0dc52988ce436))
+
 ## [1.0.1](https://github.com/lewis6991/gitsigns.nvim/compare/v1.0.0...v1.0.1) (2025-02-15)
 
 
