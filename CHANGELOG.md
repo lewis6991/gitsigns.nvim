@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.2](https://github.com/lewis6991/gitsigns.nvim/compare/v1.0.1...v1.0.2) (2025-03-16)
+
+
+### Bug Fixes
+
+* `stage_hunk` on staged hunk should behave like `undo_stage_hunk` ([5fefc7b](https://github.com/lewis6991/gitsigns.nvim/commit/5fefc7bf6966f9a1ca961ac2fca0f9d93118df18))
+* change_base with empty base ([751bfae](https://github.com/lewis6991/gitsigns.nvim/commit/751bfae26a3561394afcafdf92b0dc52988ce436))
+
 ## [1.0.1](https://github.com/lewis6991/gitsigns.nvim/compare/v1.0.0...v1.0.1) (2025-02-15)
 
 
