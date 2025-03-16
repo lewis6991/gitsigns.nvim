@@ -224,12 +224,15 @@ function CacheEntry:get_hunks(greedy, staged)
   return vim.deepcopy(self.hunks)
 end
 
+--- @param hunks? Gitsigns.Hunk.Hunk[]?
 --- @return Gitsigns.Hunk.Hunk? hunk
 --- @return integer? index
-function CacheEntry:get_cursor_hunk()
-  local hunks = {}
-  vim.list_extend(hunks, self.hunks or {})
-  vim.list_extend(hunks, self.hunks_staged or {})
+function CacheEntry:get_cursor_hunk(hunks)
+  if not hunks then
+    hunks = {}
+    vim.list_extend(hunks, self.hunks or {})
+    vim.list_extend(hunks, self.hunks_staged or {})
+  end
 
   local lnum = api.nvim_win_get_cursor(0)[1]
   local Hunks = require('gitsigns.hunks')
@@ -247,7 +250,7 @@ function CacheEntry:get_hunk(range, greedy, staged)
   local hunks = self:get_hunks(greedy, staged)
 
   if not range then
-    return self:get_cursor_hunk()
+    return self:get_cursor_hunk(hunks)
   end
 
   table.sort(range)
