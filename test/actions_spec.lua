@@ -118,6 +118,18 @@ describe('actions', function()
       signs = { changed = 1 },
     })
 
+    command('Gitsigns stage_hunk')
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    command('Gitsigns stage_hunk')
+    check({
+      status = { head = 'main', added = 0, changed = 1, removed = 0 },
+      signs = { changed = 1 },
+    })
+
     -- Add multiple edits
     feed('ggccThat<esc>')
 
