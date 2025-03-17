@@ -139,7 +139,9 @@ local M = {}
 function M.watch_gitdir(bufnr, gitdir)
   dprintf('Watching git dir')
   local w = assert(uv.new_fs_event())
-  w:start(gitdir, {}, function(err, filename, events)
+
+  ---@type uv.fs_event_start.callback
+  local function on_file_change(err, filename, events)
     local __FUNC__ = 'watcher_cb'
     if err then
       dprintf('Git dir update error: %s', err)
@@ -157,7 +159,11 @@ function M.watch_gitdir(bufnr, gitdir)
     dprintf("Git dir update: '%s' %s", filename, inspect(events))
 
     watcher_handler(bufnr)
-  end)
+    w:stop()
+    w:start(gitdir, {}, on_file_change)
+  end
+
+  w:start(gitdir, {}, on_file_change)
   return w
 end
 
