@@ -98,21 +98,23 @@ local update_cwd_head = async.async(function()
     end)
   )
 
-  -- Watch .git/HEAD to detect branch changes
-  cwd_watcher:start(
-    towatch,
-    {},
-    async.async(function(err)
-      local __FUNC__ = 'cwd_watcher_cb'
-      if err then
-        log.dprintf('Git dir update error: %s', err)
-        return
-      end
-      log.dprint('Git cwd dir update')
+  ---@type uv.fs_event_start.callback
+  local function on_file_change(err, _, events)
+    local __FUNC__ = 'cwd_watcher_cb'
+    if err then
+      log.dprintf('Git dir update error: %s', err)
+      return
+    end
+    log.dprint('Git cwd dir update')
 
-      update_head()
-    end)
-  )
+    update_head()
+
+    cwd_watcher:stop()
+    cwd_watcher:start(towatch, {}, async.async(on_file_change))
+  end
+
+  -- Watch .git/HEAD to detect branch changes
+  cwd_watcher:start(towatch, {}, async.async(on_file_change))
 end)
 
 local function setup_cli()
