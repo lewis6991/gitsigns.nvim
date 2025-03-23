@@ -300,6 +300,7 @@ end
 function M.create_patch(relpath, hunks, mode_bits, invert)
   invert = invert or false
 
+  --- @type string[]
   local results = {
     string.format('diff --git a/%s b/%s', relpath, relpath),
     'index 000000..000000 ' .. mode_bits,
@@ -355,7 +356,6 @@ end
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @return Gitsigns.StatusObj
 function M.get_summary(hunks)
-  --- @type Gitsigns.StatusObj
   local status = { added = 0, changed = 0, removed = 0 }
 
   for _, hunk in ipairs(hunks or {}) do

@@ -45,7 +45,7 @@ end
 ---
 ---
 --- @generic T
---- @param fn fun(...:T...) Function to throttle
+--- @param fn async fun(...:T...) Function to throttle
 --- @param schedule? boolean
 --- @return fun(...:T...) throttled function.
 function M.throttle_by_id(fn, schedule)

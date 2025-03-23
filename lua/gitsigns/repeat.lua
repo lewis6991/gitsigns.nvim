@@ -15,6 +15,7 @@ function M.mk_repeatable(fn)
           true,
           true
         )
+        --- @diagnostic disable-next-line: undefined-field
         vim.fn['repeat#set'](action, -1)
       end
     end

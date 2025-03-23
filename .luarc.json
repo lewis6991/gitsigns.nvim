@@ -17,6 +17,10 @@
     "checkThirdParty": false
   },
   "diagnostics": {
+    "enables": [
+      "incomplete-signature-doc",
+      "missing-global-doc"
+    ],
     "libraryFiles": "Disable",
     "groupFileStatus": {
       "strict": "Opened",

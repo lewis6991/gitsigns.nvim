@@ -246,7 +246,8 @@ end
 function Task:_resume(...)
   --- @type [boolean, string|Gitsigns.async.CallbackFn]
   local ret = { coroutine.resume(self._thread, ...) }
-  local stat = table.remove(ret, 1) --- @type boolean
+  local stat = table.remove(ret, 1)
+  --- @cast stat boolean
   --- @cast ret [string|Gitsigns.async.CallbackFn]
 
   if not stat then
@@ -337,7 +338,7 @@ end
 --- @return any ...
 local function await_task(task)
   --- @param callback fun(err?: string, result?: any[])
-  --- @return function
+  --- @return Gitsigns.async.Task
   local err, result = yield(function(callback)
     task:await(callback)
     return task
@@ -352,6 +353,7 @@ local function await_task(task)
   return (unpack(result, 1, table.maxn(result)))
 end
 
+--- @async
 --- Asynchronous blocking wait
 --- @param argc integer
 --- @param func Gitsigns.async.CallbackFn
@@ -420,6 +422,7 @@ function M.create(argc, func)
   return function(...)
     local task = Task._new(func)
 
+    --- @type fun(err:string?, result?:any[])
     local callback = argc and select(argc + 1, ...) or nil
     if callback and type(callback) == 'function' then
       task:await(callback)

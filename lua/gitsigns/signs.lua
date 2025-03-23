@@ -71,6 +71,7 @@ function M:add(bufnr, signs, filter)
 
       if not ok and config.debug_mode then
         vim.schedule(function()
+          --- @cast err string
           error(table.concat({
             string.format('Error placing extmark on line %d', s.lnum),
             err,
@@ -107,6 +108,8 @@ end
 -- end
 
 --- @param cfg table<Gitsigns.SignType,Gitsigns.SignConfig>
+--- @param name? string
+--- @return Gitsigns.Signs
 function M.new(cfg, name)
   local __FUNC__ = 'signs.init'
 

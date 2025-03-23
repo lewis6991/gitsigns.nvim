@@ -82,7 +82,7 @@ local function apply_win_signs(bufnr, top, bot, clear)
   end
 end
 
---- @param blame table<integer,Gitsigns.BlameInfo?>?
+--- @param blame table<integer?,Gitsigns.BlameInfo?>?
 --- @param first integer
 --- @param last_orig integer
 --- @param last_new integer
@@ -284,6 +284,7 @@ local function build_lno_str(win, lnum, width)
   local has_col, statuscol =
     pcall(api.nvim_get_option_value, 'statuscolumn', { win = win, scope = 'local' })
   if has_col and statuscol and statuscol ~= '' then
+    --- @cast statuscol string
     local ok, data = pcall(api.nvim_eval_statusline, statuscol, {
       winid = win,
       use_statuscol_lnum = lnum,
@@ -487,7 +488,7 @@ M.update = throttle_by_id(function(bufnr)
 
   local buftext = util.buf_lines(bufnr)
 
-  bcache.hunks = run_diff(bcache.compare_text, buftext)
+  bcache.hunks = run_diff(assert(bcache.compare_text), buftext)
   if not M.schedule(bufnr) then
     return
   end

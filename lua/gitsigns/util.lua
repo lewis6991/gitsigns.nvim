@@ -279,7 +279,6 @@ function M.expand_format(fmt, info)
     if not match then
       break
     end
-    --- @cast key string
 
     ret[#ret + 1], fmt = fmt:sub(1, scol - 1), fmt:sub(ecol + 1)
 
@@ -331,7 +330,7 @@ end
 --- Works on lists with holes.
 ---
 ---@generic T
----@param t table<integer, T>
+---@param t table<integer?, T>
 ---@param first integer
 ---@param last integer
 function M.list_remove(t, first, last)
@@ -353,7 +352,7 @@ end
 --- Based on https://stackoverflow.com/questions/12394841/safely-remove-items-from-an-array-table-while-iterating/53038524#53038524
 ---
 ---@generic T
----@param t table<integer, T>
+---@param t table<integer?, T>
 ---@param first integer
 ---@param last integer
 ---@param v any
