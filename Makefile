@@ -121,5 +121,12 @@ luals-check: $(LUALS) $(NVIM_TEST)
 			--configpath=../.luarc.json \
 			--check=lua
 
+.PHONY: emmylua-check
+emmylua-check: $(NVIM_TEST)
+	VIMRUNTIME=$(XDG_DATA_HOME)/nvim-test/nvim-test-$(NVIM_TEST_VERSION)/share/nvim/runtime \
+		emmylua_check \
+			--config=$(PWD)/.luarc.json \
+			lua
+
 luv:
 	git clone https://github.com/LuaCATS/luv
