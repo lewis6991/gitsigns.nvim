@@ -310,7 +310,7 @@ function M.blame()
   local blm_bufnr = api.nvim_create_buf(false, true)
   api.nvim_win_set_buf(blm_win, blm_bufnr)
 
-  render(blame, blm_win, win, bcache.git_obj.revision)
+  render(blame, blm_win, win, assert(bcache.git_obj.revision))
 
   local blm_bo = vim.bo[blm_bufnr]
   blm_bo.buftype = 'nofile'
@@ -360,28 +360,28 @@ function M.blame()
   })
 
   pmap('n', 'r', function()
-    reblame(blame, win, bcache.git_obj.revision)
+    reblame(blame, win, assert(assert(bcache).git_obj.revision))
   end, {
     desc = 'Reblame at commit',
     buffer = blm_bufnr,
   })
 
   pmap('n', 'R', function()
-    reblame(blame, win, bcache.git_obj.revision, true)
+    reblame(blame, win, assert(bcache).git_obj.revision, true)
   end, {
     desc = 'Reblame at commit parent',
     buffer = blm_bufnr,
   })
 
   pmap('n', 's', function()
-    show_commit(blm_win, 'vsplit', bcache)
+    show_commit(blm_win, 'vsplit', assert(bcache))
   end, {
     desc = 'Show commit in a vertical split',
     buffer = blm_bufnr,
   })
 
   pmap('n', 'S', function()
-    show_commit(blm_win, 'tabnew', bcache)
+    show_commit(blm_win, 'tabnew', assert(bcache))
   end, {
     desc = 'Show commit in a new tab',
     buffer = blm_bufnr,
@@ -411,7 +411,7 @@ function M.blame()
     group = group,
     callback = function()
       local cursor = unpack(api.nvim_win_get_cursor(blm_win))
-      local cur_sha = blame[cursor].commit.abbrev_sha
+      local cur_sha = assert(blame[cursor]).commit.abbrev_sha
       for i, info in pairs(blame) do
         if info.commit.abbrev_sha == cur_sha then
           api.nvim_buf_set_extmark(blm_bufnr, ns_hl, i - 1, 0, {

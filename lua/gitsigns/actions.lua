@@ -1353,13 +1353,13 @@ end
 
 --- @async
 --- @param target 'all'|'attached'|integer|nil
---- @return table[]?
+--- @return vim.quickfix.entry[]?
 local function buildqflist(target)
   target = target or current_buf()
   if target == 0 then
     target = current_buf()
   end
-  local qflist = {} --- @type table[]
+  local qflist = {} --- @type vim.quickfix.entry[]
 
   if type(target) == 'number' then
     local bufnr = target
@@ -1380,7 +1380,8 @@ local function buildqflist(target)
       end
     end
 
-    local repo = git.Repo.get(assert(uv.cwd()))
+    local cwd = assert(uv.cwd())
+    local repo = git.Repo.get(cwd)
     if repo and not repos[repo.gitdir] then
       repos[repo.gitdir] = repo
     end

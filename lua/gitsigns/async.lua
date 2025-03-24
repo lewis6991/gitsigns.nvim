@@ -325,8 +325,8 @@ function M.status(task)
 end
 
 --- @async
---- @generic R
---- @param fun fun(callback: fun(...:R...)): any?
+--- @generic R, T
+--- @param fun fun(callback: fun(...:R...)): T
 --- @return R...
 local function yield(fun)
   assert(type(fun) == 'function', 'Expected function')
@@ -338,7 +338,6 @@ end
 --- @return any ...
 local function await_task(task)
   --- @param callback fun(err?: string, result?: any[])
-  --- @return Gitsigns.async.Task
   local err, result = yield(function(callback)
     task:await(callback)
     return task
@@ -363,7 +362,7 @@ local function await_cbfun(argc, func, ...)
   local args = pack_len(...)
   args.n = math.max(args.n, argc)
 
-  --- @param callback fun(success: boolean, result: any[])
+  --- @param callback fun(...:any)
   --- @return any?
   return yield(function(callback)
     args[argc] = callback
@@ -373,8 +372,8 @@ end
 
 --- @async
 --- Asynchronous blocking wait
---- @overload fun(task: Gitsigns.async.Task): any ...
---- @overload fun(argc: integer, func: Gitsigns.async.CallbackFn, ...:any): any ...
+--- @overload async fun(task: Gitsigns.async.Task): any ...
+--- @overload async fun(argc: integer, func: Gitsigns.async.CallbackFn, ...:any): any ...
 function M.await(...)
   assert(running(), 'Cannot await in non-async context')
 
@@ -396,6 +395,7 @@ end
 function M.awrap(argc, func)
   assert(type(argc) == 'number')
   assert(type(func) == 'function')
+  --- @async
   return function(...)
     return M.await(argc, func, ...)
   end

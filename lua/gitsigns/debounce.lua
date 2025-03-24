@@ -47,10 +47,11 @@ end
 --- @generic T
 --- @param fn async fun(...:T...) Function to throttle
 --- @param schedule? boolean
---- @return fun(...:T...) throttled function.
+--- @return async fun(...:T...) throttled function.
 function M.throttle_by_id(fn, schedule)
   local scheduled = {} --- @type table<any,boolean>
   local running = {} --- @type table<any,boolean>
+  --- @async
   return function(id, ...)
     if scheduled[id] then
       -- If fn is already scheduled, then drop

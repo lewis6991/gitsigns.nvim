@@ -73,6 +73,7 @@ local function on_detach(_, bufnr)
   M.detach(bufnr, true)
 end
 
+--- @async
 --- @param bufnr integer
 --- @return string?
 --- @return string?
@@ -128,6 +129,7 @@ end)
 --- @field gitdir? string
 --- @field base? string
 
+--- @async
 --- @param bufnr integer
 --- @return Gitsigns.GitContext? ctx
 --- @return string? err
@@ -248,7 +250,8 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     gitdir = git_obj.repo.gitdir,
   })
 
-  if not passed_ctx and (not util.path_exists(file) or uv.fs_stat(file).type == 'directory') then
+  -- TODO(lewis6991): errors are not caught here
+  if not passed_ctx and not util.isfile(file) then
     dprint('Not a file')
     return
   end

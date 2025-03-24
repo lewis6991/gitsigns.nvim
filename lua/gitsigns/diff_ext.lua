@@ -11,7 +11,7 @@ local M = {}
 --- @param text string[]
 local function write_to_file(path, text)
   local f, err = io.open(path, 'wb')
-  if f == nil then
+  if f == nil and err then
     error(err)
   end
   for _, l in ipairs(text) do

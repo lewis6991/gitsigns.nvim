@@ -153,6 +153,7 @@ local function insert_mode()
   return api.nvim_get_mode().mode == 'i'
 end
 
+--- @async
 --- Update function, must be called in async context
 --- @param bufnr integer
 local function update0(bufnr)

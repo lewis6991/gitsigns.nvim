@@ -9,7 +9,7 @@
 --- @field description string
 
 --- @class (exact) Gitsigns.DiffOpts
---- @field algorithm string
+--- @field algorithm 'myers'|'minimal'|'patience'|'histogram'
 --- @field internal boolean
 --- @field indent_heuristic boolean
 --- @field vertical boolean
@@ -75,7 +75,7 @@
 --- @field current_line_blame_formatter string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_formatter_nc string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_opts Gitsigns.CurrentLineBlameOpts
---- @field preview_config table<string,any>
+--- @field preview_config vim.api.keyset.win_config
 --- @field auto_attach boolean
 --- @field attach_to_untracked boolean
 --- @field worktrees {toplevel: string, gitdir: string}[]
@@ -128,7 +128,7 @@ local function parse_diffopt()
     iwhiteall = 'ignore_whitespace',
   }
 
-  local diffopt = vim.opt.diffopt:get() --[[@as string[] ]]
+  local diffopt = vim.opt.diffopt:get()
   for _, o in ipairs(diffopt) do
     if optmap[o] then
       r[optmap[o]] = true

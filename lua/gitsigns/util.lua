@@ -2,6 +2,13 @@ local uv = vim.uv or vim.loop --- @diagnostic disable-line: deprecated
 
 local M = {}
 
+--- @param path string
+--- @return boolean
+function M.isfile(path)
+  local stat = uv.fs_stat(path)
+  return stat ~= nil and stat.type ~= 'directory'
+end
+
 function M.path_exists(path)
   return uv.fs_stat(path) and true or false
 end
@@ -30,7 +37,7 @@ end
 --- @return string[]
 function M.file_lines(path)
   local file = assert(io.open(path, 'rb'))
-  local contents = file:read('*a')
+  local contents = assert(file:read('*a'))
   file:close()
   return vim.split(contents, '\n')
 end
