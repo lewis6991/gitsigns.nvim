@@ -182,8 +182,11 @@ function Task:_finish(err, result)
   self._result = result
   threads[self._thread] = nil
   for _, cb in pairs(self._callbacks) do
-    -- Needs to be pcall as step() (who calls this function) cannot error
-    pcall(cb, err, result)
+    -- Run the callbacks in the main loop so we can drain the callbacks
+    -- and not interrupt step()
+    vim.schedule(function()
+      cb(err, result)
+    end)
   end
 end
 
@@ -399,7 +402,7 @@ end
 --- @generic F: function
 --- @param argc integer
 --- @param func F
---- @return F
+--- @return fun(...): Gitsigns.async.Task
 function M.create(argc, func)
   assert(type(argc) == 'number')
   assert(type(func) == 'function')
@@ -409,7 +412,14 @@ function M.create(argc, func)
   return function(...)
     local task = Task._new(func)
 
-    local callback = argc and select(argc + 1, ...) or nil
+    local callback = argc and select(argc + 1, ...)
+      or function(err)
+        -- Default continuation is to raise any errors
+        if err then
+          error(task:traceback(err))
+        end
+      end
+
     if callback and type(callback) == 'function' then
       task:await(callback)
     end

@@ -44,7 +44,7 @@ local function parse_git_path(name)
     rel_path = tail:match('^[^/]+/(.*)')
   end
 
-  dprintf("%s buffer for file '%s' from path '%s' on commit '%s'", plugin, rel_path, file, commit)
+  dprintf("%s buffer for file '%s' from path '%s' on commit '%s'", plugin, rel_path, name, commit)
   return rel_path, commit, gitdir
 end
 
@@ -155,10 +155,16 @@ local function get_buf_context(bufnr)
   end
 
   local gitdir_oap, toplevel_oap = on_attach_pre(bufnr)
+  local gitdir = gitdir_oap or gitdir_from_bufname
+
+  if rel_path and gitdir then
+    local toplevel = toplevel_oap or util.dirname(gitdir)
+    file = util.joinpath(toplevel, rel_path)
+  end
 
   return {
-    file = rel_path or file,
-    gitdir = gitdir_oap or gitdir_from_bufname,
+    file = file,
+    gitdir = gitdir,
     toplevel = toplevel_oap,
     -- Stage buffers always compare against the common ancestor (':1')
     -- :0: index

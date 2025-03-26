@@ -155,7 +155,7 @@ end
 --- @param win integer
 --- @param revision? string
 --- @param parent? boolean
-local function reblame(blame, win, revision, parent)
+local reblame = async.create(4, function(blame, win, revision, parent)
   local blm_win = api.nvim_get_current_win()
   local lnum = unpack(api.nvim_win_get_cursor(blm_win))
   local sha = blame[lnum].commit.sha
@@ -168,21 +168,17 @@ local function reblame(blame, win, revision, parent)
 
   vim.cmd.quit()
   api.nvim_set_current_win(win)
+  local bufnr = api.nvim_win_get_buf(win)
 
-  require('gitsigns').show(
-    sha,
-    vim.schedule_wrap(function()
-      local bufnr = api.nvim_get_current_buf()
-      local ok = vim.wait(1000, function()
-        return cache[bufnr] ~= nil
-      end)
-      if not ok then
-        error('Timeout waiting for attach')
-      end
-      async.arun(M.blame)
-    end)
-  )
-end
+  async.await(require('gitsigns.diffthis').show(bufnr, sha))
+  local ok = vim.wait(1000, function()
+    return cache[bufnr] ~= nil
+  end)
+  if not ok then
+    error('Timeout waiting for attach')
+  end
+  M.blame()
+end)
 
 --- @param win integer
 --- @param open 'vsplit'|'tabnew'
