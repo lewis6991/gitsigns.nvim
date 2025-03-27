@@ -272,11 +272,8 @@ local function get_hunk(bufnr, range, greedy, staged)
     )
   else
     hunk.added.lines = api.nvim_buf_get_lines(bufnr, top - 1, bot, false)
-    hunk.removed.lines = vim.list_slice(
-      compare_text,
-      hunk.removed.start,
-      hunk.removed.start + hunk.removed.count - 1
-    )
+    hunk.removed.lines =
+      vim.list_slice(compare_text, hunk.removed.start, hunk.removed.start + hunk.removed.count - 1)
   end
   return hunk
 end

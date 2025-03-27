@@ -244,7 +244,7 @@ function M.calc_signs(prev_hunk, hunk, next_hunk, min_lnum, max_lnum, untracked)
     return {}
   end
   min_lnum = math.max(1, min_lnum or 1)
-  max_lnum = max_lnum or math.huge
+  max_lnum = max_lnum or math.huge --[[@as integer]]
 
   if not config._new_sign_calc then
     return calc_signs(hunk, next_hunk, min_lnum, max_lnum, untracked)

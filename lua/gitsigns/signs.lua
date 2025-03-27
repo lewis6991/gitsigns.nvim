@@ -9,7 +9,6 @@ local config = require('gitsigns.config').config
 
 --- @class Gitsigns.Signs
 --- @field hls table<Gitsigns.SignType,Gitsigns.SignConfig>
---- @field name string
 --- @field group string
 --- @field config table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field ns integer

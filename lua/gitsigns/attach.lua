@@ -123,6 +123,15 @@ local setup = util.once(function()
   })
 end)
 
+--- @param bufnr integer
+--- @param expr string
+--- @return string
+local function buf_expand(bufnr, expr)
+  return api.nvim_buf_call(bufnr, function()
+    return vim.fn.expand(expr)
+  end)
+end
+
 --- @class Gitsigns.GitContext
 --- @field file string
 --- @field toplevel? string
@@ -139,10 +148,7 @@ local function get_buf_context(bufnr)
   end
 
   --- @type string
-  local file = uv.fs_realpath(api.nvim_buf_get_name(bufnr))
-    or api.nvim_buf_call(bufnr, function()
-      return vim.fn.expand('%:p')
-    end)
+  local file = uv.fs_realpath(api.nvim_buf_get_name(bufnr)) or buf_expand(bufnr, '%:p')
 
   local rel_path, commit, gitdir_from_bufname = parse_git_path(file)
 
@@ -278,11 +284,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     return
   end
 
-  cache[cbuf] = Cache.new({
-    bufnr = cbuf,
-    file = file,
-    git_obj = git_obj,
-  })
+  cache[cbuf] = Cache.new(cbuf, file, git_obj)
 
   if config.watch_gitdir.enable then
     local watcher = require('gitsigns.watcher')

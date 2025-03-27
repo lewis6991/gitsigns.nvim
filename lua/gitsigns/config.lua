@@ -135,6 +135,7 @@ local function parse_diffopt()
     elseif o == 'horizontal' then
       r.vertical = false
     elseif vim.startswith(o, 'algorithm:') then
+      --- @diagnostic disable-next-line: assign-type-mismatch
       r.algorithm = string.sub(o, ('algorithm:'):len() + 1)
     elseif vim.startswith(o, 'linematch:') then
       r.linematch = tonumber(string.sub(o, ('linematch:'):len() + 1))

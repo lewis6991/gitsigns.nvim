@@ -221,7 +221,7 @@ end
 
 --- @param x? number
 --- @param factor number
---- @return number?
+--- @return integer?
 local function cmul(x, factor)
   if not x or factor == 1 then
     return x

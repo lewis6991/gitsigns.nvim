@@ -16,7 +16,7 @@ local M = {
 --- @field compare_text_head? string[]
 --- @field hunks_staged?      Gitsigns.Hunk.Hunk[]
 ---
---- @field staged_diffs?      Gitsigns.Hunk.Hunk[]
+--- @field staged_diffs       Gitsigns.Hunk.Hunk[]
 --- @field gitdir_watcher?    uv.uv_fs_event_t
 --- @field git_obj            Gitsigns.GitObj
 --- @field blame?             table<integer,Gitsigns.BlameInfo?>
@@ -51,11 +51,17 @@ function CacheEntry:invalidate(all)
   end
 end
 
---- @param o Gitsigns.CacheEntry
+--- @param bufnr integer
+--- @param file string
+--- @param git_obj Gitsigns.GitObj
 --- @return Gitsigns.CacheEntry
-function M.new(o)
-  o.staged_diffs = o.staged_diffs or {}
-  return setmetatable(o, { __index = CacheEntry })
+function M.new(bufnr, file, git_obj)
+  return setmetatable({
+    staged_diffs = {},
+    bufnr = bufnr,
+    file = file,
+    git_obj = git_obj,
+  }, { __index = CacheEntry })
 end
 
 local sleep = async.awrap(2, function(duration, cb)
