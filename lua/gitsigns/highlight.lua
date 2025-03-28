@@ -222,8 +222,8 @@ end
 --- @param x? number
 --- @param factor number
 --- @return integer?
-local function cmul(x, factor)
-  if not x or factor == 1 then
+local function cmix(x, factor)
+  if not x or factor == 0 then
     return x
   end
 
@@ -231,9 +231,21 @@ local function cmul(x, factor)
   local x1 = x - (r * 2 ^ 16)
   local g = math.floor(x1 / 2 ^ 8)
   local b = math.floor(x1 - (g * 2 ^ 8))
-  return math.floor(
-    math.floor(r * factor) * 2 ^ 16 + math.floor(g * factor) * 2 ^ 8 + math.floor(b * factor)
-  )
+
+  local function mix(c, target, f)
+    return math.floor(c + (target - c) * f)
+  end
+
+  -- If positive, lighten by mixing with 255 (white)
+  -- If negative, darken by mixing with 0 (black)
+  local target = factor > 0 and 255 or 0
+  factor = math.abs(factor)
+
+  r = mix(r, target, factor)
+  g = mix(g, target, factor)
+  b = mix(b, target, factor)
+
+  return math.floor(r * 2 ^ 16 + g * 2 ^ 8 + b)
 end
 
 local function dprintf(fmt, ...)
@@ -243,7 +255,8 @@ end
 
 --- @param hl string
 --- @param hldef Gitsigns.Hldef
-local function derive(hl, hldef)
+--- @param is_bg_light boolean
+local function derive(hl, hldef, is_bg_light)
   for _, d in ipairs(hldef) do
     if is_hl_set(d) then
       dprintf('Deriving %s from %s', hl, d)
@@ -251,7 +264,7 @@ local function derive(hl, hldef)
         local dh = get_hl(d)
         api.nvim_set_hl(0, hl, {
           default = true,
-          fg = cmul(dh.fg, hldef.fg_factor),
+          fg = cmix(dh.fg, hldef.fg_factor * (is_bg_light and 1 or -1)),
           bg = dh.bg,
         })
       else
@@ -273,13 +286,14 @@ end
 --- Setup a GitSign* highlight by deriving it from other potentially present
 --- highlights.
 function M.setup_highlights()
+  local is_bg_light = vim.o.background == 'light'
   for _, hlg in ipairs(M.hls) do
     for hl, hldef in pairs(hlg) do
       if is_hl_set(hl) then
         -- Already defined
         dprintf('Highlight %s is already defined', hl)
       else
-        derive(hl, hldef)
+        derive(hl, hldef, is_bg_light)
       end
     end
   end
