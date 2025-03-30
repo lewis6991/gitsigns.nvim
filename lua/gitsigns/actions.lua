@@ -24,6 +24,7 @@ local M = {}
 --- @field split 'aboveleft'|'belowright'|'topleft'|'botright'
 
 --- @class Gitsigns.CmdArgs
+--- @field [integer] string|boolean|number
 --- @field vertical? boolean
 --- @field split? boolean
 --- @field global? boolean
@@ -333,7 +334,7 @@ M.stage_hunk = mk_repeatable(async.create(2, function(range, opts)
     message.error(err)
     return
   end
-  table.insert(assert(bcache.staged_diffs), hunk)
+  table.insert(bcache.staged_diffs, hunk)
 
   bcache:invalidate(true)
   update(bufnr)
@@ -441,7 +442,7 @@ M.undo_stage_hunk = async.create(0, function()
     return
   end
 
-  local hunk = table.remove(assert(bcache.staged_diffs))
+  local hunk = table.remove(bcache.staged_diffs)
   if not hunk then
     print('No hunks to undo')
     return
@@ -490,7 +491,7 @@ M.stage_buffer = async.create(0, function()
     return
   end
 
-  local staged_diffs = assert(bcache.staged_diffs)
+  local staged_diffs = bcache.staged_diffs
   for _, hunk in ipairs(hunks) do
     table.insert(staged_diffs, hunk)
   end
@@ -730,7 +731,10 @@ M.nav_hunk = async.create(2, function(direction, opts)
 end)
 
 C.nav_hunk = function(args, _)
-  M.nav_hunk(args[1], args)
+  local direction = args[1]
+  assert(type(direction) == 'string')
+  --- @cast direction 'first'|'last'|'next'|'prev'
+  M.nav_hunk(direction, args)
 end
 
 --- @deprecated use |gitsigns.nav_hunk()|
@@ -1213,7 +1217,11 @@ M.change_base = async.create(2, function(base, global)
 end)
 
 C.change_base = function(args, _)
-  M.change_base(args[1], (args[2] or args.global))
+  local base = args[1]
+  local global = args[2] or args.global
+  assert(not base or type(base) == 'string')
+  assert(not global or type(global) == 'boolean')
+  M.change_base(base, global)
 end
 
 CP.change_base = complete_heads
@@ -1227,7 +1235,9 @@ M.reset_base = function(global)
 end
 
 C.reset_base = function(args, _)
-  M.change_base(nil, (args[1] or args.global))
+  local global = args[1] or args.global
+  assert(not global or type(global) == 'boolean')
+  M.change_base(nil, global)
 end
 
 --- Perform a |vimdiff| on the given file with {base} if it is
@@ -1288,7 +1298,10 @@ C.diffthis = function(args, params)
     end
   end
 
-  M.diffthis(args[1], opts)
+  local base = args[1]
+  assert(not base or type(base) == 'string')
+
+  M.diffthis(base, opts)
 end
 
 CP.diffthis = complete_heads
@@ -1465,7 +1478,7 @@ M.setqflist = async.create(2, function(target, opts)
 end)
 
 C.setqflist = function(args, _)
-  local target = tonumber(args[1]) or args[1]
+  local target = args[1]
   M.setqflist(target, args)
 end
 
@@ -1488,8 +1501,9 @@ M.setloclist = function(nr, target)
 end
 
 C.setloclist = function(args, _)
-  local target = tonumber(args[2]) or args[2]
-  M.setloclist(tonumber(args[1]), target)
+  local nr = args[1]
+  local target = args[2]
+  M.setloclist(nr, target)
 end
 
 --- Get all the available line specific actions for the current
@@ -1519,7 +1533,7 @@ M.get_actions = function()
     actions_l[#actions_l + 1] = 'blame_line'
   end
 
-  if not next(assert(bcache.staged_diffs)) then
+  if not next(bcache.staged_diffs) then
     actions_l[#actions_l + 1] = 'undo_stage_hunk'
   end
 

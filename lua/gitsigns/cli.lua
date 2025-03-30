@@ -20,9 +20,12 @@ local sources = {
 --    'nil'         -> nil
 --    '100'         -> 100
 --    'HEAD~300' -> 'HEAD~300'
+--- @param a boolean|string
+--- @return boolean|number|string?
 local function parse_to_lua(a)
-  if tonumber(a) then
-    return tonumber(a)
+  local an = tonumber(a)
+  if an then
+    return an
   elseif a == 'false' or a == 'true' then
     return a == 'true'
   elseif a == 'nil' then
@@ -73,6 +76,7 @@ M.run = async.create(1, function(params)
 
   local pos_args = vim.tbl_map(parse_to_lua, vim.list_slice(pos_args_raw, 2))
   local named_args = vim.tbl_map(parse_to_lua, named_args_raw)
+  --- @type Gitsigns.CmdArgs
   local args = vim.tbl_extend('error', pos_args, named_args)
 
   log.dprintf(

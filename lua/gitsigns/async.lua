@@ -277,6 +277,7 @@ function Task:_resume(...)
     if not ok then
       self:_finish(r)
     elseif is_async_handle(r) then
+      --- @cast r Gitsigns.async.Handle
       self._current_child = r
     end
   end
