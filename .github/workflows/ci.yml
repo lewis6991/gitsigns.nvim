@@ -30,8 +30,8 @@ jobs:
 
       matrix:
         neovim_branch:
-          - 'v0.9.5'
-          - 'v0.10.0'
+          - 'v0.10.4'
+          - 'v0.11.0'
           - 'nightly'
 
     env:

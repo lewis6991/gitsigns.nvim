@@ -46,6 +46,7 @@ end
 ---@param text string
 ---@return string
 local function lalign(amount, text)
+  --- @diagnostic disable-next-line: missing-parameter
   local len = vim.str_utfindex(text)
   return text .. string.rep(' ', math.max(0, amount - len))
 end
@@ -67,6 +68,7 @@ local function render(blame, win, main_win, buf_sha)
   local max_author_len = 0
 
   for _, blame_info in pairs(blame) do
+    --- @diagnostic disable-next-line: missing-parameter
     max_author_len = math.max(max_author_len, (vim.str_utfindex(blame_info.commit.author)))
   end
 
