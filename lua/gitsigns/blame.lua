@@ -279,11 +279,7 @@ local function pmap(mode, lhs, cb, opts)
     vim.schedule(function()
       cb()
     end)
-    if vim.fn.pumvisible() == 0 then
-      return '<nop>'
-    else
-      return '<esc>'
-    end
+    return '<esc>'
   end, opts)
 end
 
