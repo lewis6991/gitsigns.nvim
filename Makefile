@@ -3,8 +3,8 @@ export PJ_ROOT=$(PWD)
 
 FILTER ?= .*
 
-export NVIM_RUNNER_VERSION := v0.10.3
-export NVIM_TEST_VERSION ?= v0.10.3
+export NVIM_RUNNER_VERSION := v0.11.0
+export NVIM_TEST_VERSION ?= v0.11.0
 
 ifeq ($(shell uname -s),Darwin)
     UNAME ?= MACOS
@@ -20,7 +20,7 @@ NVIM_TEST := deps/nvim-test
 nvim-test: $(NVIM_TEST)
 
 $(NVIM_TEST):
-	git clone --depth 1 --branch v1.1.0 https://github.com/lewis6991/nvim-test $@
+	git clone --depth 1 --branch v1.1.1 https://github.com/lewis6991/nvim-test $@
 	$@/bin/nvim-test --init
 
 .PHONY: test
@@ -36,13 +36,13 @@ test: $(NVIM_TEST)
 .PHONY: test-all
 test-all: test-095 test-010 test-nightly
 
-.PHONY: test-095
-test-095:
-	$(MAKE) $(MAKEFLAGS) test NVIM_TEST_VERSION=v0.9.5
-
 .PHONY: test-010
 test-010:
-	$(MAKE) $(MAKEFLAGS) test NVIM_TEST_VERSION=v0.10.3
+	$(MAKE) $(MAKEFLAGS) test NVIM_TEST_VERSION=v0.10.4
+
+.PHONY: test-011
+test-010:
+	$(MAKE) $(MAKEFLAGS) test NVIM_TEST_VERSION=v0.11.0
 
 .PHONY: test-nightly
 test-nightly:
@@ -100,7 +100,7 @@ else
     LUALS_ARCH ?= x64
 endif
 
-LUALS_VERSION := 3.13.8
+LUALS_VERSION := 3.13.9
 LUALS := deps/lua-language-server-$(LUALS_VERSION)-$(shell uname -s)-$(LUALS_ARCH)
 LUALS_TARBALL := $(LUALS).tar.gz
 LUALS_URL := https://github.com/LuaLS/lua-language-server/releases/download/$(LUALS_VERSION)/$(notdir $(LUALS_TARBALL))
