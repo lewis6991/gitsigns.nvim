@@ -28,7 +28,7 @@ local function parse_git_path(name)
   end
 
   local proto, gitdir, tail = unpack(vim.split(name, '//'))
-  assert(proto and gitdir and tail)
+  assert(proto and gitdir and tail) --- @diagnostic disable-line: unnecessary-assert
   local plugin = proto:sub(1, 1):upper() .. proto:sub(2, -2)
 
   local commit, rel_path --- @type string?, string

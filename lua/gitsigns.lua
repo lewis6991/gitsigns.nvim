@@ -92,6 +92,8 @@ local update_cwd_head = async.async(function()
     100,
     async.async(function()
       local git = require('gitsigns.git')
+      --- CppCXY/emmylua-analyzer-rust#147
+      --- @cast cwd -?
       local info, err = git.Repo.get_info(cwd)
       if not info then
         log.eprint(assert(err))

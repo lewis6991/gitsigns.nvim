@@ -441,7 +441,7 @@ M.schedule = M.awrap(1, vim.schedule)
 --- @param tasks Gitsigns.async.Task[]
 --- @return fun(): (integer?, any?, any[]?)
 function M.iter(tasks)
-  local results = {} --- @type [integer, any, any[]][]
+  local results = {} --- @type [integer, any, any[]?][]
 
   -- Iter shuold block in an async context so only one waiter is needed
   local waiter = nil

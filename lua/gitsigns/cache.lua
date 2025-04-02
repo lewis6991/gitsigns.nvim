@@ -170,7 +170,9 @@ function CacheEntry:get_blame(lnum, opts)
     self.blame = blame
   end
 
-  return blame[lnum]
+  if lnum then
+    return blame[lnum]
+  end
 end
 
 function CacheEntry:destroy()

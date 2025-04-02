@@ -2,6 +2,25 @@ local uv = vim.uv or vim.loop --- @diagnostic disable-line: deprecated
 
 local M = {}
 
+local nvim11 = vim.fn.has('nvim-0.11')
+
+--- @param line string
+--- @param encoding 'utf-8' | 'utf-16' | 'utf-32'
+--- @param index? integer
+--- @return integer
+local function str_utfindex010(line, encoding, index)
+  if encoding == 'utf-8' then
+    return index or #line
+  end
+
+  --- @diagnostic disable-next-line: param-type-not-match, unbalanced-assignments
+  local col32, col16 = vim.str_utfindex(line, index)
+  --- @diagnostic disable-next-line: return-type-mismatch
+  return encoding == 'utf-32' and col32 or col16
+end
+
+M.str_utfindex = nvim11 and vim.str_utfindex or str_utfindex010
+
 --- @param path string
 --- @return boolean
 function M.isfile(path)

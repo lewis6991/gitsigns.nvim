@@ -13,10 +13,6 @@ vim.opt.fillchars = nil
 --- @field get fun(): string[]
 vim.opt.diffopt = nil
 
---- @class vim.fn
---- @field [string] fun(...:any): any
-vim.fn = nil
-
 --- Apply a function to all values of a table.
 ---
 ---@generic K, T, T2

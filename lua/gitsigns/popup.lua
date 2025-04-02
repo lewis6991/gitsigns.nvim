@@ -63,7 +63,7 @@ end
 --- @param row_offset integer
 local function offset_hlmarks(hlmarks, row_offset)
   for _, h in ipairs(hlmarks) do
-    h.start_row = (h.start_row or 0) + row_offset
+    h.start_row = h.start_row + row_offset
     if h.end_row then
       h.end_row = h.end_row + row_offset
     end

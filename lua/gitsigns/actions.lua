@@ -659,7 +659,7 @@ local function nav_hunk(direction, opts)
         api.nvim_echo({ { 'No more hunks', 'WarningMsg' } }, false, {})
       end
       local _, col = vim.fn.getline(line):find('^%s*')
-      api.nvim_win_set_cursor(0, { line, col })
+      api.nvim_win_set_cursor(0, { line, assert(col) })
       return
     end
 
@@ -672,7 +672,7 @@ local function nav_hunk(direction, opts)
   vim.cmd([[ normal! m' ]]) -- add current cursor position to the jump list
 
   local _, col = vim.fn.getline(line):find('^%s*')
-  api.nvim_win_set_cursor(0, { line, col })
+  api.nvim_win_set_cursor(0, { line, assert(col) })
 
   if opts.foldopen then
     vim.cmd('silent! foldopen!')
@@ -810,6 +810,7 @@ local function linespec_for_hunk(hunk, fileformat)
           {
             {
               hl_group = spec.hl,
+              start_row = 0,
               end_row = 1, -- Highlight whole line
             },
           },
@@ -826,6 +827,7 @@ local function linespec_for_hunk(hunk, fileformat)
       local i = region[1]
       table.insert(hls[i][1][2], {
         hl_group = 'GitSignsDeleteInline',
+        start_row = 0,
         start_col = region[3],
         end_col = region[4],
       })
@@ -834,6 +836,7 @@ local function linespec_for_hunk(hunk, fileformat)
     for _, region in ipairs(added_regions) do
       local i = hunk.removed.count + region[1]
       table.insert(hls[i][1][2], {
+        start_row = 0,
         hl_group = 'GitSignsAddInline',
         start_col = region[3],
         end_col = region[4],

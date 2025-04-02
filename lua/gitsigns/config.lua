@@ -128,10 +128,11 @@ local function parse_diffopt()
     iwhiteall = 'ignore_whitespace',
   }
 
-  local diffopt = vim.opt.diffopt:get()
+  local diffopt = vim.opt.diffopt:get() --[[@as string[] ]]
   for _, o in ipairs(diffopt) do
-    if optmap[o] then
-      r[optmap[o]] = true
+    local opt = optmap[o]
+    if opt then
+      r[opt] = true
     elseif o == 'horizontal' then
       r.vertical = false
     elseif vim.startswith(o, 'algorithm:') then
