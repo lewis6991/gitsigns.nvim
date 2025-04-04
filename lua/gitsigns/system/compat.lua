@@ -31,13 +31,14 @@ end
 
 --- @param signal integer|string
 function SystemObj:kill(signal)
-  self._state.handle:kill(signal)
+  assert(self._state.handle):kill(signal)
 end
 
 --- @package
 --- @param signal? vim.SystemSig
 function SystemObj:_timeout(signal)
   self._state.done = 'timeout'
+  ---@diagnostic disable-next-line: param-type-not-match LSP BUG
   self:kill(signal or SIG.TERM)
 end
 
@@ -60,6 +61,7 @@ function SystemObj:wait(timeout)
       return state.result ~= nil
     end, nil, true)
   end
+  --- @cast state.result -?
 
   return state.result
 end
@@ -85,6 +87,7 @@ function SystemObj:write(data)
     -- TODO(lewis6991): apparently shutdown doesn't behave this way.
     -- (https://github.com/neovim/neovim/pull/17620#discussion_r820775616)
     stdin:write('', function()
+      ---@diagnostic disable-next-line: need-check-nil LSP BUG
       stdin:shutdown(function()
         close_handle(stdin)
       end)
@@ -120,8 +123,10 @@ local function setup_output(output, text)
         error(err)
       end
       if text and data then
+        ---@diagnostic disable-next-line: need-check-nil LSP BUG
         bucket[#bucket + 1] = data:gsub('\r\n', '\n')
       else
+        ---@diagnostic disable-next-line: need-check-nil LSP BUG
         bucket[#bucket + 1] = data
       end
     end
@@ -173,6 +178,8 @@ end
 --- @return string[]?
 local function setup_env(env, clear_env)
   if clear_env then
+    -- TODO(lewis6991): Fixme
+    ---@diagnostic disable-next-line: return-type-mismatch
     return env
   end
 
@@ -276,10 +283,12 @@ end
 --- @return vim.SystemObj
 local function system(cmd, opts, on_exit)
   local __FUNC__ = 'run_job'
+  ---@diagnostic disable-next-line: param-type-not-match LSP BUG
   vim.validate({
     cmd = { cmd, 'table' },
     opts = { opts, 'table', true },
     on_exit = { on_exit, 'function', true },
+    ---@diagnostic disable-next-line: missing-parameter LSP BUG
   })
 
   opts = opts or {}
@@ -300,7 +309,7 @@ local function system(cmd, opts, on_exit)
     stderr_data = stderr_data,
   }
 
-  --- @diagnostic disable-next-line:missing-fields
+  --- @diagnostic disable-next-line:missing-fields, param-type-not-match
   state.handle, state.pid = spawn(cmd[1], {
     args = vim.list_slice(cmd, 2),
     stdio = { stdin, stdout, stderr },
@@ -333,7 +342,7 @@ local function system(cmd, opts, on_exit)
   if opts.timeout then
     state.timer = timer_oneshot(opts.timeout, function()
       if state.handle and state.handle:is_active() then
-        --- @diagnostic disable-next-line: invisible
+        ---@diagnostic disable-next-line: access-invisible
         obj:_timeout()
       end
     end)

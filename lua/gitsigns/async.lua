@@ -47,11 +47,13 @@ local Task = {}
 Task.__index = Task
 
 --- @package
---- @param func function
+--- @generic T
+--- @param func async fun(...:T...)
 --- @return Gitsigns.async.Task
 function Task._new(func)
   local thread = coroutine.create(func)
 
+  --- @type Gitsigns.async.Task
   local self = setmetatable({
     _closing = false,
     _thread = thread,
@@ -112,6 +114,7 @@ function Task:pwait(timeout)
     return false, self._err
   else
     -- TODO(lewis6991): test me
+    --- @diagnostic disable-next-line: param-type-not-match
     return true, unpack_len(assert(self._result))
   end
 end
@@ -122,7 +125,7 @@ end
 function Task:wait(timeout)
   local res = pack_len(self:pwait(timeout))
 
-  local stat = table.remove(res, 1)
+  local stat = table.remove(res --[[@as any[] ]], 1)
   res.n = res.n - 1
 
   if not stat then
@@ -203,6 +206,7 @@ function Task:close(callback)
 
   if callback then
     self:await(function()
+      ---@diagnostic disable-next-line: need-check-nil LSP-BUG
       callback()
     end)
   end
@@ -242,7 +246,8 @@ end
 function Task:_resume(...)
   --- @type [boolean, string|Gitsigns.async.CallbackFn]
   local ret = { coroutine.resume(self._thread, ...) }
-  local stat = table.remove(ret, 1) --- @type boolean
+  local stat = table.remove(ret, 1)
+  --- @cast stat boolean
   --- @cast ret [string|Gitsigns.async.CallbackFn]
 
   if not stat then
@@ -258,6 +263,7 @@ function Task:_resume(...)
 
     -- TODO(lewis6991): refine error handler to be more specific
     local ok, r
+    ---@diagnostic disable-next-line: unbalanced-assignments LSP BUG
     ok, r = pcall(fn, function(...)
       if is_async_handle(r) then
         --- @cast r Gitsigns.async.Handle
@@ -272,6 +278,7 @@ function Task:_resume(...)
     if not ok then
       self:_finish(r)
     elseif is_async_handle(r) then
+      --- @cast r Gitsigns.async.Handle
       self._current_child = r
     end
   end
@@ -287,8 +294,9 @@ function Task:status()
   return coroutine.status(self._thread)
 end
 
---- @param func function
---- @param ... any
+--- @generic T
+--- @param func async fun(...:T...)
+--- @param ... T...
 --- @return Gitsigns.async.Task
 function M.arun(func, ...)
   local task = Task._new(func)
@@ -297,6 +305,9 @@ function M.arun(func, ...)
 end
 
 --- Create an async function
+--- @generic T, R
+--- @param func async fun(...:T...):R...
+--- @return fun(...:T...)
 function M.async(func)
   return function(...)
     return M.arun(func, ...)
@@ -315,19 +326,20 @@ function M.status(task)
   end
 end
 
---- @generic R1, R2, R3, R4
---- @param fun fun(callback: fun(r1: R1, r2: R2, r3: R3, r4: R4)): any?
---- @return R1, R2, R3, R4
+--- @async
+--- @generic R, T
+--- @param fun fun(callback: fun(...:R...)): T
+--- @return R...
 local function yield(fun)
   assert(type(fun) == 'function', 'Expected function')
   return coroutine.yield(fun)
 end
 
+--- @async
 --- @param task Gitsigns.async.Task
 --- @return any ...
 local function await_task(task)
   --- @param callback fun(err?: string, result?: any[])
-  --- @return function
   local err, result = yield(function(callback)
     task:await(callback)
     return task
@@ -342,6 +354,7 @@ local function await_task(task)
   return (unpack(result, 1, table.maxn(result)))
 end
 
+--- @async
 --- Asynchronous blocking wait
 --- @param argc integer
 --- @param func Gitsigns.async.CallbackFn
@@ -351,7 +364,7 @@ local function await_cbfun(argc, func, ...)
   local args = pack_len(...)
   args.n = math.max(args.n, argc)
 
-  --- @param callback fun(success: boolean, result: any[])
+  --- @param callback fun(...:any)
   --- @return any?
   return yield(function(callback)
     args[argc] = callback
@@ -359,9 +372,10 @@ local function await_cbfun(argc, func, ...)
   end)
 end
 
+--- @async
 --- Asynchronous blocking wait
---- @overload fun(task: Gitsigns.async.Task): any ...
---- @overload fun(argc: integer, func: Gitsigns.async.CallbackFn, ...:any): any ...
+--- @overload async fun(task: Gitsigns.async.Task): any ...
+--- @overload async fun(argc: integer, func: Gitsigns.async.CallbackFn, ...:any): any ...
 function M.await(...)
   assert(running(), 'Cannot await in non-async context')
 
@@ -383,6 +397,7 @@ end
 function M.awrap(argc, func)
   assert(type(argc) == 'number')
   assert(type(func) == 'function')
+  --- @async
   return function(...)
     return M.await(argc, func, ...)
   end
@@ -396,10 +411,10 @@ end
 ---
 --- If argc is not provided, then the created async function cannot be continued
 ---
---- @generic F: function
+--- @generic T
 --- @param argc integer
---- @param func F
---- @return F
+--- @param func async fun(...:T...)
+--- @return fun(...:T...): Gitsigns.async.Task
 function M.create(argc, func)
   assert(type(argc) == 'number')
   assert(type(func) == 'function')
@@ -409,6 +424,7 @@ function M.create(argc, func)
   return function(...)
     local task = Task._new(func)
 
+    --- @type fun(err:string?, result?:any[])
     local callback = argc and select(argc + 1, ...) or nil
     if callback and type(callback) == 'function' then
       task:await(callback)
@@ -426,7 +442,7 @@ M.schedule = M.awrap(1, vim.schedule)
 --- @param tasks Gitsigns.async.Task[]
 --- @return fun(): (integer?, any?, any[]?)
 function M.iter(tasks)
-  local results = {} --- @type [integer, any, any[]][]
+  local results = {} --- @type [integer, any, any[]?][]
 
   -- Iter shuold block in an async context so only one waiter is needed
   local waiter = nil

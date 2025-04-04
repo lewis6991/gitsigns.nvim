@@ -4,11 +4,11 @@ local M = {}
 
 --- Debounces a function on the trailing edge.
 ---
---- @generic F: function
---- @param ms number Timeout in ms
---- @param fn F Function to debounce
---- @param hash? integer|fun(...): any Function that determines id from arguments to fn
---- @return F Debounced function.
+--- @generic T
+--- @param ms integer Timeout in ms
+--- @param fn fun(...:T...) Function to debounce
+--- @param hash? integer|fun(...:T...): any Function that determines id from arguments to fn
+--- @return fun(...:T...) Debounced function.
 function M.debounce_trailing(ms, fn, hash)
   local running = {} --- @type table<any,uv.uv_timer_t>
   if type(hash) == 'number' then
@@ -44,10 +44,10 @@ end
 ---   throttled#2 ______/‾‾‾‾‾‾‾‾‾‾\__/‾‾‾‾‾‾‾‾‾‾\__________
 ---
 ---
---- @generic F: function
---- @param fn F Function to throttle
+--- @generic T
+--- @param fn async fun(...:T...) Function to throttle
 --- @param schedule? boolean
---- @return F throttled function.
+--- @return async fun(...:T...) throttled function.
 function M.throttle_by_id(fn, schedule)
   local scheduled = {} --- @type table<any,boolean>
   local running = {} --- @type table<any,boolean>

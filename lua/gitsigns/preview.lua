@@ -49,6 +49,7 @@ end
 --- @return string str
 --- @return {group:string, start:integer}[]? highlights
 local function build_lno_str(win, lnum, width)
+  --- @type boolean, string?
   local has_col, statuscol =
     pcall(api.nvim_get_option_value, 'statuscolumn', { win = win, scope = 'local' })
   if has_col and statuscol and statuscol ~= '' then
@@ -225,8 +226,8 @@ M.preview_hunk = noautocmd(function()
   --- @type Gitsigns.LineSpec
   local preview_linespec = {
     { { 'Hunk <hunk_no> of <num_hunks>', 'Title' } },
-    unpack(Hunks.linespec_for_hunk(hunk, vim.bo[bufnr].fileformat)),
   }
+  vim.list_extend(preview_linespec, Hunks.linespec_for_hunk(hunk, vim.bo[bufnr].fileformat))
 
   local lines_spec = popup.lines_format(preview_linespec, {
     hunk_no = index,

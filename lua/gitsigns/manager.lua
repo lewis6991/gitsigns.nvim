@@ -17,12 +17,11 @@ local api = vim.api
 local signs_normal --- @type Gitsigns.Signs
 local signs_staged --- @type Gitsigns.Signs?
 
---- @class gitsigns.manager
 local M = {}
 
 --- @param bufnr integer
 --- @param signs Gitsigns.Signs
---- @param hunks Gitsigns.Hunk.Hunk[]
+--- @param hunks? Gitsigns.Hunk.Hunk[]
 --- @param top integer
 --- @param bot integer
 --- @param clear? boolean
@@ -33,7 +32,9 @@ local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked,
     signs:remove(bufnr) -- Remove all signs
   end
 
-  for i, hunk in ipairs(hunks or {}) do
+  hunks = hunks or {}
+
+  for i, hunk in ipairs(hunks) do
     --- @type Gitsigns.Hunk.Hunk?, Gitsigns.Hunk.Hunk?
     local prev_hunk, next_hunk = hunks[i - 1], hunks[i + 1]
 
@@ -316,6 +317,7 @@ M.update = throttle_by_id(function(bufnr)
 
   local buftext = util.buf_lines(bufnr)
 
+  ---@diagnostic disable-next-line: param-type-not-match LSP-BUG
   bcache.hunks = run_diff(bcache.compare_text, buftext)
   if not bcache:schedule() then
     return

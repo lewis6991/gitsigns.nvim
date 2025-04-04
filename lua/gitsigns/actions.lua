@@ -13,6 +13,8 @@ local cache = require('gitsigns.cache').cache
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
+local tointeger = util.tointeger
+
 --- @class gitsigns.actions
 local M = {}
 
@@ -529,6 +531,7 @@ M.select_hunk = function(opts)
   local hunk --- @type Gitsigns.Hunk.Hunk?
   async
     .arun(function()
+      ---@diagnostic disable-next-line: need-check-nil LSP-BUG
       hunk = bcache:get_hunk(nil, opts.greedy ~= false)
     end)
     :wait()
@@ -598,7 +601,7 @@ local function get_blame_hunk(repo, info)
 end
 
 --- @param is_committed boolean
---- @param full boolean
+--- @param full? boolean
 --- @return [string, string][][]
 local function create_blame_fmt(is_committed, full)
   if not is_committed then
@@ -715,7 +718,7 @@ end
 --- Attributes: ~
 ---     {async}
 M.blame = async.create(0, function()
-  return require('gitsigns.blame').blame()
+  require('gitsigns.blame').blame()
 end)
 
 --- @async
@@ -830,6 +833,7 @@ end
 ---       'aboveleft'. If running via command line, then this is taken
 ---       from the command modifiers.
 M.diffthis = function(base, opts)
+  --- @cast opts Gitsigns.DiffthisOpts
   -- TODO(lewis6991): can't pass numbers as strings from the command line
   if base ~= nil then
     base = tostring(base)
@@ -909,7 +913,7 @@ CP.show = complete_heads
 --- Attributes: ~
 ---     {async}
 ---
---- @param target integer|string
+--- @param target integer|'attached'|'all'
 ---     Specifies which files hunks are collected from.
 ---     Possible values.
 ---     • [integer]: The buffer with the matching buffer
@@ -934,7 +938,7 @@ M.setqflist = async.create(2, function(target, opts)
 end)
 
 C.setqflist = function(args, _)
-  local target = tonumber(args[1]) or args[1]
+  local target = tointeger(args[1]) or args[1]
   M.setqflist(target, args)
 end
 
@@ -948,7 +952,7 @@ end
 ---
 --- @param nr? integer Window number or the |window-ID|.
 ---     `0` for the current window (default).
---- @param target integer|string See |gitsigns.setqflist()|.
+--- @param target integer|'attached'|'all' See |gitsigns.setqflist()|.
 M.setloclist = function(nr, target)
   M.setqflist(target, {
     nr = nr,
@@ -957,8 +961,8 @@ M.setloclist = function(nr, target)
 end
 
 C.setloclist = function(args, _)
-  local target = tonumber(args[2]) or args[2]
-  M.setloclist(tonumber(args[1]), target)
+  local target = tointeger(args[2]) or args[2]
+  M.setloclist(tointeger(args[1]), target)
 end
 
 --- Get all the available line specific actions for the current
@@ -1031,7 +1035,7 @@ function M._get_cmd_func(name)
 end
 
 --- @param name string
---- @return fun(arglead: string): string[]
+--- @return (fun(arglead: string): string[])?
 function M._get_cmp_func(name)
   return CP[name]
 end

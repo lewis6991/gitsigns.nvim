@@ -85,6 +85,7 @@ local function get_blame_virt_text(bufnr, blame_info)
   if type(clb_formatter) == 'function' then
     local ok, res = pcall(clb_formatter, git_obj.repo.username, blame_info)
     if ok then
+      ---@diagnostic disable-next-line: return-type-mismatch LSP BUG
       return res
     end
 
@@ -92,6 +93,7 @@ local function get_blame_virt_text(bufnr, blame_info)
     error_once(
       'Failed running config.current_line_blame_formatter%s, using default:\n   %s',
       nc_sfx,
+      ---@diagnostic disable-next-line: param-type-not-match LSP BUG
       res
     )
     --- @type string
@@ -153,6 +155,7 @@ local function insert_mode()
 end
 
 --- Update function, must be called in async context
+--- @async
 --- @param bufnr integer
 local function update0(bufnr)
   async.schedule()

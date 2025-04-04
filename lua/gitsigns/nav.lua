@@ -55,7 +55,7 @@ local function process_nav_opts(opts)
     opts.target = 'unstaged'
   end
 
-  return opts
+  return opts --[[@as Gitsigns.NavOpts]]
 end
 
 --- @async

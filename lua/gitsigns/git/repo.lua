@@ -105,13 +105,7 @@ end
 --- @param info Gitsigns.RepoInfo
 --- @return Gitsigns.Repo
 local function new(info)
-  local self = setmetatable({}, { __index = M })
-  for k, v in
-    pairs(info --[[@as table<string,any>]])
-  do
-    ---@diagnostic disable-next-line:no-unknown
-    self[k] = v
-  end
+  local self = setmetatable(info, { __index = M })
 
   self.username = self:command({ 'config', 'user.name' }, { ignore_error = true })[1]
 
@@ -247,8 +241,8 @@ function M.get_info(cwd, gitdir, worktree)
     return nil, string.format('incomplete stdout: %s', table.concat(stdout, '\n'))
   end
 
-  local toplevel_r = assert(normalize_path(stdout[1]))
-  local gitdir_r = assert(normalize_path(stdout[2]))
+  local toplevel_r = normalize_path(stdout[1])
+  local gitdir_r = normalize_path(stdout[2])
 
   if not has_abs_gd then
     gitdir_r = assert(uv.fs_realpath(gitdir_r))
@@ -261,7 +255,7 @@ function M.get_info(cwd, gitdir, worktree)
   return {
     toplevel = toplevel_r,
     gitdir = gitdir_r,
-    abbrev_head = process_abbrev_head(gitdir_r, assert(stdout[3]), cwd),
+    abbrev_head = process_abbrev_head(gitdir_r, stdout[3], cwd),
     detached = toplevel_r and gitdir_r ~= toplevel_r .. '/.git',
   }
 end
@@ -298,7 +292,7 @@ function M:ls_tree(path, revision)
     relpath = relpath,
     mode_bits = mode_bits,
     object_name = object_name,
-    object_type = object_type,
+    object_type = object_type --[[@as 'blob'|'tree'|'commit']],
   }
 end
 
@@ -437,7 +431,7 @@ function M:hash_object(path, lines)
 end
 
 --- @async
---- @return string[]
+--- @return table<string,string>
 function M:rename_status()
   local out = self:command({
     'diff',

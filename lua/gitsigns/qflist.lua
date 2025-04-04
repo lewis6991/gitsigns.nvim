@@ -28,13 +28,13 @@ end
 
 --- @async
 --- @param target 'all'|'attached'|integer|nil
---- @return table[]?
+--- @return vim.quickfix.entry[]?
 local function buildqflist(target)
   target = target or current_buf()
   if target == 0 then
     target = current_buf()
   end
-  local qflist = {} --- @type table[]
+  local qflist = {} --- @type vim.quickfix.entry[]
 
   if type(target) == 'number' then
     local bufnr = target
@@ -42,7 +42,7 @@ local function buildqflist(target)
     if not bcache then
       return
     end
-    hunks_to_qflist(bufnr, bcache.hunks, qflist)
+    hunks_to_qflist(bufnr, assert(bcache.hunks), qflist)
   elseif target == 'attached' then
     for bufnr, bcache in pairs(cache) do
       hunks_to_qflist(bufnr, assert(bcache.hunks), qflist)
@@ -94,6 +94,7 @@ function M.setqflist(target, opts)
   if opts.open == nil then
     opts.open = true
   end
+  --- @type vim.fn.setqflist.what
   local qfopts = {
     items = buildqflist(target),
     title = 'Hunks',
