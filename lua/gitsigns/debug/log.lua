@@ -3,7 +3,7 @@ local uv = vim.uv or vim.loop
 local start_time = uv.hrtime()
 
 --- @class Gitsigns.log
---- @field private messages [number, string, string, string][]
+--- @field private messages [number, string, string, thread?, string][]
 local M = {
   debug_mode = false,
   verbose = false,
@@ -94,7 +94,8 @@ local function cprint(kind, lvl, ...)
   if ctx.bufnr then
     ctx1 = string.format('%s(%s)', ctx1, ctx.bufnr)
   end
-  table.insert(M.messages, { time, kind, ctx1, msg })
+  local thread = coroutine.running()
+  table.insert(M.messages, { time, kind, ctx1, thread, msg })
 end
 
 function M.dprint(...)
@@ -131,7 +132,8 @@ local function eprint(msg, level)
   local info = debug.getinfo(level + 2, 'Sl')
   local ctx = info and string.format('%s<%d>', info.short_src, info.currentline) or '???'
   local time = (uv.hrtime() - start_time) / 1e6
-  table.insert(M.messages, { time, 'error', ctx, debug.traceback(msg) })
+  local thread = coroutine.running()
+  table.insert(M.messages, { time, 'error', ctx, thread, debug.traceback(msg) })
   if M.debug_mode then
     error(msg, 3)
   end
@@ -167,18 +169,39 @@ function M.clear()
   M.messages = {}
 end
 
---- @param m [number, string, string, string]
+--- @param thread thread
+--- @return string
+local function fmt_thread(thread)
+  local threads = _G.tostring(thread)
+  local thread1 = threads:sub(#threads - 1)
+  return '<t:' .. thread1 .. '>'
+end
+
+--- @param m [number, string, string, thread, string]
 --- @return [string,string][]
 local function build_msg(m)
-  local time, kind, ctx, msg = m[1], m[2], m[3], m[4]
+  local time, kind, ctx, thread, msg = m[1], m[2], m[3], m[4], m[5]
   local hl = sev_to_hl[kind]
-  return {
+
+  local r = {
     { string.format('%.2f ', time), 'Comment' },
+  }
+
+  if thread then
+    vim.list_extend(r, {
+      { fmt_thread(thread), 'Comment' },
+      { ' ' },
+    })
+  end
+
+  vim.list_extend(r, {
     { kind:upper():sub(1, 1), hl },
     { string.format(' %s:', ctx), 'Tag' },
     { ' ' },
     { msg },
-  }
+  })
+
+  return r
 end
 
 function M.show()
