@@ -20,7 +20,7 @@ local M = {
 --- @field compare_text_head? string[]
 --- @field hunks_staged?      Gitsigns.Hunk.Hunk[]
 ---
---- @field staged_diffs?      Gitsigns.Hunk.Hunk[]
+--- @field staged_diffs       Gitsigns.Hunk.Hunk[]
 --- @field gitdir_watcher?    uv.uv_fs_event_t
 --- @field git_obj            Gitsigns.GitObj
 --- @field blame?             table<integer,Gitsigns.BlameInfo?>
