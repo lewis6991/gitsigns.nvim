@@ -168,7 +168,7 @@ function M.clear()
 end
 
 --- @param m [number, string, string, string]
---- @return [string,string][]
+--- @return [string,string?][]
 local function build_msg(m)
   local time, kind, ctx, msg = m[1], m[2], m[3], m[4]
   local hl = sev_to_hl[kind]

@@ -305,6 +305,7 @@ function M.expand_format(fmt, info)
     if not match then
       break
     end
+    assert(scol and ecol)
 
     ret[#ret + 1], fmt = fmt:sub(1, scol - 1), fmt:sub(ecol + 1)
 

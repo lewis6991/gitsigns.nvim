@@ -75,7 +75,7 @@ end
 ---@param x any
 ---@return integer
 local function asinteger(x)
-  return assert(tonumber(x))
+  return assert(tonumber(x)) --[[@as integer]]
 end
 
 --- @param readline fun(): string?
