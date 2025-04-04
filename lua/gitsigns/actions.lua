@@ -715,7 +715,7 @@ end
 --- Attributes: ~
 ---     {async}
 M.blame = async.create(0, function()
-  return require('gitsigns.blame').blame()
+  require('gitsigns.blame').blame()
 end)
 
 --- @async

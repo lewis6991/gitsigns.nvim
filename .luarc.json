@@ -5,12 +5,11 @@
   },
   "workspace": {
     "library": [
-      "lua",
       "$VIMRUNTIME",
       "nvim-test",
       "${3rd}/busted/library",
       "${3rd}/luassert/library",
-      "${3rd}/luv/library"
+      "luv"
     ],
     "checkThirdParty": false
   },

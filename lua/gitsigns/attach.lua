@@ -13,7 +13,7 @@ local dprintf = log.dprintf
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
 local api = vim.api
-local uv = vim.loop
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 --- @class gitsigns.attach
 local M = {}
@@ -28,7 +28,7 @@ local function parse_git_path(name)
   end
 
   local proto, gitdir, tail = unpack(vim.split(name, '//'))
-  assert(proto and gitdir and tail)
+  assert(proto and gitdir and tail) --- @diagnostic disable-line: unnecessary-assert
   local plugin = proto:sub(1, 1):upper() .. proto:sub(2, -2)
 
   local commit, rel_path --- @type string?, string
@@ -73,6 +73,7 @@ local function on_detach(_, bufnr)
   M.detach(bufnr, true)
 end
 
+--- @async
 --- @param bufnr integer
 --- @return string?
 --- @return string?
@@ -128,6 +129,7 @@ end)
 --- @field gitdir? string
 --- @field base? string
 
+--- @async
 --- @param bufnr integer
 --- @return Gitsigns.GitContext? ctx
 --- @return string? err
