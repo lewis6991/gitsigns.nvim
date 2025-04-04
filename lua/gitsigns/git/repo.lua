@@ -33,9 +33,9 @@ function M:command(args, spec)
   spec.cwd = self.toplevel
 
   return git_command({
-    '--git-dir',
-    self.gitdir,
-    self.detached and { '--work-tree', self.toplevel },
+    -- '--git-dir', self.gitdir,
+    -- self.detached and { '--work-tree', self.toplevel },
+    '-C', self.toplevel,
     args,
   }, spec)
 end
@@ -168,6 +168,8 @@ local function normalize_path(path)
     -- through cygpath
     --- @type string
     path = async.await(3, system, { 'cygpath', '-aw', path }).stdout
+
+    path = path:gsub( "\n", "" )
   end
   return path
 end
@@ -221,10 +223,9 @@ function M.get_info(cwd, gitdir, worktree)
   -- > environment variable)
   local stdout, stderr, code = git_command({
     gitdir and worktree and {
-      '--git-dir',
-      gitdir,
-      '--work-tree',
-      worktree,
+      -- '--git-dir', gitdir,
+      -- '--work-tree', worktree,
+      "-C", worktree,
     },
     'rev-parse',
     '--show-toplevel',
