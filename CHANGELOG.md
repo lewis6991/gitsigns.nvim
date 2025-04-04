@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.0](https://github.com/lewis6991/gitsigns.nvim/compare/v1.0.2...v2.0.0) (2025-04-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* target Nvim 0.11, drop testing for 0.9.5
+
+### Bug Fixes
+
+* [#1246](https://github.com/lewis6991/gitsigns.nvim/issues/1246) ([17ab794](https://github.com/lewis6991/gitsigns.nvim/commit/17ab794b6fce6fce768430ebc925347e349e1d60))
+
+
+### Continuous Integration
+
+* target Nvim 0.11, drop testing for 0.9.5 ([3c76f7f](https://github.com/lewis6991/gitsigns.nvim/commit/3c76f7fabac723aa682365ef782f88a83ccdb4ac))
+
 ## [1.0.2](https://github.com/lewis6991/gitsigns.nvim/compare/v1.0.1...v1.0.2) (2025-03-16)
 
 
