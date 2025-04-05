@@ -463,8 +463,8 @@ end
 function M:get_relative_path(path)
   local toplevel = self.toplevel .. util.path_sep
 
-  if string.sub(path, 1, string.len(toplevel)) == toplevel then
-    path = string.sub(path, string.len(toplevel) + 1)
+  if path:sub(1, #toplevel) == toplevel then
+    path = path:sub(#toplevel + 1)
   end
 
   return path
