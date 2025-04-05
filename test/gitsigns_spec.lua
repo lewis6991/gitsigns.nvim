@@ -98,7 +98,7 @@ describe('gitsigns (with screen)', function()
       ),
       p(
         'run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
-          .. vim.pesc(test_file)
+          .. vim.pesc(vim.fs.basename(test_file))
       ),
       'watch_gitdir(1): Watching git dir',
     })
