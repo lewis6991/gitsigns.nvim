@@ -33,7 +33,8 @@ function M:command(args, spec)
   spec.cwd = self.toplevel
 
   return git_command({
-    '--git-dir', self.gitdir,
+    '--git-dir',
+    self.gitdir,
     self.detached and { '--work-tree', self.toplevel },
     args,
   }, spec)
@@ -222,8 +223,10 @@ function M.get_info(cwd, gitdir, worktree)
   -- > environment variable)
   local stdout, stderr, code = git_command({
     gitdir and worktree and {
-      '--git-dir', gitdir,
-      '--work-tree', worktree,
+      '--git-dir',
+      gitdir,
+      '--work-tree',
+      worktree,
     },
     'rev-parse',
     '--show-toplevel',
@@ -328,7 +331,7 @@ function M:ls_files(file)
     '--others',
     '--exclude-standard',
     has_eol and '--eol',
-    self:get_relative_path( file ),
+    self:get_relative_path(file),
   }, { ignore_error = true })
 
   -- ignore_error for the cases when we run:
@@ -457,11 +460,11 @@ end
 
 --- @param path string
 --- @return string
-function M:get_relative_path ( path )
+function M:get_relative_path(path)
   local toplevel = self.toplevel .. util.path_sep
 
-  if ( string.sub( path, 1, string.len( toplevel ) ) == toplevel ) then
-    path = string.sub( path, string.len( toplevel ) + 1 )
+  if string.sub(path, 1, string.len(toplevel)) == toplevel then
+    path = string.sub(path, string.len(toplevel) + 1)
   end
 
   return path
