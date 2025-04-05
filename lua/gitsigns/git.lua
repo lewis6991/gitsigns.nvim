@@ -58,7 +58,7 @@ end
 --- @async
 --- @return string? err
 function Obj:refresh()
-  local info, err = self.repo:file_info(self.relpath, self.revision)
+  local info, err = self.repo:file_info(self.file, self.revision)
 
   if err then
     log.eprint(err)
@@ -231,6 +231,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
     return
   end
 
+  -- XXX windows
   if not vim.startswith(file, '/') and toplevel then
     file = toplevel .. util.path_sep .. file
   end
@@ -258,7 +259,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
 
   local self = setmetatable({}, Obj)
   self.repo = repo
-  self.file = file
+  self.file = info.relpath
   self.revision = revision
   self.encoding = encoding
 

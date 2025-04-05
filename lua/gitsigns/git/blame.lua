@@ -247,7 +247,7 @@ function M.run_blame(obj, contents, lnum, revision, opts)
     uv.fs_stat(ignore_file) and { '--ignore-revs-file', ignore_file },
     revision,
     '--',
-    obj.relpath,
+    obj.file,
   }, {
     stdin = contents_str,
     stdout = on_stdout,
