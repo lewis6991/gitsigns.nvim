@@ -232,7 +232,6 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
   end
 
   if toplevel then
-
     -- windows
     if vim.fn.has('win32') then
       if not string.match(file, '^[A-Za-z]:[/\\]') then
