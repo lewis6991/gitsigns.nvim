@@ -169,7 +169,7 @@ local function normalize_path(path)
     --- @type string
     path = async.await(3, system, { 'cygpath', '-aw', path }).stdout
 
-    path = path:gsub("\n", "")
+    path = path:gsub('\n', '')
   end
   return path
 end
