@@ -210,7 +210,7 @@ describe('gitsigns (with screen)', function()
         np('run_job: git .* config user.name'),
         np(
           'run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
-            .. vim.pesc(newfile)
+            .. vim.pesc(vim.fs.basename(newfile))
         ),
         n('attach(1): Not a file'),
       })
