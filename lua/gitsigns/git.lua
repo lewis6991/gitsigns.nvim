@@ -231,8 +231,17 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
     return
   end
 
-  if not vim.startswith(file, '/') and toplevel then
-    file = toplevel .. util.path_sep .. file
+  if toplevel then
+    -- windows
+    if vim.fn.has('win32') then
+      if not string.match(file, '^[A-Za-z]:[/\\]') then
+        file = toplevel .. util.path_sep .. file
+      end
+
+    -- unix
+    elseif not vim.startswith(file, '/') then
+      file = toplevel .. util.path_sep .. file
+    end
   end
 
   local repo = Repo.get(util.dirname(file), gitdir, toplevel)
@@ -258,7 +267,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
 
   local self = setmetatable({}, Obj)
   self.repo = repo
-  self.file = file
+  self.file = info.relpath
   self.revision = revision
   self.encoding = encoding
 

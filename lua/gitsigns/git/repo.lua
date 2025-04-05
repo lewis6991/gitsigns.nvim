@@ -168,6 +168,8 @@ local function normalize_path(path)
     -- through cygpath
     --- @type string
     path = async.await(3, system, { 'cygpath', '-aw', path }).stdout
+
+    path = path:gsub('\n', '')
   end
   return path
 end
@@ -329,7 +331,7 @@ function M:ls_files(file)
     '--others',
     '--exclude-standard',
     has_eol and '--eol',
-    file,
+    vim.fs.relpath(self.toplevel, file),
   }, { ignore_error = true })
 
   -- ignore_error for the cases when we run:
