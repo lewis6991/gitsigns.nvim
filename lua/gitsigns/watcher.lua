@@ -27,8 +27,7 @@ local function handle_moved(bufnr, old_relpath)
     git_obj.relpath = new_name
     git_obj.file = git_obj.repo.toplevel .. '/' .. new_name
   elseif git_obj.orig_relpath then
-    local orig_file = git_obj.repo.toplevel .. util.path_sep .. git_obj.orig_relpath
-    if not git_obj.repo:file_info(orig_file, git_obj.revision) then
+    if not git_obj.repo:file_info(git_obj.orig_relpath, git_obj.revision) then
       return
     end
     --- File was moved in the index, but then reset
