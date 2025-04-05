@@ -331,7 +331,7 @@ function M:ls_files(file)
     '--others',
     '--exclude-standard',
     has_eol and '--eol',
-    self:get_relative_path(file),
+    vim.fs.relpath(self.toplevel, file),
   }, { ignore_error = true })
 
   -- ignore_error for the cases when we run:
@@ -456,18 +456,6 @@ function M:rename_status()
     end
   end
   return ret
-end
-
---- @param path string
---- @return string
-function M:get_relative_path(path)
-  local toplevel = self.toplevel .. util.path_sep
-
-  if path:sub(1, #toplevel) == toplevel then
-    path = path:sub(#toplevel + 1)
-  end
-
-  return path
 end
 
 return M
