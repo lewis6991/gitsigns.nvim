@@ -58,7 +58,7 @@ end
 --- @async
 --- @return string? err
 function Obj:refresh()
-  local info, err = self.repo:file_info(self.file, self.revision)
+  local info, err = self.repo:file_info(self.relpath, self.revision)
 
   if err then
     log.eprint(err)
