@@ -467,7 +467,7 @@ function M:relpath(path)
     local toplevel = self.toplevel .. util.path_sep
 
     if path:sub(1, #toplevel) == toplevel then
-      path = path:sub(#toplevel + 1)
+      return path:sub(#toplevel + 1)
     end
 
     return path
