@@ -47,7 +47,7 @@ describe('gitdir_watcher', function()
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
       np('run_job: git .* config user.name'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
+      np('run_job: git .* ls%-files .* ' .. vim.pesc(vim.fs.basename(test_file))),
       n('watch_gitdir(1): Watching git dir'),
       np('run_job: git .* show .*'),
     })
