@@ -3,7 +3,6 @@ local git_command = require('gitsigns.git.cmd')
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
 
-local system = require('gitsigns.system').system
 local check_version = require('gitsigns.git.version').check
 
 local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
@@ -149,22 +148,6 @@ function M:unref()
   end
 end
 
-local has_cygpath = jit and jit.os == 'Windows' and vim.fn.executable('cygpath') == 1
-
---- @async
---- @generic S
---- @param path S
---- @return S
-local function normalize_path(path)
-  if path and has_cygpath and not uv.fs_stat(path) then
-    -- If on windows and path isn't recognizable as a file, try passing it
-    -- through cygpath
-    --- @type string
-    path = async.await(3, system, { 'cygpath', '-aw', path }).stdout
-  end
-  return path
-end
-
 --- @async
 --- @param gitdir? string
 --- @param head_str string
@@ -243,8 +226,8 @@ function M.get_info(cwd, gitdir, worktree)
   end
   --- @cast stdout [string, string, string]
 
-  local toplevel_r = normalize_path(stdout[1])
-  local gitdir_r = normalize_path(stdout[2])
+  local toplevel_r = stdout[1]
+  local gitdir_r = stdout[2]
 
   if not has_abs_gd then
     gitdir_r = assert(uv.fs_realpath(gitdir_r))

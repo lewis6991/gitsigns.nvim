@@ -1,5 +1,6 @@
 local async = require('gitsigns.async')
 local log = require('gitsigns.debug.log')
+local util = require('gitsigns.util')
 
 local system = require('gitsigns.system').system
 
@@ -31,6 +32,10 @@ end
 --- @return string[] stdout, string? stderr, integer code
 local function git_command(args, spec)
   spec = spec or {}
+  if spec.cwd then
+    -- cwd must be a windows path and not a unix path
+    spec.cwd = util.cygpath(spec.cwd)
+  end
 
   local cmd = flatten({
     'git',
