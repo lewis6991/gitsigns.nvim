@@ -192,7 +192,7 @@ describe('gitsigns (with screen)', function()
           'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
         ),
         np('run_job: git .* config user.name'),
-        np('run_job: git .* ls%-files dummy_ignored.txt'),
+        np('run_job: git .* ls%-files .* dummy_ignored.txt'),
         n('attach(1): Cannot resolve file in repo'),
       })
 
