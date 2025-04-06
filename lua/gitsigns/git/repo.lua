@@ -156,6 +156,7 @@ function M:unref()
   end
 end
 
+--- @generic S
 --- @param path S
 --- @return S
 local function normalize_path(path)
