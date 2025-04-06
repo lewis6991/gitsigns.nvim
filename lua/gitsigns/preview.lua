@@ -228,7 +228,7 @@ M.preview_hunk = noautocmd(function()
 
   local lines_spec = popup.lines_format(preview_linespec, {
     hunk_no = index,
-    num_hunks = #cache[bufnr].hunks,
+    num_hunks = #assert(cache[bufnr]).hunks,
   })
 
   popup.create(lines_spec, config.preview_config, 'hunk')

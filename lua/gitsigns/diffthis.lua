@@ -229,6 +229,7 @@ M.show = async.create(2, function(bufnr, base, _callback)
   end
 end)
 
+--- @async
 --- @param bufnr integer
 --- @return boolean
 local function should_reload(bufnr)

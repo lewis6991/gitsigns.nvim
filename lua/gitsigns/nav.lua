@@ -55,7 +55,7 @@ local function process_nav_opts(opts)
     opts.target = 'unstaged'
   end
 
-  return opts
+  return opts --[[@as Gitsigns.NavOpts]]
 end
 
 --- @async
@@ -119,6 +119,7 @@ function M.nav_hunk(direction, opts)
         api.nvim_echo({ { 'No more hunks', 'WarningMsg' } }, false, {})
       end
       local _, col = vim.fn.getline(line):find('^%s*')
+      assert(col)
       api.nvim_win_set_cursor(0, { line, col })
       return
     end
@@ -132,6 +133,7 @@ function M.nav_hunk(direction, opts)
   vim.cmd([[ normal! m' ]]) -- add current cursor position to the jump list
 
   local _, col = vim.fn.getline(line):find('^%s*')
+  assert(col)
   api.nvim_win_set_cursor(0, { line, col })
 
   if opts.foldopen then

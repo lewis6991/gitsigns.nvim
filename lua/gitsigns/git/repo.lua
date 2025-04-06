@@ -6,7 +6,7 @@ local util = require('gitsigns.util')
 local system = require('gitsigns.system').system
 local check_version = require('gitsigns.git.version').check
 
-local uv = vim.uv or vim.loop
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 --- @class Gitsigns.RepoInfo
 --- @field gitdir string
@@ -40,6 +40,7 @@ function M:command(args, spec)
   }, spec)
 end
 
+--- @async
 --- @param base string?
 --- @return string[]
 function M:files_changed(base)
@@ -152,7 +153,7 @@ function M:unref()
   if refcount <= 1 then
     repo_cache[gitdir] = nil
   else
-    repo_cache[gitdir][1] = refcount - 1
+    repo[1] = refcount - 1
   end
 end
 
@@ -274,6 +275,7 @@ end
 --- @field object_name? string
 --- @field object_type? 'blob'|'tree'|'commit'
 
+--- @async
 --- @param path string
 --- @param revision string
 --- @return Gitsigns.Repo.LsTree.Result? info
@@ -298,7 +300,7 @@ function M:ls_tree(path, revision)
     relpath = relpath,
     mode_bits = mode_bits,
     object_name = object_name,
-    object_type = object_type,
+    object_type = object_type --[[@as 'blob'|'tree'|'commit']]
   }
 end
 
@@ -410,6 +412,7 @@ function M:file_info(file, revision)
   end
 end
 
+--- @async
 --- @param mode_bits string
 --- @param object string
 --- @param path string
@@ -423,6 +426,7 @@ function M:update_index(mode_bits, object, path, add)
   })
 end
 
+--- @async
 --- @param path string
 --- @param lines string[]
 --- @return string
@@ -434,7 +438,7 @@ function M:hash_object(path, lines)
 end
 
 --- @async
---- @return string[]
+--- @return table<string,string>
 function M:rename_status()
   local out = self:command({
     'diff',

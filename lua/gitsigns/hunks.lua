@@ -136,15 +136,17 @@ function M.parse_diff_line(line)
 
   -- diffKey: "-xx,n +yy"
   -- pre: {xx, n}, now: {yy}
-  --- @type string[], string[]
-  local pre, now = unpack(vim.tbl_map(
+  local p = vim.tbl_map(
     --- @param s string
     --- @return string[]
     function(s)
-      return vim.split(string.sub(s, 2), ',')
+      return vim.split(s:sub(2), ',')
     end,
-    vim.split(diffkey, ' ')
-  ))
+    vim.split(diffkey, ' ') --[[@as string[] ]]
+  )
+
+  --- @type string[], string[]
+  local pre, now = p[1], p[2]
 
   local hunk = M.create_hunk(
     tointeger(pre[1]),
@@ -245,7 +247,7 @@ function M.calc_signs(prev_hunk, hunk, next_hunk, min_lnum, max_lnum, untracked)
     return {}
   end
   min_lnum = math.max(1, min_lnum or 1)
-  max_lnum = max_lnum or math.huge
+  max_lnum = max_lnum or math.huge --[[@as integer]]
 
   if not config._new_sign_calc then
     return calc_signs(hunk, next_hunk, min_lnum, max_lnum, untracked)
@@ -356,7 +358,6 @@ end
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @return Gitsigns.StatusObj
 function M.get_summary(hunks)
-  --- @type Gitsigns.StatusObj
   local status = { added = 0, changed = 0, removed = 0 }
 
   for _, hunk in ipairs(hunks or {}) do

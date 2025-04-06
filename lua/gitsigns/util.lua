@@ -378,4 +378,14 @@ function M.once(fn)
   end
 end
 
+--- @param x any
+--- @return integer?
+function M.tointeger(x)
+  local nx = tonumber(x)
+  if nx and nx == math.floor(nx) then
+    --- @cast nx integer
+    return nx
+  end
+end
+
 return M

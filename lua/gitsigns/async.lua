@@ -206,6 +206,7 @@ function Task:close(callback)
 
   if callback then
     self:await(function()
+      ---@diagnostic disable-next-line: need-check-nil LSP-BUG
       callback()
     end)
   end

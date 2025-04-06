@@ -16,8 +16,8 @@ local config = require('gitsigns.config').config
 local M = {}
 
 --- @param buf integer
---- @param last_orig? integer
---- @param last_new? integer
+--- @param last_orig integer
+--- @param last_new integer
 function M:on_lines(buf, _, last_orig, last_new)
   -- Remove extmarks on line deletions to mimic
   -- the behaviour of vim signs.
