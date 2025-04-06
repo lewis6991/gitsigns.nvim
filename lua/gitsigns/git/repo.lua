@@ -160,8 +160,8 @@ end
 --- @param path S
 --- @return S
 local function normalize_path(path)
-  if path and vim.fn.has('win32') == 1 and path:sub(1, 1) == '/' then
-    path = path:sub(2, 2) .. ':' .. path:sub(3)
+  if path and vim.fn.has('win32') == 1 and string.sub(path, 1, 1) == '/' then
+    path = string.sub(path, 2, 2) .. ':' .. string.sub(path, 3)
   end
 
   return path
