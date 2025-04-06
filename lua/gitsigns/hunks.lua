@@ -571,6 +571,7 @@ function M.linespec_for_hunk(hunk, fileformat)
           spec.sym .. l,
           {
             {
+              start_row = 0,
               hl_group = spec.hl,
               end_row = 1, -- Highlight whole line
             },

@@ -93,7 +93,7 @@ local function incremental_iter(readline, commits, result)
   local final_lnum = asinteger(final_lnum_str)
   local size = asinteger(size_str)
 
-  --- @type table<string,string|true>
+  --- @type table<string,string|integer|true>
   local commit = commits[sha] or {
     sha = sha,
     abbrev_sha = sha:sub(1, 8),
@@ -112,9 +112,10 @@ local function incremental_iter(readline, commits, result)
     elseif key then
       key = key:gsub('%-', '_') --- @type string
       if vim.endswith(key, '_time') then
-        value = tonumber(value)
+        commit[key] = asinteger(value)
+      else
+        commit[key] = value
       end
-      commit[key] = value
     else
       commit[line] = true
       if line ~= 'boundary' then
@@ -124,6 +125,7 @@ local function incremental_iter(readline, commits, result)
     line = assert(readline())
   end
 
+  ---@diagnostic disable-next-line: unnecessary-assert, missing-parameter LSP BUG
   local filename = assert(line:match('^filename (.*)'))
 
   -- New in git 2.41:
@@ -172,6 +174,7 @@ local function buffered_line_reader(f)
     local data_lines = data_to_lines(data)
     local i = 0
 
+    --- @async
     local function readline(peek)
       if not data_lines[i + 1] then
         data = coroutine.yield()

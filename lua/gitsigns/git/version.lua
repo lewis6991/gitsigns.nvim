@@ -19,6 +19,7 @@ local asystem = async.awrap(3, system)
 --- @param version string
 --- @return Gitsigns.Version
 local function parse_version(version)
+  ---@diagnostic disable-next-line: unnecessary-assert LSP BUG
   assert(version:match('%d+%.%d+%.%w+'), 'Invalid git version: ' .. version)
   local parts = vim.split(version, '%.')
   --- @type Gitsigns.Version

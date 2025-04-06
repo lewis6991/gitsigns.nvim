@@ -1,7 +1,9 @@
+local uv = vim.uv or vim.loop --- @diagnostic disable-line: deprecated
+
 local M = {}
 
 function M.path_exists(path)
-  return vim.loop.fs_stat(path) and true or false
+  return uv.fs_stat(path) and true or false
 end
 
 local jit_os --- @type string
@@ -200,7 +202,7 @@ end
 function M.redraw(opts)
   if vim.fn.has('nvim-0.10') == 1 then
     vim.api.nvim__redraw(opts)
-  else
+  elseif opts.range then
     vim.api.nvim__buf_redraw_range(opts.buf, opts.range[1], opts.range[2])
   end
 end
@@ -277,6 +279,8 @@ function M.expand_format(fmt, info)
     if not match then
       break
     end
+    --- @cast scol -?
+    --- @cast ecol -?
     --- @cast key string
 
     ret[#ret + 1], fmt = fmt:sub(1, scol - 1), fmt:sub(ecol + 1)

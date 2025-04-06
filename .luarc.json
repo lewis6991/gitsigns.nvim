@@ -4,6 +4,9 @@
     "version": "LuaJIT"
   },
   "workspace": {
+    "ignoreDir": [
+      "deps"
+    ],
     "library": [
       "$VIMRUNTIME",
       "luv"

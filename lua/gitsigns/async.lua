@@ -246,7 +246,7 @@ end
 function Task:_resume(...)
   --- @type [boolean, string|Gitsigns.async.CallbackFn]
   local ret = { coroutine.resume(self._thread, ...) }
-  local stat = table.remove(ret, 1) --- @type boolean
+  local stat = table.remove(ret, 1)
   --- @cast stat boolean
   --- @cast ret [string|Gitsigns.async.CallbackFn]
 
@@ -263,6 +263,7 @@ function Task:_resume(...)
 
     -- TODO(lewis6991): refine error handler to be more specific
     local ok, r
+    ---@diagnostic disable-next-line: unbalanced-assignments LSP BUG
     ok, r = pcall(fn, function(...)
       if is_async_handle(r) then
         --- @cast r Gitsigns.async.Handle
