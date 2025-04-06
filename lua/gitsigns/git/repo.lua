@@ -331,7 +331,7 @@ function M:ls_files(file)
     '--others',
     '--exclude-standard',
     has_eol and '--eol',
-    vim.fs.relpath(self.toplevel, file),
+    self:relpath(file),
   }, { ignore_error = true })
 
   -- ignore_error for the cases when we run:
@@ -456,6 +456,22 @@ function M:rename_status()
     end
   end
   return ret
+end
+
+function M:relpath(path)
+  if vim.fs.relpath then
+    return vim.fs.relpath(self.toplevel, path)
+
+  -- NOTE: nvim < 0.11.0
+  else
+    local toplevel = self.toplevel .. util.path_sep
+
+    if path:sub(1, #toplevel) == toplevel then
+      path = path:sub(#toplevel + 1)
+    end
+
+    return path
+  end
 end
 
 return M
