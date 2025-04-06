@@ -25,9 +25,10 @@ local function handle_moved(bufnr, old_relpath)
   if new_name then
     dprintf('File moved to %s', new_name)
     git_obj.relpath = new_name
-    git_obj.file = new_name
+    git_obj.file = git_obj.repo.toplevel .. '/' .. new_name
   elseif git_obj.orig_relpath then
-    if not git_obj.repo:file_info(git_obj.orig_relpath, git_obj.revision) then
+    local orig_file = git_obj.repo.toplevel .. util.path_sep .. git_obj.orig_relpath
+    if not git_obj.repo:file_info(orig_file, git_obj.revision) then
       return
     end
     --- File was moved in the index, but then reset
@@ -39,7 +40,7 @@ local function handle_moved(bufnr, old_relpath)
     return
   end
 
-  git_obj.file = git_obj.relpath
+  git_obj.file = git_obj.repo.toplevel .. util.path_sep .. git_obj.relpath
   bcache.file = git_obj.file
   git_obj:refresh()
   if not bcache:schedule() then
