@@ -39,7 +39,7 @@ local function handle_moved(bufnr, old_relpath)
     return
   end
 
-  git_obj.file = git_obj.repo.toplevel .. util.path_sep .. git_obj.relpath
+  git_obj.file = git_obj.relpath
   bcache.file = git_obj.file
   git_obj:refresh()
   if not bcache:schedule() then
