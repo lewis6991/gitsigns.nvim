@@ -182,7 +182,8 @@ function Obj:stage_hunks(hunks, invert)
   self.lock = true
   self:ensure_file_in_index()
 
-  local patch = require('gitsigns.hunks').create_patch(assert(self.relpath), hunks, self.mode_bits, invert)
+  local patch =
+    require('gitsigns.hunks').create_patch(assert(self.relpath), hunks, self.mode_bits, invert)
 
   if not self.i_crlf and self.w_crlf then
     -- Remove cr

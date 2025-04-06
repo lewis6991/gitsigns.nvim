@@ -64,7 +64,7 @@ function M.new(bufnr, file, git_obj)
     bufnr = bufnr,
     file = file,
     git_obj = git_obj,
-    staged_diffs = {}
+    staged_diffs = {},
   }, { __index = CacheEntry })
 end
 
@@ -290,11 +290,8 @@ function CacheEntry:get_hunk(range, greedy, staged)
     )
   else
     hunk.added.lines = api.nvim_buf_get_lines(self.bufnr, top - 1, bot, false)
-    hunk.removed.lines = vim.list_slice(
-      compare_text,
-      hunk.removed.start,
-      hunk.removed.start + hunk.removed.count - 1
-    )
+    hunk.removed.lines =
+      vim.list_slice(compare_text, hunk.removed.start, hunk.removed.start + hunk.removed.count - 1)
   end
   return hunk
 end

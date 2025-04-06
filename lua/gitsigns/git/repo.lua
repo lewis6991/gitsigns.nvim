@@ -294,7 +294,7 @@ function M:ls_tree(path, revision)
     relpath = relpath,
     mode_bits = mode_bits,
     object_name = object_name,
-    object_type = object_type --[[@as 'blob'|'tree'|'commit']]
+    object_type = object_type --[[@as 'blob'|'tree'|'commit']],
   }
 end
 
