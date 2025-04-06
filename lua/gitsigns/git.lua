@@ -267,7 +267,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
 
   local self = setmetatable({}, Obj)
   self.repo = repo
-  self.file = info.relpath
+  self.file = file
   self.revision = revision
   self.encoding = encoding
 
