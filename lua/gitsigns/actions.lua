@@ -220,7 +220,7 @@ M.stage_hunk = mk_repeatable(async.create(2, function(range, opts)
   end
 
   if not hunk then
-    api.nvim_echo({ { 'No hunk to stage', 'WarningMsg' } }, false, {})
+    vim.notify('No hunk to stage', vim.log.levels.WARN, { title = 'gitsigns.nvim' })
     return
   end
 
@@ -287,7 +287,7 @@ M.reset_hunk = mk_repeatable(async.create(2, function(range, opts)
   local hunk = bcache:get_hunk(range, opts.greedy ~= false, false)
 
   if not hunk then
-    api.nvim_echo({ { 'No hunk to reset', 'WarningMsg' } }, false, {})
+    vim.notify('No hunk to reset', vim.log.levels.WARN, { title = 'gitsigns.nvim' })
     return
   end
 
@@ -308,7 +308,11 @@ M.reset_buffer = function()
 
   local hunks = bcache.hunks
   if not hunks or #hunks == 0 then
-    api.nvim_echo({ { 'No unstaged changes in the buffer to reset', 'WarningMsg' } }, false, {})
+    vim.notify(
+      'No unstaged changes in the buffer to reset',
+      vim.log.levels.WARN,
+      { title = 'gitsigns.nvim' }
+    )
     return
   end
 

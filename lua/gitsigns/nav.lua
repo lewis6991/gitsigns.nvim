@@ -101,7 +101,7 @@ function M.nav_hunk(direction, opts)
 
   if not hunks or vim.tbl_isempty(hunks) then
     if opts.navigation_message then
-      api.nvim_echo({ { 'No hunks', 'WarningMsg' } }, false, {})
+      vim.notify('No hunks', vim.log.levels.WARN, { title = 'gitsigns.nvim' })
     end
     return
   end
@@ -116,7 +116,7 @@ function M.nav_hunk(direction, opts)
 
     if not index then
       if opts.navigation_message then
-        api.nvim_echo({ { 'No more hunks', 'WarningMsg' } }, false, {})
+        vim.notify('No more hunks', vim.log.levels.WARN, { title = 'gitsigns.nvim' })
       end
       local _, col = vim.fn.getline(line):find('^%s*')
       api.nvim_win_set_cursor(0, { line, col })
@@ -154,7 +154,11 @@ function M.nav_hunk(direction, opts)
   end
 
   if index and opts.navigation_message then
-    api.nvim_echo({ { ('Hunk %d of %d'):format(index, #hunks), 'None' } }, false, {})
+    vim.notify(
+      ('Hunk %d of %d'):format(index, #hunks),
+      vim.log.levels.INFO,
+      { title = 'gitsigns.nvim' }
+    )
   end
 end
 
