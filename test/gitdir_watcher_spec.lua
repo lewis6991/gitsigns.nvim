@@ -73,7 +73,7 @@ describe('gitdir_watcher', function()
       np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
       n('handle_moved(1): File moved to dummy.txt2'),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(vim.fs.basename(test_file2))),
-      np('handle_moved%(1%): Renamed buffer 1 from dummy.txt to dummy.txt2'),
+      np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt to .*/dummy.txt2'),
       np('run_job: git .* show .*'),
     })
 
@@ -99,7 +99,7 @@ describe('gitdir_watcher', function()
       np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
       n('handle_moved(1): File moved to dummy.txt3'),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(vim.fs.basename(test_file3))),
-      np('handle_moved%(1%): Renamed buffer 1 from dummy.txt2 to dummy.txt3'),
+      np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt2 to .*/dummy.txt3'),
       np('run_job: git .* show .*'),
     })
 
@@ -124,7 +124,7 @@ describe('gitdir_watcher', function()
       np('run_job: git .* ls%-files .* ' .. vim.pesc(vim.fs.basename(test_file))),
       n('handle_moved(1): Moved file reset'),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(vim.fs.basename(test_file))),
-      np('handle_moved%(1%): Renamed buffer 1 from dummy.txt3 to dummy.txt'),
+      np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt3 to .*/dummy.txt'),
       np('run_job: git .* show .*'),
     })
 
