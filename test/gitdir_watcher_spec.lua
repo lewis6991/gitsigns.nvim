@@ -69,10 +69,10 @@ describe('gitdir_watcher', function()
       np(
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
+      np('run_job: git .* ls%-files .* ' .. vim.pesc(vim.fs.basename(test_file))),
       np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
       n('handle_moved(1): File moved to dummy.txt2'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file2)),
+      np('run_job: git .* ls%-files .* ' .. vim.pesc(vim.fs.basename(test_file2))),
       np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt to .*/dummy.txt2'),
       np('run_job: git .* show .*'),
     })
@@ -95,10 +95,10 @@ describe('gitdir_watcher', function()
       p(
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file2)),
+      np('run_job: git .* ls%-files .* ' .. vim.pesc(vim.fs.basename(test_file2))),
       np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
       n('handle_moved(1): File moved to dummy.txt3'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file3)),
+      np('run_job: git .* ls%-files .* ' .. vim.pesc(vim.fs.basename(test_file3))),
       np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt2 to .*/dummy.txt3'),
       np('run_job: git .* show .*'),
     })
@@ -119,11 +119,11 @@ describe('gitdir_watcher', function()
       p(
         'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
       ),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file3)),
+      np('run_job: git .* ls%-files .* ' .. vim.pesc(vim.fs.basename(test_file3))),
       np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
+      np('run_job: git .* ls%-files .* ' .. vim.pesc(vim.fs.basename(test_file))),
       n('handle_moved(1): Moved file reset'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
+      np('run_job: git .* ls%-files .* ' .. vim.pesc(vim.fs.basename(test_file))),
       np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt3 to .*/dummy.txt'),
       np('run_job: git .* show .*'),
     })
