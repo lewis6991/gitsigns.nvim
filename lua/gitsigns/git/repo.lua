@@ -156,21 +156,13 @@ function M:unref()
   end
 end
 
-local has_cygpath = jit and jit.os == 'Windows' and vim.fn.executable('cygpath') == 1
-
---- @async
---- @generic S
 --- @param path S
 --- @return S
 local function normalize_path(path)
-  if path and has_cygpath and not uv.fs_stat(path) then
-    -- If on windows and path isn't recognizable as a file, try passing it
-    -- through cygpath
-    --- @type string
-    path = async.await(3, system, { 'cygpath', '-aw', path }).stdout
-
-    path = path:gsub('\n', '')
+  if path and vim.fn.has('win32') == 1 and path:sub(1, 1) == '/' then
+    path = path:sub(2, 2) .. ':' .. path:sub(3)
   end
+
   return path
 end
 
