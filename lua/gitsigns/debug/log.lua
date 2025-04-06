@@ -183,7 +183,7 @@ end
 
 function M.show()
   for _, m in ipairs(M.messages) do
-    vim.notify(build_msg(m), vim.log.levels.TRACE, { title = 'gitsigns.nvim' })
+    vim.api.nvim_echo(build_msg(m), false, {})
   end
 end
 
