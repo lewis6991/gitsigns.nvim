@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   commit_lint:
@@ -19,7 +19,7 @@ jobs:
       - uses: webiny/action-conventional-commits@v1.3.0
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
 
     strategy:
@@ -29,10 +29,8 @@ jobs:
       fail-fast: false
 
       matrix:
-        neovim_branch:
-          - 'v0.10.4'
-          - 'v0.11.0'
-          - 'nightly'
+        os: [ubuntu-latest, windows-latest]
+        neovim_branch: ['v0.10.4', 'v0.11.0', 'nightly']
 
     env:
       NVIM_TEST_VERSION: ${{ matrix.neovim_branch }}
@@ -41,11 +39,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: leafo/gh-actions-lua@v9
-        with:
-          luaVersion: "5.1.5"
+      - uses: ilammy/msvc-dev-cmd@v1
 
-      - uses: leafo/gh-actions-luarocks@v4
+      - run: choco install lua luarocks wget
 
       - name: Download nvim-test
         run: make nvim-test
