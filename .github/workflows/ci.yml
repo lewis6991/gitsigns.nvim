@@ -40,8 +40,14 @@ jobs:
         uses: actions/checkout@v4
 
       - uses: ilammy/msvc-dev-cmd@v1
+      - uses: leafo/gh-actions-lua@v11
+        with:
+          luaVersion: "5.1.5"
 
-      - run: choco install lua luarocks wget
+      - uses: hishamhm/gh-actions-luarocks@master
+
+      - if: runner.os == 'Windows'
+        run: choco install wget
 
       - name: Download nvim-test
         run: make nvim-test
