@@ -895,7 +895,7 @@ M.schema = {
 
   git = {
     type = 'string',
-    default = vim.fn.has( "win32" ) == 1 and "git.exe" or "git",
+    default = 'git',
     description = [[
       Specifies path or filename of the `git` executable to use.
     ]],

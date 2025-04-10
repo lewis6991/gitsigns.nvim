@@ -980,10 +980,9 @@ debug_mode                                        *gitsigns-config-debug_mode*
       available: `dump_cache`, `debug_messages`, `clear_debug`.
 
 git                                        *gitsigns-config-git*
-      Type: `string`, Default: `git.exe`  under `Windows`, `git` under other
-      OS
+      Type: `string`, Default: `git`
 
-      Specifies path or filename of the `git` executable.
+      Specifies path or filename of the `git` executable to use.
 
 
 ==============================================================================
