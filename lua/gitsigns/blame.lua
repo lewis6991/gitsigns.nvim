@@ -2,6 +2,7 @@ local async = require('gitsigns.async')
 local cache = require('gitsigns.cache').cache
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
+local config = require('gitsigns.config').config
 
 local api = vim.api
 
@@ -301,7 +302,7 @@ function M.blame()
   local top = vim.fn.line('w0') + vim.wo.scrolloff
   local current = vim.fn.line('.')
 
-  vim.cmd.vsplit({ mods = { keepalt = true, split = 'aboveleft' } })
+  vim.cmd.vsplit({ mods = { keepalt = true, split = config.split } })
   local blm_win = api.nvim_get_current_win()
 
   local blm_bufnr = api.nvim_create_buf(false, true)

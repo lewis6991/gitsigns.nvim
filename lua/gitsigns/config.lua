@@ -38,6 +38,7 @@
 --- @alias Gitsigns.CurrentLineBlameFmtFun fun(user: string, info: table<string,any>): [string,string][]
 
 --- @class (exact) Gitsigns.CurrentLineBlameOpts : Gitsigns.BlameOpts
+--- @field split string
 --- @field virt_text? boolean
 --- @field virt_text_pos? 'eol'|'overlay'|'right_align'
 --- @field delay? integer
@@ -637,6 +638,11 @@ M.schema = {
       Option overrides for the Gitsigns preview window. Table is passed directly
       to `nvim_open_win`.
     ]],
+  },
+
+  split = {
+    type = 'string',
+    default = 'belowright',
   },
 
   auto_attach = {
