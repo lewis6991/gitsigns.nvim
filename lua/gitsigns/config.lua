@@ -53,6 +53,7 @@
 
 --- @class (exact) Gitsigns.Config
 --- @field debug_mode boolean
+--- @field git string
 --- @field diff_opts Gitsigns.DiffOpts
 --- @field base? string
 --- @field signs table<Gitsigns.SignType,Gitsigns.SignConfig>
@@ -889,6 +890,14 @@ M.schema = {
     description = [[
       Enables debug logging and makes the following functions
       available: `dump_cache`, `debug_messages`, `clear_debug`.
+    ]],
+  },
+
+  git = {
+    type = 'string',
+    default = vim.fn.has( "win32" ) == 1 and "git.exe" or "git",
+    description = [[
+      Specifies path or filename of the `git` executable to use.
     ]],
   },
 }

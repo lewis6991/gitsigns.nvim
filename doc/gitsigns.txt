@@ -979,6 +979,12 @@ debug_mode                                        *gitsigns-config-debug_mode*
       Enables debug logging and makes the following functions
       available: `dump_cache`, `debug_messages`, `clear_debug`.
 
+git                                        *gitsigns-config-git*
+      Type: `string`, Default: `git.exe`  under `Windows`, `git` under other
+      OS
+
+      Specifies path or filename of the `git` executable.
+
 
 ==============================================================================
 HIGHLIGHT GROUPS                                   *gitsigns-highlight-groups*
