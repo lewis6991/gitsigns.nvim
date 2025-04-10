@@ -48,7 +48,7 @@ local function complete_heads(arglead)
     '--symbolic',
     '--branches',
     '--tags',
-    '--remotes'
+    '--remotes',
   })
   return vim.tbl_filter(
     --- @param x string
