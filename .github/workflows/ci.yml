@@ -44,7 +44,11 @@ jobs:
         with:
           luaVersion: "5.1.5"
 
-      - uses: hishamhm/gh-actions-luarocks@master
+      - if: runner.os == 'Windows'
+        uses: hishamhm/gh-actions-luarocks@master
+
+      - if: runner.os != 'Windows'
+        uses: leafo/gh-actions-luarocks@v5
 
       - if: runner.os == 'Windows'
         run: choco install wget
