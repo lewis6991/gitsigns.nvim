@@ -152,7 +152,7 @@ function Obj:ensure_file_in_index()
   else
     -- Update the index with the common ancestor (stage 1) which is what bcache
     -- stores
-    self.repo:update_index(self.mode_bits, self.object_name, self.relpath, true)
+    self.repo:update_index(self.mode_bits, self.object_name, assert(self.relpath), true)
   end
 
   self:refresh()
@@ -164,8 +164,8 @@ end
 --- @param lines string[]
 function Obj:stage_lines(lines)
   self.lock = true
-  local new_object = self.repo:hash_object(self.relpath, lines)
-  self.repo:update_index(self.mode_bits, new_object, self.relpath)
+  local new_object = self.repo:hash_object(assert(self.relpath), lines)
+  self.repo:update_index(self.mode_bits, new_object, assert(self.relpath))
   self.lock = nil
   autocmd_changed(self.file)
 end
@@ -182,7 +182,8 @@ function Obj:stage_hunks(hunks, invert)
   self.lock = true
   self:ensure_file_in_index()
 
-  local patch = require('gitsigns.hunks').create_patch(self.relpath, hunks, self.mode_bits, invert)
+  local patch =
+    require('gitsigns.hunks').create_patch(assert(self.relpath), hunks, self.mode_bits, invert)
 
   if not self.i_crlf and self.w_crlf then
     -- Remove cr

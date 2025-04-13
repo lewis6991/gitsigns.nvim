@@ -20,6 +20,7 @@ local sources = {
 --    'nil'         -> nil
 --    '100'         -> 100
 --    'HEAD~300' -> 'HEAD~300'
+--- @return boolean|number|string?
 local function parse_to_lua(a)
   if tonumber(a) then
     return tonumber(a)
@@ -92,6 +93,7 @@ M.run = async.create(1, function(params)
   for m, has_named in pairs(sources) do
     local f = m[func]
     if type(f) == 'function' then
+      ---@diagnostic disable-next-line: param-type-not-match LSP BUG
       -- Note functions here do not have named arguments
       f(unpack(pos_args), has_named and named_args or nil)
       return
