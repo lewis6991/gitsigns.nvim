@@ -94,6 +94,7 @@ local function watcher_handler0(bufnr)
   local was_tracked = git_obj.object_name ~= nil
   local old_relpath = git_obj.relpath
 
+  bcache:invalidate(true)
   git_obj:refresh()
   if not bcache:schedule() then
     dprint('buffer invalid (3)')
@@ -109,8 +110,6 @@ local function watcher_handler0(bufnr)
       return
     end
   end
-
-  cache[bufnr]:invalidate(true)
 
   require('gitsigns.manager').update(bufnr)
 end
