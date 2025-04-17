@@ -1,21 +1,11 @@
+local uv = vim.uv or vim.loop
+
+local is_win = vim.fn.has('win32') == 1
+
 local M = {}
 
 function M.path_exists(path)
   return vim.loop.fs_stat(path) and true or false
-end
-
-local jit_os --- @type string
-
-if jit then
-  jit_os = jit.os:lower()
-end
-
-local is_unix = false
-if jit_os then
-  is_unix = jit_os == 'linux' or jit_os == 'osx' or jit_os == 'bsd'
-else
-  local binfmt = package.cpath:match('%p[\\|/]?%p(%a+)')
-  is_unix = binfmt ~= 'dll'
 end
 
 --- @param file string
@@ -146,10 +136,10 @@ end
 
 --- @return string
 function M.tmpname()
-  if is_unix then
-    return os.tmpname()
+  if is_win then
+    return vim.fn.tempname()
   end
-  return vim.fn.tempname()
+  return os.tmpname()
 end
 
 --- @param time number
@@ -376,6 +366,40 @@ function M.once(fn)
     called = true
     return fn(...)
   end
+end
+
+local has_cygpath --- @type boolean?
+
+--- @async
+--- @generic S
+--- @param path S
+--- @return S
+function M.normalize_path(path)
+  local async = require('gitsigns.async')
+  local system = require('gitsigns.system').system
+  if has_cygpath == nil then
+    has_cygpath = is_win and vim.fn.executable('cygpath') == 1
+  end
+  if path and has_cygpath and not uv.fs_stat(path) then
+    -- If on windows and path isn't recognizable as a file, try passing it
+    -- through cygpath
+    --- @type string
+    local stdout = async.await(3, system, { 'cygpath', '-aw', path }).stdout
+    path = stdout:gsub('\n$', '')
+  end
+  return path
+end
+
+--- @param path string
+--- @return boolean
+function M.is_abspath(path)
+  -- Check if the path is absolute on Windows
+  if is_win and path:match('^%a:[/\\]') then
+    return true
+  end
+
+  -- Check if the path is absolute on Unix-like systems
+  return vim.startswith(path, '/')
 end
 
 return M

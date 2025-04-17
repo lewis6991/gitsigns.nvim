@@ -231,7 +231,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
     return
   end
 
-  if not vim.startswith(file, '/') and toplevel then
+  if not util.is_abspath(file) and toplevel then
     file = toplevel .. util.path_sep .. file
   end
 
@@ -258,7 +258,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
 
   local self = setmetatable({}, Obj)
   self.repo = repo
-  self.file = file
+  self.file = util.normamlize_path(file)
   self.revision = revision
   self.encoding = encoding
 
