@@ -41,7 +41,7 @@ function M.dump_cache()
   local cache = (require('gitsigns.cache')).cache
   --- @type string
   local text = vim.inspect(cache, { process = process })
-  vim.api.nvim_echo({ { text } }, false, {})
+  vim.notify(text, vim.log.levels.DEBUG, { title = 'gitsigns.nvim' })
 end
 
 M.debug_messages = log.show
