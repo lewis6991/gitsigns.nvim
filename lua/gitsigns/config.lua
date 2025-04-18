@@ -627,7 +627,7 @@ M.schema = {
     type = 'table',
     deep_extend = true,
     default = {
-      border = 'single',
+      border = vim.fn.has('nvim-0.11') == 1 and vim.opt.winborder:get() ~= "" and vim.opt.winborder:get() or 'single',
       style = 'minimal',
       relative = 'cursor',
       row = 0,
