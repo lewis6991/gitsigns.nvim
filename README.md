@@ -303,7 +303,7 @@ If installed and enabled (via `config.trouble`; defaults to true if installed), 
 
 ### Implement every feature in [vim-fugitive]
 
-This plugin is actively developed and by one of the most well regarded vim plugin developers.
+That plugin is actively developed and by one of the most well regarded vim plugin developers.
 Gitsigns will only implement features of this plugin if: it is simple, or, the technologies leveraged by Gitsigns (LuaJIT, Libuv, Neovim's API, etc) can provide a better experience.
 
 ### Support for other VCS
