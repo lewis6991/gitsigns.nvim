@@ -41,7 +41,7 @@ test-010:
 	$(MAKE) $(MAKEFLAGS) test NVIM_TEST_VERSION=v0.10.4
 
 .PHONY: test-011
-test-010:
+test-011:
 	$(MAKE) $(MAKEFLAGS) test NVIM_TEST_VERSION=v0.11.0
 
 .PHONY: test-nightly

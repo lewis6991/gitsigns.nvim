@@ -149,8 +149,8 @@ local function show_deleted_in_float(bufnr, nsd, hunk, staged)
   vim.wo[pwinid].scrolloff = 0
 
   api.nvim_win_call(pwinid, function()
-    -- Expand folds
-    vim.cmd('normal! ' .. 'zR')
+    -- Disable folds
+    vim.wo.foldenable = false
 
     -- Navigate to hunk
     vim.cmd('normal! ' .. tostring(hunk.removed.start) .. 'gg')
