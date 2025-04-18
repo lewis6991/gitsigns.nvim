@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.0.0](https://github.com/lewis6991/gitsigns.nvim/compare/v1.0.2...v2.0.0) (2025-04-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* target Nvim 0.11, drop testing for 0.9.5
+
+### Bug Fixes
+
+* [#1246](https://github.com/lewis6991/gitsigns.nvim/issues/1246) ([17ab794](https://github.com/lewis6991/gitsigns.nvim/commit/17ab794b6fce6fce768430ebc925347e349e1d60))
+* prevent inline hunk preview from folding ([02eafb1](https://github.com/lewis6991/gitsigns.nvim/commit/02eafb1273afec94447f66d1a43fc5e477c2ab8a))
+* **watcher:** invalidate the cache earlier ([d600d39](https://github.com/lewis6991/gitsigns.nvim/commit/d600d3922c1d001422689319a8f915136bb64e1e))
+
+
+### Continuous Integration
+
+* target Nvim 0.11, drop testing for 0.9.5 ([3c76f7f](https://github.com/lewis6991/gitsigns.nvim/commit/3c76f7fabac723aa682365ef782f88a83ccdb4ac))
+
 ## [1.0.2](https://github.com/lewis6991/gitsigns.nvim/compare/v1.0.1...v1.0.2) (2025-03-16)
 
 
