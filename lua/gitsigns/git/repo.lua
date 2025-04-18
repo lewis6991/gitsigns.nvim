@@ -156,19 +156,14 @@ function M:unref()
   end
 end
 
-local has_cygpath = jit and jit.os == 'Windows' and vim.fn.executable('cygpath') == 1
-
---- @async
 --- @generic S
 --- @param path S
 --- @return S
 local function normalize_path(path)
-  if path and has_cygpath and not uv.fs_stat(path) then
-    -- If on windows and path isn't recognizable as a file, try passing it
-    -- through cygpath
-    --- @type string
-    path = async.await(3, system, { 'cygpath', '-aw', path }).stdout
+  if path and vim.fn.has('win32') == 1 and string.sub(path, 1, 1) == '/' then
+    path = string.gsub(string.sub(path, 2, 2) .. ':' .. string.sub(path, 3), '/', '\\')
   end
+
   return path
 end
 
@@ -329,7 +324,7 @@ function M:ls_files(file)
     '--others',
     '--exclude-standard',
     has_eol and '--eol',
-    file,
+    self:relpath(file),
   }, { ignore_error = true })
 
   -- ignore_error for the cases when we run:
@@ -454,6 +449,22 @@ function M:rename_status()
     end
   end
   return ret
+end
+
+function M:relpath(path)
+  if vim.fs.relpath then
+    return vim.fs.relpath(self.toplevel, path)
+
+  -- NOTE: nvim < 0.11.0
+  else
+    local toplevel = self.toplevel .. util.path_sep
+
+    if path:sub(1, #toplevel) == toplevel then
+      return path:sub(#toplevel + 1)
+    end
+
+    return path
+  end
 end
 
 return M

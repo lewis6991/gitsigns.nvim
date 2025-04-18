@@ -204,7 +204,7 @@ end
 function M.setup(cfg)
   Config.build(cfg)
 
-  if vim.fn.executable('git') == 0 then
+  if vim.fn.executable(config.git) == 0 then
     print('gitsigns: git not in path. Aborting setup')
     return
   end

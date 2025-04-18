@@ -98,7 +98,7 @@ describe('gitsigns (with screen)', function()
       ),
       p(
         'run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
-          .. vim.pesc(test_file)
+          .. vim.pesc(vim.fs.basename(test_file))
       ),
       'watch_gitdir(1): Watching git dir',
     })
@@ -192,7 +192,7 @@ describe('gitsigns (with screen)', function()
           'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
         ),
         np('run_job: git .* config user.name'),
-        np('run_job: git .* ls%-files .*/dummy_ignored.txt'),
+        np('run_job: git .* ls%-files .* dummy_ignored.txt'),
         n('attach(1): Cannot resolve file in repo'),
       })
 
@@ -210,7 +210,7 @@ describe('gitsigns (with screen)', function()
         np('run_job: git .* config user.name'),
         np(
           'run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
-            .. vim.pesc(newfile)
+            .. vim.pesc(vim.fs.basename(newfile))
         ),
         n('attach(1): Not a file'),
       })
