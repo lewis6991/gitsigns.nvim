@@ -39,8 +39,9 @@ end
 
 ---Sets up the cwd watcher to detect branch changes using uv.loop
 ---Uses module local variable cwd_watcher
+---@param cwd string current working directory
 ---@param towatch string Directory to watch
-local function setup_cwd_watcher(towatch)
+local function setup_cwd_watcher(cwd, towatch)
   if cwd_watcher then
     cwd_watcher:stop()
     -- TODO(lewis6991): (#1027) Running `fs_event:stop()` -> `fs_event:start()`
@@ -65,7 +66,13 @@ local function setup_cwd_watcher(towatch)
       local git = require('gitsigns.git')
       local new_head = git.Repo.get_info(cwd).abbrev_head
       async.schedule()
-      vim.g.gitsigns_head = new_head
+      if new_head ~= vim.g.gitsigns_head then
+        vim.g.gitsigns_head = new_head
+        api.nvim_exec_autocmds('User', {
+          pattern = 'GitSignsUpdate',
+          modeline = false,
+        })
+      end
     end)
   )
 
@@ -86,7 +93,7 @@ local function setup_cwd_watcher(towatch)
       -- git often (always?) replaces .git/HEAD which can change the inode being
       -- watched so we need to stop the current watcher and start another one to
       -- make sure we keep getting future events
-      setup_cwd_watcher(towatch)
+      setup_cwd_watcher(cwd, towatch)
     end)
   )
 end
@@ -124,7 +131,7 @@ local update_cwd_head = async.async(function()
 
   local towatch = gitdir .. '/HEAD'
 
-  setup_cwd_watcher(towatch)
+  setup_cwd_watcher(cwd, towatch)
 end)
 
 local function setup_cli()
