@@ -37,39 +37,10 @@ local function get_gitdir_and_head()
   end
 end
 
-local update_cwd_head = async.async(function()
-  local cwd = uv.cwd()
-
-  if not cwd then
-    return
-  end
-
-  local paths = vim.fs.find('.git', {
-    limit = 1,
-    upward = true,
-    type = 'directory',
-  })
-
-  if #paths == 0 then
-    return
-  end
-
-  local gitdir, head = get_gitdir_and_head()
-  async.schedule()
-
-  api.nvim_exec_autocmds('User', {
-    pattern = 'GitSignsUpdate',
-    modeline = false,
-  })
-
-  vim.g.gitsigns_head = head
-
-  if not gitdir then
-    return
-  end
-
-  local towatch = gitdir .. '/HEAD'
-
+---Sets up the cwd watcher to detect branch changes using uv.loop
+---Uses module local variable cwd_watcher
+---@param towatch string Directory to watch
+local function setup_cwd_watcher(towatch)
   if cwd_watcher then
     cwd_watcher:stop()
     -- TODO(lewis6991): (#1027) Running `fs_event:stop()` -> `fs_event:start()`
@@ -111,8 +82,49 @@ local update_cwd_head = async.async(function()
       log.dprint('Git cwd dir update')
 
       update_head()
+
+      -- git often (always?) replaces .git/HEAD which can change the inode being
+      -- watched so we need to stop the current watcher and start another one to
+      -- make sure we keep getting future events
+      setup_cwd_watcher(towatch)
     end)
   )
+end
+
+local update_cwd_head = async.async(function()
+  local cwd = uv.cwd()
+
+  if not cwd then
+    return
+  end
+
+  local paths = vim.fs.find('.git', {
+    limit = 1,
+    upward = true,
+    type = 'directory',
+  })
+
+  if #paths == 0 then
+    return
+  end
+
+  local gitdir, head = get_gitdir_and_head()
+  async.schedule()
+
+  api.nvim_exec_autocmds('User', {
+    pattern = 'GitSignsUpdate',
+    modeline = false,
+  })
+
+  vim.g.gitsigns_head = head
+
+  if not gitdir then
+    return
+  end
+
+  local towatch = gitdir .. '/HEAD'
+
+  setup_cwd_watcher(towatch)
 end)
 
 local function setup_cli()
