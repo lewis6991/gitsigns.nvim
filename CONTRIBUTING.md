@@ -18,7 +18,7 @@ make gen_help
 
 ## Testsuite
 
-The testsuite uses the same framework as Neovims funcitonaltest suite.
+The testsuite uses the same framework as Neovims functionaltest suite.
 This is just busted with lots of helper code to create headless neovim instances which are controlled via RPC.
 
 To run the testsuite:
