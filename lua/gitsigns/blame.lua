@@ -2,6 +2,7 @@ local async = require('gitsigns.async')
 local cache = require('gitsigns.cache').cache
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
+local config = require('gitsigns.config').config
 
 local api = vim.api
 
@@ -185,31 +186,44 @@ local function reblame(blame, win, revision, parent)
 end
 
 --- @param win integer
---- @param open 'vsplit'|'tabnew'
+--- @param open 'vsplit'|'tabnew'|'diffview'
 --- @param bcache Gitsigns.CacheEntry
 local show_commit = async.async(function(win, open, bcache)
   local cursor = api.nvim_win_get_cursor(win)[1]
   local sha = bcache.blame[cursor].commit.sha
-  local res = bcache.git_obj.repo:command({ 'show', sha })
-  async.schedule()
-  local buffer_name = bcache:get_rev_bufname(sha, true)
-  local commit_buf = nil
-  -- find preexisting commit buffer or create a new one
-  for _, bufnr in ipairs(api.nvim_list_bufs()) do
-    if api.nvim_buf_get_name(bufnr) == buffer_name then
-      commit_buf = bufnr
-      break
+  if config.use_diffview_for_blame then
+    local has_diffview, _ = pcall(require, 'diffview')
+    if has_diffview then
+      vim.cmd('DiffviewOpen ' .. sha)
+    else
+      vim.notify(
+        'Gitsigns: use_diffview_for_blame is true, but Diffview is not installed or available.',
+        vim.log.levels.WARN
+      )
     end
+    return
+  else
+    local res = bcache.git_obj.repo:command({ 'show', sha })
+    async.schedule()
+    local buffer_name = bcache:get_rev_bufname(sha, true)
+    local commit_buf = nil
+    -- find preexisting commit buffer or create a new one
+    for _, bufnr in ipairs(api.nvim_list_bufs()) do
+      if api.nvim_buf_get_name(bufnr) == buffer_name then
+        commit_buf = bufnr
+        break
+      end
+    end
+    if commit_buf == nil then
+      commit_buf = api.nvim_create_buf(true, true)
+      api.nvim_buf_set_name(commit_buf, buffer_name)
+      api.nvim_buf_set_lines(commit_buf, 0, -1, false, res)
+    end
+    vim.cmd[open]({ mods = { keepalt = true } })
+    api.nvim_win_set_buf(0, commit_buf)
+    vim.bo[commit_buf].filetype = 'git'
+    vim.bo[commit_buf].bufhidden = 'wipe'
   end
-  if commit_buf == nil then
-    commit_buf = api.nvim_create_buf(true, true)
-    api.nvim_buf_set_name(commit_buf, buffer_name)
-    api.nvim_buf_set_lines(commit_buf, 0, -1, false, res)
-  end
-  vim.cmd[open]({ mods = { keepalt = true } })
-  api.nvim_win_set_buf(0, commit_buf)
-  vim.bo[commit_buf].filetype = 'git'
-  vim.bo[commit_buf].bufhidden = 'wipe'
 end)
 
 --- @param augroup integer
@@ -371,25 +385,32 @@ function M.blame()
   })
 
   pmap('n', 's', function()
-    show_commit(blm_win, 'vsplit', bcache)
+    show_commit(blm_win, config.use_diffview_for_blame and 'diffview' or 'vsplit', bcache)
   end, {
-    desc = 'Show commit in a vertical split',
+    desc = config.use_diffview_for_blame and 'Show commit (Diffview)' or 'Show commit (vsplit)',
     buffer = blm_bufnr,
   })
 
-  pmap('n', 'S', function()
-    show_commit(blm_win, 'tabnew', bcache)
-  end, {
-    desc = 'Show commit in a new tab',
-    buffer = blm_bufnr,
-  })
+  if not config.use_diffview_for_blame then
+    pmap('n', 'S', function()
+      show_commit(blm_win, 'tabnew', bcache)
+    end, {
+      desc = 'Show commit (tab)',
+      buffer = blm_bufnr,
+    })
+  end
 
-  menu('GitsignsBlame', {
+  local menu_items = {
     { 'Reblame at commit', 'r' },
     { 'Reblame at commit parent', 'R' },
-    { 'Show commit (vsplit)', 's' },
-    { '            (tab)', 'S' },
-  })
+  }
+  if config.use_diffview_for_blame then
+    table.insert(menu_items, { 'Show commit (Diffview)', 's' })
+  else
+    table.insert(menu_items, { 'Show commit (vsplit)', 's' })
+    table.insert(menu_items, { '             (tab)', 'S' })
+  end
+  menu('GitsignsBlame', menu_items)
 
   local group = api.nvim_create_augroup('GitsignsBlame', {})
 

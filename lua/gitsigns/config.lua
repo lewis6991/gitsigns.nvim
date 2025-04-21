@@ -71,6 +71,7 @@
 --- @field max_file_length integer
 --- @field update_debounce integer
 --- @field status_formatter fun(_: table<string,any>): string
+--- @field use_diffview_for_blame boolean
 --- @field current_line_blame boolean
 --- @field current_line_blame_formatter string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_formatter_nc string|Gitsigns.CurrentLineBlameFmtFun
@@ -660,6 +661,18 @@ M.schema = {
     default = 100,
     description = [[
       Debounce time for updates (in milliseconds).
+    ]],
+  },
+
+  use_diffview_for_blame = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      Use Diffview (if available) to show commits when triggered from the
+      blame window ('s' keymap). If true, the 'S' keymap (show in tab)
+      is disabled in the blame window.
+
+      Use diffview for blame actions.
     ]],
   },
 
