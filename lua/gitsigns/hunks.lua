@@ -587,20 +587,24 @@ function M.linespec_for_hunk(hunk, fileformat)
 
     for _, region in ipairs(removed_regions) do
       local i = region[1]
-      table.insert(hls[i][1][2], {
+      local hlm = hls[i][1][2]
+      hlm[#hlm + 1] = {
+        start_row = 0,
         hl_group = 'GitSignsDeleteInline',
         start_col = region[3],
         end_col = region[4],
-      })
+      }
     end
 
     for _, region in ipairs(added_regions) do
       local i = hunk.removed.count + region[1]
-      table.insert(hls[i][1][2], {
-        hl_group = 'GitSignsAddInline',
+      local hlm = hls[i][1][2]
+      hlm[#hlm + 1] = {
+        start_row = 0,
+        hl_group = 'GitSignsDeleteInline',
         start_col = region[3],
         end_col = region[4],
-      })
+      }
     end
   end
 
