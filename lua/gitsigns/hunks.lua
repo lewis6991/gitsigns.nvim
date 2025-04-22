@@ -136,15 +136,17 @@ function M.parse_diff_line(line)
 
   -- diffKey: "-xx,n +yy"
   -- pre: {xx, n}, now: {yy}
-  --- @type string[], string[]
-  local pre, now = unpack(vim.tbl_map(
+  local p = vim.tbl_map(
     --- @param s string
     --- @return string[]
     function(s)
-      return vim.split(string.sub(s, 2), ',')
+      return vim.split(s:sub(2), ',')
     end,
     vim.split(diffkey, ' ')
-  ))
+  )
+
+  --- @type [string,string?], [string,string?]
+  local pre, now = p[1], p[2]
 
   local hunk = M.create_hunk(
     tointeger(pre[1]),
@@ -569,6 +571,7 @@ function M.linespec_for_hunk(hunk, fileformat)
           spec.sym .. l,
           {
             {
+              start_row = 0,
               hl_group = spec.hl,
               end_row = 1, -- Highlight whole line
             },

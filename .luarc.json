@@ -4,8 +4,10 @@
     "version": "LuaJIT"
   },
   "workspace": {
+    "ignoreDir": [
+      "deps"
+    ],
     "library": [
-      "lua",
       "$VIMRUNTIME",
       "nvim-test",
       "${3rd}/busted/library",

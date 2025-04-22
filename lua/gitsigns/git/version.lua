@@ -4,6 +4,7 @@ local gs_config = require('gitsigns.config')
 local log = require('gitsigns.debug.log')
 local err = require('gitsigns.message').error
 local system = require('gitsigns.system').system
+local tointeger = require('gitsigns.util').tointeger
 
 local M = {}
 
@@ -19,20 +20,22 @@ local asystem = async.awrap(3, system)
 --- @return Gitsigns.Version
 local function parse_version(version)
   assert(version:match('%d+%.%d+%.%w+'), 'Invalid git version: ' .. version)
-  local ret = {}
   local parts = vim.split(version, '%.')
   --- @cast parts [string, string, string]
-  ret.major = assert(tonumber(parts[1])) --[[@as integer]]
-  ret.minor = assert(tonumber(parts[2])) --[[@as integer]]
 
+  local patch --- @type integer
   if parts[3] == 'GIT' then
-    ret.patch = 0
+    patch = 0
   else
     local patch_ver = vim.split(parts[3], '-')
-    ret.patch = assert(tonumber(patch_ver[1])) --[[@as integer]]
+    patch = assert(tointeger(patch_ver[1]))
   end
 
-  return ret
+  return {
+    patch = patch,
+    major = assert(tointeger(parts[1])),
+    minor = assert(tointeger(parts[2])),
+  }
 end
 
 --- @async

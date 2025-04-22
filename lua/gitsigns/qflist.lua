@@ -27,7 +27,7 @@ local function hunks_to_qflist(buf_or_filename, hunks, qflist)
 end
 
 --- @async
---- @param target 'all'|'attached'|integer|nil
+--- @param target 'all'|'attached'|integer?
 --- @return table[]?
 local function buildqflist(target)
   target = target or current_buf()
@@ -87,13 +87,14 @@ end
 --- Populate the quickfix list with hunks. Automatically opens the
 --- quickfix window.
 --- @async
---- @param target integer|'attached'|'all'
+--- @param target integer|'attached'|'all'?
 --- @param opts table?
 function M.setqflist(target, opts)
   opts = opts or {}
   if opts.open == nil then
     opts.open = true
   end
+  --- @type vim.fn.setqflist.what
   local qfopts = {
     items = buildqflist(target),
     title = 'Hunks',

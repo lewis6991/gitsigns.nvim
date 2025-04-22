@@ -73,6 +73,7 @@ local function on_detach(_, bufnr)
   M.detach(bufnr, true)
 end
 
+--- @async
 --- @param bufnr integer
 --- @return string?
 --- @return string?
@@ -122,12 +123,22 @@ local setup = util.once(function()
   })
 end)
 
+--- @param bufnr integer
+--- @param expr string
+--- @return string
+local function buf_expand(bufnr, expr)
+  return api.nvim_buf_call(bufnr, function()
+    return vim.fn.expand(expr)
+  end)
+end
+
 --- @class Gitsigns.GitContext
 --- @field file string
 --- @field toplevel? string
 --- @field gitdir? string
 --- @field base? string
 
+--- @async
 --- @param bufnr integer
 --- @return Gitsigns.GitContext? ctx
 --- @return string? err
@@ -136,10 +147,7 @@ local function get_buf_context(bufnr)
     return nil, 'Exceeds max_file_length'
   end
 
-  local file = uv.fs_realpath(api.nvim_buf_get_name(bufnr))
-    or api.nvim_buf_call(bufnr, function()
-      return vim.fn.expand('%:p')
-    end)
+  local file = uv.fs_realpath(api.nvim_buf_get_name(bufnr)) or buf_expand(bufnr, '%:p')
 
   local rel_path, commit, gitdir_from_bufname = parse_git_path(file)
 
@@ -247,7 +255,9 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     gitdir = git_obj.repo.gitdir,
   })
 
-  if not passed_ctx and (not util.path_exists(file) or uv.fs_stat(file).type == 'directory') then
+  if
+    not passed_ctx and (not util.path_exists(file) or assert(uv.fs_stat(file)).type == 'directory')
+  then
     dprint('Not a file')
     return
   end
@@ -274,11 +284,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     return
   end
 
-  cache[cbuf] = Cache.new({
-    bufnr = cbuf,
-    file = file,
-    git_obj = git_obj,
-  })
+  cache[cbuf] = Cache.new(cbuf, file, git_obj)
 
   if config.watch_gitdir.enable then
     local watcher = require('gitsigns.watcher')

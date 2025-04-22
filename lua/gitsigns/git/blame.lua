@@ -1,7 +1,8 @@
-local uv = vim.uv or vim.loop
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 local error_once = require('gitsigns.message').error_once
 local log = require('gitsigns.debug.log')
+local util = require('gitsigns.util')
 
 --- @class Gitsigns.CommitInfo
 --- @field author string
@@ -75,7 +76,7 @@ end
 ---@param x any
 ---@return integer
 local function asinteger(x)
-  return assert(tonumber(x))
+  return assert(util.tointeger(x))
 end
 
 --- @param readline fun(): string?
@@ -84,7 +85,7 @@ end
 local function incremental_iter(readline, commits, result)
   local line = assert(readline())
 
-  --- @type string, string, string, string
+  --- @type string?, string, string, string
   local sha, orig_lnum_str, final_lnum_str, size_str = line:match('(%x+) (%d+) (%d+) (%d+)')
   assert(sha)
 
@@ -92,7 +93,7 @@ local function incremental_iter(readline, commits, result)
   local final_lnum = asinteger(final_lnum_str)
   local size = asinteger(size_str)
 
-  --- @type table<string,string|true>
+  --- @type table<string,string|integer|true>
   local commit = commits[sha] or {
     sha = sha,
     abbrev_sha = sha:sub(1, 8),
@@ -111,9 +112,10 @@ local function incremental_iter(readline, commits, result)
     elseif key then
       key = key:gsub('%-', '_') --- @type string
       if vim.endswith(key, '_time') then
-        value = tonumber(value)
+        commit[key] = asinteger(value)
+      else
+        commit[key] = value
       end
-      commit[key] = value
     else
       commit[line] = true
       if line ~= 'boundary' then
@@ -135,7 +137,7 @@ local function incremental_iter(readline, commits, result)
   then
     commit = vim.tbl_extend('force', commit, NOT_COMMITTED)
   end
-  commits[sha] = commit
+  commits[sha] = commit --[[@as Gitsigns.CommitInfo]]
 
   for j = 0, size - 1 do
     result[final_lnum + j] = {
@@ -171,6 +173,7 @@ local function buffered_line_reader(f)
     local data_lines = data_to_lines(data)
     local i = 0
 
+    --- @async
     local function readline(peek)
       if not data_lines[i + 1] then
         data = coroutine.yield()
@@ -194,6 +197,7 @@ local function buffered_line_reader(f)
   end)
 end
 
+--- @async
 --- @param obj Gitsigns.GitObj
 --- @param contents? string[]
 --- @param lnum? integer

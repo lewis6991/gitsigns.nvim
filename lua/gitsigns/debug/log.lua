@@ -1,9 +1,9 @@
-local uv = vim.uv or vim.loop
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 local start_time = uv.hrtime()
 
 --- @class Gitsigns.log
---- @field private messages [number, string, string, string][]
+--- @field package messages [number, string, string, string][]
 local M = {
   debug_mode = false,
   verbose = false,
@@ -168,7 +168,7 @@ function M.clear()
 end
 
 --- @param m [number, string, string, string]
---- @return [string,string][]
+--- @return [string,string?][]
 local function build_msg(m)
   local time, kind, ctx, msg = m[1], m[2], m[3], m[4]
   local hl = sev_to_hl[kind]

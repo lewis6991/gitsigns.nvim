@@ -153,6 +153,7 @@ local function insert_mode()
 end
 
 --- Update function, must be called in async context
+--- @async
 --- @param bufnr integer
 local function update0(bufnr)
   async.schedule()
