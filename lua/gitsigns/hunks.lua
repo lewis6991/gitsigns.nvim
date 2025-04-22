@@ -601,7 +601,7 @@ function M.linespec_for_hunk(hunk, fileformat)
       local hlm = hls[i][1][2]
       hlm[#hlm + 1] = {
         start_row = 0,
-        hl_group = 'GitSignsDeleteInline',
+        hl_group = 'GitSignsAddInline',
         start_col = region[3],
         end_col = region[4],
       }
