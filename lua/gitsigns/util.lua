@@ -1,10 +1,12 @@
 local M = {}
 
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+
 function M.path_exists(path)
-  return vim.loop.fs_stat(path) and true or false
+  return uv.fs_stat(path) ~= nil
 end
 
-local jit_os --- @type string
+local jit_os --- @type string?
 
 if jit then
   jit_os = jit.os:lower()
@@ -59,13 +61,13 @@ local BOM_TABLE = {
   ['utf-1'] = make_bom(0xf7, 0x54, 0x4c),
 }
 
----@param x string
+---@param x string?
 ---@param encoding string
----@return string
+---@return string?
 local function add_bom(x, encoding)
   local bom = BOM_TABLE[encoding]
   if bom then
-    return bom .. x
+    return x and bom .. x or bom
   end
   return x
 end

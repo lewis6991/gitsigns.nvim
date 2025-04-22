@@ -1,5 +1,5 @@
 local api = vim.api
-local uv = vim.loop
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 local async = require('gitsigns.async')
 local log = require('gitsigns.debug.log')
@@ -14,6 +14,7 @@ local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local dprint = log.dprint
 local dprintf = log.dprintf
 
+--- @async
 --- @param bufnr integer
 --- @param old_relpath? string
 local function handle_moved(bufnr, old_relpath)

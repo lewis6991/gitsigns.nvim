@@ -5,6 +5,8 @@ local run_diff = require('gitsigns.diff')
 local config = require('gitsigns.config').config
 local util = require('gitsigns.util')
 
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+
 local current_buf = vim.api.nvim_get_current_buf
 
 --- @class gitsigns.qflist
@@ -36,10 +38,11 @@ local function buildqflist(target)
 
   if type(target) == 'number' then
     local bufnr = target
-    if not cache[bufnr] then
+    local bcache = cache[bufnr]
+    if not bcache then
       return
     end
-    hunks_to_qflist(bufnr, cache[bufnr].hunks, qflist)
+    hunks_to_qflist(bufnr, bcache.hunks, qflist)
   elseif target == 'attached' then
     for bufnr, bcache in pairs(cache) do
       hunks_to_qflist(bufnr, assert(bcache.hunks), qflist)
@@ -53,7 +56,7 @@ local function buildqflist(target)
       end
     end
 
-    local repo = git.Repo.get(assert(vim.loop.cwd()))
+    local repo = git.Repo.get(assert((uv.cwd())))
     if repo and not repos[repo.gitdir] then
       repos[repo.gitdir] = repo
     end
@@ -61,7 +64,7 @@ local function buildqflist(target)
     for _, r in pairs(repos) do
       for _, f in ipairs(r:files_changed(config.base)) do
         local f_abs = r.toplevel .. '/' .. f
-        local stat = vim.loop.fs_stat(f_abs)
+        local stat = uv.fs_stat(f_abs)
         if stat and stat.type == 'file' then
           ---@type string
           local obj

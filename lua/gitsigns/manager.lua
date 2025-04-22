@@ -15,7 +15,7 @@ local config = require('gitsigns.config').config
 local api = vim.api
 
 local signs_normal --- @type Gitsigns.Signs
-local signs_staged --- @type Gitsigns.Signs
+local signs_staged --- @type Gitsigns.Signs?
 
 --- @class gitsigns.manager
 local M = {}

@@ -145,7 +145,7 @@ local ns = api.nvim_create_namespace('gitsigns_popup')
 local function create_buf(lines, highlights)
   local ts = vim.bo.tabstop
   local bufnr = api.nvim_create_buf(false, true)
-  assert(bufnr, 'Failed to create buffer')
+  assert(bufnr ~= 0, 'Failed to create buffer')
 
   vim.bo[bufnr].bufhidden = 'wipe'
 
