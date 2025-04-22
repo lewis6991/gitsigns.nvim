@@ -1,4 +1,4 @@
-local uv = vim.uv or vim.loop
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 local M = {}
 

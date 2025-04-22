@@ -186,8 +186,8 @@ function Obj:stage_hunks(hunks, invert)
 
   if not self.i_crlf and self.w_crlf then
     -- Remove cr
-    for i = 1, #patch do
-      patch[i] = patch[i]:gsub('\r$', '')
+    for i, p in ipairs(patch) do
+      patch[i] = p:gsub('\r$', '')
     end
   end
 

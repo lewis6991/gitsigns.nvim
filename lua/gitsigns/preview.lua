@@ -52,13 +52,15 @@ local function build_lno_str(win, lnum, width)
   local has_col, statuscol =
     pcall(api.nvim_get_option_value, 'statuscolumn', { win = win, scope = 'local' })
   if has_col and statuscol and statuscol ~= '' then
+    --- @cast statuscol string
     local ok, data = pcall(api.nvim_eval_statusline, statuscol, {
       winid = win,
       use_statuscol_lnum = lnum,
       highlights = true,
     })
     if ok then
-      return data.str, data.highlights
+      local data_str = data.str --[[@as string]]
+      return data_str, data.highlights
     end
   end
   return string.format('%' .. width .. 'd', lnum)
@@ -108,7 +110,7 @@ end
 local function show_deleted_in_float(bufnr, nsd, hunk, staged)
   local cwin = api.nvim_get_current_win()
   local virt_lines = {} --- @type [string, string][][]
-  local textoff = vim.fn.getwininfo(cwin)[1].textoff --[[@as integer]]
+  local textoff = assert(vim.fn.getwininfo(cwin)[1]).textoff --[[@as integer]]
   for i = 1, hunk.removed.count do
     local sc = build_lno_str(cwin, hunk.removed.start + i, textoff - 1)
     virt_lines[i] = { { sc, 'LineNr' } }
@@ -228,7 +230,7 @@ M.preview_hunk = noautocmd(function()
 
   local lines_spec = popup.lines_format(preview_linespec, {
     hunk_no = index,
-    num_hunks = #cache[bufnr].hunks,
+    num_hunks = #bcache.hunks,
   })
 
   popup.create(lines_spec, config.preview_config, 'hunk')

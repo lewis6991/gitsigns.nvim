@@ -1,5 +1,5 @@
 local async = require('gitsigns.async')
-local uv = vim.uv or vim.loop
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 local create_hunk = require('gitsigns.hunks').create_hunk
 local config = require('gitsigns.config').config

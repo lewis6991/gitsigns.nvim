@@ -356,7 +356,6 @@ end
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @return Gitsigns.StatusObj
 function M.get_summary(hunks)
-  --- @type Gitsigns.StatusObj
   local status = { added = 0, changed = 0, removed = 0 }
 
   for _, hunk in ipairs(hunks or {}) do

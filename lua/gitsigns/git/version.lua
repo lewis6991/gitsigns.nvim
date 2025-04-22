@@ -21,14 +21,15 @@ local function parse_version(version)
   assert(version:match('%d+%.%d+%.%w+'), 'Invalid git version: ' .. version)
   local ret = {}
   local parts = vim.split(version, '%.')
-  ret.major = assert(tonumber(parts[1]))
-  ret.minor = assert(tonumber(parts[2]))
+  --- @cast parts [string, string, string]
+  ret.major = assert(tonumber(parts[1])) --[[@as integer]]
+  ret.minor = assert(tonumber(parts[2])) --[[@as integer]]
 
   if parts[3] == 'GIT' then
     ret.patch = 0
   else
     local patch_ver = vim.split(parts[3], '-')
-    ret.patch = assert(tonumber(patch_ver[1]))
+    ret.patch = assert(tonumber(patch_ver[1])) --[[@as integer]]
   end
 
   return ret
@@ -68,7 +69,7 @@ local function set_version()
   end
 
   local parts = vim.split(line, '%s+')
-  M.version = parse_version(parts[3])
+  M.version = parse_version(assert(parts[3]))
 end
 
 --- @async

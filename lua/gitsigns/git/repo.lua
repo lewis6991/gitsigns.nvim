@@ -6,7 +6,7 @@ local util = require('gitsigns.util')
 local system = require('gitsigns.system').system
 local check_version = require('gitsigns.git.version').check
 
-local uv = vim.uv or vim.loop
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 --- @class Gitsigns.RepoInfo
 --- @field gitdir string
@@ -40,6 +40,7 @@ function M:command(args, spec)
   }, spec)
 end
 
+--- @async
 --- @param base string?
 --- @return string[]
 function M:files_changed(base)
@@ -132,11 +133,8 @@ function M.get(dir, gitdir, toplevel)
   end
 
   gitdir = info.gitdir
-  if not repo_cache[gitdir] then
-    repo_cache[gitdir] = { 1, new(info) }
-  else
-    repo_cache[gitdir][1] = repo_cache[gitdir][1] + 1
-  end
+  repo_cache[gitdir] = repo_cache[gitdir] or { 0, new(info) }
+  repo_cache[gitdir][1] = repo_cache[gitdir][1] + 1
 
   return repo_cache[gitdir][2]
 end
@@ -152,7 +150,7 @@ function M:unref()
   if refcount <= 1 then
     repo_cache[gitdir] = nil
   else
-    repo_cache[gitdir][1] = refcount - 1
+    repo[1] = refcount - 1
   end
 end
 
@@ -274,6 +272,7 @@ end
 --- @field object_name? string
 --- @field object_type? 'blob'|'tree'|'commit'
 
+--- @async
 --- @param path string
 --- @param revision string
 --- @return Gitsigns.Repo.LsTree.Result? info
@@ -293,6 +292,7 @@ function M:ls_tree(path, revision)
 
   local info, relpath = unpack(vim.split(results[1], '\t'))
   local mode_bits, object_type, object_name = unpack(vim.split(info, '%s+'))
+  --- @cast object_type 'blob'|'tree'|'commit'
 
   return {
     relpath = relpath,
@@ -410,6 +410,7 @@ function M:file_info(file, revision)
   end
 end
 
+--- @async
 --- @param mode_bits string
 --- @param object string
 --- @param path string
@@ -423,6 +424,7 @@ function M:update_index(mode_bits, object, path, add)
   })
 end
 
+--- @async
 --- @param path string
 --- @param lines string[]
 --- @return string
@@ -430,7 +432,8 @@ function M:hash_object(path, lines)
   -- Concatenate the lines into a single string to ensure EOL
   -- is respected
   local text = table.concat(lines, '\n')
-  return self:command({ 'hash-object', '-w', '--path', path, '--stdin' }, { stdin = text })[1]
+  local res = self:command({ 'hash-object', '-w', '--path', path, '--stdin' }, { stdin = text })[1]
+  return assert(res)
 end
 
 --- @async
@@ -447,6 +450,7 @@ function M:rename_status()
   for _, l in ipairs(out) do
     local parts = vim.split(l, '%s+')
     if #parts == 3 then
+      --- @cast parts [string, string, string]
       local stat, orig_file, new_file = parts[1], parts[2], parts[3]
       if vim.startswith(stat, 'R') then
         ret[orig_file] = new_file

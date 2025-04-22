@@ -5,7 +5,7 @@ local Config = require('gitsigns.config')
 local config = Config.config
 
 local api = vim.api
-local uv = vim.uv or vim.loop
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 --- @class gitsigns.main
 local M = {}
@@ -46,7 +46,7 @@ local function setup_cwd_watcher(cwd, towatch)
     cwd_watcher:stop()
     -- TODO(lewis6991): (#1027) Running `fs_event:stop()` -> `fs_event:start()`
     -- in the same loop event, on Windows, causes Nvim to hang on quit.
-    if vim.fn.has('win32') then
+    if vim.fn.has('win32') == 1 then
       async.schedule()
     end
   else
@@ -147,7 +147,6 @@ local function setup_cli()
   })
 end
 
---- @async
 local function setup_attach()
   if not config.auto_attach then
     return
