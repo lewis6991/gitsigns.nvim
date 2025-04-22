@@ -26,6 +26,16 @@ function M.dirname(file)
   return file:match(string.format('^(.+)%s[^%s]+', M.path_sep, M.path_sep))
 end
 
+---@param ... string
+---@return string
+function M.joinpath(...)
+  local path = table.concat({ ... }, '/')
+  if not is_unix then
+    path = path:gsub('\\', '/')
+  end
+  return (path:gsub('//+', '/'))
+end
+
 --- @param path string
 --- @return string[]
 function M.file_lines(path)
