@@ -225,8 +225,8 @@ M.preview_hunk = noautocmd(function()
   --- @type Gitsigns.LineSpec
   local preview_linespec = {
     { { 'Hunk <hunk_no> of <num_hunks>', 'Title' } },
-    unpack(Hunks.linespec_for_hunk(hunk, vim.bo[bufnr].fileformat)),
   }
+  vim.list_extend(preview_linespec, Hunks.linespec_for_hunk(hunk, vim.bo[bufnr].fileformat))
 
   local lines_spec = popup.lines_format(preview_linespec, {
     hunk_no = index,

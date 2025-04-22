@@ -4,6 +4,8 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 local create_hunk = require('gitsigns.hunks').create_hunk
 local config = require('gitsigns.config').config
 
+--- @return fun(v:any): string encode
+--- @return fun(v:string): any decode
 local function getencdec()
   local m = jit and package.preload['string.buffer'] and require('string.buffer') or vim.mpack
   return m.encode, m.decode

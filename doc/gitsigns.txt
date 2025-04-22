@@ -168,7 +168,7 @@ setloclist({nr}, {target})                             *gitsigns.setloclist()*
                 Parameters: ~
                     {nr?}    (integer): Window number or the |window-ID|.
                              `0` for the current window (default).
-                    {target} (integer|string): See |gitsigns.setqflist()|.
+                    {target} (integer|'attached'|'all'|nil): See |gitsigns.setqflist()|.
 
 setqflist({target}, {opts}, {callback?})                *gitsigns.setqflist()*
                 Populate the quickfix list with hunks. Automatically opens the
@@ -178,7 +178,7 @@ setqflist({target}, {opts}, {callback?})                *gitsigns.setqflist()*
                     {async}
 
                 Parameters: ~
-                    {target} (integer|string):
+                    {target} (integer|'attached'|'all'|nil):
                              Specifies which files hunks are collected from.
                              Possible values.
                              • [integer]: The buffer with the matching buffer

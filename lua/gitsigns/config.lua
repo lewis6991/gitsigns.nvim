@@ -9,7 +9,7 @@
 --- @field description string
 
 --- @class (exact) Gitsigns.DiffOpts
---- @field algorithm string
+--- @field algorithm 'myers'|'minimal'|'patience'|'histogram'
 --- @field internal boolean
 --- @field indent_heuristic boolean
 --- @field vertical boolean
@@ -75,7 +75,7 @@
 --- @field current_line_blame_formatter string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_formatter_nc string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_opts Gitsigns.CurrentLineBlameOpts
---- @field preview_config table<string,any>
+--- @field preview_config vim.api.keyset.win_config
 --- @field auto_attach boolean
 --- @field attach_to_untracked boolean
 --- @field worktrees {toplevel: string, gitdir: string}[]
@@ -902,7 +902,7 @@ local function validate(k, v, ty)
   end
 end
 
---- @param config Gitsigns.Config
+--- @param config table
 local function validate_config(config)
   for k, v in
     pairs(config --[[@as table<string,any>]])
@@ -953,7 +953,7 @@ local function build_field(k, v, user_val)
   end
 end
 
---- @param user_config Gitsigns.Config|nil
+--- @param user_config table?
 function M.build(user_config)
   user_config = user_config or {}
 
@@ -962,11 +962,13 @@ function M.build(user_config)
   validate_config(user_config)
 
   for k, v in pairs(M.schema) do
-    if user_config[k] ~= nil then
-      build_field(k, v, user_config[k])
+    --- @type any
+    local user_config_k = user_config[k]
+    if user_config_k ~= nil then
+      build_field(k, v, user_config_k)
       if v.refresh then
         v.refresh(function()
-          build_field(k, v, user_config[k])
+          build_field(k, v, user_config_k)
         end)
       end
     end

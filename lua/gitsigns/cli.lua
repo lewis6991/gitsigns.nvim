@@ -13,13 +13,15 @@ local sources = {
   [Debug] = false,
 }
 
--- try to parse each argument as a lua boolean, nil or number, if fails then
--- keep argument as a string:
---
---    'false'      -> false
---    'nil'         -> nil
---    '100'         -> 100
---    'HEAD~300' -> 'HEAD~300'
+--- try to parse each argument as a lua boolean, nil or number, if fails then
+--- keep argument as a string:
+---
+---    'false'      -> false
+---    'nil'         -> nil
+---    '100'         -> 100
+---    'HEAD~300' -> 'HEAD~300'
+--- @param a string
+--- @return boolean|number|string?
 local function parse_to_lua(a)
   if tonumber(a) then
     return tonumber(a)
