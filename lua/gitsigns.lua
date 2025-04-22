@@ -37,6 +37,67 @@ local function get_gitdir_and_head()
   end
 end
 
+---Sets up the cwd watcher to detect branch changes using uv.loop
+---Uses module local variable cwd_watcher
+---@param cwd string current working directory
+---@param towatch string Directory to watch
+local function setup_cwd_watcher(cwd, towatch)
+  if cwd_watcher then
+    cwd_watcher:stop()
+    -- TODO(lewis6991): (#1027) Running `fs_event:stop()` -> `fs_event:start()`
+    -- in the same loop event, on Windows, causes Nvim to hang on quit.
+    if vim.fn.has('win32') then
+      async.schedule()
+    end
+  else
+    cwd_watcher = assert(uv.new_fs_event())
+  end
+
+  if cwd_watcher:getpath() == towatch then
+    -- Already watching
+    return
+  end
+
+  local debounce_trailing = require('gitsigns.debounce').debounce_trailing
+
+  local update_head = debounce_trailing(
+    100,
+    async.async(function()
+      local git = require('gitsigns.git')
+      local new_head = git.Repo.get_info(cwd).abbrev_head
+      async.schedule()
+      if new_head ~= vim.g.gitsigns_head then
+        vim.g.gitsigns_head = new_head
+        api.nvim_exec_autocmds('User', {
+          pattern = 'GitSignsUpdate',
+          modeline = false,
+        })
+      end
+    end)
+  )
+
+  -- Watch .git/HEAD to detect branch changes
+  cwd_watcher:start(
+    towatch,
+    {},
+    async.async(function(err)
+      local __FUNC__ = 'cwd_watcher_cb'
+      if err then
+        log.dprintf('Git dir update error: %s', err)
+        return
+      end
+      log.dprint('Git cwd dir update')
+
+      update_head()
+
+      -- git often (always?) replaces .git/HEAD which can change the inode being
+      -- watched so we need to stop the current watcher and start another one to
+      -- make sure we keep getting future events
+      setup_cwd_watcher(cwd, towatch)
+    end)
+  )
+end
+
 local update_cwd_head = async.async(function()
   local cwd = uv.cwd()
 
@@ -70,49 +131,7 @@ local update_cwd_head = async.async(function()
 
   local towatch = gitdir .. '/HEAD'
 
-  if cwd_watcher then
-    cwd_watcher:stop()
-    -- TODO(lewis6991): (#1027) Running `fs_event:stop()` -> `fs_event:start()`
-    -- in the same loop event, on Windows, causes Nvim to hang on quit.
-    if vim.fn.has('win32') then
-      async.schedule()
-    end
-  else
-    cwd_watcher = assert(uv.new_fs_event())
-  end
-
-  if cwd_watcher:getpath() == towatch then
-    -- Already watching
-    return
-  end
-
-  local debounce_trailing = require('gitsigns.debounce').debounce_trailing
-
-  local update_head = debounce_trailing(
-    100,
-    async.async(function()
-      local git = require('gitsigns.git')
-      local new_head = git.Repo.get_info(cwd).abbrev_head
-      async.schedule()
-      vim.g.gitsigns_head = new_head
-    end)
-  )
-
-  -- Watch .git/HEAD to detect branch changes
-  cwd_watcher:start(
-    towatch,
-    {},
-    async.async(function(err)
-      local __FUNC__ = 'cwd_watcher_cb'
-      if err then
-        log.dprintf('Git dir update error: %s', err)
-        return
-      end
-      log.dprint('Git cwd dir update')
-
-      update_head()
-    end)
-  )
+  setup_cwd_watcher(cwd, towatch)
 end)
 
 local function setup_cli()
