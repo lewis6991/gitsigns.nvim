@@ -308,7 +308,7 @@ function M.blame()
   local blm_bufnr = api.nvim_create_buf(false, true)
   api.nvim_win_set_buf(blm_win, blm_bufnr)
 
-  local revision = assert(bcache.git_obj.revision)
+  local revision = bcache.git_obj.revision
 
   render(blame, blm_win, win, revision)
 
