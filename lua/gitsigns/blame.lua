@@ -63,7 +63,7 @@ local M = {}
 --- @param blame table<integer,Gitsigns.BlameInfo?>
 --- @param win integer
 --- @param main_win integer
---- @param buf_sha string
+--- @param buf_sha? string
 local function render(blame, win, main_win, buf_sha)
   local max_author_len = 0
 
@@ -179,7 +179,7 @@ local function reblame(blame, win, revision, parent)
       if not ok then
         error('Timeout waiting for attach')
       end
-      async.arun(M.blame)
+      async.arun(M.blame):raise_on_error()
     end)
   )
 end
@@ -360,14 +360,14 @@ function M.blame()
   })
 
   pmap('n', 'r', function()
-    reblame(blame, win, revision)
+    reblame(blame, win, bcache.git_obj.revision)
   end, {
     desc = 'Reblame at commit',
     buffer = blm_bufnr,
   })
 
   pmap('n', 'R', function()
-    reblame(blame, win, revision, true)
+    reblame(blame, win, bcache.git_obj.revision, true)
   end, {
     desc = 'Reblame at commit parent',
     buffer = blm_bufnr,
