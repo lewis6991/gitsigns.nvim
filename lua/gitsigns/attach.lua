@@ -109,9 +109,11 @@ local setup = util.once(function()
         return
       end
       bcache:invalidate(true)
-      async.arun(function()
-        manager.update(buf)
-      end)
+      async
+        .arun(function()
+          manager.update(buf)
+        end)
+        :raise_on_error()
     end,
   })
 
