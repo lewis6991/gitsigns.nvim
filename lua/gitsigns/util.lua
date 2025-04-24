@@ -1,10 +1,12 @@
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+
 local M = {}
 
 function M.path_exists(path)
-  return vim.loop.fs_stat(path) and true or false
+  return uv.fs_stat(path) ~= nil
 end
 
-local jit_os --- @type string
+local jit_os --- @type string?
 
 if jit then
   jit_os = jit.os:lower()
@@ -59,13 +61,13 @@ local BOM_TABLE = {
   ['utf-1'] = make_bom(0xf7, 0x54, 0x4c),
 }
 
----@param x string
+---@param x string?
 ---@param encoding string
----@return string
+---@return string?
 local function add_bom(x, encoding)
   local bom = BOM_TABLE[encoding]
   if bom then
-    return bom .. x
+    return x and bom .. x or bom
   end
   return x
 end
@@ -200,7 +202,7 @@ end
 function M.redraw(opts)
   if vim.fn.has('nvim-0.10') == 1 then
     vim.api.nvim__redraw(opts)
-  else
+  elseif opts.range then
     vim.api.nvim__buf_redraw_range(opts.buf, opts.range[1], opts.range[2])
   end
 end
@@ -277,6 +279,8 @@ function M.expand_format(fmt, info)
     if not match then
       break
     end
+    --- @cast scol -?
+    --- @cast ecol -?
     --- @cast key string
 
     ret[#ret + 1], fmt = fmt:sub(1, scol - 1), fmt:sub(ecol + 1)
@@ -375,6 +379,16 @@ function M.once(fn)
     end
     called = true
     return fn(...)
+  end
+end
+
+--- @param x any
+--- @return integer?
+function M.tointeger(x)
+  local nx = tonumber(x)
+  if nx and nx == math.floor(nx) then
+    --- @cast nx integer
+    return nx
   end
 end
 

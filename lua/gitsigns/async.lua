@@ -1,8 +1,15 @@
 --- @type fun(...: any): { [integer]: any, n: integer }
 local pack_len = vim.F.pack_len
 
---- @type fun(t: { [integer]: any, n: integer })
-local unpack_len = vim.F.unpack_len
+--- like unpack() but use the length set by F.pack_len if present
+--- @param t? { [integer]: any, n?: integer }
+--- @param first? integer
+--- @return ...any
+local function unpack_len(t, first)
+  if t then
+    return unpack(t, first or 1, t.n or table.maxn(t))
+  end
+end
 
 --- @class Gitsigns.async
 local M = {}
@@ -28,7 +35,7 @@ end
 --- @alias Gitsigns.async.CallbackFn fun(...: any): Gitsigns.async.Handle?
 
 --- @class Gitsigns.async.Task : Gitsigns.async.Handle
---- @field private _callbacks table<integer,fun(err?: any, result?: any[])>
+--- @field private _callbacks table<integer,fun(err?: any, ...: any)>
 --- @field private _thread thread
 ---
 --- Tasks can call other async functions (task of callback functions)
@@ -63,7 +70,7 @@ function Task._new(func)
   return self
 end
 
---- @param callback fun(err?: any, result?: any[])
+--- @param callback fun(err?: any, ...: any)
 function Task:await(callback)
   if self._closing then
     callback('closing')
@@ -122,14 +129,13 @@ end
 function Task:wait(timeout)
   local res = pack_len(self:pwait(timeout))
 
-  local stat = table.remove(res, 1)
-  res.n = res.n - 1
+  local stat = res[1]
 
   if not stat then
-    error(res[1])
+    error(self:traceback(res[2]))
   end
 
-  return unpack_len(res)
+  return unpack_len(res, 2)
 end
 
 --- @param obj any
@@ -154,7 +160,7 @@ function Task:_traceback(msg, _lvl)
   end
 
   local tblvl = is_task(child) and 2 or nil
-  msg = msg .. debug.traceback(self._thread, '', tblvl):gsub('\n\t', '\n\t' .. thread)
+  msg = (msg or '') .. debug.traceback(self._thread, '', tblvl):gsub('\n\t', '\n\t' .. thread)
 
   if _lvl == 0 then
     --- @type string
@@ -173,17 +179,36 @@ function Task:traceback(msg)
   return self:_traceback(msg)
 end
 
+--- If a task completes with an error, raise the error
+function Task:raise_on_error()
+  self:await(function(err)
+    if err then
+      error(self:_traceback(err), 0)
+    end
+  end)
+  return self
+end
+
 --- @package
 --- @param err? any
---- @param result? any[]
+--- @param result? {[integer]: any, n: integer}
 function Task:_finish(err, result)
   self._current_child = nil
   self._err = err
   self._result = result
   threads[self._thread] = nil
+
+  local errs = {} --- @type string[]
   for _, cb in pairs(self._callbacks) do
-    -- Needs to be pcall as step() (who calls this function) cannot error
-    pcall(cb, err, result)
+    --- @type boolean, string
+    local ok, cb_err = pcall(cb, err, unpack_len(result))
+    if not ok then
+      errs[#errs + 1] = cb_err
+    end
+  end
+
+  if #errs > 0 then
+    error(table.concat(errs, '\n'), 0)
   end
 end
 
@@ -239,41 +264,43 @@ local function is_async_handle(obj)
   return (ty == 'table' or ty == 'userdata') and vim.is_callable(obj.close)
 end
 
+--- @param ... any
 function Task:_resume(...)
   --- @type [boolean, string|Gitsigns.async.CallbackFn]
   local ret = { coroutine.resume(self._thread, ...) }
-  local stat = table.remove(ret, 1) --- @type boolean
-  --- @cast ret [string|Gitsigns.async.CallbackFn]
+  local stat = ret[1]
 
   if not stat then
     -- Coroutine had error
-    self:_finish(ret[1])
-  elseif coroutine.status(self._thread) == 'dead' then
+    self:_finish(ret[2])
+    return
+  elseif self:status() == 'dead' then
     -- Coroutine finished
-    self:_finish(nil, ret)
-  else
-    --- @cast ret [Gitsigns.async.CallbackFn]
+    local result = pack_len(unpack_len(ret, 2))
+    self:_finish(nil, result)
+    return
+  end
 
-    local fn = ret[1]
+  local fn = ret[2]
+  --- @cast fn -string
 
-    -- TODO(lewis6991): refine error handler to be more specific
-    local ok, r
-    ok, r = pcall(fn, function(...)
-      if is_async_handle(r) then
-        --- @cast r Gitsigns.async.Handle
-        -- We must close children before we resume to ensure
-        -- all resources are collected.
-        r:close(wrap_cb(self._resume, self, ...))
-      else
-        self:_resume(...)
-      end
-    end)
-
-    if not ok then
-      self:_finish(r)
-    elseif is_async_handle(r) then
-      self._current_child = r
+  -- TODO(lewis6991): refine error handler to be more specific
+  local ok, r
+  ok, r = pcall(fn, function(...)
+    if is_async_handle(r) then
+      --- @cast r Gitsigns.async.Handle
+      -- We must close children before we resume to ensure
+      -- all resources are collected.
+      r:close(wrap_cb(self._resume, self, ...))
+    else
+      self:_resume(...)
     end
+  end)
+
+  if not ok then
+    self:_finish(r)
+  elseif is_async_handle(r) then
+    self._current_child = r
   end
 end
 
@@ -315,6 +342,7 @@ function M.status(task)
   end
 end
 
+--- @async
 --- @generic R1, R2, R3, R4
 --- @param fun fun(callback: fun(r1: R1, r2: R2, r3: R3, r4: R4)): any?
 --- @return R1, R2, R3, R4
@@ -323,25 +351,28 @@ local function yield(fun)
   return coroutine.yield(fun)
 end
 
+--- @async
 --- @param task Gitsigns.async.Task
 --- @return any ...
 local function await_task(task)
-  --- @param callback fun(err?: string, result?: any[])
+  --- @param callback fun(err?: string, ...: any)
   --- @return function
-  local err, result = yield(function(callback)
+  local res = pack_len(yield(function(callback)
     task:await(callback)
     return task
-  end)
+  end))
+
+  local err = res[1]
 
   if err then
     -- TODO(lewis6991): what is the correct level to pass?
     error(err, 0)
   end
-  assert(result)
 
-  return (unpack(result, 1, table.maxn(result)))
+  return unpack_len(res, 2)
 end
 
+--- @async
 --- Asynchronous blocking wait
 --- @param argc integer
 --- @param func Gitsigns.async.CallbackFn
@@ -351,7 +382,7 @@ local function await_cbfun(argc, func, ...)
   local args = pack_len(...)
   args.n = math.max(args.n, argc)
 
-  --- @param callback fun(success: boolean, result: any[])
+  --- @param callback fun(...:any)
   --- @return any?
   return yield(function(callback)
     args[argc] = callback
@@ -359,6 +390,7 @@ local function await_cbfun(argc, func, ...)
   end)
 end
 
+--- @async
 --- Asynchronous blocking wait
 --- @overload fun(task: Gitsigns.async.Task): any ...
 --- @overload fun(argc: integer, func: Gitsigns.async.CallbackFn, ...:any): any ...
@@ -383,18 +415,18 @@ end
 function M.awrap(argc, func)
   assert(type(argc) == 'number')
   assert(type(func) == 'function')
+  --- @async
   return function(...)
     return M.await(argc, func, ...)
   end
 end
 
---- create([argc, ] func)
----
 --- Use this to create a function which executes in an async context but
---- called from a non-async context. Inherently this cannot return anything
---- since it is non-blocking
+--- called from a non-async context.
 ---
---- If argc is not provided, then the created async function cannot be continued
+--- The returned function will take the same arguments as the original function.
+--- If argc is provided, the function will have an additional callback function
+--- as the last argument which will be called when the function completes.
 ---
 --- @generic F: function
 --- @param argc integer
@@ -409,12 +441,16 @@ function M.create(argc, func)
   return function(...)
     local task = Task._new(func)
 
+    task:raise_on_error()
+
+    --- @type fun(err:string?, ...:any)
     local callback = argc and select(argc + 1, ...) or nil
     if callback and type(callback) == 'function' then
       task:await(callback)
     end
 
     task:_resume(unpack({ ... }, 1, argc))
+
     return task
   end
 end
@@ -424,9 +460,9 @@ end
 M.schedule = M.awrap(1, vim.schedule)
 
 --- @param tasks Gitsigns.async.Task[]
---- @return fun(): (integer?, any?, any[]?)
+--- @return fun(): (integer?, ...)
 function M.iter(tasks)
-  local results = {} --- @type [integer, any, any[]][]
+  local results = {} --- @type [integer, ...][]
 
   -- Iter shuold block in an async context so only one waiter is needed
   local waiter = nil
@@ -454,7 +490,7 @@ function M.iter(tasks)
   return M.awrap(1, function(callback)
     if next(results) then
       local res = table.remove(results, 1)
-      callback(unpack(res, 1, table.maxn(res)))
+      callback(unpack_len(res))
     elseif remaining == 0 then
       callback() -- finish
     else

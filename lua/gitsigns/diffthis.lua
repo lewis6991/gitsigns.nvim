@@ -106,7 +106,7 @@ local function create_revision_buf(bufnr, base)
       group = 'gitsigns',
       buffer = dbuf,
       callback = function()
-        async.arun(bufread, bufnr, dbuf, base)
+        async.arun(bufread, bufnr, dbuf, base):raise_on_error()
       end,
     })
 
@@ -114,7 +114,7 @@ local function create_revision_buf(bufnr, base)
       group = 'gitsigns',
       buffer = dbuf,
       callback = function()
-        async.arun(bufwrite, bufnr, dbuf, base)
+        async.arun(bufwrite, bufnr, dbuf, base):raise_on_error()
       end,
     })
   else
@@ -229,6 +229,7 @@ M.show = async.create(2, function(bufnr, base, _callback)
   end
 end)
 
+--- @async
 --- @param bufnr integer
 --- @return boolean
 local function should_reload(bufnr)

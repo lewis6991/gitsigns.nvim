@@ -3,8 +3,8 @@ local api = vim.api
 --- @class Gitsigns.Hldef
 --- @field [integer] string
 --- @field desc string
---- @field hidden boolean
---- @field fg_factor number
+--- @field hidden? boolean
+--- @field fg_factor? number
 
 local nvim10 = vim.fn.has('nvim-0.10') > 0
 
@@ -221,7 +221,7 @@ end
 
 --- @param x? number
 --- @param factor number
---- @return number?
+--- @return integer?
 local function cmul(x, factor)
   if not x or factor == 1 then
     return x

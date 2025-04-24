@@ -136,15 +136,17 @@ function M.parse_diff_line(line)
 
   -- diffKey: "-xx,n +yy"
   -- pre: {xx, n}, now: {yy}
-  --- @type string[], string[]
-  local pre, now = unpack(vim.tbl_map(
+  local p = vim.tbl_map(
     --- @param s string
     --- @return string[]
     function(s)
-      return vim.split(string.sub(s, 2), ',')
+      return vim.split(s:sub(2), ',')
     end,
     vim.split(diffkey, ' ')
-  ))
+  )
+
+  --- @type [string,string?], [string,string?]
+  local pre, now = p[1], p[2]
 
   local hunk = M.create_hunk(
     tointeger(pre[1]),
@@ -356,7 +358,6 @@ end
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @return Gitsigns.StatusObj
 function M.get_summary(hunks)
-  --- @type Gitsigns.StatusObj
   local status = { added = 0, changed = 0, removed = 0 }
 
   for _, hunk in ipairs(hunks or {}) do
@@ -570,6 +571,7 @@ function M.linespec_for_hunk(hunk, fileformat)
           spec.sym .. l,
           {
             {
+              start_row = 0,
               hl_group = spec.hl,
               end_row = 1, -- Highlight whole line
             },
@@ -585,20 +587,24 @@ function M.linespec_for_hunk(hunk, fileformat)
 
     for _, region in ipairs(removed_regions) do
       local i = region[1]
-      table.insert(hls[i][1][2], {
+      local hlm = hls[i][1][2]
+      hlm[#hlm + 1] = {
+        start_row = 0,
         hl_group = 'GitSignsDeleteInline',
         start_col = region[3],
         end_col = region[4],
-      })
+      }
     end
 
     for _, region in ipairs(added_regions) do
       local i = hunk.removed.count + region[1]
-      table.insert(hls[i][1][2], {
+      local hlm = hls[i][1][2]
+      hlm[#hlm + 1] = {
+        start_row = 0,
         hl_group = 'GitSignsAddInline',
         start_col = region[3],
         end_col = region[4],
-      })
+      }
     end
   end
 

@@ -1,5 +1,5 @@
 local api = vim.api
-local uv = vim.loop
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 local async = require('gitsigns.async')
 local log = require('gitsigns.debug.log')
@@ -14,14 +14,16 @@ local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local dprint = log.dprint
 local dprintf = log.dprintf
 
+--- @async
 --- @param bufnr integer
 --- @param old_relpath? string
 local function handle_moved(bufnr, old_relpath)
   local bcache = assert(cache[bufnr])
   local git_obj = bcache.git_obj
 
-  git_obj.orig_relpath = assert(git_obj.orig_relpath or old_relpath)
-  local new_name = git_obj.repo:rename_status()[git_obj.orig_relpath]
+  local orig_relpath = assert(git_obj.orig_relpath or old_relpath)
+  git_obj.orig_relpath = orig_relpath
+  local new_name = git_obj.repo:rename_status()[orig_relpath]
   if new_name then
     dprintf('File moved to %s', new_name)
     git_obj.relpath = new_name
