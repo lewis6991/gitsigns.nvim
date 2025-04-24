@@ -32,12 +32,31 @@ function M:command(args, spec)
   spec = spec or {}
   spec.cwd = self.toplevel
 
-  return git_command({
+  local lines, err, code = git_command({
     '--git-dir',
     self.gitdir,
     self.detached and { '--work-tree', self.toplevel },
     args,
   }, spec)
+
+  -- decrypt content, encrypted by "git-crypt"
+  if lines and string.sub(lines[1], 1, 10) == '\0GITCRYPT\0' then
+    spec.stdin = lines
+
+    lines, err, code = git_command({
+      '--git-dir',
+      self.gitdir,
+      self.detached and { '--work-tree', self.toplevel },
+      'crypt',
+      'smudge',
+    }, spec)
+
+    if lines and lines[#lines] == '\xAD' then
+      lines[#lines] = ""
+    end
+  end
+
+  return lines, err, code
 end
 
 --- @param base string?
