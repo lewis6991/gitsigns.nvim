@@ -52,7 +52,7 @@ function M:command(args, spec)
     }, spec)
 
     if lines and lines[#lines] == '\xAD' then
-      lines[#lines] = ""
+      lines[#lines] = ''
     end
   end
 
