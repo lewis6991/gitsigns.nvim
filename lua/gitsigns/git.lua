@@ -233,8 +233,12 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
     return
   end
 
-  if not util.is_abspath(file) and toplevel then
-    file = toplevel .. util.path_sep .. file
+  if not util.is_abspath(file) then
+    if toplevel then
+      file = toplevel .. util.path_sep .. file
+    elseif gitdir then
+      file = util.dirname(gitdir) .. util.path_sep .. file
+    end
   end
 
   local repo = Repo.get(util.dirname(file), gitdir, toplevel)
