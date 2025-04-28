@@ -187,16 +187,31 @@ local function setup_env(env, clear_env)
   return renv
 end
 
+local is_win = vim.fn.has('win32') == 1
+
 --- @param cmd string
 --- @param opts uv.spawn.options
 --- @param on_exit fun(code: integer, signal: integer)
 --- @param on_error fun()
 --- @return uv.uv_process_t, integer
 local function spawn(cmd, opts, on_exit, on_error)
+  if is_win then
+    local cmd1 = vim.fn.exepath(cmd)
+    if cmd1 ~= '' then
+      cmd = cmd1
+    end
+  end
+
   local handle, pid_or_err = uv.spawn(cmd, opts, on_exit)
   if not handle then
     on_error()
-    error(pid_or_err)
+    if opts.cwd and not uv.fs_stat(opts.cwd) then
+      error(("%s: '%s'"):format(pid_or_err, opts.cwd))
+    elseif vim.fn.executable(cmd) == 0 then
+      error(("%s: '%s'"):format(pid_or_err, cmd))
+    else
+      error(pid_or_err)
+    end
   end
   return handle, pid_or_err --[[@as integer]]
 end
@@ -284,8 +299,8 @@ local function system(cmd, opts, on_exit)
 
   opts = opts or {}
 
-  local stdout, stdout_handler, stdout_data = setup_output(opts.stdout)
-  local stderr, stderr_handler, stderr_data = setup_output(opts.stderr)
+  local stdout, stdout_handler, stdout_data = setup_output(opts.stdout, opts.text)
+  local stderr, stderr_handler, stderr_data = setup_output(opts.stderr, opts.text)
   local stdin, towrite = setup_input(opts.stdin)
 
   --- @type vim.SystemState

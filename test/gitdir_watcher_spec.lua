@@ -132,9 +132,7 @@ describe('gitdir_watcher', function()
   end)
 
   it('can debounce and throttle updates per buffer', function()
-    helpers.cleanup()
-    system({ 'mkdir', helpers.scratch })
-    helpers.git_init()
+    helpers.git_init_scratch()
 
     local f1 = vim.fs.joinpath(helpers.scratch, 'file1')
     local f2 = vim.fs.joinpath(helpers.scratch, 'file2')
