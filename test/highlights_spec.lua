@@ -2,7 +2,6 @@ local Screen = require('nvim-test.screen')
 local helpers = require('test.gs_helpers')
 
 local clear = helpers.clear
-local exec_lua = helpers.exec_lua
 local command = helpers.api.nvim_command
 
 local cleanup = helpers.cleanup

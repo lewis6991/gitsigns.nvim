@@ -149,16 +149,17 @@ local function get_buf_context(bufnr)
     return nil, 'Exceeds max_file_length'
   end
 
-  local file = uv.fs_realpath(api.nvim_buf_get_name(bufnr)) or buf_expand(bufnr, '%:p')
+  local bufname = api.nvim_buf_get_name(bufnr)
+  local bufpath = uv.fs_realpath(bufname)
 
-  local rel_path, commit, gitdir_from_bufname = parse_git_path(file)
+  local rel_path, commit, gitdir_from_bufname = parse_git_path(bufpath or buf_expand(bufnr, '%:p'))
 
   if not gitdir_from_bufname then
     if vim.bo[bufnr].buftype ~= '' then
       return nil, 'Non-normal buffer'
     end
 
-    local file_dir = util.dirname(file)
+    local file_dir = util.dirname(bufname)
     if not file_dir or not util.path_exists(file_dir) then
       return nil, 'Not a path'
     end
@@ -167,7 +168,7 @@ local function get_buf_context(bufnr)
   local gitdir_oap, toplevel_oap = on_attach_pre(bufnr)
 
   return {
-    file = rel_path or file,
+    file = rel_path or bufname,
     gitdir = gitdir_oap or gitdir_from_bufname,
     toplevel = toplevel_oap,
     -- Stage buffers always compare against the common ancestor (':1')
@@ -223,9 +224,9 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     encoding = 'utf-8'
   end
 
-  local file = ctx.file
-  if not vim.startswith(file, '/') and ctx.toplevel then
-    file = ctx.toplevel .. util.path_sep .. file
+  local file, toplevel = ctx.file, ctx.toplevel
+  if not util.is_abspath(file) and toplevel then
+    file = toplevel .. util.path_sep .. file
   end
 
   local revision = ctx.base or config.base
@@ -256,13 +257,6 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
     root = git_obj.repo.toplevel,
     gitdir = git_obj.repo.gitdir,
   })
-
-  if
-    not passed_ctx and (not util.path_exists(file) or assert(uv.fs_stat(file)).type == 'directory')
-  then
-    dprint('Not a file')
-    return
-  end
 
   if not git_obj.relpath then
     dprint('Cannot resolve file in repo')
@@ -316,6 +310,8 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
 
   -- Initial update
   manager.update(cbuf)
+
+  dprint('attach complete')
 
   if config.current_line_blame then
     require('gitsigns.current_line_blame').update(cbuf)

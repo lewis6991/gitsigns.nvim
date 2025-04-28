@@ -119,11 +119,12 @@ local repo_cache = setmetatable({}, { __mode = 'v' })
 --- @param dir string
 --- @param gitdir? string
 --- @param toplevel? string
---- @return Gitsigns.Repo?
+--- @return Gitsigns.Repo? repo
+--- @return string? err
 function M.get(dir, gitdir, toplevel)
-  local info = M.get_info(dir, gitdir, toplevel)
+  local info, err = M.get_info(dir, gitdir, toplevel)
   if not info then
-    return
+    return nil, err
   end
 
   gitdir = info.gitdir
@@ -174,18 +175,54 @@ local function process_abbrev_head(gitdir, head_str, cwd)
   return short_sha
 end
 
+--- @param dir? string
+--- @param gitdir? string
+--- @param worktree? string
+--- @return string? cwd
+--- @return string? err
+local function get_cmd_cwd(dir, gitdir, worktree)
+  if gitdir and worktree then
+    -- Do not need cwd
+    return
+  end
+
+  if not dir then
+    if gitdir then
+      return util.dirname(gitdir)
+    end
+    return nil, 'No directory provided and no gitdir or worktree'
+  end
+
+  if not uv.fs_stat(dir) then
+    local cwd = assert(vim.fn.getcwd(0, 0))
+    log.dprintf("'%s' does not exist, not setting cwd, defaulting to cwd '%s'", dir, cwd)
+    return cwd
+  end
+
+  return dir
+end
+
 --- @async
---- @param cwd string
+--- @param dir? string
 --- @param gitdir? string
 --- @param worktree? string
 --- @return Gitsigns.RepoInfo? info, string? err
-function M.get_info(cwd, gitdir, worktree)
+function M.get_info(dir, gitdir, worktree)
   -- Does git rev-parse have --absolute-git-dir, added in 2.13:
   --    https://public-inbox.org/git/20170203024829.8071-16-szeder.dev@gmail.com/
   local has_abs_gd = check_version(2, 13)
 
   -- Wait for internal scheduler to settle before running command (#215)
   async.schedule()
+
+  -- Explicitly fallback to env vars for better debug
+  gitdir = gitdir or vim.env.GIT_DIR
+  worktree = worktree or vim.env.GIT_WORK_TREE
+
+  local cwd, err = get_cmd_cwd(dir, gitdir, worktree)
+  if err then
+    return nil, err
+  end
 
   -- gitdir and worktree must be provided together from `man git`:
   -- > Specifying the location of the ".git" directory using this option (or GIT_DIR environment
@@ -209,7 +246,7 @@ function M.get_info(cwd, gitdir, worktree)
     'HEAD',
   }, {
     ignore_error = true,
-    cwd = worktree or cwd,
+    cwd = cwd,
   })
 
   -- If the repo has no commits yet, rev-parse will fail. Ignore this error.
@@ -240,7 +277,7 @@ function M.get_info(cwd, gitdir, worktree)
   return {
     toplevel = toplevel_r,
     gitdir = gitdir_r,
-    abbrev_head = process_abbrev_head(gitdir_r, stdout[3], cwd),
+    abbrev_head = process_abbrev_head(gitdir_r, stdout[3], toplevel_r),
     detached = toplevel_r and gitdir_r ~= toplevel_r .. '/.git',
   }
 end
@@ -267,6 +304,12 @@ function M:ls_tree(path, revision)
 
   if code > 0 then
     return nil, stderr or tostring(code)
+  end
+
+  local res = results[1]
+
+  if not res then
+    return nil, ('%s not found in %s'):format(path, revision)
   end
 
   local info, relpath = unpack(vim.split(results[1], '\t'))

@@ -68,7 +68,9 @@ function M.cleanup()
   system({ 'rm', '-rf', M.scratch })
 end
 
-function M.git_init()
+function M.git_init_scratch()
+  M.cleanup()
+  system({ 'mkdir', M.scratch })
   M.git('init', '-b', 'main')
 
   -- Always force color to test settings don't interfere with gitsigns systems
@@ -96,9 +98,7 @@ end
 --- @param opts? {test_file_text?: string[], no_add?: boolean}
 function M.setup_test_repo(opts)
   local text = opts and opts.test_file_text or test_file_text
-  M.cleanup()
-  system({ 'mkdir', M.scratch })
-  M.git_init()
+  M.git_init_scratch()
   system({ 'touch', M.test_file })
   M.write_to_file(M.test_file, text)
   if not (opts and opts.no_add) then
@@ -176,15 +176,6 @@ function M.match_lines(lines, spec)
   end
 
   if i < #spec + 1 then
-    local unmatched_msg = table.concat(
-      --- @param v any
-      --- @return string
-      vim.tbl_map(function(v)
-        return ('    - %s'):format(v.text or v)
-      end, spec),
-      '\n'
-    )
-
     local lines_msg = table.concat(
       --- @param v any
       --- @return string
@@ -194,7 +185,7 @@ function M.match_lines(lines, spec)
       '\n'
     )
 
-    error(('Did not match patterns:\n%s\nwith:\n%s'):format(unmatched_msg, lines_msg))
+    error(('Did not match pattern %s with:\n%s'):format(vim.inspect(spec[i]), lines_msg))
   end
 end
 

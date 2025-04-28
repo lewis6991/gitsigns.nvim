@@ -3,6 +3,8 @@ local async = require('gitsigns.async')
 local util = require('gitsigns.util')
 local Repo = require('gitsigns.git.repo')
 
+local git_command = require('gitsigns.git.cmd')
+
 local M = {}
 
 M.Repo = Repo
@@ -36,15 +38,17 @@ Obj.__index = Obj
 
 M.Obj = Obj
 
---- @param file string
+--- @param dir string
 --- @return boolean
-local function in_git_dir(file)
-  for _, p in ipairs(vim.split(file, util.path_sep)) do
-    if p == '.git' then
-      return true
-    end
-  end
-  return false
+local function in_git_dir(dir)
+  local stdout = git_command({
+    'rev-parse',
+    '--is-inside-git-dir',
+  }, {
+    text = true,
+    cwd = vim.uv.fs_stat(dir) and dir or nil,
+  })
+  return stdout[1] == 'true'
 end
 
 --- @async
@@ -218,32 +222,32 @@ function Obj:stage_hunks(hunks, invert)
   autocmd_changed(self.file)
 end
 
+local WORKTREE_ERR_PAT = vim.pesc('fatal: this operation must be run in a work tree')
+local NOTINGIT_ERR_PAT = vim.pesc('fatal: not a git repository (or any of the parent directories)')
+
 --- @async
---- @param file string
+--- @param file string Absolute path or relative to toplevel
 --- @param revision string?
 --- @param encoding string
 --- @param gitdir string?
 --- @param toplevel string?
 --- @return Gitsigns.GitObj?
 function Obj.new(file, revision, encoding, gitdir, toplevel)
-  -- TODO(lewis6991): this check is flawed as any directory can be a git-dir
-  -- Can use: git rev-parse --is-inside-git-dir
-  if in_git_dir(file) then
-    log.dprint('In git dir')
-    return
+  if not util.is_abspath(file) and toplevel then
+    file = toplevel .. util.path_sep .. file
   end
 
-  if not util.is_abspath(file) then
-    if toplevel then
-      file = toplevel .. util.path_sep .. file
-    elseif gitdir then
-      file = util.dirname(gitdir) .. util.path_sep .. file
-    end
-  end
-
-  local repo = Repo.get(util.dirname(file), gitdir, toplevel)
+  local dir = util.dirname(file)
+  local repo, err = Repo.get(dir, gitdir, toplevel)
   if not repo then
     log.dprint('Not in git repo')
+    if
+      err
+      and not err:match(NOTINGIT_ERR_PAT)
+      and not (err:match(WORKTREE_ERR_PAT) and in_git_dir(dir))
+    then
+      log.eprint(err)
+    end
     return
   end
 
@@ -252,10 +256,10 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
 
   revision = util.norm_base(revision)
 
-  local info, err = repo:file_info(file, revision)
+  local info, err2 = repo:file_info(file, revision)
 
-  if err and not silent then
-    log.eprint(err)
+  if err2 and not silent then
+    log.eprint(err2)
   end
 
   if not info then
