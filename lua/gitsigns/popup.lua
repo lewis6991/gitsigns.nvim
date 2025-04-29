@@ -25,8 +25,9 @@ end
 -- Expand height until all lines are visible to account for wrapped lines.
 --- @param winid integer
 --- @param nlines integer
---- @param border any
+--- @param border? any
 local function expand_height(winid, nlines, border)
+  border = border or vim.o.winborder
   local newheight = 0
   local maxheight = vim.o.lines - vim.o.cmdheight - (border ~= '' and 2 or 0)
   for _ = 0, 50 do
