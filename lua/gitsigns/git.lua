@@ -95,12 +95,11 @@ end
 --- @param revision? string
 --- @return string[] stdout, string? stderr
 function Obj:get_show_text(revision)
-  if revision and not self.relpath then
+  local relpath = self.relpath
+  if revision and not relpath then
     log.dprint('no relpath')
     return {}
   end
-
-  local relpath = assert(self.relpath)
 
   local object = revision and (revision .. ':' .. relpath) or self.object_name
 
@@ -120,7 +119,8 @@ function Obj:get_show_text(revision)
       or stderr:match(error_pats.path_exist_on_disk_but_not_in)
     )
   then
-    log.dprintf('%s not found in %s looking for renames', self.relpath, revision)
+    --- @cast relpath -?
+    log.dprintf('%s not found in %s looking for renames', relpath, revision)
     local old_path = self.repo:rename_status(revision, true)[relpath]
     if old_path then
       log.dprintf('found rename %s -> %s', old_path, relpath)
