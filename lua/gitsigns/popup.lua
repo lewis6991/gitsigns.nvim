@@ -27,7 +27,7 @@ end
 --- @param nlines integer
 --- @param border? any
 local function expand_height(winid, nlines, border)
-  border = border or vim.o.winborder
+  border = border or (vim.fn.exists('&winborder') == 1 and vim.o.winborder or '')
   local newheight = 0
   local maxheight = vim.o.lines - vim.o.cmdheight - (border ~= '' and 2 or 0)
   for _ = 0, 50 do
