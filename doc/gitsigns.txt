@@ -796,7 +796,6 @@ preview_config                                *gitsigns-config-preview_config*
       Type: `table[extended]`
       Default: >
         `{
-          border = "single",
           col = 1,
           relative = "cursor",
           row = 0,

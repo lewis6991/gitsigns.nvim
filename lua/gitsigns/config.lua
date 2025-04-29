@@ -627,7 +627,6 @@ M.schema = {
     type = 'table',
     deep_extend = true,
     default = {
-      border = 'single',
       style = 'minimal',
       relative = 'cursor',
       row = 0,
