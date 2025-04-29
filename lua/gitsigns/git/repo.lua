@@ -164,7 +164,7 @@ local function process_abbrev_head(gitdir, head_str, cwd)
     cwd = cwd,
   })[1] or ''
 
-  if log.debug_mode and short_sha ~= '' then
+  if short_sha ~= '' and log.debug_mode() then
     short_sha = 'HEAD'
   end
 

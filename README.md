@@ -148,15 +148,10 @@ Deep buffer integration for Git
 
 ## 🛠️ Installation & Usage
 
-Install using your package manager of choice.
+Install using your package manager of choice. No setup required.
 
-For recommended setup with all batteries included:
-```lua
-require('gitsigns').setup()
-```
-
-Configuration can be passed to the setup function. Here is an example with most of
-the default settings:
+Optional configuration can be passed to the setup function. Here is an example
+with most of the default settings:
 
 ```lua
 require('gitsigns').setup {

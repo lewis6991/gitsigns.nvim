@@ -1,16 +1,24 @@
-local async = require('gitsigns.async')
-local log = require('gitsigns.debug.log')
-local Config = require('gitsigns.config')
-
-local config = Config.config
-
 local api = vim.api
 local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+
+local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 
 --- @class gitsigns.main
 local M = {}
 
 local cwd_watcher ---@type uv.uv_fs_event_t?
+
+local function log()
+  return require('gitsigns.debug.log')
+end
+
+local function config()
+  return require('gitsigns.config').config
+end
+
+local function async()
+  return require('gitsigns.async')
+end
 
 --- @async
 --- @return string? gitdir
@@ -20,7 +28,7 @@ local function get_gitdir_and_head()
 
   -- Run on the main loop to avoid:
   --   https://github.com/LazyVim/LazyVim/discussions/3407#discussioncomment-9622211
-  async.schedule()
+  async().schedule()
 
   -- Look in the cache first
   for _, bcache in pairs(require('gitsigns.cache').cache) do
@@ -47,7 +55,7 @@ local function setup_cwd_watcher(cwd, towatch)
     -- TODO(lewis6991): (#1027) Running `fs_event:stop()` -> `fs_event:start()`
     -- in the same loop event, on Windows, causes Nvim to hang on quit.
     if vim.fn.has('win32') == 1 then
-      async.schedule()
+      async().schedule()
     end
   else
     cwd_watcher = assert(uv.new_fs_event())
@@ -58,14 +66,12 @@ local function setup_cwd_watcher(cwd, towatch)
     return
   end
 
-  local debounce_trailing = require('gitsigns.debounce').debounce_trailing
-
   local update_head = debounce_trailing(
     100,
-    async.async(function()
+    async().async(function()
       local git = require('gitsigns.git')
       local new_head = git.Repo.get_info(cwd).abbrev_head
-      async.schedule()
+      async().schedule()
       if new_head ~= vim.g.gitsigns_head then
         vim.g.gitsigns_head = new_head
         api.nvim_exec_autocmds('User', {
@@ -77,16 +83,14 @@ local function setup_cwd_watcher(cwd, towatch)
   )
 
   -- Watch .git/HEAD to detect branch changes
-  cwd_watcher:start(
-    towatch,
-    {},
-    async.async(function(err)
+  cwd_watcher:start(towatch, {}, function()
+    async().arun(function(err)
       local __FUNC__ = 'cwd_watcher_cb'
       if err then
-        log.dprintf('Git dir update error: %s', err)
+        log().dprintf('Git dir update error: %s', err)
         return
       end
-      log.dprint('Git cwd dir update')
+      log().dprint('Git cwd dir update')
 
       update_head()
 
@@ -95,10 +99,11 @@ local function setup_cwd_watcher(cwd, towatch)
       -- make sure we keep getting future events
       setup_cwd_watcher(cwd, towatch)
     end)
-  )
+  end)
 end
 
-local update_cwd_head = async.async(function()
+--- @async
+local function update_cwd_head()
   local cwd = uv.cwd()
 
   if not cwd then
@@ -116,7 +121,7 @@ local update_cwd_head = async.async(function()
   end
 
   local gitdir, head = get_gitdir_and_head()
-  async.schedule()
+  async().schedule()
 
   api.nvim_exec_autocmds('User', {
     pattern = 'GitSignsUpdate',
@@ -132,7 +137,7 @@ local update_cwd_head = async.async(function()
   local towatch = gitdir .. '/HEAD'
 
   setup_cwd_watcher(cwd, towatch)
-end)
+end
 
 local function setup_cli()
   api.nvim_create_user_command('Gitsigns', function(params)
@@ -148,10 +153,6 @@ local function setup_cli()
 end
 
 local function setup_attach()
-  if not config.auto_attach then
-    return
-  end
-
   local attach_autocmd_disabled = false
 
   -- Need to attach in 'BufFilePost' since we always detach in 'BufFilePre'
@@ -159,10 +160,13 @@ local function setup_attach()
     group = 'gitsigns',
     desc = 'Gitsigns: attach',
     callback = function(args)
-      local bufnr = args.buf --[[@as integer]]
+      if not config().auto_attach then
+        return
+      end
+      local bufnr = args.buf
       if attach_autocmd_disabled then
         local __FUNC__ = 'attach_autocmd'
-        log.dprint('Attaching is disabled')
+        log().dprint('Attaching is disabled')
         return
       end
       require('gitsigns.attach').attach(bufnr, nil, args.event)
@@ -174,6 +178,9 @@ local function setup_attach()
     group = 'gitsigns',
     desc = 'Gitsigns: detach when changing buffer names',
     callback = function(args)
+      if not config().auto_attach then
+        return
+      end
       require('gitsigns.attach').detach(args.buf)
     end,
   })
@@ -190,18 +197,21 @@ local function setup_attach()
   })
 
   -- Attach to all open buffers
-  for _, buf in ipairs(api.nvim_list_bufs()) do
-    if api.nvim_buf_is_loaded(buf) and api.nvim_buf_get_name(buf) ~= '' then
-      -- Make sure to run each attach in its on async context in case one of the
-      -- attaches is aborted.
-      require('gitsigns.attach').attach(buf, nil, 'setup')
+  if config().auto_attach then
+    for _, buf in ipairs(api.nvim_list_bufs()) do
+      if api.nvim_buf_is_loaded(buf) and api.nvim_buf_get_name(buf) ~= '' then
+        -- Make sure to run each attach in its on async context in case one of the
+        -- attaches is aborted.
+        require('gitsigns.attach').attach(buf, nil, 'setup')
+      end
     end
   end
 end
 
 local function setup_cwd_head()
-  local debounce = require('gitsigns.debounce').debounce_trailing
-  local update_cwd_head_debounced = debounce(100, update_cwd_head)
+  local update_cwd_head_debounced = debounce_trailing(100, function()
+    async().arun(update_cwd_head)
+  end)
 
   update_cwd_head_debounced()
 
@@ -215,25 +225,36 @@ local function setup_cwd_head()
   })
 end
 
+-- When setup() is called when this is true, setup autocmads and define
+-- highlights. If false then rebuild the configuration and re-setup
+-- modules that depend on the configuration.
+local init = true
+
 --- Setup and start Gitsigns.
 ---
 --- @param cfg table|nil Configuration for Gitsigns.
 ---     See |gitsigns-usage| for more details.
 function M.setup(cfg)
-  Config.build(cfg)
-
   if vim.fn.executable('git') == 0 then
     print('gitsigns: git not in path. Aborting setup')
     return
   end
 
-  api.nvim_create_augroup('gitsigns', {})
+  if cfg then
+    require('gitsigns.config').build(cfg)
+  end
 
-  log.setup(config)
-  setup_cli()
-  require('gitsigns.highlight').setup()
-  setup_attach()
-  setup_cwd_head()
+  -- Only do this once
+  if init then
+    api.nvim_create_augroup('gitsigns', {})
+    setup_cli()
+    -- TODO(lewis6991): do this lazily
+    require('gitsigns.highlight').setup()
+    setup_attach()
+    setup_cwd_head()
+
+    init = false
+  end
 end
 
 --- @type gitsigns.main|gitsigns.actions|gitsigns.attach|gitsigns.debug
@@ -249,7 +270,7 @@ M = setmetatable(M, {
       return actions[f]
     end
 
-    if config.debug_mode then
+    if config().debug_mode then
       local debug = require('gitsigns.debug')
       if debug[f] then
         return debug[f]

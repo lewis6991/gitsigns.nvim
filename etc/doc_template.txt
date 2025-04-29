@@ -25,13 +25,10 @@ file IO.
 ==============================================================================
 USAGE                                                         *gitsigns-usage*
 
-For basic setup with all batteries included:
+No setup required.
 >lua
-    require('gitsigns').setup()
-<
-
-Configuration can be passed to the setup function. Here is an example with most
-of the default settings:
+Optional configuration can be passed to the setup function. Here is an example
+with most of the default settings:
 >lua
 {{SETUP}}
 <
