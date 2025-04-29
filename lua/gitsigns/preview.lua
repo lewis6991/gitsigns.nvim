@@ -144,6 +144,7 @@ local function show_deleted_in_float(bufnr, nsd, hunk, staged)
     anchor = 'SW',
     bufpos = { hunk.added.start - bufpos_offset, 0 },
     style = 'minimal',
+    border = 'none',
   })
 
   vim.bo[pbufnr].filetype = vim.bo[bufnr].filetype
