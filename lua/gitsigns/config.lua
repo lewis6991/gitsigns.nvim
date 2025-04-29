@@ -952,10 +952,8 @@ local function build_field(k, v, user_val)
   end
 end
 
---- @param user_config table?
+--- @param user_config table
 function M.build(user_config)
-  user_config = user_config or {}
-
   handle_deprecated(user_config)
 
   validate_config(user_config)
