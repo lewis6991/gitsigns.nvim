@@ -87,7 +87,9 @@ local function incremental_iter(readline, commits, result)
 
   --- @type string?, string, string, string
   local sha, orig_lnum_str, final_lnum_str, size_str = line:match('(%x+) (%d+) (%d+) (%d+)')
-  assert(sha)
+  if not sha then
+    error(("Could not parse sha from line: '%s'"):format(line))
+  end
 
   local orig_lnum = asinteger(orig_lnum_str)
   local final_lnum = asinteger(final_lnum_str)
@@ -152,13 +154,24 @@ local function incremental_iter(readline, commits, result)
 end
 
 --- @param data string
---- @return string[]
-local function data_to_lines(data)
+--- @param partial? string
+--- @return string[] lines
+--- @return string? partial
+local function data_to_lines(data, partial)
   local lines = vim.split(data, '\n')
-  if lines[#lines] == '' then
-    lines[#lines] = nil
+  if partial then
+    lines[1] = partial .. lines[1]
+    partial = nil
   end
-  return lines
+
+  -- if data doesn't end with a newline, then the last line is partial
+  if lines[#lines] ~= '' then
+    partial = lines[#lines]
+  end
+
+  -- Clear the last line as it will be empty of the partial line
+  lines[#lines] = nil
+  return lines, partial
 end
 
 --- @param f fun(readline: fun(): string?))
@@ -170,17 +183,19 @@ local function buffered_line_reader(f)
       return
     end
 
-    local data_lines = data_to_lines(data)
+    local data_lines, partial_line = data_to_lines(data)
     local i = 0
 
     --- @async
     local function readline(peek)
       if not data_lines[i + 1] then
+        -- No more data, wait for more
         data = coroutine.yield()
         if not data then
-          return
+          -- No more data, return the partial line if there is one
+          return partial_line
         end
-        data_lines = data_to_lines(data)
+        data_lines, partial_line = data_to_lines(data, partial_line)
         i = 0
       end
 
