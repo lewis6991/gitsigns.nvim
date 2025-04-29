@@ -5,6 +5,13 @@ local Repo = require('gitsigns.git.repo')
 
 local git_command = require('gitsigns.git.cmd')
 
+local error_pats = {
+  worktree = vim.pesc('fatal: this operation must be run in a work tree'),
+  not_in_git = vim.pesc('fatal: not a git repository (or any of the parent directories)'),
+  path_does_not_exist = "fatal: path .* does not exist in '.*'",
+  path_exist_on_disk_but_not_in = "fatal: path .* exists on disk, but not in '.*'",
+}
+
 local M = {}
 
 M.Repo = Repo
@@ -93,7 +100,9 @@ function Obj:get_show_text(revision)
     return {}
   end
 
-  local object = revision and (revision .. ':' .. assert(self.relpath)) or self.object_name
+  local relpath = assert(self.relpath)
+
+  local object = revision and (revision .. ':' .. relpath) or self.object_name
 
   if not object then
     log.dprint('no revision or object_name')
@@ -101,6 +110,23 @@ function Obj:get_show_text(revision)
   end
 
   local stdout, stderr = self.repo:get_show_text(object, self.encoding)
+
+  -- detect renames
+  if
+    revision
+    and stderr
+    and (
+      stderr:match(error_pats.path_does_not_exist)
+      or stderr:match(error_pats.path_exist_on_disk_but_not_in)
+    )
+  then
+    log.dprintf('%s not found in %s looking for renames', self.relpath, revision)
+    local old_path = self.repo:rename_status(revision, true)[relpath]
+    if old_path then
+      log.dprintf('found rename %s -> %s', old_path, relpath)
+      stdout, stderr = self.repo:get_show_text(revision .. ':' .. old_path, self.encoding)
+    end
+  end
 
   if not self.i_crlf and self.w_crlf then
     -- Add cr
@@ -222,9 +248,6 @@ function Obj:stage_hunks(hunks, invert)
   autocmd_changed(self.file)
 end
 
-local WORKTREE_ERR_PAT = vim.pesc('fatal: this operation must be run in a work tree')
-local NOTINGIT_ERR_PAT = vim.pesc('fatal: not a git repository (or any of the parent directories)')
-
 --- @async
 --- @param file string Absolute path or relative to toplevel
 --- @param revision string?
@@ -243,8 +266,8 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
     log.dprint('Not in git repo')
     if
       err
-      and not err:match(NOTINGIT_ERR_PAT)
-      and not (err:match(WORKTREE_ERR_PAT) and in_git_dir(dir))
+      and not err:match(error_pats.not_in_git)
+      and not (err:match(error_pats.worktree) and in_git_dir(dir))
     then
       log.eprint(err)
     end

@@ -309,10 +309,18 @@ function M:ls_tree(path, revision)
   local res = results[1]
 
   if not res then
+    -- Not found, see if it was renamed
+    log.dprintf('%s not found in %s looking for renames', path, revision)
+    local old_path = self:rename_status(revision, true)[path]
+    if old_path then
+      log.dprintf('found rename %s -> %s', old_path, path)
+      return self:ls_tree(old_path, revision)
+    end
+
     return nil, ('%s not found in %s'):format(path, revision)
   end
 
-  local info, relpath = unpack(vim.split(results[1], '\t'))
+  local info, relpath = unpack(vim.split(res, '\t'))
   local mode_bits, object_type, object_name = unpack(vim.split(info, '%s+'))
   --- @cast object_type 'blob'|'tree'|'commit'
 
@@ -459,14 +467,17 @@ function M:hash_object(path, lines)
 end
 
 --- @async
+--- @param revision? string
+--- @param invert? boolean
 --- @return table<string,string>
-function M:rename_status()
+function M:rename_status(revision, invert)
   local out = self:command({
     'diff',
     '--name-status',
     '--find-renames',
     '--find-copies',
     '--cached',
+    revision,
   })
   local ret = {} --- @type table<string,string>
   for _, l in ipairs(out) do
@@ -475,7 +486,11 @@ function M:rename_status()
       --- @cast parts [string, string, string]
       local stat, orig_file, new_file = parts[1], parts[2], parts[3]
       if vim.startswith(stat, 'R') then
-        ret[orig_file] = new_file
+        if invert then
+          ret[new_file] = orig_file
+        else
+          ret[orig_file] = new_file
+        end
       end
     end
   end
