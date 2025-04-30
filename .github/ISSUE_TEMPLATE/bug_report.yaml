@@ -45,21 +45,22 @@ body:
       label: "Minimal config"
       description: >
         Minimal(!) configuration necessary to reproduce the issue. Save this as
-        `minimal.lua`. If necessary, add plugins and config options from your
-        `init.lua` at the indicated lines.
+        `init.lua`.
 
         Please **DO NOT** include a package manager (such as `lazy.nvim`) in this.
+
+        If this is not provided, the issue may be closed without notice.
       render: Lua
       value: |
         for name, url in pairs{
           gitsigns = 'https://github.com/lewis6991/gitsigns.nvim',
           -- ADD OTHER PLUGINS _NECESSARY_ TO REPRODUCE THE ISSUE
         } do
-        local install_path = vim.fn.fnamemodify('gitsigns_issue/'..name, ':p')
-        if vim.fn.isdirectory(install_path) == 0 then
-        vim.fn.system { 'git', 'clone', '--depth=1', url, install_path }
-        end
-        vim.opt.runtimepath:append(install_path)
+          local install_path = vim.fn.fnamemodify('gitsigns_issue/'..name, ':p')
+          if vim.fn.isdirectory(install_path) == 0 then
+            vim.fn.system { 'git', 'clone', '--depth=1', url, install_path }
+          end
+          vim.opt.runtimepath:append(install_path)
         end
 
         require('gitsigns').setup{
@@ -78,15 +79,16 @@ body:
         Steps to reproduce using the minimal config provided.
 
         If this is not provided, the issue may be closed without notice.
-      value: |
-        1. `mkdir gitsigns_issue`
-        2. `cd gitsigns_issue`
-        3. `git init`
-        4. `touch file`
-        5. `git add file`
-        6. `git commit -m 'initial commit'`
-        7. `nvim --clean -u minimal.lua file`
-        8. ...
+
+        Example:
+          1. `mkdir gitsigns_issue`
+          2. `cd gitsigns_issue`
+          3. `git init`
+          4. `touch file`
+          5. `git add file`
+          6. `git commit -m 'initial commit'`
+          7. `nvim --clean -u init.lua file`
+          8. ...
     validations:
       required: true
 
