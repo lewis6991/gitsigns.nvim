@@ -204,7 +204,7 @@ end
 --- @return string[]
 function M.debug_messages()
   --- @type string[]
-  local r = exec_lua("return require'gitsigns.debug.log'.get()")
+  local r = exec_lua("return require'gitsigns.debug.log'.get(true)")
   for i, line in ipairs(r) do
     -- Remove leading timestamp
     r[i] = line:gsub('^[0-9.]+ D ', '')
