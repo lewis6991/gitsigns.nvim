@@ -174,10 +174,27 @@ function M.clear()
 end
 
 --- @param m [number, string, string, string]
+--- @param verbose? boolean
 --- @return [string,string?][]
-local function build_msg(m)
+local function build_msg(m, verbose)
   local time, kind, ctx, msg = m[1], m[2], m[3], m[4]
   local hl = sev_to_hl[kind]
+
+  -- Scrub some messages
+  if not verbose and ctx == 'run_job' then
+    ctx = 'git'
+    --- @type string
+    msg = msg
+      :gsub(vim.pesc('--no-pager --no-optional-locks --literal-pathspecs -c gc.auto=0 '), '')
+      :gsub(vim.pesc('-c core.quotepath=off'), '')
+
+    local cwd = vim.uv.cwd()
+    if cwd then
+      --- @type string
+      msg = msg:gsub(vim.pesc(cwd), '$CWD')
+    end
+  end
+
   return {
     { string.format('%.2f ', time), 'Comment' },
     { kind:upper():sub(1, 1), hl },
@@ -193,11 +210,12 @@ function M.show()
   end
 end
 
+--- @param verbose? boolean
 --- @return string[]?
-function M.get()
+function M.get(verbose)
   local r = {} --- @type string[]
   for _, m in ipairs(M.messages) do
-    local e = build_msg(m)
+    local e = build_msg(m, verbose)
     local e1 = {} --- @type string[]
     for _, x in ipairs(e) do
       e1[#e1 + 1] = x[1]

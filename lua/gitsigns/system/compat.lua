@@ -290,7 +290,6 @@ end
 --- @param on_exit? fun(out: vim.SystemCompleted)
 --- @return vim.SystemObj
 local function system(cmd, opts, on_exit)
-  local __FUNC__ = 'run_job'
   vim.validate({
     cmd = { cmd, 'table' },
     opts = { opts, 'table', true },
