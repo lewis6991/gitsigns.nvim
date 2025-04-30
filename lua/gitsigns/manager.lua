@@ -10,12 +10,13 @@ local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
 
 local cache = require('gitsigns.cache').cache
-local config = require('gitsigns.config').config
+local Config = require('gitsigns.config')
+local config = Config.config
 
 local api = vim.api
 
-local signs_normal --- @type Gitsigns.Signs
-local signs_staged --- @type Gitsigns.Signs?
+local signs_normal = Signs.new()
+local signs_staged = Signs.new(true)
 
 --- @class gitsigns.manager
 local M = {}
@@ -374,6 +375,10 @@ M.update = throttle_by_id(function(bufnr)
   bcache.update_lock = nil
 end, true)
 
+M.update_debounced = debounce_trailing(function()
+  return config.update_debounce
+end, async.create(1, M.update))
+
 --- @param bufnr integer
 --- @param keep_signs? boolean
 function M.detach(bufnr, keep_signs)
@@ -388,21 +393,15 @@ end
 
 function M.reset_signs()
   -- Remove all signs
-  if signs_normal then
-    signs_normal:reset()
-  end
-  if signs_staged then
-    signs_staged:reset()
-  end
+  signs_normal:reset()
+  signs_staged:reset()
 end
 
---- @param _cb 'win'
---- @param _winid integer
 --- @param bufnr integer
 --- @param topline integer
 --- @param botline_guess integer
 --- @return false?
-local function on_win(_cb, _winid, bufnr, topline, botline_guess)
+local function on_win(bufnr, topline, botline_guess)
   local bcache = cache[bufnr]
   if not bcache or not bcache.hunks then
     return false
@@ -416,28 +415,41 @@ local function on_win(_cb, _winid, bufnr, topline, botline_guess)
   end
 end
 
---- @param _cb 'line'
---- @param _winid integer
---- @param bufnr integer
---- @param row integer
-local function on_line(_cb, _winid, bufnr, row)
-  apply_word_diff(bufnr, row)
-end
-
 function M.setup()
   -- Calling this before any await calls will stop nvim's intro messages being
   -- displayed
   api.nvim_set_decoration_provider(ns, {
-    on_win = on_win,
-    on_line = on_line,
+    on_win = function(_, _winid, bufnr, topline, botline)
+      return on_win(bufnr, topline, botline)
+    end,
+    on_line = function(_, _winid, bufnr, row)
+      apply_word_diff(bufnr, row)
+    end,
   })
 
-  signs_normal = Signs.new(config.signs)
-  if config.signs_staged_enable then
-    signs_staged = Signs.new(config.signs_staged, 'staged')
-  end
+  Config.subscribe({ 'signcolumn', 'numhl', 'linehl', 'show_deleted' }, function()
+    -- Remove all signs
+    M.reset_signs()
 
-  M.update_debounced = debounce_trailing(config.update_debounce, async.create(1, M.update))
+    for k, v in pairs(cache) do
+      v:invalidate(true)
+      M.update_debounced(k)
+    end
+  end)
+
+  api.nvim_create_autocmd('OptionSet', {
+    group = 'gitsigns',
+    pattern = { 'fileformat', 'bomb', 'eol' },
+    callback = function(args)
+      local buf = args.buf
+      local bcache = cache[buf]
+      if not bcache then
+        return
+      end
+      bcache:invalidate(true)
+      M.update_debounced(buf)
+    end,
+  })
 end
 
 return M

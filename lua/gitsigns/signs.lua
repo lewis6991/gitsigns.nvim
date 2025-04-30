@@ -1,6 +1,7 @@
 local api = vim.api
 
-local config = require('gitsigns.config').config
+local Config = require('gitsigns.config')
+local config = Config.config
 
 --- @class Gitsigns.Sign
 --- @field type Gitsigns.SignType
@@ -8,10 +9,9 @@ local config = require('gitsigns.config').config
 --- @field lnum integer
 
 --- @class Gitsigns.Signs
---- @field hls table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field name string
 --- @field group string
---- @field config table<string,Gitsigns.SignConfig>
+--- @field config table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field ns integer
 local M = {}
 
@@ -57,16 +57,14 @@ function M:add(bufnr, signs, filter)
         text = cs.text .. count_char
       end
 
-      local hls = self.hls[s.type]
-
       local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, self.ns, s.lnum - 1, 0, {
         id = s.lnum,
         sign_text = config.signcolumn and text or '',
         priority = config.sign_priority,
-        sign_hl_group = hls.hl,
-        number_hl_group = config.numhl and hls.numhl or nil,
-        line_hl_group = config.linehl and hls.linehl or nil,
-        cursorline_hl_group = config.culhl and hls.culhl or nil,
+        sign_hl_group = cs.hl,
+        number_hl_group = config.numhl and cs.numhl or nil,
+        line_hl_group = config.linehl and cs.linehl or nil,
+        cursorline_hl_group = config.culhl and cs.culhl or nil,
       })
 
       if not ok and config.debug_mode then
@@ -102,34 +100,16 @@ function M:reset()
   end
 end
 
--- local function capitalise_word(x: string): string
---    return x:sub(1, 1):upper()..x:sub(2)
--- end
-
-function M.new(cfg, name)
+--- @param staged? boolean
+--- @return Gitsigns.Signs
+function M.new(staged)
   local __FUNC__ = 'signs.init'
-
-  -- Add when config.signs.*.[hl,numhl,linehl] are removed
-  -- for _, t in ipairs {
-  --    'add',
-  --    'change',
-  --    'delete',
-  --    'topdelete',
-  --    'changedelete',
-  --    'untracked',
-  -- } do
-  --    local hl = string.format('GitSigns%s%s', name, capitalise_word(t))
-  --    obj.hls[t] = {
-  --       hl       = hl,
-  --       numhl   = hl..'Nr',
-  --       linehl = hl..'Ln',
-  --    }
-  -- end
-
   local self = setmetatable({}, { __index = M })
-  self.config = cfg
-  self.hls = name == 'staged' and config.signs_staged or config.signs
-  self.group = 'gitsigns_signs_' .. (name or '')
+  self.config = staged and config.signs_staged or config.signs
+  Config.subscribe(staged and 'signs_staged' or 'signs', function()
+    self.config = staged and config.signs_staged or config.signs
+  end)
+  self.group = 'gitsigns_signs_' .. (staged and 'staged' or '')
   self.ns = api.nvim_create_namespace(self.group)
   return self
 end
