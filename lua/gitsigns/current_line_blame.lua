@@ -3,7 +3,8 @@ local debounce = require('gitsigns.debounce')
 local util = require('gitsigns.util')
 
 local cache = require('gitsigns.cache').cache
-local config = require('gitsigns.config').config
+local Config = require('gitsigns.config')
+local config = Config.config
 local schema = require('gitsigns.config').schema
 local error_once = require('gitsigns.message').error_once
 
@@ -76,7 +77,7 @@ end
 ---@param blame_info Gitsigns.BlameInfoPublic
 ---@return [string, string][]
 local function get_blame_virt_text(bufnr, blame_info)
-  local git_obj = assert(cache[bufnr]).git_obj
+  local git_obj = cache[bufnr].git_obj
   local use_nc = blame_info.author == 'Not Committed Yet'
 
   local clb_formatter = use_nc and config.current_line_blame_formatter_nc
@@ -116,8 +117,14 @@ local function handle_blame_info(bufnr, lnum, blame_info, opts)
 
   if opts.virt_text then
     local virt_text_pos = opts.virt_text_pos
+    -- If right_align and the text is too long, move to eol so the line isn't
+    -- obscured and the blame is truncated.
     if virt_text_pos == 'right_align' then
-      if api.nvim_strwidth(virt_text_str) > (win_width() - line_len(bufnr, lnum)) then
+      local win = vim.fn.bufwinid(bufnr)
+      if
+        not vim.wo[win].wrap
+        and api.nvim_strwidth(virt_text_str) > (win_width() - line_len(bufnr, lnum))
+      then
         virt_text_pos = 'eol'
       end
     end
@@ -155,7 +162,7 @@ end
 --- Update function, must be called in async context
 --- @async
 --- @param bufnr integer
-local function update0(bufnr)
+local function update(bufnr)
   async.schedule()
   if not api.nvim_buf_is_valid(bufnr) then
     return
@@ -197,17 +204,18 @@ local function update0(bufnr)
 
   if lnum ~= get_lnum(winid) then
     -- Cursor has moved during events; abort and tr-trigger another update
-    update0(bufnr)
+    update(bufnr)
     return
   end
 
   handle_blame_info(bufnr, lnum, blame_info, opts)
 end
 
-local update = async.create(1, debounce.throttle_by_id(update0))
-
---- @type fun(bufnr: integer)
-M.update = nil
+-- TODO(lewis6991): opts.delay is always defined as the schema set
+-- deep_extend=true
+M.update = debounce.debounce_trailing(function()
+  return config.current_line_blame_opts.delay
+end, async.create(1, debounce.throttle_by_id(update)))
 
 function M.setup()
   for k in pairs(cache) do
@@ -220,21 +228,18 @@ function M.setup()
     return
   end
 
-  local opts = config.current_line_blame_opts
-  -- TODO(lewis6991): opts.delay is always defined as the schema set
-  -- deep_extend=true
-  M.update = debounce.debounce_trailing(assert(opts.delay), update)
-
   -- show current buffer line blame immediately
   M.update(api.nvim_get_current_buf())
 
   local update_events = { 'BufEnter', 'CursorMoved', 'CursorMovedI' }
   local reset_events = { 'InsertEnter', 'BufLeave' }
+
   if vim.fn.exists('#WinResized') == 1 then
     -- For nvim 0.9+
     update_events[#update_events + 1] = 'WinResized'
   end
-  if opts.use_focus then
+
+  if config.current_line_blame_opts.use_focus then
     update_events[#update_events + 1] = 'FocusGained'
     reset_events[#reset_events + 1] = 'FocusLost'
   end
@@ -262,5 +267,9 @@ function M.setup()
     end,
   })
 end
+
+Config.subscribe('current_line_blame', function()
+  M.setup()
+end)
 
 return M

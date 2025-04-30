@@ -99,27 +99,18 @@ end
 local setup = util.once(function()
   manager.setup()
 
-  api.nvim_create_autocmd('OptionSet', {
+  require('gitsigns.current_line_blame').setup()
+
+  api.nvim_create_autocmd('BufFilePre', {
     group = 'gitsigns',
-    pattern = { 'fileformat', 'bomb', 'eol' },
-    callback = function()
-      local buf = vim.api.nvim_get_current_buf()
-      local bcache = cache[buf]
-      if not bcache then
-        return
-      end
-      bcache:invalidate(true)
-      async
-        .arun(function()
-          manager.update(buf)
-        end)
-        :raise_on_error()
+    desc = 'Gitsigns: detach when changing buffer names',
+    callback = function(args)
+      M.detach(args.buf)
     end,
   })
 
-  require('gitsigns.current_line_blame').setup()
-
   api.nvim_create_autocmd('VimLeavePre', {
+    desc = 'Gitsigns: detach from all buffers',
     group = 'gitsigns',
     callback = M.detach_all,
   })
@@ -233,7 +224,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   local git_obj = git.Obj.new(file, revision, encoding, ctx.gitdir, ctx.toplevel)
 
   if not git_obj and not passed_ctx then
-    for _, wt in ipairs(config.worktrees or {}) do
+    for _, wt in ipairs(config.worktrees) do
       git_obj = git.Obj.new(file, revision, encoding, wt.gitdir, wt.toplevel)
       if git_obj and git_obj.object_name then
         dprintf('Using worktree %s', vim.inspect(wt))

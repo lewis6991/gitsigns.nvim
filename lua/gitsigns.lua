@@ -1,8 +1,6 @@
 local api = vim.api
 local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
-local debounce_trailing = require('gitsigns.debounce').debounce_trailing
-
 --- @class gitsigns.main
 local M = {}
 
@@ -24,17 +22,22 @@ end
 --- @return string? gitdir
 --- @return string? head
 local function get_gitdir_and_head()
-  local cwd = assert(uv.cwd())
+  local cwd = uv.cwd()
+  if not cwd then
+    return
+  end
 
   -- Run on the main loop to avoid:
   --   https://github.com/LazyVim/LazyVim/discussions/3407#discussioncomment-9622211
   async().schedule()
 
   -- Look in the cache first
-  for _, bcache in pairs(require('gitsigns.cache').cache) do
-    local repo = bcache.git_obj.repo
-    if repo.toplevel == cwd then
-      return repo.gitdir, repo.abbrev_head
+  if package.loaded['gitsigns.cache'] then
+    for _, bcache in pairs(require('gitsigns.cache').cache) do
+      local repo = bcache.git_obj.repo
+      if repo.toplevel == cwd then
+        return repo.gitdir, repo.abbrev_head
+      end
     end
   end
 
@@ -65,6 +68,8 @@ local function setup_cwd_watcher(cwd, towatch)
     -- Already watching
     return
   end
+
+  local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 
   local update_head = debounce_trailing(
     100,
@@ -173,18 +178,6 @@ local function setup_attach()
     end,
   })
 
-  -- If the buffer name is about to change, then detach
-  api.nvim_create_autocmd('BufFilePre', {
-    group = 'gitsigns',
-    desc = 'Gitsigns: detach when changing buffer names',
-    callback = function(args)
-      if not config().auto_attach then
-        return
-      end
-      require('gitsigns.attach').detach(args.buf)
-    end,
-  })
-
   --- vimpgrep creates and deletes lots of buffers so attaching to each one will
   --- waste lots of resource and slow down vimgrep.
   api.nvim_create_autocmd({ 'QuickFixCmdPre', 'QuickFixCmdPost' }, {
@@ -209,6 +202,7 @@ local function setup_attach()
 end
 
 local function setup_cwd_head()
+  local debounce_trailing = require('gitsigns.debounce').debounce_trailing
   local update_cwd_head_debounced = debounce_trailing(100, function()
     async().arun(update_cwd_head)
   end)

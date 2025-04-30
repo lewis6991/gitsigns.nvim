@@ -606,7 +606,7 @@ signs_staged_enable                      *gitsigns-config-signs_staged_enable*
     When enabled the signs defined in |git-config-signs_staged|` are used.
 
 worktrees                                          *gitsigns-config-worktrees*
-      Type: `table`, Default: `nil`
+      Type: `table`, Default: `{}`
 
       Detached working trees.
 
