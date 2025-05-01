@@ -67,7 +67,7 @@
 --- @field show_deleted boolean
 --- @field sign_priority integer
 --- @field _on_attach_pre? fun(bufnr: integer, callback: fun(_: table))
---- @field on_attach? fun(bufnr: integer)
+--- @field on_attach? fun(bufnr: integer): boolean?
 --- @field watch_gitdir { enable: boolean, follow_files: boolean }
 --- @field max_file_length integer
 --- @field update_debounce integer
