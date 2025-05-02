@@ -204,7 +204,7 @@ end
 local function setup_cwd_head()
   local debounce_trailing = require('gitsigns.debounce').debounce_trailing
   local update_cwd_head_debounced = debounce_trailing(100, function()
-    async().arun(update_cwd_head)
+    async().arun(update_cwd_head):raise_on_error()
   end)
 
   update_cwd_head_debounced()

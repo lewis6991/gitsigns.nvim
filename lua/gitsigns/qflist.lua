@@ -56,7 +56,7 @@ local function buildqflist(target)
       end
     end
 
-    local repo = git.Repo.get(assert((uv.cwd())))
+    local repo = git.Repo.get(assert(uv.cwd()))
     if repo and not repos[repo.gitdir] then
       repos[repo.gitdir] = repo
     end

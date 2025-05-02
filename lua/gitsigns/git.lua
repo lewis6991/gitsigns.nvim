@@ -2,15 +2,7 @@ local log = require('gitsigns.debug.log')
 local async = require('gitsigns.async')
 local util = require('gitsigns.util')
 local Repo = require('gitsigns.git.repo')
-
-local git_command = require('gitsigns.git.cmd')
-
-local error_pats = {
-  worktree = vim.pesc('fatal: this operation must be run in a work tree'),
-  not_in_git = vim.pesc('fatal: not a git repository (or any of the parent directories)'),
-  path_does_not_exist = "fatal: path .* does not exist in '.*'",
-  path_exist_on_disk_but_not_in = "fatal: path .* exists on disk, but not in '.*'",
-}
+local errors = require('gitsigns.git.errors')
 
 local M = {}
 
@@ -44,19 +36,6 @@ local Obj = {}
 Obj.__index = Obj
 
 M.Obj = Obj
-
---- @param dir string
---- @return boolean
-local function in_git_dir(dir)
-  local stdout = git_command({
-    'rev-parse',
-    '--is-inside-git-dir',
-  }, {
-    text = true,
-    cwd = vim.uv.fs_stat(dir) and dir or nil,
-  })
-  return stdout[1] == 'true'
-end
 
 --- @async
 --- @param revision? string
@@ -115,8 +94,8 @@ function Obj:get_show_text(revision)
     revision
     and stderr
     and (
-      stderr:match(error_pats.path_does_not_exist)
-      or stderr:match(error_pats.path_exist_on_disk_but_not_in)
+      stderr:match(errors.e.path_does_not_exist)
+      or stderr:match(errors.e.path_exist_on_disk_but_not_in)
     )
   then
     --- @cast relpath -?
@@ -256,19 +235,15 @@ end
 --- @param toplevel string?
 --- @return Gitsigns.GitObj?
 function Obj.new(file, revision, encoding, gitdir, toplevel)
-  if not util.is_abspath(file) and toplevel then
-    file = toplevel .. util.path_sep .. file
+  local cwd = toplevel
+  if not cwd and util.is_abspath(file) then
+    cwd = vim.fn.fnamemodify(file, ':h')
   end
 
-  local dir = util.dirname(file)
-  local repo, err = Repo.get(dir, gitdir, toplevel)
+  local repo, err = Repo.get(cwd, gitdir, toplevel)
   if not repo then
     log.dprint('Not in git repo')
-    if
-      err
-      and not err:match(error_pats.not_in_git)
-      and not (err:match(error_pats.worktree) and in_git_dir(dir))
-    then
+    if err and not err:match(errors.e.not_in_git) and not err:match(errors.e.worktree) then
       log.eprint(err)
     end
     return
@@ -288,6 +263,8 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
   if not info then
     return
   end
+
+  file = vim.fs.joinpath(repo.toplevel, info.relpath)
 
   local self = setmetatable({}, Obj)
   self.repo = repo
