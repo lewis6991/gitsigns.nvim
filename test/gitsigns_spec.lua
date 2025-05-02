@@ -192,7 +192,6 @@ describe('gitsigns (with screen)', function()
             .. vim.pesc('rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD')
         ),
         n('new: Not in git repo'),
-        p('run_job: git .* ' .. vim.pesc('rev-parse --is-inside-git-dir')),
         n('attach(1): Empty git obj'),
       })
     end)
@@ -874,5 +873,22 @@ describe('gitsigns attach', function()
     eq(scratch, git_obj.repo.toplevel)
     eq(scratch .. '/.git', git_obj.repo.gitdir)
     eq('main', git_obj.repo.abbrev_head)
+  end)
+
+  it('does not error when attaching to files out of tree (#1297)', function()
+    setup_test_repo()
+    setup_gitsigns(config)
+
+    exec_lua(function(scratch0)
+      vim.env.GIT_DIR = scratch0 .. '/.git'
+      vim.env.GIT_WORK_TREE = scratch0
+    end, scratch)
+
+    edit(fn.tempname())
+
+    match_debug_messages({
+      p("get_info: '.*' is outside worktree '.*'"),
+      'attach(1): Empty git obj',
+    })
   end)
 end)

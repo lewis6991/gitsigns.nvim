@@ -2,6 +2,7 @@ local async = require('gitsigns.async')
 local git_command = require('gitsigns.git.cmd')
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
+local errors = require('gitsigns.git.errors')
 
 local check_version = require('gitsigns.git.version').check
 
@@ -116,13 +117,13 @@ end
 local repo_cache = setmetatable({}, { __mode = 'v' })
 
 --- @async
---- @param dir string
+--- @param cwd? string
 --- @param gitdir? string
 --- @param toplevel? string
 --- @return Gitsigns.Repo? repo
 --- @return string? err
-function M.get(dir, gitdir, toplevel)
-  local info, err = M.get_info(dir, gitdir, toplevel)
+function M.get(cwd, gitdir, toplevel)
+  local info, err = M.get_info(cwd, gitdir, toplevel)
   if not info then
     return nil, err
   end
@@ -175,33 +176,6 @@ local function process_abbrev_head(gitdir, head_str, cwd)
   return short_sha
 end
 
---- @param dir? string
---- @param gitdir? string
---- @param worktree? string
---- @return string? cwd
---- @return string? err
-local function get_cmd_cwd(dir, gitdir, worktree)
-  if gitdir and worktree then
-    -- Do not need cwd
-    return
-  end
-
-  if not dir then
-    if gitdir then
-      return util.dirname(gitdir)
-    end
-    return nil, 'No directory provided and no gitdir or worktree'
-  end
-
-  if not uv.fs_stat(dir) then
-    local cwd = assert(vim.fn.getcwd(0, 0))
-    log.dprintf("'%s' does not exist, not setting cwd, defaulting to cwd '%s'", dir, cwd)
-    return cwd
-  end
-
-  return dir
-end
-
 --- @async
 --- @param dir? string
 --- @param gitdir? string
@@ -218,11 +192,6 @@ function M.get_info(dir, gitdir, worktree)
   -- Explicitly fallback to env vars for better debug
   gitdir = gitdir or vim.env.GIT_DIR
   worktree = worktree or vim.env.GIT_WORK_TREE
-
-  local cwd, err = get_cmd_cwd(dir, gitdir, worktree)
-  if err then
-    return nil, err
-  end
 
   -- gitdir and worktree must be provided together from `man git`:
   -- > Specifying the location of the ".git" directory using this option (or GIT_DIR environment
@@ -246,11 +215,12 @@ function M.get_info(dir, gitdir, worktree)
     'HEAD',
   }, {
     ignore_error = true,
-    cwd = cwd,
+    -- Worktree may be a relative path, so don't set cwd when it is provided.
+    cwd = not worktree and dir or nil,
   })
 
   -- If the repo has no commits yet, rev-parse will fail. Ignore this error.
-  if code > 0 and stderr and stderr:match("fatal: ambiguous argument 'HEAD'") then
+  if code > 0 and stderr and stderr:match(errors.e.ambiguous_head) then
     code = 0
   end
 
@@ -265,6 +235,12 @@ function M.get_info(dir, gitdir, worktree)
 
   local toplevel_r = stdout[1]
   local gitdir_r = stdout[2]
+
+  if dir and not vim.startswith(dir, toplevel_r) then
+    log.dprintf("'%s' is outside worktree '%s'", dir, toplevel_r)
+    -- outside of worktree
+    return
+  end
 
   if not has_abs_gd then
     gitdir_r = assert(uv.fs_realpath(gitdir_r))
@@ -364,13 +340,7 @@ function M:ls_files(file)
 
   -- ignore_error for the cases when we run:
   --    git ls-files --others exists/nonexist
-  if
-    code > 0
-    and (
-      not stderr
-      or not stderr:match('^warning: could not open directory .*: No such file or directory')
-    )
-  then
+  if code > 0 and (not stderr or not stderr:match(errors.w.path_does_not_exist)) then
     return nil, stderr or tostring(code)
   end
 
