@@ -236,7 +236,9 @@ function M.get_info(dir, gitdir, worktree)
   local toplevel_r = stdout[1]
   local gitdir_r = stdout[2]
 
-  if dir and not vim.startswith(dir, toplevel_r) then
+  -- On windows, git will emit paths with `/` but dir may contain `\` so need to
+  -- normalize.
+  if dir and not vim.startswith(vim.fs.normalize(dir), toplevel_r) then
     log.dprintf("'%s' is outside worktree '%s'", dir, toplevel_r)
     -- outside of worktree
     return
