@@ -10,7 +10,7 @@ local api = vim.api
 --- @field foldopen boolean
 --- @field navigation_message boolean
 --- @field greedy boolean
---- @field preview boolean
+--- @field preview? boolean
 --- @field count integer
 --- @field target 'unstaged'|'staged'|'all'
 

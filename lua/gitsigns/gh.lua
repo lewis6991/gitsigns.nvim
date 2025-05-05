@@ -20,6 +20,7 @@ local function gh_cmd(args, cwd)
     log.eprintf('Could not find gh command')
     return
   end
+  --- @diagnostic disable-next-line: param-type-not-match EmmyLuaLs/emmylua-analyzer-rust#594
   local obj = asystem({ 'gh', unpack(args) }, { cwd = cwd })
 
   if obj.code ~= 0 then

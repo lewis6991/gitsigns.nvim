@@ -319,7 +319,7 @@ M.update = throttle_by_id(function(bufnr)
 
   local buftext = util.buf_lines(bufnr)
 
-  bcache.hunks = run_diff(assert(bcache.compare_text), buftext)
+  bcache.hunks = run_diff(bcache.compare_text, buftext)
   if not bcache:schedule() then
     return
   end

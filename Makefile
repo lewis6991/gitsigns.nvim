@@ -121,7 +121,7 @@ luals-check: $(LUALS) $(NVIM_TEST)
 			--configpath=../.luarc.json \
 			--check=lua
 
-EMMYLUA_SHA := 4570dea3
+EMMYLUA_SHA := 8a629f23
 EMMYLUA := deps/emmylua_analyzer-rust-$(EMMYLUA_SHA)
 
 .PHONY: emmylua
@@ -144,6 +144,6 @@ $(NVIM_TEST_RUNTIME): $(NVIM_TEST)
 .PHONY: emmylua-check
 emmylua-check: $(EMMYLUA) $(NVIM_TEST_RUNTIME)
 	VIMRUNTIME=$(NVIM_TEST_RUNTIME) \
-		emmylua_check . \
+		$(EMMYLUA)/target/release/emmylua_check . \
 		--ignore 'test/**/*' \
 		--ignore gen_help.lua

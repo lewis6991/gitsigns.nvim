@@ -554,9 +554,9 @@ end
 
 --- @param hunk Gitsigns.Hunk.Hunk
 --- @param fileformat string
---- @return Gitsigns.LineSpec
+--- @return Gitsigns.LineSpec[]
 function M.linespec_for_hunk(hunk, fileformat)
-  local hls = {} --- @type [string, Gitsigns.HlMark[], boolean?][][]
+  local hls = {} --- @type [string, string|Gitsigns.HlMark[], string?][][]
 
   local removed, added = hunk.removed.lines, hunk.added.lines
 
@@ -570,19 +570,13 @@ function M.linespec_for_hunk(hunk, fileformat)
     { sym = '+', lines = added, hl = 'GitSignsAddPreview' },
   }) do
     for _, l in ipairs(spec.lines) do
-      hls[#hls + 1] = {
-        {
-          spec.sym .. l,
-          {
-            {
-              start_row = 0,
-              hl_group = spec.hl,
-              end_row = 1, -- Highlight whole line
-            },
-          },
-          false,
-        },
+      --- @type Gitsigns.HlMark
+      local mark = {
+        start_row = 0,
+        hl_group = spec.hl,
+        end_row = 1, -- Highlight whole line
       }
+      hls[#hls + 1] = { { spec.sym .. l, { mark } } }
     end
   end
 

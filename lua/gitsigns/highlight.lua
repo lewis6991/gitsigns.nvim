@@ -201,7 +201,7 @@ vim.list_extend(M.hls, {
 })
 
 ---@param name string
----@return table<string, any>
+---@return vim.api.keyset.get_hl_info
 local function get_hl(name)
   return api.nvim_get_hl(0, { name = name, link = false })
 end
@@ -219,7 +219,7 @@ local function is_hl_set(hl_name)
   return color ~= nil
 end
 
---- @param x? number
+--- @param x? integer
 --- @param factor number
 --- @return integer?
 local function cmix(x, factor)

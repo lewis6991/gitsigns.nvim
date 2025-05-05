@@ -65,7 +65,7 @@ jobs:
       - name: Lint
         run: make stylua-check
 
-  luals:
+  emmylua:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -77,14 +77,22 @@ jobs:
 
       - uses: leafo/gh-actions-luarocks@v4
 
-      - name: Download nvim-test
+      - name: Install nvim-test
         run: make nvim-test
 
-      - name: Download LuaLS
-        run: make luals
+      - name: Cache EmmyLua
+        id: cache-emmylua
+        uses: actions/cache@v4
+        with:
+          path: deps/emmylua_analyzer-rust-*
+          key: emmylua-${{ hashFiles('Makefile') }}
+
+      - name: Install EmmyLua
+        if: steps.cache-emmylua.outputs.cache-hit != 'true'
+        run: make emmylua
 
       - name: Lint
-        run: make luals-check
+        run: make emmylua-check NVIM_TEST_VERSION=nightly
 
   doc:
     runs-on: ubuntu-latest

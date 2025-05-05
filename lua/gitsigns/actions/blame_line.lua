@@ -1,5 +1,4 @@
 local Hunks = require('gitsigns.hunks')
-local async = require('gitsigns.async')
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local log = require('gitsigns.debug.log')
