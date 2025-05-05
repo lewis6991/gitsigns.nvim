@@ -407,6 +407,9 @@ function M.cygpath(path, mode)
     '--' .. (mode or 'windows'),
     path,
   }, { text = true }).stdout
+
+  async.schedule()
+
   return assert(vim.split(stdout, '\n')[1])
 end
 
