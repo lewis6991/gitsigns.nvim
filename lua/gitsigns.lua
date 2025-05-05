@@ -75,7 +75,8 @@ local function setup_cwd_watcher(cwd, towatch)
     100,
     async().async(function()
       local git = require('gitsigns.git')
-      local new_head = git.Repo.get_info(cwd).abbrev_head
+      local info = git.Repo.get_info(cwd) or {}
+      local new_head = info.abbrev_head
       async().schedule()
       if new_head ~= vim.g.gitsigns_head then
         vim.g.gitsigns_head = new_head

@@ -264,7 +264,9 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
     return
   end
 
-  file = vim.fs.joinpath(repo.toplevel, info.relpath)
+  if info.relpath then
+    file = vim.fs.joinpath(repo.toplevel, info.relpath)
+  end
 
   local self = setmetatable({}, Obj)
   self.repo = repo

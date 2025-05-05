@@ -413,6 +413,7 @@ function M.cygpath(path, mode)
   return assert(vim.split(stdout, '\n')[1])
 end
 
+--- @async
 --- @param path string
 --- @return boolean
 function M.is_abspath(path)
