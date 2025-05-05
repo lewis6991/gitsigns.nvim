@@ -6,7 +6,7 @@ local api = vim.api
 --- @field hidden? boolean
 --- @field fg_factor? number
 
-local nvim10 = vim.fn.has('nvim-0.10') > 0
+local nvim10 = vim.fn.has('nvim-0.10') == 1
 
 local M = {}
 
