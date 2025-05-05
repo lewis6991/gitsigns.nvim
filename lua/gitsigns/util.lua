@@ -200,7 +200,9 @@ end
 local function is_dos(xs)
   -- Do not check CR at EOF
   for i = 1, #xs - 1 do
-    if xs[i]:sub(-1) ~= '\r' then
+    local x = xs[i]
+    --- @cast x -?
+    if x:sub(-1) ~= '\r' then
       return false
     end
   end
@@ -219,7 +221,9 @@ function M.strip_cr(xs0)
   -- all lines end with '\r', need to strip
   local xs = vim.deepcopy(xs0)
   for i = 1, #xs do
-    xs[i] = xs[i]:sub(1, -2)
+    local x = xs[i]
+    --- @cast x -?
+    xs[i] = x:sub(1, -2)
   end
   return xs
 end
@@ -413,6 +417,7 @@ function M.cygpath(path, mode)
   return assert(vim.split(stdout, '\n')[1])
 end
 
+--- @async
 --- @param path string
 --- @return boolean
 function M.is_abspath(path)

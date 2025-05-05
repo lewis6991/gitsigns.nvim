@@ -57,7 +57,7 @@ end
 --- @return integer
 local function line_len(bufnr, lnum)
   local line = api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, true)[1]
-  return api.nvim_strwidth(line)
+  return api.nvim_strwidth(assert(line))
 end
 
 --- @param fmt string
@@ -73,11 +73,11 @@ local function default_formatter(fmt)
   end
 end
 
----@param bufnr integer
+---@param bcache Gitsigns.CacheEntry
 ---@param blame_info Gitsigns.BlameInfoPublic
 ---@return [string, string][]
-local function get_blame_virt_text(bufnr, blame_info)
-  local git_obj = cache[bufnr].git_obj
+local function get_blame_virt_text(bcache, blame_info)
+  local git_obj = bcache.git_obj
   local use_nc = blame_info.author == 'Not Committed Yet'
 
   local clb_formatter = use_nc and config.current_line_blame_formatter_nc
@@ -88,6 +88,7 @@ local function get_blame_virt_text(bufnr, blame_info)
     if ok then
       return res
     end
+    --- @cast res string
 
     local nc_sfx = use_nc and '_nc' or ''
     error_once(
@@ -102,14 +103,15 @@ local function get_blame_virt_text(bufnr, blame_info)
   return default_formatter(clb_formatter)(git_obj.repo.username, blame_info)
 end
 
+--- @param bcache Gitsigns.CacheEntry
 --- @param bufnr integer
 --- @param lnum integer
 --- @param blame_info Gitsigns.BlameInfo
 --- @param opts Gitsigns.CurrentLineBlameOpts
-local function handle_blame_info(bufnr, lnum, blame_info, opts)
+local function handle_blame_info(bcache, bufnr, lnum, blame_info, opts)
   blame_info = util.convert_blame_info(blame_info)
 
-  local virt_text = get_blame_virt_text(bufnr, blame_info)
+  local virt_text = get_blame_virt_text(bcache, blame_info)
   local virt_text_str = flatten_virt_text(virt_text)
 
   vim.b[bufnr].gitsigns_blame_line_dict = blame_info
@@ -208,7 +210,7 @@ local function update(bufnr)
     return
   end
 
-  handle_blame_info(bufnr, lnum, blame_info, opts)
+  handle_blame_info(bcache, bufnr, lnum, blame_info, opts)
 end
 
 -- TODO(lewis6991): opts.delay is always defined as the schema set

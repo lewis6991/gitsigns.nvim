@@ -249,7 +249,7 @@ end
 --- @return boolean
 local function is_fugitive_diff_window(name)
   return vim.startswith(name, 'fugitive://')
-    and vim.fn.exists('*FugitiveParse')
+    and vim.fn.exists('*FugitiveParse') == 1
     and vim.fn.FugitiveParse(name)[1] ~= ':'
 end
 

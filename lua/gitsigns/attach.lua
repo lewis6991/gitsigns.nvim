@@ -221,6 +221,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   end
 
   local revision = ctx.base or config.base
+  assert(not vim.in_fast_event())
   local git_obj = git.Obj.new(file, revision, encoding, ctx.gitdir, ctx.toplevel)
 
   if not git_obj and not passed_ctx then
