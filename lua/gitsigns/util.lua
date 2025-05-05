@@ -8,12 +8,6 @@ function M.path_exists(path)
   return uv.fs_stat(path) ~= nil
 end
 
---- @param file string
---- @return string
-function M.dirname(file)
-  return file:match(string.format('^(.+)%s[^%s]+', M.path_sep, M.path_sep))
-end
-
 --- @param path string
 --- @return string[]
 function M.file_lines(path)

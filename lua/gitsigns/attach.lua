@@ -150,7 +150,7 @@ local function get_buf_context(bufnr)
       return nil, 'Non-normal buffer'
     end
 
-    local file_dir = util.dirname(bufname)
+    local file_dir = vim.fs.dirname(bufname)
     if not file_dir or not util.path_exists(file_dir) then
       return nil, 'Not a path'
     end
