@@ -1,19 +1,19 @@
 local pcall = copcall or pcall
 
---- @param ... any
---- @return {[integer]: any, n: integer}
+--- @generic T
+--- @param ... T...
+--- @return [T...] & { n: integer }
 local function pack_len(...)
   return { n = select('#', ...), ... }
 end
 
 --- like unpack() but use the length set by F.pack_len if present
---- @param t? { [integer]: any, n?: integer }
---- @param first? integer
---- @return ...any
+--- @generic T, Start: integer, End: integer
+--- @param t T & { n?: End }
+--- @param first? Start
+--- @return std.Unpack<T, Start, End>
 local function unpack_len(t, first)
-  if t then
-    return unpack(t, first or 1, t.n or table.maxn(t))
-  end
+  return unpack(t --[[@as T]], first or 1, t.n or table.maxn(t --[[@as T]]))
 end
 
 --- @class Gitsigns.async
@@ -39,8 +39,8 @@ end
 
 --- @alias Gitsigns.async.CallbackFn fun(...: any): Gitsigns.async.Handle?
 
---- @class Gitsigns.async.Task : Gitsigns.async.Handle
---- @field package _callbacks table<integer,fun(err?: any, ...: any)>
+--- @class Gitsigns.async.Task<R> : Gitsigns.async.Handle
+--- @field package _callbacks table<integer,fun(err?: any, ...:R...)>
 --- @field package _callback_pos integer
 --- @field private _thread thread
 ---
@@ -55,7 +55,7 @@ end
 ---
 --- Result of the task.
 --- Must use `await` to get the result.
---- @field private _result? any[]
+--- @field private _result? R[]
 local Task = {}
 Task.__index = Task
 
@@ -65,6 +65,7 @@ Task.__index = Task
 function Task._new(func)
   local thread = coroutine.create(func)
 
+  --- @type Gitsigns.async.Task
   local self = setmetatable({
     _closing = false,
     _thread = thread,
@@ -83,7 +84,7 @@ function Task:await(callback)
     callback('closing')
   elseif self:_completed() then -- TODO(lewis6991): test
     -- Already finished or closed
-    callback(self._err, unpack_len(self._result))
+    callback(self._err, unpack_len(self._result or {}))
   else
     self._callbacks[self._callback_pos] = callback
     self._callback_pos = self._callback_pos + 1
@@ -134,7 +135,7 @@ function Task:pwait(timeout)
   elseif self._err then
     return false, self._err
   else
-    return true, unpack_len(self._result)
+    return true, unpack_len(assert(self._result))
   end
 end
 
@@ -209,7 +210,7 @@ end
 
 --- @private
 --- @param err? any
---- @param result? {[integer]: any, n: integer}
+--- @param result? any[] & { n: integer }
 function Task:_finish(err, result)
   self._current_child = nil
   self._err = err
@@ -218,8 +219,8 @@ function Task:_finish(err, result)
 
   local errs = {} --- @type string[]
   for _, cb in pairs(self._callbacks) do
-    --- @type boolean, string
-    local ok, cb_err = pcall(cb, err, unpack_len(result))
+    --- @type boolean
+    local ok, cb_err = pcall(cb, err, unpack_len(result or {}))
     if not ok then
       errs[#errs + 1] = cb_err
     end
@@ -287,6 +288,7 @@ end
 
 --- @param ... any
 function Task:_resume(...)
+  --- @diagnostic disable-next-line: assign-type-mismatch
   --- @type [boolean, string|Gitsigns.async.CallbackFn]
   local ret = pack_len(coroutine.resume(self._thread, ...))
   local stat = ret[1]
@@ -350,8 +352,9 @@ end
 --- -- Since uv functions have sync versions. You can just do:
 --- local stat = vim.fs_stat('foo.txt')
 --- ```
---- @param func function
---- @param ... any
+--- @generic T
+--- @param func async fun(...:T...)
+--- @param ... T...
 --- @return Gitsigns.async.Task
 function M.run(func, ...)
   local task = Task._new(func)
@@ -376,7 +379,6 @@ end
 --- @return any ...
 local function await_task(task)
   --- @param callback fun(err?: string, ...: any)
-  --- @return Gitsigns.async.Task
   local res = pack_len(coroutine.yield(function(callback)
     task:await(callback)
     return task
@@ -392,12 +394,13 @@ local function await_task(task)
   return unpack_len(res, 2)
 end
 
---- Asynchronous blocking wait
 --- @async
+--- Asynchronous blocking wait
+--- @generic T, R
 --- @param argc integer
---- @param fun Gitsigns.async.CallbackFn
---- @param ... any func arguments
---- @return any ...
+--- @param fun fun(...:T..., cb: fun(...:R...))
+--- @param ... T...
+--- @return R......
 local function await_cbfun(argc, fun, ...)
   local args = pack_len(...)
 
@@ -406,6 +409,7 @@ local function await_cbfun(argc, fun, ...)
   return coroutine.yield(function(callback)
     args[argc] = callback
     args.n = math.max(args.n, argc)
+    --- @diagnostic disable-next-line: missing-parameter
     return fun(unpack_len(args))
   end)
 end
@@ -468,10 +472,11 @@ end
 --- end)
 --- ```
 ---
---- local atimer = async.wrap(
+--- local atimer = async.awrap(
+--- @generic T, R
 --- @param argc integer
---- @param func Gitsigns.async.CallbackFn
---- @return async function
+--- @param func fun(...:T..., cb: fun(...:R...)): any
+--- @return async fun(...:T...):R...
 function M.wrap(argc, func)
   assert(type(argc) == 'number')
   assert(type(func) == 'function')
@@ -488,10 +493,10 @@ end
 --- If argc is provided, the function will have an additional callback function
 --- as the last argument which will be called when the function completes.
 ---
---- @generic F: function
+--- @generic T
 --- @param argc integer
---- @param func F
---- @return F
+--- @param func async fun(...:T...)
+--- @return fun(...:T...): Gitsigns.async.Task
 function M.create(argc, func)
   assert(type(argc) == 'number')
   assert(type(func) == 'function')
@@ -503,7 +508,7 @@ function M.create(argc, func)
 
     task:raise_on_error()
 
-    --- @type fun(err:string?, ...:any)
+    --- @type fun(err:string?, ...:any)?
     local callback = argc and select(argc + 1, ...) or nil
     if callback and type(callback) == 'function' then
       task:await(callback)

@@ -89,6 +89,7 @@ local function get_blame_virt_text(bcache, blame_info)
       --- @cast res -string
       return res
     end
+    --- @cast res string
 
     local nc_sfx = use_nc and '_nc' or ''
     error_once(
@@ -99,6 +100,8 @@ local function get_blame_virt_text(bcache, blame_info)
     --- @type string
     clb_formatter = schema.current_line_blame_formatter.default
   end
+
+  --- @cast clb_formatter string EmmyLuaLs/emmylua-analyzer-rust#372
 
   return default_formatter(clb_formatter)(git_obj.repo.username, blame_info)
 end

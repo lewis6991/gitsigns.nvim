@@ -11,21 +11,30 @@ local function getencdec()
   return m.encode, m.decode
 end
 
---- @param f function
---- @param args any[]
---- @param cb function(...)
-local new_thread = async.wrap(3, function(f, args, cb)
-  local encode, decode = getencdec()
-  uv.new_work(function(getencdec_bc, fd, argse)
-    local getencdec0 = getencdec or assert(loadstring(getencdec_bc))
-    local encode0, decode0 = getencdec0()
-    local args0 = decode0(argse) --[[@as any[] ]]
-    local f0 = assert(loadstring(fd))
-    return encode0(f0(unpack(args0)))
-  end, function(r)
-    cb(decode(r))
-  end):queue(string.dump(getencdec), string.dump(f), encode(args))
-end)
+--- @async
+--- @generic T, R
+--- @param f fun(...:T...): R...
+--- @param ... T...
+--- @return R...
+local function new_thread(f, ...)
+  local args = { ... } --- @type T[]
+  return async.await(1, function(cb)
+    local encode, decode = getencdec()
+    local worker = uv.new_work(function(getencdec_bc, f_bc, argse)
+      local getencdec0 = getencdec or assert(loadstring(getencdec_bc --[[@as string]]))
+      local encode0, decode0 = getencdec0()
+      local args0 = decode0(argse) --[[@as any[] ]]
+      local f0 = assert(loadstring(f_bc))
+      return encode0(f0(unpack(args0)))
+    end, function(r)
+      cb(decode(r --[[@as string]]))
+    end)
+
+    local getencdec_bc = string.dump(getencdec)
+    local f_bc = string.dump(f)
+    worker:queue(getencdec_bc, f_bc, encode(args))
+  end)
+end
 
 local M = {}
 
@@ -61,7 +70,7 @@ end
 --- @param linematch? boolean
 --- @return Gitsigns.RawHunk[]
 local function run_diff_async(a, b, opts, linematch)
-  return new_thread(run_diff, { a, b, opts, linematch })
+  return new_thread(run_diff, a, b, opts, linematch)
 end
 
 --- @param fa string[]
@@ -112,6 +121,7 @@ local gaps_between_regions = 5
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @return Gitsigns.Hunk.Hunk[]
 local function denoise_hunks(hunks)
+  ---@diagnostic disable-next-line: assign-type-mismatch
   -- Denoise the hunks
   local ret = { hunks[1] }
   for j = 2, #hunks do

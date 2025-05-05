@@ -22,6 +22,10 @@
     "insertSpace": true
   },
   "workspace": {
+    "ignoreDir": [
+      ".luarocks",
+      "deps"
+    ],
     "enableReindex": true
   }
 }

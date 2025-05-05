@@ -1,5 +1,5 @@
 --- @class (exact) Gitsigns.SchemaElem
---- @field type string|string[]|fun(x:any): boolean
+--- @field type type|type[]|fun(x:any): boolean
 --- @field type_help? string
 --- @field default_change? fun(cb: fun()) Function to refresh the config value
 --- @field deep_extend? boolean
@@ -842,7 +842,7 @@ local nvim011 = vim.fn.has('nvim-0.11') == 1
 
 --- @param k string
 --- @param v any
---- @param ty string|fun(v:any):boolean
+--- @param ty type|fun(v:any):boolean
 local function validate(k, v, ty)
   if nvim011 then
     --- @diagnostic disable-next-line: redundant-parameter,param-type-mismatch
@@ -866,6 +866,7 @@ function M.build(user_config)
     else
       local ty = s.type
       if type(ty) == 'string' or type(ty) == 'function' then
+        --- @diagnostic disable-next-line: param-type-not-match EmmyLuaLs/emmylua-analyzer-rust#585
         validate(k, v, ty)
       end
       if s.deprecated then
