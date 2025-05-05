@@ -115,7 +115,7 @@ local function render(blame, win, main_win, buf_sha)
     })
 
     if commit_lines[i] then
-      local width = #(assert(lines[i]))
+      local width = string.len(lines[i])
       api.nvim_buf_set_extmark(bufnr, ns, i - 1, width - 10, {
         end_col = width,
         hl_group = 'Title',

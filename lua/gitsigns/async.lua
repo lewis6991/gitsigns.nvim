@@ -314,9 +314,8 @@ function Task:status()
   return coroutine.status(self._thread)
 end
 
---- @generic T
---- @param func async fun(...:T...)
---- @param ... T...
+--- @param func function
+--- @param ... any
 --- @return Gitsigns.async.Task
 function M.arun(func, ...)
   local task = Task._new(func)
@@ -325,9 +324,6 @@ function M.arun(func, ...)
 end
 
 --- Create an async function
---- @generic T
---- @param func async fun(...:T...)
---- @return fun(...:T...): Gitsigns.async.Task
 function M.async(func)
   return function(...)
     return M.arun(func, ...)
@@ -432,10 +428,10 @@ end
 --- If argc is provided, the function will have an additional callback function
 --- as the last argument which will be called when the function completes.
 ---
---- @generic T
+--- @generic F: function
 --- @param argc integer
---- @param func async fun(...:T...)
---- @return fun(...:T...): Gitsigns.async.Task
+--- @param func F
+--- @return F
 function M.create(argc, func)
   assert(type(argc) == 'number')
   assert(type(func) == 'function')

@@ -146,12 +146,9 @@ function M.run_word_diff(removed, added)
   end
 
   for i = 1, #removed do
-    local rmd = removed[i] --- @cast rmd -?
-    local add = added[i] --- @cast add -?
-
     -- pair lines by position
-    local a = table.concat(vim.split(rmd, ''), '\n')
-    local b = table.concat(vim.split(add, ''), '\n')
+    local a = table.concat(vim.split(removed[i], ''), '\n')
+    local b = table.concat(vim.split(added[i], ''), '\n')
 
     local hunks = {} --- @type Gitsigns.Hunk.Hunk[]
     for _, r in ipairs(run_diff(a, b, config.diff_opts)) do
