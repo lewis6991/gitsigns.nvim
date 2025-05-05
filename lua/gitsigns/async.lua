@@ -7,9 +7,11 @@ local function pack_len(...)
 end
 
 --- like unpack() but use the length set by F.pack_len if present
---- @param t? { [integer]: any, n?: integer }
---- @param first? integer
+--- @generic T, Start: integer, End: integer
+--- @param t? { [integer]: T, n?: End }
+--- @param first? Start
 --- @return ...any
+--- @return std.Unpack<T[], Start, End>?
 local function unpack_len(t, first)
   if t then
     return unpack(t, first or 1, t.n or table.maxn(t))
@@ -39,8 +41,8 @@ end
 
 --- @alias Gitsigns.async.CallbackFn fun(...: any): Gitsigns.async.Handle?
 
---- @class Gitsigns.async.Task : Gitsigns.async.Handle
---- @field package _callbacks table<integer,fun(err?: any, ...: any)>
+--- @class Gitsigns.async.Task<R> : Gitsigns.async.Handle
+--- @field package _callbacks table<integer,fun(err?: any, ...:R...)>
 --- @field package _callback_pos integer
 --- @field private _thread thread
 ---
@@ -55,7 +57,7 @@ end
 ---
 --- Result of the task.
 --- Must use `await` to get the result.
---- @field private _result? any[]
+--- @field private _result? R[]
 local Task = {}
 Task.__index = Task
 
@@ -65,6 +67,7 @@ Task.__index = Task
 function Task._new(func)
   local thread = coroutine.create(func)
 
+  --- @type Gitsigns.async.Task
   local self = setmetatable({
     _closing = false,
     _thread = thread,
@@ -134,7 +137,8 @@ function Task:pwait(timeout)
   elseif self._err then
     return false, self._err
   else
-    return true, unpack_len(self._result)
+    ---@diagnostic disable-next-line: param-type-not-match
+    return true, unpack_len(assert(self._result))
   end
 end
 
@@ -218,7 +222,7 @@ function Task:_finish(err, result)
 
   local errs = {} --- @type string[]
   for _, cb in pairs(self._callbacks) do
-    --- @type boolean, string
+    --- @type boolean
     local ok, cb_err = pcall(cb, err, unpack_len(result))
     if not ok then
       errs[#errs + 1] = cb_err
@@ -287,6 +291,7 @@ end
 
 --- @param ... any
 function Task:_resume(...)
+  --- @diagnostic disable-next-line: assign-type-mismatch
   --- @type [boolean, string|Gitsigns.async.CallbackFn]
   local ret = pack_len(coroutine.resume(self._thread, ...))
   local stat = ret[1]
@@ -350,8 +355,9 @@ end
 --- -- Since uv functions have sync versions. You can just do:
 --- local stat = vim.fs_stat('foo.txt')
 --- ```
---- @param func function
---- @param ... any
+--- @generic T
+--- @param func async fun(...:T...)
+--- @param ... T...
 --- @return Gitsigns.async.Task
 function M.arun(func, ...)
   local task = Task._new(func)
@@ -359,9 +365,9 @@ function M.arun(func, ...)
   return task
 end
 
---- @class async.TaskFun
---- @field package _fun fun(...: any): any
---- @operator call(...): any
+--- @class async.TaskFun<R>
+--- @field package _fun fun(...: any): R...
+--- @operator call: any
 local TaskFun = {}
 TaskFun.__index = TaskFun
 
@@ -370,8 +376,9 @@ function TaskFun:__call(...)
 end
 
 --- Create an async function
---- @param fun function
---- @return async.TaskFun
+--- @generic T
+--- @param fun async fun(...:T...)
+--- @return fun(...:T...): Gitsigns.async.Task
 function M.async(fun)
   return setmetatable({ _fun = fun }, TaskFun)
 end
@@ -389,9 +396,9 @@ function M.status(task)
 end
 
 --- @async
---- @generic R1, R2, R3, R4
---- @param fun fun(callback: fun(r1: R1, r2: R2, r3: R3, r4: R4)): any?
---- @return R1, R2, R3, R4
+--- @generic R
+--- @param fun fun(callback: fun(...:R...)): any?
+--- @return ... R...
 local function yield(fun)
   assert(type(fun) == 'function', 'Expected function')
   return coroutine.yield(fun)
@@ -402,7 +409,6 @@ end
 --- @return any ...
 local function await_task(task)
   --- @param callback fun(err?: string, ...: any)
-  --- @return function
   local res = pack_len(yield(function(callback)
     task:await(callback)
     return task
@@ -418,11 +424,13 @@ local function await_task(task)
   return unpack_len(res, 2)
 end
 
+--- @async
 --- Asynchronous blocking wait
+--- @generic T, R
 --- @param argc integer
---- @param fun Gitsigns.async.CallbackFn
---- @param ... any func arguments
---- @return any ...
+--- @param fun fun(...:T..., cb: fun(...:R...))
+--- @param ... T...
+--- @return R......
 local function await_cbfun(argc, fun, ...)
   local args = pack_len(...)
 
@@ -522,9 +530,10 @@ end
 --- ```
 ---
 --- local atimer = async.awrap(
+--- @generic T, R
 --- @param argc integer
---- @param func Gitsigns.async.CallbackFn
---- @return async function
+--- @param func fun(...:T..., cb: fun(...:R...)): any
+--- @return async fun(...:T...):R...
 function M.awrap(argc, func)
   assert(type(argc) == 'number')
   assert(type(func) == 'function')
@@ -541,10 +550,10 @@ end
 --- If argc is provided, the function will have an additional callback function
 --- as the last argument which will be called when the function completes.
 ---
---- @generic F: function
+--- @generic T
 --- @param argc integer
---- @param func F
---- @return F
+--- @param func async fun(...:T...)
+--- @return fun(...:T...): Gitsigns.async.Task
 function M.create(argc, func)
   assert(type(argc) == 'number')
   assert(type(func) == 'function')
@@ -556,7 +565,7 @@ function M.create(argc, func)
 
     task:raise_on_error()
 
-    --- @type fun(err:string?, ...:any)
+    --- @type fun(err:string?, ...:any)?
     local callback = argc and select(argc + 1, ...) or nil
     if callback and type(callback) == 'function' then
       task:await(callback)
@@ -571,6 +580,7 @@ end
 if vim.schedule then
   --- An async function that when called will yield to the Neovim scheduler to be
   --- able to call the API.
+  --- @type async fun()
   M.schedule = M.awrap(1, vim.schedule)
 end
 
@@ -632,11 +642,11 @@ end
 --- ```
 ---
 --- @param tasks Gitsigns.async.Task[]
---- @return fun(): (integer?, any?, ...)
+--- @return fun(): (integer?, any?, any?)
 function M.iter(tasks)
   assert(running(), 'Not in async context')
 
-  local results = {} --- @type [integer, any, ...][]
+  local results = {} --- @type [integer, any, any][]
 
   -- Iter blocks in an async context so only one waiter is needed
   local waiter = nil
@@ -678,6 +688,7 @@ function M.iter(tasks)
   end
 
   return gc_fun(
+    --- @param callback fun(integer?, any?, any?)
     M.awrap(1, function(callback)
       if next(results) then
         local res = table.remove(results, 1)

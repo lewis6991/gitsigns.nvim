@@ -120,3 +120,30 @@ luals-check: $(LUALS) $(NVIM_TEST)
 		$(LUALS)/bin/lua-language-server \
 			--configpath=../.luarc.json \
 			--check=lua
+
+EMMYLUA_SHA := 71b066e2
+EMMYLUA := deps/emmylua_analyzer-rust-$(EMMYLUA_SHA)
+
+.PHONY: emmylua
+emmylua: $(EMMYLUA)
+
+$(EMMYLUA):
+	git clone \
+		--filter=blob:none \
+		https://github.com/EmmyLuaLs/emmylua-analyzer-rust.git \
+		$(EMMYLUA)
+	git -C $@ checkout $(EMMYLUA_SHA)
+	cd $@ && cargo build --release --package emmylua_check
+
+
+NVIM_TEST_RUNTIME=$(XDG_DATA_HOME)/nvim-test/nvim-test-$(NVIM_TEST_VERSION)/share/nvim/runtime
+
+$(NVIM_TEST_RUNTIME): $(NVIM_TEST)
+	$^/bin/nvim-test --init
+
+.PHONY: emmylua-check
+emmylua-check: $(EMMYLUA) $(NVIM_TEST_RUNTIME)
+	VIMRUNTIME=$(NVIM_TEST_RUNTIME) \
+		emmylua_check . \
+		--ignore 'test/**/*' \
+		--ignore gen_help.lua

@@ -32,7 +32,7 @@ local function parse_git_path(name)
   assert(proto and gitdir and tail)
   local plugin = proto:sub(1, 1):upper() .. proto:sub(2, -2)
 
-  local commit, rel_path --- @type string?, string
+  local commit, rel_path --- @type string?, string?
   if plugin == 'Gitsigns' then
     commit = tail:match('^(:?[^:]+):')
     rel_path = tail:match('^:?[^:]+:(.*)')
@@ -214,6 +214,7 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   end
 
   local revision = ctx.base or config.base
+  assert(not vim.in_fast_event())
   local git_obj = git.Obj.new(file, revision, encoding, ctx.gitdir, ctx.toplevel)
 
   if not git_obj and not passed_ctx then

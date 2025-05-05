@@ -2,10 +2,7 @@ local async = require('gitsigns.async')
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
 
-local system = require('gitsigns.system').system
-
---- @type fun(cmd: string[], opts?: vim.SystemOpts): vim.SystemCompleted
-local asystem = async.awrap(3, system)
+local asystem = async.awrap(3, require('gitsigns.system').system)
 
 --- @class Gitsigns.Git.JobSpec : vim.SystemOpts
 --- @field ignore_error? boolean

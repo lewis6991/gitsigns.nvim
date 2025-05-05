@@ -29,6 +29,7 @@ end
 --- @return string
 local function get_hash_color(sha)
   local r, g, b = sha:match('(%x)%x(%x)%x(%x)')
+  assert(r and g and b, 'Invalid hash color')
   local color = mod(r) * 0x10000 + mod(g) * 0x100 + mod(b)
 
   if hash_colors[color] then
@@ -115,7 +116,7 @@ local function render(blame, win, main_win, buf_sha)
     })
 
     if commit_lines[i] then
-      local width = string.len(lines[i])
+      local width = #(assert(lines[i]))
       api.nvim_buf_set_extmark(bufnr, ns, i - 1, width - 10, {
         end_col = width,
         hl_group = 'Title',
