@@ -244,7 +244,9 @@ end
 --- @param hl string
 --- @param hldef Gitsigns.Hldef
 local function derive(hl, hldef)
-  for _, d in ipairs(hldef) do
+  for _, d in
+    ipairs(hldef --[[@as string[] ]])
+  do
     if is_hl_set(d) then
       dprintf('Deriving %s from %s', hl, d)
       if hldef.fg_factor then

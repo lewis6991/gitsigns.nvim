@@ -59,6 +59,7 @@ Task.__index = Task
 function Task._new(func)
   local thread = coroutine.create(func)
 
+  --- @type Gitsigns.async.Task
   local self = setmetatable({
     _closing = false,
     _thread = thread,
@@ -118,6 +119,7 @@ function Task:pwait(timeout)
   elseif self._err then
     return false, self._err
   else
+    ---@diagnostic disable-next-line: param-type-not-match
     -- TODO(lewis6991): test me
     return true, unpack_len(assert(self._result))
   end
@@ -200,7 +202,7 @@ function Task:_finish(err, result)
 
   local errs = {} --- @type string[]
   for _, cb in pairs(self._callbacks) do
-    --- @type boolean, string
+    --- @type boolean
     local ok, cb_err = pcall(cb, err, unpack_len(result))
     if not ok then
       errs[#errs + 1] = cb_err
@@ -314,8 +316,9 @@ function Task:status()
   return coroutine.status(self._thread)
 end
 
---- @param func function
---- @param ... any
+--- @generic T
+--- @param func async fun(...:T...)
+--- @param ... T...
 --- @return Gitsigns.async.Task
 function M.arun(func, ...)
   local task = Task._new(func)
@@ -324,6 +327,9 @@ function M.arun(func, ...)
 end
 
 --- Create an async function
+--- @generic T
+--- @param func async fun(...:T...)
+--- @return fun(...:T...): Gitsigns.async.Task
 function M.async(func)
   return function(...)
     return M.arun(func, ...)
@@ -343,9 +349,9 @@ function M.status(task)
 end
 
 --- @async
---- @generic R1, R2, R3, R4
---- @param fun fun(callback: fun(r1: R1, r2: R2, r3: R3, r4: R4)): any?
---- @return R1, R2, R3, R4
+--- @generic R
+--- @param fun fun(callback: fun(...:R...)): any?
+--- @return ... R...
 local function yield(fun)
   assert(type(fun) == 'function', 'Expected function')
   return coroutine.yield(fun)
@@ -356,7 +362,6 @@ end
 --- @return any ...
 local function await_task(task)
   --- @param callback fun(err?: string, ...: any)
-  --- @return function
   local res = pack_len(yield(function(callback)
     task:await(callback)
     return task
@@ -428,10 +433,10 @@ end
 --- If argc is provided, the function will have an additional callback function
 --- as the last argument which will be called when the function completes.
 ---
---- @generic F: function
+--- @generic T
 --- @param argc integer
---- @param func F
---- @return F
+--- @param func async fun(...:T...)
+--- @return fun(...:T...): Gitsigns.async.Task
 function M.create(argc, func)
   assert(type(argc) == 'number')
   assert(type(func) == 'function')
@@ -443,7 +448,7 @@ function M.create(argc, func)
 
     task:raise_on_error()
 
-    --- @type fun(err:string?, ...:any)
+    --- @type fun(err:string?, ...:any)?
     local callback = argc and select(argc + 1, ...) or nil
     if callback and type(callback) == 'function' then
       task:await(callback)
@@ -460,9 +465,9 @@ end
 M.schedule = M.awrap(1, vim.schedule)
 
 --- @param tasks Gitsigns.async.Task[]
---- @return fun(): (integer?, ...)
+--- @return fun(): integer?, ...
 function M.iter(tasks)
-  local results = {} --- @type [integer, ...][]
+  local results = {} --- @type [integer, any, any][]
 
   -- Iter shuold block in an async context so only one waiter is needed
   local waiter = nil
