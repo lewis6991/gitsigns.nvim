@@ -21,11 +21,7 @@
 
 --- @class (exact) Gitsigns.SignConfig
 --- @field show_count boolean
---- @field hl string
 --- @field text string
---- @field numhl string
---- @field linehl string
---- @field culhl string
 
 --- @alias Gitsigns.SignType
 --- | 'add'
@@ -204,34 +200,6 @@ local function validate_signs(x)
     return false
   end
 
-  local warnings --- @type table<string,true>?
-
-  --- @diagnostic disable-next-line:no-unknown
-  for kind, s in pairs(M.schema.signs.default) do
-    --- @diagnostic disable-next-line:no-unknown
-    for ty, v in pairs(s) do
-      if x[kind] and x[kind][ty] and vim.endswith(ty, 'hl') then
-        warnings = warnings or {}
-        local w = string.format(
-          "'signs.%s.%s' is now deprecated, please define highlight '%s' e.g:\n"
-            .. "  vim.api.nvim_set_hl(0, '%s', { link = '%s' })",
-          kind,
-          ty,
-          v,
-          v,
-          x[kind][ty]
-        )
-        warnings[w] = true
-      end
-    end
-  end
-
-  if warnings then
-    for w in vim.spairs(warnings) do
-      warn(w)
-    end
-  end
-
   return true
 end
 
@@ -242,48 +210,12 @@ M.schema = {
     type = validate_signs,
     deep_extend = true,
     default = {
-      add = {
-        hl = 'GitSignsAdd',
-        text = '┃',
-        numhl = 'GitSignsAddNr',
-        linehl = 'GitSignsAddLn',
-        culhl = 'GitSignsAddCul',
-      },
-      change = {
-        hl = 'GitSignsChange',
-        text = '┃',
-        numhl = 'GitSignsChangeNr',
-        linehl = 'GitSignsChangeLn',
-        culhl = 'GitSignsChangeCul',
-      },
-      delete = {
-        hl = 'GitSignsDelete',
-        text = '▁',
-        numhl = 'GitSignsDeleteNr',
-        linehl = 'GitSignsDeleteLn',
-        culhl = 'GitSignsDeleteCul',
-      },
-      topdelete = {
-        hl = 'GitSignsTopdelete',
-        text = '▔',
-        numhl = 'GitSignsTopdeleteNr',
-        linehl = 'GitSignsTopdeleteLn',
-        culhl = 'GitSignsTopdeleteCul',
-      },
-      changedelete = {
-        hl = 'GitSignsChangedelete',
-        text = '~',
-        numhl = 'GitSignsChangedeleteNr',
-        linehl = 'GitSignsChangedeleteLn',
-        culhl = 'GitSignsChangedeleteCul',
-      },
-      untracked = {
-        hl = 'GitSignsUntracked',
-        text = '┆',
-        numhl = 'GitSignsUntrackedNr',
-        linehl = 'GitSignsUntrackedLn',
-        culhl = 'GitSignsUntrackedCul',
-      },
+      add = { text = '┃' },
+      change = { text = '┃' },
+      delete = { text = '▁' },
+      topdelete = { text = '▔' },
+      changedelete = { text = '~' },
+      untracked = { text = '┆' },
     },
     default_help = [[{
       add          = { text = '┃' },
@@ -314,41 +246,11 @@ M.schema = {
     type = 'table',
     deep_extend = true,
     default = {
-      add = {
-        hl = 'GitSignsStagedAdd',
-        text = '┃',
-        numhl = 'GitSignsStagedAddNr',
-        linehl = 'GitSignsStagedAddLn',
-        culhl = 'GitSignsStagedAddCul',
-      },
-      change = {
-        hl = 'GitSignsStagedChange',
-        text = '┃',
-        numhl = 'GitSignsStagedChangeNr',
-        linehl = 'GitSignsStagedChangeLn',
-        culhl = 'GitSignsStagedChangeCul',
-      },
-      delete = {
-        hl = 'GitSignsStagedDelete',
-        text = '▁',
-        numhl = 'GitSignsStagedDeleteNr',
-        linehl = 'GitSignsStagedDeleteLn',
-        culhl = 'GitSignsStagedDeleteCul',
-      },
-      topdelete = {
-        hl = 'GitSignsStagedTopdelete',
-        text = '▔',
-        numhl = 'GitSignsStagedTopdeleteNr',
-        linehl = 'GitSignsStagedTopdeleteLn',
-        culhl = 'GitSignsStagedTopdeleteCul',
-      },
-      changedelete = {
-        hl = 'GitSignsStagedChangedelete',
-        text = '~',
-        numhl = 'GitSignsStagedChangedeleteNr',
-        linehl = 'GitSignsStagedChangedeleteLn',
-        culhl = 'GitSignsStagedChangedeleteCul',
-      },
+      add = { text = '┃' },
+      change = { text = '┃' },
+      delete = { text = '▁' },
+      topdelete = { text = '▔' },
+      changedelete = { text = '~' },
     },
     default_help = [[{
       add          = { text = '┃' },
