@@ -381,6 +381,16 @@ M.schema = {
     ]],
   },
 
+  split = {
+    type = 'string',
+    default = 'belowright',
+    description = [[
+      {split}: {string}. One of: 'aboveleft', 'belowright',
+      'botright', 'rightbelow', 'leftabove', 'topleft'. Defaults to
+      'belowright'.
+    ]],
+  },
+
   numhl = {
     type = 'boolean',
     default = false,

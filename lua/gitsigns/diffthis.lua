@@ -143,12 +143,14 @@ local function diffthis_rev(base, opts)
   opts = opts or {}
 
   local cwin = api.nvim_get_current_win()
+  local config = require('gitsigns.config').config
 
   vim.cmd.diffsplit({
     bufname,
     mods = {
       vertical = opts.vertical,
-      split = opts.split or 'aboveleft',
+      -- split = opts.split or 'belowright',
+      split = opts.split or config.split or 'aboveleft',
       keepalt = true,
     },
   })
