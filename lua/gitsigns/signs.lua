@@ -34,15 +34,15 @@ local km = {
 --- @param kind 'hl'|'numhl'|'linehl'|'culhl'
 --- @return string?
 function M:hl(ty, kind)
+  if kind ~= 'hl' and not config[kind] then
+    return
+  end
+
   self._hl_cache = self._hl_cache or {}
   self._hl_cache[ty] = self._hl_cache[ty] or {}
 
   if self._hl_cache[ty][kind] then
     return self._hl_cache[ty][kind]
-  end
-
-  if kind ~= 'hl' and not config[kind] then
-    return
   end
 
   local result = ('GitSigns%s%s%s'):format(self.staged and 'Staged' or '', capitalise(ty), km[kind])
