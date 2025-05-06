@@ -4,8 +4,10 @@ local is_win = vim.fn.has('win32') == 1
 
 local M = {}
 
+--- @param path? string
+--- @return boolean
 function M.path_exists(path)
-  return uv.fs_stat(path) ~= nil
+  return path ~= nil and uv.fs_stat(path) ~= nil
 end
 
 --- @param path string

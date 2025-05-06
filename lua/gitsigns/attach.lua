@@ -116,15 +116,6 @@ local setup = util.once(function()
   })
 end)
 
---- @param bufnr integer
---- @param expr string
---- @return string
-local function buf_expand(bufnr, expr)
-  return api.nvim_buf_call(bufnr, function()
-    return vim.fn.expand(expr)
-  end)
-end
-
 --- @class Gitsigns.GitContext
 --- @field file string
 --- @field toplevel? string
@@ -141,17 +132,18 @@ local function get_buf_context(bufnr)
   end
 
   local bufname = api.nvim_buf_get_name(bufnr)
-  local bufpath = uv.fs_realpath(bufname)
 
-  local rel_path, commit, gitdir_from_bufname = parse_git_path(bufpath or buf_expand(bufnr, '%:p'))
+  -- Resolve the buffer name to a real path (following symlinks) if we can,
+  local bufpath = uv.fs_realpath(bufname) or bufname
+
+  local rel_path, commit, gitdir_from_bufname = parse_git_path(bufpath)
 
   if not gitdir_from_bufname then
     if vim.bo[bufnr].buftype ~= '' then
       return nil, 'Non-normal buffer'
     end
 
-    local file_dir = vim.fs.dirname(bufname)
-    if not file_dir or not util.path_exists(file_dir) then
+    if not util.path_exists(vim.fs.dirname(bufpath)) then
       return nil, 'Not a path'
     end
   end
@@ -159,7 +151,7 @@ local function get_buf_context(bufnr)
   local gitdir_oap, toplevel_oap = on_attach_pre(bufnr)
 
   return {
-    file = rel_path or bufname,
+    file = rel_path or bufpath,
     gitdir = gitdir_oap or gitdir_from_bufname,
     toplevel = toplevel_oap,
     -- Stage buffers always compare against the common ancestor (':1')
