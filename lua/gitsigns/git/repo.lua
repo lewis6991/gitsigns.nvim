@@ -191,7 +191,7 @@ function M.get_info(dir, gitdir, worktree)
 
   -- Explicitly fallback to env vars for better debug
   gitdir = gitdir or vim.env.GIT_DIR
-  worktree = worktree or vim.env.GIT_WORK_TREE
+  worktree = worktree or vim.env.GIT_WORK_TREE or vim.fs.dirname(gitdir)
 
   -- gitdir and worktree must be provided together from `man git`:
   -- > Specifying the location of the ".git" directory using this option (or GIT_DIR environment
@@ -202,12 +202,8 @@ function M.get_info(dir, gitdir, worktree)
   -- > top-level of the working tree is, with the --work-tree=<path> option (or GIT_WORK_TREE
   -- > environment variable)
   local stdout, stderr, code = git_command({
-    gitdir and worktree and {
-      '--git-dir',
-      gitdir,
-      '--work-tree',
-      worktree,
-    },
+    gitdir and { '--git-dir', gitdir },
+    worktree and { '--work-tree', worktree },
     'rev-parse',
     '--show-toplevel',
     has_abs_gd and '--absolute-git-dir' or '--git-dir',

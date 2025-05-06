@@ -274,7 +274,9 @@ function M.run_blame(obj, contents, lnum, revision, opts)
   })
 
   if stderr then
-    error_once('Error running git-blame: ' .. stderr)
+    local msg = 'Error running git-blame: ' .. stderr
+    error_once(msg)
+    log.eprint(msg)
     return {}
   end
 
