@@ -338,7 +338,7 @@ function M:ls_files(file)
 
   -- ignore_error for the cases when we run:
   --    git ls-files --others exists/nonexist
-  if code > 0 and (not stderr or not stderr:match(errors.w.path_does_not_exist)) then
+  if code > 0 and (not stderr or not stderr:match(errors.e.path_does_not_exist)) then
     return nil, stderr or tostring(code)
   end
 
