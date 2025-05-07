@@ -292,6 +292,10 @@ This means the signs placed in the buffer reflect the changes introduced by that
 
 If installed and enabled (via `config.trouble`; defaults to true if installed), `:Gitsigns setqflist` or `:Gitsigns setloclist` will open Trouble instead of Neovim's built-in quickfix or location list windows.
 
+### [gitsigns-yadm.nvim]
+
+Companion plugin adding support for files tracked by [yadm](https://yadm.io).
+
 ## 🚫 Non-Goals
 
 ### Implement every feature in [vim-fugitive]
@@ -324,3 +328,5 @@ However a well written PR with a commitment of future support could change this.
 [vim-signify]: https://github.com/mhinz/vim-signify
 [virtual lines]: https://github.com/neovim/neovim/pull/15351
 [lspsaga.nvim]: https://github.com/glepnir/lspsaga.nvim
+[gitsigns-yadm.nvim]: https://github.com/purarue/gitsigns-yadm.nvim
+
