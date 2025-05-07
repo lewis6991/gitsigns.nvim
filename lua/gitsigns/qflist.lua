@@ -39,7 +39,7 @@ local function buildqflist(target)
   if type(target) == 'number' then
     local bufnr = target
     local bcache = cache[bufnr]
-    if not bcache then
+    if not bcache or not bcache.hunks then
       return
     end
     hunks_to_qflist(bufnr, bcache.hunks, qflist)
@@ -56,7 +56,7 @@ local function buildqflist(target)
       end
     end
 
-    local repo = git.Repo.get(assert(uv.cwd()))
+    local repo = git.Repo.get((assert(uv.cwd())))
     if repo and not repos[repo.gitdir] then
       repos[repo.gitdir] = repo
     end
