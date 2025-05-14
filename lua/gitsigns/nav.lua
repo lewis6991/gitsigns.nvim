@@ -127,6 +127,9 @@ function M.nav_hunk(direction, opts)
     line = forwards and hunk.added.start or hunk.vend
   end
 
+  -- Check if preview popup is open before moving the cursor
+  local should_preview = opts.preview or Popup.is_open('hunk') ~= nil
+
   -- Handle topdelete
   line = math.max(line, 1)
 
@@ -146,7 +149,7 @@ function M.nav_hunk(direction, opts)
 
   local Preview = require('gitsigns.preview')
 
-  if opts.preview or Popup.is_open('hunk') ~= nil then
+  if should_preview then
     -- Close the popup in case one is open which will cause it to focus the
     -- popup
     Popup.close('hunk')
