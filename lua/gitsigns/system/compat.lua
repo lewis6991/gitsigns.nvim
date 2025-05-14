@@ -31,7 +31,7 @@ end
 
 --- @param signal integer|string
 function SystemObj:kill(signal)
-  self._state.handle:kill(signal)
+  assert(self._state.handle):kill(signal)
 end
 
 --- @package
@@ -61,7 +61,7 @@ function SystemObj:wait(timeout)
     end, nil, true)
   end
 
-  return state.result
+  return assert(state.result)
 end
 
 --- @param data string[]|string|nil
@@ -173,6 +173,7 @@ end
 --- @return string[]?
 local function setup_env(env, clear_env)
   if clear_env then
+    ---@diagnostic disable-next-line: return-type-mismatch FIXME
     return env
   end
 
@@ -290,6 +291,7 @@ end
 --- @param on_exit? fun(out: vim.SystemCompleted)
 --- @return vim.SystemObj
 local function system(cmd, opts, on_exit)
+  ---@diagnostic disable-next-line: param-type-not-match FIXME
   vim.validate({
     cmd = { cmd, 'table' },
     opts = { opts, 'table', true },
@@ -314,12 +316,11 @@ local function system(cmd, opts, on_exit)
     stderr_data = stderr_data,
   }
 
-  --- @diagnostic disable-next-line:missing-fields
-  state.handle, state.pid = spawn(cmd[1], {
+  --- @diagnostic disable-next-line:missing-fields, param-type-not-match
+  state.handle, state.pid = spawn(assert(cmd[1]), {
     args = vim.list_slice(cmd, 2),
     stdio = { stdin, stdout, stderr },
     cwd = opts.cwd,
-    --- @diagnostic disable-next-line:assign-type-mismatch
     env = setup_env(opts.env, opts.clear_env),
     detached = opts.detach,
     hide = true,
@@ -347,7 +348,7 @@ local function system(cmd, opts, on_exit)
   if opts.timeout then
     state.timer = timer_oneshot(opts.timeout, function()
       if state.handle and state.handle:is_active() then
-        --- @diagnostic disable-next-line: invisible
+        --- @diagnostic disable-next-line: access-invisible
         obj:_timeout()
       end
     end)
