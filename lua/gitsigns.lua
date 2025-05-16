@@ -73,6 +73,7 @@ local function setup_cwd_watcher(cwd, towatch)
 
   local update_head = debounce_trailing(
     100,
+    --- @diagnostic disable-next-line: param-type-mismatch
     async().async(function()
       local git = require('gitsigns.git')
       local info = git.Repo.get_info(cwd) or {}
