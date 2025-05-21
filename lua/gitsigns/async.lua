@@ -7,9 +7,11 @@ local function pack_len(...)
 end
 
 --- like unpack() but use the length set by F.pack_len if present
---- @param t? { [integer]: any, n?: integer }
---- @param first? integer
+--- @generic T, Start: integer, End: integer
+--- @param t? { [integer]: T, n?: End }
+--- @param first? Start
 --- @return ...any
+--- @return std.Unpack<T[], Start, End>?
 local function unpack_len(t, first)
   if t then
     return unpack(t, first or 1, t.n or table.maxn(t))
@@ -39,8 +41,8 @@ end
 
 --- @alias Gitsigns.async.CallbackFn fun(...: any): Gitsigns.async.Handle?
 
---- @class Gitsigns.async.Task : Gitsigns.async.Handle
---- @field package _callbacks table<integer,fun(err?: any, ...: any)>
+--- @class Gitsigns.async.Task<R> : Gitsigns.async.Handle
+--- @field package _callbacks table<integer,fun(err?: any, ...:R...)>
 --- @field package _callback_pos integer
 --- @field private _thread thread
 ---
@@ -55,7 +57,7 @@ end
 ---
 --- Result of the task.
 --- Must use `await` to get the result.
---- @field private _result? any[]
+--- @field private _result? R[]
 local Task = {}
 Task.__index = Task
 
@@ -362,8 +364,8 @@ function M.arun(func, ...)
   return task
 end
 
---- @class async.TaskFun
---- @field package _fun fun(...: any): any
+--- @class async.TaskFun<R>
+--- @field package _fun fun(...: any): R...
 --- @operator call: any
 local TaskFun = {}
 TaskFun.__index = TaskFun
@@ -529,7 +531,7 @@ end
 --- @generic T
 --- @generic R
 --- @param argc integer
---- @param func fun(...:T..., cb: fun(...:R...)): Gitsigns.async.Handle?
+--- @param func fun(...:T..., cb?: fun(...:R...)): Gitsigns.async.Handle?
 --- @return async fun(...:T...):R...
 function M.awrap(argc, func)
   assert(type(argc) == 'number')
@@ -577,6 +579,7 @@ end
 if vim.schedule then
   --- An async function that when called will yield to the Neovim scheduler to be
   --- able to call the API.
+  --- @type async fun()
   M.schedule = M.awrap(1, vim.schedule)
 end
 

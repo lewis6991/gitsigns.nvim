@@ -26,6 +26,7 @@ local M = {}
 --- @field vertical? boolean
 --- @field split? boolean
 --- @field global? boolean
+--- @field [integer] any
 
 --- @class Gitsigns.CmdParams
 --- @field range integer
