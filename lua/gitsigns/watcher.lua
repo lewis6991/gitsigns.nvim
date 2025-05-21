@@ -29,7 +29,7 @@ local function handle_moved(bufnr, old_relpath)
     git_obj.relpath = new_name
     git_obj.file = git_obj.repo.toplevel .. '/' .. new_name
   elseif git_obj.orig_relpath then
-    local orig_file = git_obj.repo.toplevel .. util.path_sep .. git_obj.orig_relpath
+    local orig_file = util.Path.join(git_obj.repo.toplevel, git_obj.orig_relpath)
     if not git_obj.repo:file_info(orig_file, git_obj.revision) then
       return
     end
@@ -42,7 +42,7 @@ local function handle_moved(bufnr, old_relpath)
     return
   end
 
-  git_obj.file = git_obj.repo.toplevel .. util.path_sep .. git_obj.relpath
+  git_obj.file = util.Path.join(git_obj.repo.toplevel, git_obj.relpath)
   bcache.file = git_obj.file
   git_obj:refresh()
   if not bcache:schedule() then

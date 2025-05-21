@@ -203,7 +203,7 @@ M.stage_hunk = mk_repeatable(async.create(2, function(range, opts)
     return
   end
 
-  if not util.path_exists(bcache.file) then
+  if not util.Path.exists(bcache.file) then
     print('Error: Cannot stage lines. Please add the file to the working tree.')
     return
   end
@@ -372,7 +372,7 @@ M.stage_buffer = async.create(0, function()
     return
   end
 
-  if not util.path_exists(bcache.git_obj.file) then
+  if not util.Path.exists(bcache.git_obj.file) then
     print('Error: Cannot stage file. Please add it to the working tree.')
     return
   end

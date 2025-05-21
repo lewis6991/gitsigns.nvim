@@ -236,7 +236,7 @@ end
 --- @return Gitsigns.GitObj?
 function Obj.new(file, revision, encoding, gitdir, toplevel)
   local cwd = toplevel
-  if not cwd and util.is_abspath(file) then
+  if not cwd and util.Path.is_abs(file) then
     cwd = vim.fn.fnamemodify(file, ':h')
   end
 
@@ -265,7 +265,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
   end
 
   if info.relpath then
-    file = vim.fs.joinpath(repo.toplevel, info.relpath)
+    file = util.Path.join(repo.toplevel, info.relpath)
   end
 
   local self = setmetatable({}, Obj)

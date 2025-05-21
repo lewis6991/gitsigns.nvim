@@ -1,5 +1,4 @@
 local Hunks = require('gitsigns.hunks')
-local util = require('gitsigns.util')
 
 local scheduler = require('gitsigns.async').schedule
 local config = require('gitsigns.config').config
@@ -33,8 +32,8 @@ function M.run_diff(text_cmp, text_buf)
     scheduler()
   end
 
-  local file_buf = util.tmpname()
-  local file_cmp = util.tmpname()
+  local file_buf = vim.fn.tempname()
+  local file_cmp = vim.fn.tempname()
 
   write_to_file(file_buf, text_buf)
   write_to_file(file_cmp, text_cmp)
