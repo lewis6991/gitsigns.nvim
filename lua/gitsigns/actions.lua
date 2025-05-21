@@ -26,6 +26,7 @@ local M = {}
 --- @field vertical? boolean
 --- @field split? boolean
 --- @field global? boolean
+--- @field [integer] any
 
 --- @class Gitsigns.CmdParams
 --- @field range integer
@@ -310,7 +311,8 @@ M.reset_buffer = function()
   end
 
   for i = #hunks, 1, -1 do
-    reset_hunk(bufnr, hunks[i])
+    local hunk = hunks[i] --[[@as Gitsigns.Hunk.Hunk]]
+    reset_hunk(bufnr, hunk)
   end
 end
 
