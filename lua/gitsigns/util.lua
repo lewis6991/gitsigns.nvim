@@ -2,13 +2,54 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 local is_win = vim.fn.has('win32') == 1
 
+--- @class Gitsigns.Util.Path
+local Path = {}
+
+--- @class Gitsigns.Util
 local M = {}
 
 --- @param path? string
 --- @return boolean
-function M.path_exists(path)
+function Path.exists(path)
   return path ~= nil and uv.fs_stat(path) ~= nil
 end
+
+--- @param path string
+--- @return boolean
+function Path.is_dir(path)
+  ---@diagnostic disable-next-line:param-type-mismatch
+  local stat = uv.fs_lstat(path)
+  if stat then
+    return stat.type == 'directory'
+  end
+  return false
+end
+
+--- @async
+--- @param path string
+--- @return boolean
+function Path.is_abs(path)
+  -- Check if the path is absolute on Windows
+  if is_win and M.cygpath(path):match('^%a:[/\\]') then
+    return true
+  end
+
+  -- Check if the path is absolute on Unix-like systems
+  return vim.startswith(path, '/')
+end
+
+function Path.join(...)
+  if vim.fs.joinpath then
+    return vim.fs.joinpath(...)
+  end
+  local path = table.concat({ ... }, '/')
+  if is_win then
+    path = path:gsub('\\', '/')
+  end
+  return (path:gsub('//+', '/'))
+end
+
+M.Path = Path
 
 --- @param path string
 --- @return string[]
@@ -128,14 +169,6 @@ function M.set_lines(bufnr, start_row, end_row, lines)
     end
   end
   vim.api.nvim_buf_set_lines(bufnr, start_row, end_row, false, lines)
-end
-
---- @return string
-function M.tmpname()
-  if is_win then
-    return vim.fn.tempname()
-  end
-  return os.tmpname()
 end
 
 --- @param time number
@@ -293,7 +326,6 @@ end
 --- @param buf string
 --- @return boolean
 function M.bufexists(buf)
-  --- @diagnostic disable-next-line:param-type-mismatch
   return vim.fn.bufexists(buf) == 1
 end
 
@@ -407,19 +439,6 @@ function M.cygpath(path, mode)
   async.schedule()
 
   return assert(vim.split(stdout, '\n')[1])
-end
-
---- @async
---- @param path string
---- @return boolean
-function M.is_abspath(path)
-  -- Check if the path is absolute on Windows
-  if is_win and M.cygpath(path):match('^%a:[/\\]') then
-    return true
-  end
-
-  -- Check if the path is absolute on Unix-like systems
-  return vim.startswith(path, '/')
 end
 
 return M

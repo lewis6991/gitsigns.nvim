@@ -490,7 +490,10 @@ describe('gitsigns (with screen)', function()
         }
 
         if not internal_diff then
-          table.insert(messages, np('run_job: git .* diff .* /tmp/lua_.* /tmp/lua_.*'))
+          table.insert(
+            messages,
+            np('run_job: git .* diff .* /tmp/nvim.runner/.* /tmp/nvim.runner/.*')
+          )
         end
 
         match_debug_messages(messages)

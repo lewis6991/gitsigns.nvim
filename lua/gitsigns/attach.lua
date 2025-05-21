@@ -4,7 +4,8 @@ local git = require('gitsigns.git')
 local Cache = require('gitsigns.cache')
 local log = require('gitsigns.debug.log')
 local manager = require('gitsigns.manager')
-local util = require('gitsigns.util')
+local Util = require('gitsigns.util')
+local Path = Util.Path
 
 local cache = Cache.cache
 local config = require('gitsigns.config').config
@@ -96,7 +97,7 @@ local function on_attach_pre(bufnr)
   return gitdir, toplevel
 end
 
-local setup = util.once(function()
+local setup = Util.once(function()
   manager.setup()
 
   require('gitsigns.current_line_blame').setup()
@@ -141,10 +142,10 @@ local function get_buf_context(bufnr)
   if not gitdir_from_bufname then
     if vim.bo[bufnr].buftype ~= '' then
       return nil, 'Non-normal buffer'
-    end
-
-    if not util.path_exists(vim.fs.dirname(bufpath)) then
+    elseif not Path.exists(vim.fs.dirname(bufpath)) then
       return nil, 'Not a path'
+    elseif Path.is_dir(bufpath) then
+      return nil, 'Not a file'
     end
   end
 
@@ -208,8 +209,8 @@ local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
   end
 
   local file, toplevel = ctx.file, ctx.toplevel
-  if not util.is_abspath(file) and toplevel then
-    file = toplevel .. util.path_sep .. file
+  if not Path.is_abs(file) and toplevel then
+    file = Path.join(toplevel, file)
   end
 
   local revision = ctx.base or config.base

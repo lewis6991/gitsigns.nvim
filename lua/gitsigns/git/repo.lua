@@ -169,7 +169,10 @@ local function process_abbrev_head(gitdir, head_str, cwd)
     short_sha = 'HEAD'
   end
 
-  if util.path_exists(gitdir .. '/rebase-merge') or util.path_exists(gitdir .. '/rebase-apply') then
+  if
+    util.Path.exists(util.Path.join(gitdir, 'rebase-merge'))
+    or util.Path.exists(util.Path.join(gitdir, 'rebase-apply'))
+  then
     return short_sha .. '(rebasing)'
   end
 
