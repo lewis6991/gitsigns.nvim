@@ -554,7 +554,7 @@ end
 --- @param fileformat string
 --- @return Gitsigns.LineSpec
 function M.linespec_for_hunk(hunk, fileformat)
-  local hls = {} --- @type [string, Gitsigns.HlMark[]][][]
+  local hls = {} --- @type [string, Gitsigns.HlMark[], boolean?][][]
 
   local removed, added = hunk.removed.lines, hunk.added.lines
 
@@ -576,6 +576,7 @@ function M.linespec_for_hunk(hunk, fileformat)
               end_row = 1, -- Highlight whole line
             },
           },
+          false,
         },
       }
     end

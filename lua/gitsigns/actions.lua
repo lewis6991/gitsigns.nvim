@@ -620,25 +620,63 @@ local function get_blame_hunk(repo, info)
   return hunks[i], i, #hunks, hunks[i].added.start - info.orig_lnum
 end
 
---- @param is_committed boolean
---- @param full? boolean
---- @return [string, string][][]
-local function create_blame_fmt(is_committed, full)
+--- @async
+--- @param full boolean Whether to show the full commit message and hunk
+--- @param result Gitsigns.BlameInfoPublic
+--- @param repo Gitsigns.Repo
+--- @param fileformat string
+--- @return Gitsigns.LineSpec
+local function create_blame_linespec(full, result, repo, fileformat)
+  local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
+
   if not is_committed then
     return {
-      { { '<author>', 'Label' } },
+      { { result.author, 'Label' } },
     }
   end
 
-  return {
+  --- @type Gitsigns.LineSpec
+  local ret = {
     {
-      { '<abbrev_sha> ', 'Directory' },
-      { '<author> ', 'MoreMsg' },
-      { '(<author_time:%Y-%m-%d %H:%M>)', 'Label' },
+      { result.abbrev_sha .. ' ', 'Directory' },
+      { result.author .. ' ', 'MoreMsg' },
+      { util.expand_format('(<author_time:%Y-%m-%d %H:%M>)', result), 'Label' },
       { ':', 'NormalFloat' },
     },
-    { { full and '<body>' or '<summary>', 'NormalFloat' } },
   }
+
+  if not full then
+    ret[#ret + 1] = { { result.summary, 'NormalFloat' } }
+    return ret
+  end
+
+  local body0 = repo:command({ 'show', '-s', '--format=%B', result.sha }, { text = true })
+  local body = table.concat(body0, '\n')
+  ret[#ret + 1] = { { body, 'NormalFloat' } }
+
+  local hunk, hunk_no, num_hunks, guess_offset = get_blame_hunk(repo, result)
+
+  local hunk_title = {
+    { ('Hunk %d of %d'):format(hunk_no, num_hunks), 'Title' },
+    { ' ' .. hunk.head, 'LineNr' },
+  }
+
+  if guess_offset then
+    hunk_title[#hunk_title + 1] = {
+      (' (guessed: %s%d offset from original line)'):format(
+        guess_offset >= 0 and '+' or '',
+        guess_offset
+      ),
+      'WarningMsg',
+    }
+  end
+
+  vim.list_extend(ret, {
+    hunk_title,
+    unpack(Hunks.linespec_for_hunk(hunk, fileformat)),
+  })
+
+  return ret
 end
 
 --- Run git blame on the current line and show the results in a
@@ -679,7 +717,7 @@ M.blame_line = async.create(1, function(opts)
 
   local fileformat = vim.bo[bufnr].fileformat
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local result = bcache:get_blame(lnum, opts)
+  local info = bcache:get_blame(lnum, opts)
   pcall(function()
     loading:close()
   end)
@@ -688,48 +726,15 @@ M.blame_line = async.create(1, function(opts)
     return
   end
 
-  result = util.convert_blame_info(assert(result))
+  local result = util.convert_blame_info(assert(info))
 
-  local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
-
-  local blame_linespec = create_blame_fmt(is_committed, opts.full)
-
-  if is_committed and opts.full then
-    local body = bcache.git_obj.repo:command(
-      { 'show', '-s', '--format=%B', result.sha },
-      { text = true }
-    )
-    local hunk, hunk_no, num_hunks, guess_offset = get_blame_hunk(bcache.git_obj.repo, result)
-
-    result.hunk_no = hunk_no
-    result.body = body
-    result.num_hunks = num_hunks
-    result.hunk_head = hunk.head
-
-    local hunk_title =
-      { { 'Hunk <hunk_no> of <num_hunks>', 'Title' }, { ' <hunk_head>', 'LineNr' } }
-
-    if guess_offset then
-      hunk_title[#hunk_title + 1] = {
-        (' (guessed: %s%d offset from original line)'):format(
-          guess_offset >= 0 and '+' or '',
-          guess_offset
-        ),
-        'WarningMsg',
-      }
-    end
-
-    vim.list_extend(blame_linespec, {
-      hunk_title,
-      unpack(Hunks.linespec_for_hunk(hunk, fileformat)),
-    })
-  end
+  local blame_linespec = create_blame_linespec(opts.full, result, bcache.git_obj.repo, fileformat)
 
   if not bcache:schedule() then
     return
   end
 
-  popup.create(popup.lines_format(blame_linespec, result), config.preview_config, 'blame')
+  popup.create(blame_linespec, config.preview_config, 'blame')
 end)
 
 C.blame_line = function(args, _)
