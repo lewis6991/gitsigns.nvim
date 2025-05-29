@@ -192,6 +192,12 @@ function M.get_info(dir, gitdir, worktree)
   -- Wait for internal scheduler to settle before running command (#215)
   async.schedule()
 
+  if dir and not uv.fs_stat(dir) then
+    -- Cwd can be deleted externally, so check if it exists (see #1331)
+    log.dprintf("dir '%s' does not exist", dir)
+    return
+  end
+
   -- Explicitly fallback to env vars for better debug
   gitdir = gitdir or vim.env.GIT_DIR
   worktree = worktree or vim.env.GIT_WORK_TREE or vim.fs.dirname(gitdir)
