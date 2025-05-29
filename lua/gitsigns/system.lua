@@ -3,7 +3,7 @@ local log = require('gitsigns.debug.log')
 local M = {}
 
 -- compat module contains 0.11 fixes.
-local system = vim.fn.has('nvim-0.11') == 1 and vim.system or require('gitsigns.system.compat')
+local system = vim.fn.has('nvim-0.11.2') == 1 and vim.system or require('gitsigns.system.compat')
 
 --- @param cmd string[]
 --- @param opts vim.SystemOpts
