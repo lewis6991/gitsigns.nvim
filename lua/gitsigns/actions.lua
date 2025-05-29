@@ -1,5 +1,6 @@
 local async = require('gitsigns.async')
 local Hunks = require('gitsigns.hunks')
+local log = require('gitsigns.debug.log')
 local manager = require('gitsigns.manager')
 local message = require('gitsigns.message')
 local popup = require('gitsigns.popup')
@@ -581,7 +582,12 @@ end
 --- @async
 --- @param repo Gitsigns.Repo
 --- @param info Gitsigns.BlameInfoPublic
---- @return Gitsigns.Hunk.Hunk?, integer?, integer
+--- @return Gitsigns.Hunk.Hunk hunk
+--- @return integer hunk_index
+--- @return integer num_hunks
+--- @return integer? guess_offset If the hunk was not found at the exact line,
+---                               return the offset from the original line to the
+---                               hunk start.
 local function get_blame_hunk(repo, info)
   local a = {}
   -- If no previous so sha of blame added the file
@@ -591,7 +597,27 @@ local function get_blame_hunk(repo, info)
   local b = repo:get_show_text(info.sha .. ':' .. info.filename)
   local hunks = run_diff(a, b, false)
   local hunk, i = Hunks.find_hunk(info.orig_lnum, hunks)
-  return hunk, i, #hunks
+  if hunk and i then
+    return hunk, i, #hunks
+  end
+
+  -- git-blame output is not always correct (see #1332)
+  -- Find the closest hunk to the original line
+  log.dprintf('Could not find hunk using hunk info %s', vim.inspect(info))
+
+  local i_next = Hunks.find_nearest_hunk(info.orig_lnum, hunks, 'next')
+  local i_prev = Hunks.find_nearest_hunk(info.orig_lnum, hunks, 'prev')
+
+  if i_next and i_prev then
+    -- if there is hunk before and after, find the closest
+    local dist_n = math.abs(hunks[i_next].added.start - info.orig_lnum)
+    local dist_p = math.abs(hunks[i_prev].added.start - info.orig_lnum)
+    i = dist_n < dist_p and i_next or i_prev
+  else
+    i = assert(i_next or i_prev, 'no hunks in commit')
+  end
+
+  return hunks[i], i, #hunks, hunks[i].added.start - info.orig_lnum
 end
 
 --- @param is_committed boolean
@@ -673,16 +699,28 @@ M.blame_line = async.create(1, function(opts)
       { 'show', '-s', '--format=%B', result.sha },
       { text = true }
     )
-    local hunk, hunk_no, num_hunks = get_blame_hunk(bcache.git_obj.repo, result)
-    assert(hunk and hunk_no and num_hunks)
+    local hunk, hunk_no, num_hunks, guess_offset = get_blame_hunk(bcache.git_obj.repo, result)
 
     result.hunk_no = hunk_no
     result.body = body
     result.num_hunks = num_hunks
     result.hunk_head = hunk.head
 
+    local hunk_title =
+      { { 'Hunk <hunk_no> of <num_hunks>', 'Title' }, { ' <hunk_head>', 'LineNr' } }
+
+    if guess_offset then
+      hunk_title[#hunk_title + 1] = {
+        (' (guessed: %s%d offset from original line)'):format(
+          guess_offset >= 0 and '+' or '',
+          guess_offset
+        ),
+        'WarningMsg',
+      }
+    end
+
     vim.list_extend(blame_linespec, {
-      { { 'Hunk <hunk_no> of <num_hunks>', 'Title' }, { ' <hunk_head>', 'LineNr' } },
+      hunk_title,
       unpack(Hunks.linespec_for_hunk(hunk, fileformat)),
     })
   end
