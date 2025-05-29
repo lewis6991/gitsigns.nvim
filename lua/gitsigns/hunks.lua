@@ -395,7 +395,7 @@ end
 --- @param lnum integer
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @param direction 'first'|'last'|'next'|'prev'
---- @param wrap boolean
+--- @param wrap? boolean
 --- @return integer?
 function M.find_nearest_hunk(lnum, hunks, direction, wrap)
   if direction == 'first' then
