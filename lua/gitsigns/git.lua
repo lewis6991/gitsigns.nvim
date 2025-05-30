@@ -159,6 +159,7 @@ function Obj:ensure_file_in_index()
     -- If there is no object_name then it is not yet in the index so add it
     self.repo:command({ 'add', '--intent-to-add', self.file })
   else
+    assert(self.relpath)
     -- Update the index with the common ancestor (stage 1) which is what bcache
     -- stores
     self.repo:update_index(self.mode_bits, self.object_name, self.relpath, true)
