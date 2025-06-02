@@ -132,13 +132,13 @@ end
 --- @param line string
 --- @return Gitsigns.Hunk.Hunk
 function M.parse_diff_line(line)
-  local diffkey = vim.trim(vim.split(line, '@@', { plain = true })[2])
+  local diffkey = vim.trim(assert(vim.split(line, '@@', { plain = true })[2]))
 
   -- diffKey: "-xx,n +yy"
   -- pre: {xx, n}, now: {yy}
   local p = vim.tbl_map(
     --- @param s string
-    --- @return string[]
+    --- @return [string, string]
     function(s)
       return vim.split(s:sub(2), ',')
     end,
@@ -247,7 +247,7 @@ function M.calc_signs(prev_hunk, hunk, next_hunk, min_lnum, max_lnum, untracked)
     return {}
   end
   min_lnum = math.max(1, min_lnum or 1)
-  max_lnum = max_lnum or math.huge
+  max_lnum = max_lnum or math.huge --[[@as integer]]
 
   if not config._new_sign_calc then
     return calc_signs(hunk, next_hunk, min_lnum, max_lnum, untracked)
@@ -398,17 +398,19 @@ end
 --- @param wrap? boolean
 --- @return integer?
 function M.find_nearest_hunk(lnum, hunks, direction, wrap)
-  if direction == 'first' then
+  if #hunks == 0 then
+    return
+  elseif direction == 'first' then
     return 1
   elseif direction == 'last' then
     return #hunks
   elseif direction == 'next' then
-    if hunks[1].added.start > lnum then
+    if assert(hunks[1]).added.start > lnum then
       return 1
     end
     for i = #hunks, 1, -1 do
-      if hunks[i].added.start <= lnum then
-        if i + 1 <= #hunks and hunks[i + 1].added.start > lnum then
+      if assert(hunks[i]).added.start <= lnum then
+        if i + 1 <= #hunks and assert(hunks[i + 1]).added.start > lnum then
           return i + 1
         elseif wrap then
           return 1
@@ -416,12 +418,12 @@ function M.find_nearest_hunk(lnum, hunks, direction, wrap)
       end
     end
   elseif direction == 'prev' then
-    if math.max(hunks[#hunks].vend) < lnum then
+    if math.max(assert(hunks[#hunks]).vend) < lnum then
       return #hunks
     end
     for i = 1, #hunks do
-      if lnum <= math.max(hunks[i].vend, 1) then
-        if i > 1 and math.max(hunks[i - 1].vend, 1) < lnum then
+      if lnum <= math.max(assert(hunks[i]).vend, 1) then
+        if i > 1 and math.max(assert(hunks[i - 1]).vend, 1) < lnum then
           return i - 1
         elseif wrap then
           return #hunks
@@ -588,7 +590,7 @@ function M.linespec_for_hunk(hunk, fileformat)
 
     for _, region in ipairs(removed_regions) do
       local i = region[1]
-      local hlm = hls[i][1][2]
+      local hlm = assert(assert(hls[i])[1])[2]
       hlm[#hlm + 1] = {
         start_row = 0,
         hl_group = 'GitSignsDeleteInline',
@@ -599,7 +601,7 @@ function M.linespec_for_hunk(hunk, fileformat)
 
     for _, region in ipairs(added_regions) do
       local i = hunk.removed.count + region[1]
-      local hlm = hls[i][1][2]
+      local hlm = assert(assert(hls[i])[1])[2]
       hlm[#hlm + 1] = {
         start_row = 0,
         hl_group = 'GitSignsAddInline',

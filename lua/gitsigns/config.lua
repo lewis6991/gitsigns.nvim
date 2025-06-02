@@ -129,7 +129,7 @@ local function parse_diffopt()
     elseif o == 'horizontal' then
       r.vertical = false
     elseif vim.startswith(o, 'algorithm:') then
-      r.algorithm = o:sub(('algorithm:'):len() + 1)
+      r.algorithm = o:sub(#'algorithm:' + 1) --[[@as 'myers'|'minimal'|'patience'|'histogram']]
     elseif vim.startswith(o, 'linematch:') then
       r.linematch = tonumber(o:sub(('linematch:'):len() + 1))
     end

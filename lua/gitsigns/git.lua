@@ -161,7 +161,7 @@ function Obj:ensure_file_in_index()
   else
     -- Update the index with the common ancestor (stage 1) which is what bcache
     -- stores
-    self.repo:update_index(self.mode_bits, self.object_name, self.relpath, true)
+    self.repo:update_index(self.mode_bits, self.object_name, assert(self.relpath), true)
   end
 
   self:refresh()
