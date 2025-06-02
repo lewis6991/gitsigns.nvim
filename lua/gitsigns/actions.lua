@@ -27,6 +27,7 @@ local M = {}
 --- @field vertical? boolean
 --- @field split? boolean
 --- @field global? boolean
+--- @field [integer] any
 
 --- @class Gitsigns.CmdParams
 --- @field range integer
@@ -622,7 +623,7 @@ local function get_blame_hunk(repo, info)
 end
 
 --- @async
---- @param full boolean Whether to show the full commit message and hunk
+--- @param full boolean? Whether to show the full commit message and hunk
 --- @param result Gitsigns.BlameInfoPublic
 --- @param repo Gitsigns.Repo
 --- @param fileformat string

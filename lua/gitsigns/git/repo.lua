@@ -304,6 +304,7 @@ function M:ls_tree(path, revision)
   end
 
   local info, relpath = unpack(vim.split(res, '\t'))
+  assert(info and relpath)
   local mode_bits, object_type, object_name = unpack(vim.split(info, '%s+'))
   --- @cast object_type 'blob'|'tree'|'commit'
 
