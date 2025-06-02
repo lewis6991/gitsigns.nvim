@@ -89,7 +89,8 @@ local function show_added(bufnr, nsw, hunk)
     local offset, rtype, scol, ecol = region[1] - 1, region[2], region[3] - 1, region[4] - 1
 
     -- Special case to handle cr at eol in buffer but not in show text
-    local cr_at_eol_change = rtype == 'change' and vim.endswith(hunk.added.lines[offset + 1], '\r')
+    local cr_at_eol_change = rtype == 'change'
+      and vim.endswith(assert(hunk.added.lines[offset + 1]), '\r')
 
     api.nvim_buf_set_extmark(bufnr, nsw, start_row + offset, scol, {
       end_col = ecol,

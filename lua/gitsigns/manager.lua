@@ -176,8 +176,8 @@ local function apply_word_diff(bufnr, row)
 
   local pos = lnum - hunk.added.start + 1
 
-  local added_line = hunk.added.lines[pos]
-  local removed_line = hunk.removed.lines[pos]
+  local added_line = assert(hunk.added.lines[pos])
+  local removed_line = assert(hunk.removed.lines[pos])
 
   local _, added_regions = require('gitsigns.diff_int').run_word_diff(
     { removed_line },
@@ -319,7 +319,7 @@ M.update = throttle_by_id(function(bufnr)
 
   local buftext = util.buf_lines(bufnr)
 
-  bcache.hunks = run_diff(bcache.compare_text, buftext)
+  bcache.hunks = run_diff(assert(bcache.compare_text), buftext)
   if not bcache:schedule() then
     return
   end

@@ -50,6 +50,7 @@ end
 
 ---Sets up the cwd watcher to detect branch changes using uv.loop
 ---Uses module local variable cwd_watcher
+---@async
 ---@param cwd string current working directory
 ---@param towatch string Directory to watch
 local function setup_cwd_watcher(cwd, towatch)

@@ -6,12 +6,8 @@ local Debug = require('gitsigns.debug')
 local log = require('gitsigns.debug.log')
 local message = require('gitsigns.message')
 
---- @type table<table<string,function>,boolean>
-local sources = {
-  [actions] = true,
-  [attach] = false,
-  [Debug] = false,
-}
+--- @type table<string,function>[]
+local sources = { actions, attach, Debug }
 
 --- try to parse each argument as a lua boolean, nil or number, if fails then
 --- keep argument as a string:
@@ -20,7 +16,7 @@ local sources = {
 ---    'nil'         -> nil
 ---    '100'         -> 100
 ---    'HEAD~300' -> 'HEAD~300'
---- @param a string
+--- @param a string|boolean
 --- @return boolean|number|string?
 local function parse_to_lua(a)
   if tonumber(a) then
@@ -41,7 +37,7 @@ function M.complete(arglead, line)
 
   local matches = {}
   if n == 2 then
-    for m, _ in pairs(sources) do
+    for _, m in ipairs(sources) do
       for func, _ in pairs(m) do
         if not func:match('^[a-z]') then
           -- exclude
@@ -52,7 +48,7 @@ function M.complete(arglead, line)
     end
   elseif n > 2 then
     -- Subcommand completion
-    local cmp_func = actions._get_cmp_func(words[2])
+    local cmp_func = actions._get_cmp_func(assert(words[2]))
     if cmp_func then
       return cmp_func(arglead)
     end
@@ -91,11 +87,11 @@ M.run = async.create(1, function(params)
     return
   end
 
-  for m, has_named in pairs(sources) do
+  for _, m in ipairs(sources) do
     local f = m[func]
     if type(f) == 'function' then
       -- Note functions here do not have named arguments
-      f(unpack(pos_args), has_named and named_args or nil)
+      f(unpack(pos_args))
       return
     end
   end

@@ -85,7 +85,6 @@ end
 local function incremental_iter(readline, commits, result)
   local line = assert(readline())
 
-  --- @type string?, string, string, string
   local sha, orig_lnum_str, final_lnum_str, size_str = line:match('(%x+) (%d+) (%d+) (%d+)')
   if not sha then
     error(("Could not parse sha from line: '%s'"):format(line))
@@ -96,12 +95,13 @@ local function incremental_iter(readline, commits, result)
   local size = asinteger(size_str)
 
   --- @type table<string,string|integer|true>
-  local commit = commits[sha] or {
-    sha = sha,
-    abbrev_sha = sha:sub(1, 8),
-  }
+  local commit = commits[sha]
+    or {
+      sha = sha,
+      abbrev_sha = sha:sub(1, 8) --[[@as string]],
+    }
 
-  --- @type string, string
+  --- @type string?, string?
   local previous_sha, previous_filename
 
   line = assert(readline())

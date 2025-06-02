@@ -357,7 +357,7 @@ function M:ls_files(file)
   for _, line in ipairs(results) do
     local parts = vim.split(line, '\t')
     if #parts > relpath_idx then -- tracked file
-      local attrs = vim.split(parts[1], '%s+')
+      local attrs = vim.split(assert(parts[1]), '%s+')
       local stage = tonumber(attrs[3])
       if stage <= 1 then
         result.mode_bits = attrs[1]
@@ -368,7 +368,7 @@ function M:ls_files(file)
 
       if has_eol then
         result.relpath = parts[3]
-        local eol = vim.split(parts[2], '%s+')
+        local eol = vim.split(assert(parts[2]), '%s+')
         result.i_crlf = eol[1] == 'i/crlf'
         result.w_crlf = eol[2] == 'w/crlf'
       else
