@@ -31,7 +31,7 @@ end
 
 --- @param signal integer|string
 function SystemObj:kill(signal)
-  self._state.handle:kill(signal)
+  assert(self._state.handle):kill(signal)
 end
 
 --- @package
@@ -61,7 +61,7 @@ function SystemObj:wait(timeout)
     end, nil, true)
   end
 
-  return state.result
+  return assert(state.result)
 end
 
 --- @param data string[]|string|nil
@@ -315,7 +315,7 @@ local function system(cmd, opts, on_exit)
   }
 
   --- @diagnostic disable-next-line:missing-fields
-  state.handle, state.pid = spawn(cmd[1], {
+  state.handle, state.pid = spawn(assert(cmd[1]), {
     args = vim.list_slice(cmd, 2),
     stdio = { stdin, stdout, stderr },
     cwd = opts.cwd,
