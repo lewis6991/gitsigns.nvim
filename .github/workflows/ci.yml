@@ -41,7 +41,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: leafo/gh-actions-lua@v11
+      - uses: lewis6991/gh-actions-lua@master
         with:
           luaVersion: "5.1.5"
 
@@ -71,7 +71,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: leafo/gh-actions-lua@v11
+      - uses: lewis6991/gh-actions-lua@master
         with:
           luaVersion: "5.1.5"
 
@@ -92,7 +92,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: leafo/gh-actions-lua@v11
+      - uses: lewis6991/gh-actions-lua@master
         with:
           luaVersion: "5.1.5"
 
