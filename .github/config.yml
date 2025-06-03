@@ -1,0 +1,4 @@
+contact_links:
+  - name: Question
+    url: https://github.com/lewis6991/gitsigns.nvim/discussions
+    about: Ask about Gitsigns.nvim
