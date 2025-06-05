@@ -1,5 +1,66 @@
 # Changelog
 
+## [2.0.0](https://github.com/lewis6991/gitsigns.nvim/compare/v1.0.2...v2.0.0) (2025-06-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **config:** remove support for custom highlight names
+* **setup:** make optional
+* target Nvim 0.11, drop testing for 0.9.5
+
+### Features
+
+* **config:** remove support for custom highlight names ([74fce28](https://github.com/lewis6991/gitsigns.nvim/commit/74fce28b8954c26f79b83736f34093d341bf1a0e))
+* **diffthis:** add some rename detection ([8dec8da](https://github.com/lewis6991/gitsigns.nvim/commit/8dec8da8ed8a4463cc6abcd3cc3801373600767d))
+* remove border from preview_config default ([9a75d9f](https://github.com/lewis6991/gitsigns.nvim/commit/9a75d9f46cfa2128fabf64a625c7901564236f22)), closes [#1241](https://github.com/lewis6991/gitsigns.nvim/issues/1241)
+* **setup:** make optional ([6933bee](https://github.com/lewis6991/gitsigns.nvim/commit/6933beee338960b980b71372e948b6af501445c0)), closes [#1222](https://github.com/lewis6991/gitsigns.nvim/issues/1222)
+
+
+### Bug Fixes
+
+* [#1246](https://github.com/lewis6991/gitsigns.nvim/issues/1246) ([17ab794](https://github.com/lewis6991/gitsigns.nvim/commit/17ab794b6fce6fce768430ebc925347e349e1d60))
+* [#1274](https://github.com/lewis6991/gitsigns.nvim/issues/1274) ([550757c](https://github.com/lewis6991/gitsigns.nvim/commit/550757c41a25b80447b821ca3b9ac1cfda894267))
+* [#1277](https://github.com/lewis6991/gitsigns.nvim/issues/1277) ([c5a39b2](https://github.com/lewis6991/gitsigns.nvim/commit/c5a39b2cf7fa41a364fa82a6bb08f6c6091cc6b2))
+* [#1280](https://github.com/lewis6991/gitsigns.nvim/issues/1280) ([4e1337a](https://github.com/lewis6991/gitsigns.nvim/commit/4e1337abe78000c14317a2707f0fd713572a967d))
+* [#1300](https://github.com/lewis6991/gitsigns.nvim/issues/1300) ([7ce11ab](https://github.com/lewis6991/gitsigns.nvim/commit/7ce11abbb8b038a9de4fb6f75d8289c58d81aed7))
+* [#1307](https://github.com/lewis6991/gitsigns.nvim/issues/1307) ([ab9e05d](https://github.com/lewis6991/gitsigns.nvim/commit/ab9e05d1cd5b372d4d443fa5c8e0e334232f2c77))
+* [#1312](https://github.com/lewis6991/gitsigns.nvim/issues/1312) ([5624b5e](https://github.com/lewis6991/gitsigns.nvim/commit/5624b5ebe6988c75d3f4eb588b9f31f3847a721c))
+* **async:** raise errors when they happen ([ee7e50d](https://github.com/lewis6991/gitsigns.nvim/commit/ee7e50dfbdf49e3acfa416fd3ad3abbdb658582c))
+* attach through symlinks ([2ac55db](https://github.com/lewis6991/gitsigns.nvim/commit/2ac55dbde63eec1a41c65e6574a8ddef6d816262))
+* blame_line{full=true} stop work ([27c3f37](https://github.com/lewis6991/gitsigns.nvim/commit/27c3f37a8ea6480ba336dab74f73a8032a0de63c))
+* **blame:** do no expand hunk text ([425cb39](https://github.com/lewis6991/gitsigns.nvim/commit/425cb3942716554035ee56b0e36528355c238e3d))
+* **blame:** handle bad git-blame output ([07d4263](https://github.com/lewis6991/gitsigns.nvim/commit/07d426364c476e8a091ff7ee40b862f97e2cfb3c)), closes [#1332](https://github.com/lewis6991/gitsigns.nvim/issues/1332)
+* **blame:** handle partial lines in blame output ([3d01bad](https://github.com/lewis6991/gitsigns.nvim/commit/3d01bad517a9cd8d6b1ac6871e16188375c2853b)), closes [#1236](https://github.com/lewis6991/gitsigns.nvim/issues/1236)
+* check cwd before running rev-parse ([a3f64d4](https://github.com/lewis6991/gitsigns.nvim/commit/a3f64d4289f818bc5de66295a9696e2819bfb270)), closes [#1331](https://github.com/lewis6991/gitsigns.nvim/issues/1331)
+* check preview popup before navigating ([e399f97](https://github.com/lewis6991/gitsigns.nvim/commit/e399f9748d7cfd8859747c8d6c4e9c8b4d50a1bd))
+* correct hl group ([b79047e](https://github.com/lewis6991/gitsigns.nvim/commit/b79047e81f645875e500b4f433d8133bc421446c))
+* do not attach if buffer is a directory ([392b9da](https://github.com/lewis6991/gitsigns.nvim/commit/392b9da4abebe9bee11b66dfdad82e0234bac4c2))
+* emmylua fixes ([c9165bb](https://github.com/lewis6991/gitsigns.nvim/commit/c9165bbc3266d14d557397baf42f4a2389acbe3d))
+* **error:** [#1277](https://github.com/lewis6991/gitsigns.nvim/issues/1277) ([9cd665f](https://github.com/lewis6991/gitsigns.nvim/commit/9cd665f46ab7af2e49d140d328b8e72ea1cf511b))
+* errors nil ref ([43b0c85](https://github.com/lewis6991/gitsigns.nvim/commit/43b0c856ae5f32a195d83f4a27fe21d63e6c966c))
+* handle files outside of repo ([1796c7c](https://github.com/lewis6991/gitsigns.nvim/commit/1796c7cedfe7e5dd20096c5d7b8b753d8f8d22eb)), closes [#1117](https://github.com/lewis6991/gitsigns.nvim/issues/1117) [#1296](https://github.com/lewis6991/gitsigns.nvim/issues/1296) [#1297](https://github.com/lewis6991/gitsigns.nvim/issues/1297)
+* handle when files are removed from index ([fd50977](https://github.com/lewis6991/gitsigns.nvim/commit/fd50977fce4d5240b910d2b816e71fb726cbbaf7))
+* nvim&lt;0.11 has no `&winborder` ([2f0f65e](https://github.com/lewis6991/gitsigns.nvim/commit/2f0f65ed8002f2e3123035913c27b87c2d14e9d2))
+* prevent inline hunk preview from folding ([02eafb1](https://github.com/lewis6991/gitsigns.nvim/commit/02eafb1273afec94447f66d1a43fc5e477c2ab8a))
+* preview_hunk format ([8bdaccd](https://github.com/lewis6991/gitsigns.nvim/commit/8bdaccdb897945a3c99c1ad8df94db0ddf5c8790))
+* **preview:** set border to none for inline preview ([7cfd88d](https://github.com/lewis6991/gitsigns.nvim/commit/7cfd88d9c017283df14125640c9ce9c07f284519))
+* react to config changes more robustly ([c4dbc36](https://github.com/lewis6991/gitsigns.nvim/commit/c4dbc3624999e9ddd9d1f5a6749f0a9346bfc2ed))
+* remove border from docs ([be7640c](https://github.com/lewis6991/gitsigns.nvim/commit/be7640c55bf1306769f5cf3215d8cf52e80eba2c))
+* respect winborder when creating popups ([ce5e1b5](https://github.com/lewis6991/gitsigns.nvim/commit/ce5e1b5ae3455316364ac1c96c2787d7925a2914))
+* tracking multiple branch changes ([#1266](https://github.com/lewis6991/gitsigns.nvim/issues/1266)) ([2149fc2](https://github.com/lewis6991/gitsigns.nvim/commit/2149fc2009d1117d58e86e56836f70c969f60a82))
+* type errors from emmylua ([5f1b1e2](https://github.com/lewis6991/gitsigns.nvim/commit/5f1b1e25373cd589ecf418ced8c2ece28229dd83))
+* type errors from emmylua ([d1c3d5a](https://github.com/lewis6991/gitsigns.nvim/commit/d1c3d5af2cbe235def22006888df41fa22c1fd9c))
+* type fixes ([24ecb13](https://github.com/lewis6991/gitsigns.nvim/commit/24ecb1375789bd3dec196f13d03163c0f0a68c47))
+* **types:** add on_attach return type ([8b729e4](https://github.com/lewis6991/gitsigns.nvim/commit/8b729e489f1475615dc6c9737da917b3bc163605))
+* **watcher:** invalidate the cache earlier ([d600d39](https://github.com/lewis6991/gitsigns.nvim/commit/d600d3922c1d001422689319a8f915136bb64e1e))
+* **windows:** [#1250](https://github.com/lewis6991/gitsigns.nvim/issues/1250) ([140ac64](https://github.com/lewis6991/gitsigns.nvim/commit/140ac646db125904e456e42ab8b538d28f9607d7))
+
+
+### Continuous Integration
+
+* target Nvim 0.11, drop testing for 0.9.5 ([3c76f7f](https://github.com/lewis6991/gitsigns.nvim/commit/3c76f7fabac723aa682365ef782f88a83ccdb4ac))
+
 ## [1.0.2](https://github.com/lewis6991/gitsigns.nvim/compare/v1.0.1...v1.0.2) (2025-03-16)
 
 
