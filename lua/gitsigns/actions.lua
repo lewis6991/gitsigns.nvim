@@ -673,10 +673,8 @@ local function create_blame_linespec(full, result, repo, fileformat)
     }
   end
 
-  vim.list_extend(ret, {
-    hunk_title,
-    unpack(Hunks.linespec_for_hunk(hunk, fileformat)),
-  })
+  table.insert(ret, hunk_title)
+  vim.list_extend(ret, Hunks.linespec_for_hunk(hunk, fileformat))
 
   return ret
 end
