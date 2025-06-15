@@ -377,7 +377,7 @@ end, true)
 
 M.update_debounced = debounce_trailing(function()
   return config.update_debounce
-end, async.create(1, M.update))
+end, async.create(1, M.update), 1)
 
 --- @param bufnr integer
 --- @param keep_signs? boolean
