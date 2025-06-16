@@ -560,14 +560,16 @@ function M.linespec_for_hunk(hunk, fileformat)
 
   local removed, added = hunk.removed.lines, hunk.added.lines
 
+  if fileformat == 'dos' then
+    removed = util.strip_cr(removed)
+    added = util.strip_cr(added)
+  end
+
   for _, spec in ipairs({
     { sym = '-', lines = removed, hl = 'GitSignsDeletePreview' },
     { sym = '+', lines = added, hl = 'GitSignsAddPreview' },
   }) do
     for _, l in ipairs(spec.lines) do
-      if fileformat == 'dos' then
-        l = l:gsub('\r$', '') --[[@as string]]
-      end
       hls[#hls + 1] = {
         {
           spec.sym .. l,
