@@ -885,9 +885,13 @@ end
 C.diffthis = function(args, params)
   -- TODO(lewis6991): validate these
   local opts = {
-    vertical = args.vertical,
+    vertical = config.diff_opts.vertical,
     split = args.split,
   }
+
+  if args.vertical ~= nil then
+    opts.vertical = args.vertical
+  end
 
   if params.smods then
     if params.smods.split ~= '' and opts.split == nil then
