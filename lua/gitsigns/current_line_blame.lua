@@ -89,6 +89,7 @@ local function get_blame_virt_text(bcache, blame_info)
       --- @cast res -string
       return res
     end
+    --- @cast res string
 
     local nc_sfx = use_nc and '_nc' or ''
     error_once(
