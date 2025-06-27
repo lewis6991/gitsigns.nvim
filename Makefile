@@ -121,7 +121,7 @@ luals-check: $(LUALS) $(NVIM_TEST)
 			--configpath=../.luarc.json \
 			--check=lua
 
-EMMYLUA_SHA := 4570dea3
+EMMYLUA_SHA := 0.8.2
 EMMYLUA := deps/emmylua_analyzer-rust-$(EMMYLUA_SHA)
 
 .PHONY: emmylua
