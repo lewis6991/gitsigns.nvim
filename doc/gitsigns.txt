@@ -216,6 +216,10 @@ show({revision}, {callback})                                 *gitsigns.show()*
                 Attributes: ~
                     {async}
 
+                Parameters: ~
+                    {revision}  (string?):
+                    {callback?} (fun()):
+
 diffthis({base}, {opts})                                 *gitsigns.diffthis()*
                 Perform a |vimdiff| on the given file with {base} if it is
                 given, or with the currently set base (index by default).
