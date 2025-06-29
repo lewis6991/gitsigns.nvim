@@ -52,7 +52,9 @@ local function git_command(args, spec)
   end
 
   -- Fix #895. Only needed for Nvim 0.9 and older
-  spec.clear_env = true
+  if vim.fn.has('nvim-0.10') == 0 then
+    spec.clear_env = true
+  end
 
   --- @type vim.SystemCompleted
   local obj = asystem(cmd, spec)
