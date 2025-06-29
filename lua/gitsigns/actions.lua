@@ -932,7 +932,13 @@ CP.diffthis = complete_heads
 ---
 --- Attributes: ~
 ---     {async}
+---
+--- @param revision string?
+--- @param callback? fun()
 M.show = function(revision, callback)
+  if revision ~= nil then
+    revision = tostring(revision)
+  end
   local bufnr = api.nvim_get_current_buf()
   if not cache[bufnr] then
     print('Error: Buffer is not attached.')
