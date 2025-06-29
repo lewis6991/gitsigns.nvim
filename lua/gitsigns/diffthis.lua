@@ -203,7 +203,7 @@ M.diffthis = async.create(2, function(base, opts, _callback)
 end)
 
 --- @param bufnr integer
---- @param base string
+--- @param base string?
 --- @param _callback? fun()
 M.show = async.create(2, function(bufnr, base, _callback)
   __FUNC__ = 'show'
