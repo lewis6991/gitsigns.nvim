@@ -249,6 +249,16 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
     return
   end
 
+  if vim.startswith(vim.fn.fnamemodify(file, ':p'), repo.gitdir) then
+    -- Normally this check would be caught (unintended) in the above
+    -- block, as gitdir resolution will fail if `file` is inside a gitdir.
+    -- If gitdir is explicitly passed (or set in the env with GIT_DIR)
+    -- then resolution will succeed, but we still don't want to
+    -- attach if `file` is inside the gitdir.
+    log.dprint('In gitdir')
+    return
+  end
+
   -- When passing gitdir and toplevel, suppress stderr when resolving the file
   local silent = gitdir ~= nil and toplevel ~= nil
 
