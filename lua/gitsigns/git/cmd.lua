@@ -51,9 +51,6 @@ local function git_command(args, spec)
     spec.text = true
   end
 
-  -- Fix #895. Only needed for Nvim 0.9 and older
-  spec.clear_env = true
-
   --- @type vim.SystemCompleted
   local obj = asystem(cmd, spec)
 
