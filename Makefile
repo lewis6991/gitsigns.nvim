@@ -20,7 +20,7 @@ NVIM_TEST := deps/nvim-test
 nvim-test: $(NVIM_TEST)
 
 $(NVIM_TEST):
-	git clone --depth 1 --branch v1.1.1 https://github.com/lewis6991/nvim-test $@
+	git clone --depth 1 --branch v1.2.0 https://github.com/lewis6991/nvim-test $@
 	$@/bin/nvim-test --init
 
 .PHONY: test
