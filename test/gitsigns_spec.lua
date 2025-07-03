@@ -490,10 +490,7 @@ describe('gitsigns (with screen)', function()
         }
 
         if not internal_diff then
-          table.insert(
-            messages,
-            np('run_job: git .* diff .* /tmp/nvim.runner/.* /tmp/nvim.runner/.*')
-          )
+          table.insert(messages, np('run_job: git .* diff .* /.* /.*'))
         end
 
         match_debug_messages(messages)
@@ -669,14 +666,29 @@ describe('gitsigns (with screen)', function()
 
     helpers.exc_exec('vimgrep ben ' .. scratch .. '/*')
 
-    screen:expect({
-      messages = {
-        {
-          kind = 'quickfix',
-          content = { { '(1 of 2): hello ben' } },
+    if fn.has('nvim-0.12') > 0 then
+      screen:expect({
+        messages = {
+          {
+            kind = '',
+            content = { { scratch .. '/dummy.txt' } },
+          },
+          {
+            kind = 'quickfix',
+            content = { { '(1 of 2): hello ben' } },
+          },
         },
-      },
-    })
+      })
+    else
+      screen:expect({
+        messages = {
+          {
+            kind = 'quickfix',
+            content = { { '(1 of 2): hello ben' } },
+          },
+        },
+      })
+    end
 
     match_debug_messages({
       'attach_autocmd(2): Attaching is disabled',
