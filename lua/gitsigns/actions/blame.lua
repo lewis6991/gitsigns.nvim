@@ -186,32 +186,15 @@ local function reblame(blame, win, revision, parent)
 end
 
 --- @param win integer
+--- @param bwin integer
 --- @param open 'vsplit'|'tabnew'
 --- @param bcache Gitsigns.CacheEntry
-local show_commit = async.async(function(win, open, bcache)
-  local cursor = api.nvim_win_get_cursor(win)[1]
+local show_commit = async.async(function(win, bwin, open, bcache)
+  local cursor = api.nvim_win_get_cursor(bwin)[1]
   local blame = assert(bcache.blame)
   local sha = assert(blame[cursor]).commit.sha
-  local res = bcache.git_obj.repo:command({ 'show', sha })
-  async.schedule()
-  local buffer_name = bcache:get_rev_bufname(sha, true)
-  local commit_buf = nil
-  -- find preexisting commit buffer or create a new one
-  for _, bufnr in ipairs(api.nvim_list_bufs()) do
-    if api.nvim_buf_get_name(bufnr) == buffer_name then
-      commit_buf = bufnr
-      break
-    end
-  end
-  if commit_buf == nil then
-    commit_buf = api.nvim_create_buf(true, true)
-    api.nvim_buf_set_name(commit_buf, buffer_name)
-    api.nvim_buf_set_lines(commit_buf, 0, -1, false, res)
-  end
-  vim.cmd[open]({ mods = { keepalt = true } })
-  api.nvim_win_set_buf(0, commit_buf)
-  vim.bo[commit_buf].filetype = 'git'
-  vim.bo[commit_buf].bufhidden = 'wipe'
+  api.nvim_set_current_win(win)
+  require('gitsigns.actions.show_commit')(sha, open)
 end)
 
 --- @param augroup integer
@@ -376,14 +359,14 @@ function M.blame()
   })
 
   pmap('n', 's', function()
-    show_commit(blm_win, 'vsplit', bcache)
+    show_commit(win, blm_win, 'vsplit', bcache)
   end, {
     desc = 'Show commit in a vertical split',
     buffer = blm_bufnr,
   })
 
   pmap('n', 'S', function()
-    show_commit(blm_win, 'tabnew', bcache)
+    show_commit(win, blm_win, 'tabnew', bcache)
   end, {
     desc = 'Show commit in a new tab',
     buffer = blm_bufnr,

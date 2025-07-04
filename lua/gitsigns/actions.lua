@@ -813,6 +813,21 @@ end
 
 CP.show = complete_heads
 
+--- Show revision {base} commit in split or tab
+---
+--- @param revision? string? (default: 'HEAD')
+--- @param open? 'vsplit'|'tabnew'
+M.show_commit = async.create(2, function(revision, open)
+  require('gitsigns.actions.show_commit')(revision, open)
+end)
+
+C.show_commit = function(args, _)
+  local revision, open = args[1], args[2]
+  M.show_commit(revision, open)
+end
+
+CP.show_commit = complete_heads
+
 --- Populate the quickfix list with hunks. Automatically opens the
 --- quickfix window.
 ---
