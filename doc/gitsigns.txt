@@ -195,6 +195,13 @@ setqflist({target}, {opts}, {callback?})                *gitsigns.setqflist()*
                                Open the quickfix/location list viewer.
                                Defaults to `true`.
 
+show_commit({revision}, {open}, {callback?})              *gitsigns.show_commit()*
+                Show revision {base} commit in split or tab
+
+                Parameters: ~
+                    {revision?} (string?): (default: 'HEAD')
+                    {open?}     ('vsplit'|'tabnew'):
+
 show({revision}, {callback})                                 *gitsigns.show()*
                 Show revision {base} of the current file, if it is given, or
                 with the currently set base (index by default).
