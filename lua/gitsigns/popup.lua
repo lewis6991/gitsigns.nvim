@@ -56,9 +56,10 @@ end
 --- @field start_col? integer
 --- @field end_row? integer
 --- @field end_col? integer
+--- @field url? string
 
 --- Each element represents a multi-line segment
---- @alias Gitsigns.LineSpec [string, string|Gitsigns.HlMark[]][][]
+--- @alias Gitsigns.LineSpec [string, string|Gitsigns.HlMark[], string?][]
 
 --- @param hlmarks Gitsigns.HlMark[]
 --- @param row_offset integer
@@ -71,8 +72,8 @@ local function offset_hlmarks(hlmarks, row_offset)
   end
 end
 
---- Partition the text and Gitsigns.HlMarks from a Gitsigns.LineSpec
---- @param fmt Gitsigns.LineSpec
+--- Partition the text and Gitsigns.HlMarks from a Gitsigns.LineSpec[]
+--- @param fmt Gitsigns.LineSpec[]
 --- @return string[]
 --- @return Gitsigns.HlMark[]
 local function partition_linesspec(fmt)
@@ -84,7 +85,7 @@ local function partition_linesspec(fmt)
     local section_text = {} --- @type string[]
     local col = 0
     for _, part in ipairs(section) do
-      local text, hls = part[1], part[2]
+      local text, hls, url = part[1], part[2], part[3]
 
       section_text[#section_text + 1] = text
 
@@ -94,6 +95,7 @@ local function partition_linesspec(fmt)
 
       if type(hls) == 'string' then
         ret[#ret + 1] = {
+          url = url,
           hl_group = hls,
           start_row = row,
           end_row = end_row,
@@ -160,6 +162,7 @@ local function create_buf(lines, highlights)
   for _, hl in ipairs(highlights) do
     local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, ns, hl.start_row, hl.start_col or 0, {
       hl_group = hl.hl_group,
+      url = hl.url,
       end_row = hl.end_row,
       end_col = hl.end_col,
       hl_eol = true,
@@ -251,7 +254,7 @@ local function create_win(bufnr, opts, id)
   return winid
 end
 
---- @param lines_spec Gitsigns.LineSpec
+--- @param lines_spec Gitsigns.LineSpec[]
 --- @param opts vim.api.keyset.win_config
 --- @param id? string
 --- @return integer winid, integer bufnr

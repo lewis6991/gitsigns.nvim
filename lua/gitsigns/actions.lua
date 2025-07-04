@@ -627,7 +627,7 @@ end
 --- @param result Gitsigns.BlameInfoPublic
 --- @param repo Gitsigns.Repo
 --- @param fileformat string
---- @return Gitsigns.LineSpec
+--- @return Gitsigns.LineSpec[]
 local function create_blame_linespec(full, result, repo, fileformat)
   local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
 
@@ -637,15 +637,30 @@ local function create_blame_linespec(full, result, repo, fileformat)
     }
   end
 
+  local gh --- @module 'gitsigns.gh'?
+  if config.gh then
+    gh = require('gitsigns.gh')
+  end
+
+  local commit_url = gh and gh.commit_url(result.sha, repo.toplevel) or nil
+
   --- @type Gitsigns.LineSpec
-  local ret = {
-    {
-      { result.abbrev_sha .. ' ', 'Directory' },
-      { result.author .. ' ', 'MoreMsg' },
-      { util.expand_format('(<author_time:%Y-%m-%d %H:%M>)', result), 'Label' },
-      { ':', 'NormalFloat' },
-    },
+  local title = {
+    { result.abbrev_sha .. ' ', 'Directory', commit_url },
   }
+
+  if gh then
+    vim.list_extend(title, gh.create_pr_linespec(result.sha, repo.toplevel))
+  end
+
+  vim.list_extend(title, {
+    { result.author .. ' ', 'MoreMsg' },
+    { util.expand_format('(<author_time:%Y-%m-%d %H:%M>)', result), 'Label' },
+    { ':', 'NormalFloat' },
+  })
+
+  --- @type Gitsigns.LineSpec[]
+  local ret = { title }
 
   if not full then
     ret[#ret + 1] = { { result.summary, 'NormalFloat' } }
