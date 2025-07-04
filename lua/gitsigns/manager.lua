@@ -5,6 +5,7 @@ local run_diff = require('gitsigns.diff')
 local Hunks = require('gitsigns.hunks')
 local Signs = require('gitsigns.signs')
 local Status = require('gitsigns.status')
+local Color = require('gitsigns.color')
 
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
@@ -115,7 +116,9 @@ function M.on_lines(buf, first, last_orig, last_new)
     return true
   end
 
-  on_lines_blame(bcache.blame, first, last_orig, last_new)
+  if bcache.blame then
+    on_lines_blame(bcache.blame.entries, first, last_orig, last_new)
+  end
 
   signs_normal:on_lines(buf, first, last_orig, last_new)
   if signs_staged then
@@ -140,6 +143,7 @@ function M.on_lines(buf, first, last_orig, last_new)
 end
 
 local ns = api.nvim_create_namespace('gitsigns')
+local nsh = api.nvim_create_namespace('gitsigns-heatmap')
 
 --- @param bufnr integer
 --- @param row integer
@@ -214,6 +218,58 @@ local function apply_word_diff(bufnr, row)
     api.nvim_buf_set_extmark(bufnr, ns, row, scol, opts)
     util.redraw({ buf = bufnr, range = { row, row + 1 } })
   end
+end
+
+local temp_colors = {} --- @type table<integer,string>
+
+local normal_bg = Color.int_to_rgb(api.nvim_get_hl(0, { name = 'Normal' }).bg)
+
+--- @param min integer
+--- @param max integer
+--- @param t integer
+--- @return string
+local function get_temp_color(min, max, t)
+  local normalized_t = (t - min) / (max - min)
+  print(min, max, t, normalized_t)
+  local raw_temp_color = Color.temp(normalized_t)
+  local color = Color.rgb_to_int(Color.blend(raw_temp_color, normal_bg, 0.5))
+
+  if temp_colors[color] then
+    return temp_colors[color]
+  end
+
+  local hl_name = ('GitSignsBlameColorTemp.%d'):format(color)
+  api.nvim_set_hl(0, hl_name, { fg = color })
+  temp_colors[color] = hl_name
+  return hl_name
+end
+
+--- @param bufnr integer
+--- @param row integer
+local function apply_heat_map(bufnr, row)
+  local bcache = cache[bufnr]
+
+  if not bcache then
+    return
+  end
+
+  local blame = bcache.blame
+  if not blame or not blame.min_time or not blame.max_time then
+    return
+  end
+
+  local blame_info = blame.entries[row + 1]
+  if not blame_info then
+    return
+  end
+
+  local hl = get_temp_color(blame.min_time, blame.max_time, blame_info.commit.author_time)
+  api.nvim_buf_clear_namespace(bufnr, nsh, row, row + 1)
+  api.nvim_buf_set_extmark(bufnr, nsh, row, 0, {
+    virt_text = { { '┃', hl } },
+    virt_text_pos = 'inline',
+  })
+  bcache.has_heat_map_marks = true
 end
 
 local ns_rm = api.nvim_create_namespace('gitsigns_removed')
@@ -372,6 +428,14 @@ M.update = throttle_by_id(function(bufnr)
     summary.head = git_obj.repo.abbrev_head
     Status:update(bufnr, summary)
   end
+
+  if config.heat_map then
+    if not (bcache.blame and bcache.blame.min_time) then
+      bcache:update_blame_times()
+      util.redraw({ buf = bufnr, range = { 0, -1 } })
+    end
+  end
+
   bcache.update_lock = nil
 end, true)
 
@@ -410,9 +474,20 @@ local function on_win(bufnr, topline, botline_guess)
 
   apply_win_signs(bufnr, topline + 1, botline + 1)
 
-  if not (config.word_diff and config.diff_opts.internal) then
-    return false
+  if not config.heat_map and bcache.has_heat_map_marks then
+    api.nvim_buf_clear_namespace(bufnr, nsh, 0, -1)
+    bcache.has_heat_map_marks = nil
   end
+
+  if config.word_diff and config.diff_opts.internal then
+    return
+  end
+
+  if config.heat_map then
+    return
+  end
+
+  return false
 end
 
 function M.setup()
@@ -423,7 +498,12 @@ function M.setup()
       return on_win(bufnr, topline, botline)
     end,
     on_line = function(_, _winid, bufnr, row)
-      apply_word_diff(bufnr, row)
+      if config.word_diff then
+        apply_word_diff(bufnr, row)
+      end
+      if config.heat_map then
+        apply_heat_map(bufnr, row)
+      end
     end,
   })
 
