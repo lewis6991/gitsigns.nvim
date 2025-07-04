@@ -147,7 +147,7 @@ function M.nav_hunk(direction, opts)
   -- appear in the old position
   async.schedule()
 
-  local Preview = require('gitsigns.preview')
+  local Preview = require('gitsigns.actions.preview')
 
   if should_preview then
     -- Close the popup in case one is open which will cause it to focus the
