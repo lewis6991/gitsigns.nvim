@@ -590,11 +590,7 @@ end
 ---                               return the offset from the original line to the
 ---                               hunk start.
 local function get_blame_hunk(repo, info)
-  local a = {}
-  -- If no previous so sha of blame added the file
-  if info.previous_sha and info.previous_filename then
-    a = repo:get_show_text(info.previous_sha .. ':' .. info.previous_filename)
-  end
+  local a = repo:get_show_text(info.previous_sha .. ':' .. info.previous_filename)
   local b = repo:get_show_text(info.sha .. ':' .. info.filename)
   local hunks = run_diff(a, b, false)
   local hunk, i = Hunks.find_hunk(info.orig_lnum, hunks)
@@ -620,6 +616,50 @@ local function get_blame_hunk(repo, info)
 
   hunk = assert(hunks[i])
   return hunk, i, #hunks, hunk.added.start - info.orig_lnum
+end
+
+--- @async
+--- @param repo Gitsigns.Repo
+--- @param sha string
+--- @return Gitsigns.LineSpec
+local function create_commit_msg_body_linespec(repo, sha)
+  local body0 = repo:command({ 'show', '-s', '--format=%B', sha }, { text = true })
+  local body = table.concat(body0, '\n')
+  return { { body, 'NormalFloat' } }
+end
+
+--- @async
+--- @param info Gitsigns.BlameInfoPublic
+--- @param repo Gitsigns.Repo
+--- @param fileformat string
+--- @return Gitsigns.LineSpec[]
+local function create_blame_hunk_linespec(repo, info, fileformat)
+  if not (info.previous_sha and info.previous_filename) then
+    return { { { 'File added in commit', 'Title' } } }
+  end
+
+  --- @type Gitsigns.LineSpec[]
+  local ret = {}
+  local hunk, hunk_no, num_hunks, guess_offset = get_blame_hunk(repo, info)
+
+  local hunk_title = {
+    { ('Hunk %d of %d'):format(hunk_no, num_hunks), 'Title' },
+    { ' ' .. hunk.head, 'LineNr' },
+  }
+
+  if guess_offset then
+    hunk_title[#hunk_title + 1] = {
+      (' (guessed: %s%d offset from original line)'):format(
+        guess_offset >= 0 and '+' or '',
+        guess_offset
+      ),
+      'WarningMsg',
+    }
+  end
+
+  ret[#ret + 1] = hunk_title
+  vim.list_extend(ret, Hunks.linespec_for_hunk(hunk, fileformat))
+  return ret
 end
 
 --- @async
@@ -667,29 +707,8 @@ local function create_blame_linespec(full, result, repo, fileformat)
     return ret
   end
 
-  local body0 = repo:command({ 'show', '-s', '--format=%B', result.sha }, { text = true })
-  local body = table.concat(body0, '\n')
-  ret[#ret + 1] = { { body, 'NormalFloat' } }
-
-  local hunk, hunk_no, num_hunks, guess_offset = get_blame_hunk(repo, result)
-
-  local hunk_title = {
-    { ('Hunk %d of %d'):format(hunk_no, num_hunks), 'Title' },
-    { ' ' .. hunk.head, 'LineNr' },
-  }
-
-  if guess_offset then
-    hunk_title[#hunk_title + 1] = {
-      (' (guessed: %s%d offset from original line)'):format(
-        guess_offset >= 0 and '+' or '',
-        guess_offset
-      ),
-      'WarningMsg',
-    }
-  end
-
-  table.insert(ret, hunk_title)
-  vim.list_extend(ret, Hunks.linespec_for_hunk(hunk, fileformat))
+  ret[#ret + 1] = create_commit_msg_body_linespec(repo, result.sha)
+  vim.list_extend(ret, create_blame_hunk_linespec(repo, result, fileformat))
 
   return ret
 end
