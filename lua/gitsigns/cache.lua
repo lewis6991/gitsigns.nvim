@@ -225,10 +225,12 @@ function CacheEntry:get_hunks(greedy, staged)
   end
 
   if staged then
-    return vim.deepcopy(self.hunks_staged)
+    -- EmmyLuaLs/emmylua-analyzer-rust#516
+    return vim.deepcopy((assert(self.hunks_staged)))
   end
 
-  return vim.deepcopy(self.hunks)
+  -- EmmyLuaLs/emmylua-analyzer-rust#516
+  return vim.deepcopy((assert(self.hunks)))
 end
 
 --- @param hunks? Gitsigns.Hunk.Hunk[]?
