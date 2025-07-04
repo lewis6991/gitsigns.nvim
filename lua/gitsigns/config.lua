@@ -44,9 +44,6 @@
 --- @field ignore_whitespace? boolean
 --- @field extra_opts? string[]
 
---- @class (exact) Gitsigns.LineBlameOpts : Gitsigns.BlameOpts
---- @field full? boolean
-
 --- @class (exact) Gitsigns.Config
 --- @field package _config table<string,any> config store
 --- @field debug_mode boolean
