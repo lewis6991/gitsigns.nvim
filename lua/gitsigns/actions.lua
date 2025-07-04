@@ -156,7 +156,7 @@ local function update(bufnr)
     return
   end
   if vim.wo.diff then
-    require('gitsigns.diffthis').update(bufnr)
+    require('gitsigns.actions.diffthis').update(bufnr)
   end
 end
 
@@ -614,7 +614,7 @@ end
 --- Attributes: ~
 ---     {async}
 M.blame = async.create(0, function()
-  require('gitsigns.blame').blame()
+  require('gitsigns.actions.blame').blame()
 end)
 
 --- @async
@@ -738,7 +738,7 @@ M.diffthis = function(base, opts)
   if opts.vertical == nil then
     opts.vertical = config.diff_opts.vertical
   end
-  require('gitsigns.diffthis').diffthis(base, opts)
+  require('gitsigns.actions.diffthis').diffthis(base, opts)
 end
 
 C.diffthis = function(args, params)
@@ -803,7 +803,7 @@ M.show = function(revision, callback)
     print('Error: Buffer is not attached.')
     return
   end
-  local diffthis = require('gitsigns.diffthis')
+  local diffthis = require('gitsigns.actions.diffthis')
   diffthis.show(bufnr, revision, callback)
 end
 
@@ -840,7 +840,7 @@ CP.show = complete_heads
 ---       Open the quickfix/location list viewer.
 ---       Defaults to `true`.
 M.setqflist = async.create(2, function(target, opts)
-  require('gitsigns.qflist').setqflist(target, opts)
+  require('gitsigns.actions.qflist').setqflist(target, opts)
 end)
 
 C.setqflist = function(args, _)
