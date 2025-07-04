@@ -952,6 +952,12 @@ trouble                                              *gitsigns-config-trouble*
       When using setqflist() or setloclist(), open Trouble instead of the
       quickfix/location list window.
 
+gh                                                        *gitsigns-config-gh*
+      Type: `boolean`, Default: `false`
+
+      Enable GitHub integration. This allows the following features:
+      • `:Gitsigns blame_line` will show PR numbers (with a hyperlink)
+
 word_diff                                          *gitsigns-config-word_diff*
       Type: `boolean`, Default: `false`
 

@@ -78,6 +78,7 @@
 --- @field worktrees {toplevel: string, gitdir: string}[]
 --- @field word_diff boolean
 --- @field trouble boolean
+--- @field gh boolean
 --- -- Undocumented
 --- @field _refresh_staged_on_update boolean
 --- @field _threaded_diff boolean
@@ -734,6 +735,15 @@ M.schema = {
     description = [[
       When using setqflist() or setloclist(), open Trouble instead of the
       quickfix/location list window.
+    ]],
+  },
+
+  gh = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      Enable GitHub integration. This allows the following features:
+      • `:Gitsigns blame_line` will show PR numbers (with a hyperlink)
     ]],
   },
 

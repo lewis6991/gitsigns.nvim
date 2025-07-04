@@ -224,7 +224,7 @@ M.preview_hunk = noautocmd(function()
     return
   end
 
-  --- @type Gitsigns.LineSpec
+  --- @type Gitsigns.LineSpec[]
   local preview_linespec = {
     { { ('Hunk %d of %d'):format(index, #bcache.hunks), 'Title' } },
   }
