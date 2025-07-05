@@ -249,7 +249,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
     return
   end
 
-  if vim.startswith(vim.fn.fnamemodify(file, ':p'), repo.gitdir) then
+  if vim.startswith(vim.fn.fnamemodify(file, ':p'), vim.fn.fnamemodify(repo.gitdir, ':p')) then
     -- Normally this check would be caught (unintended) in the above
     -- block, as gitdir resolution will fail if `file` is inside a gitdir.
     -- If gitdir is explicitly passed (or set in the env with GIT_DIR)
