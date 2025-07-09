@@ -343,7 +343,7 @@ end
 --- -- The two below blocks are equivalent:
 ---
 --- -- Run a uv function and wait for it
---- local stat = async.arun(function()
+--- local stat = async.run(function()
 ---     return async.await(2, vim.uv.fs_stat, 'foo.txt')
 --- end):wait()
 ---
@@ -353,27 +353,10 @@ end
 --- @param func function
 --- @param ... any
 --- @return Gitsigns.async.Task
-function M.arun(func, ...)
+function M.run(func, ...)
   local task = Task._new(func)
   task:_resume(...)
   return task
-end
-
---- @class async.TaskFun
---- @field package _fun fun(...: any): any
---- @operator call(...): any
-local TaskFun = {}
-TaskFun.__index = TaskFun
-
-function TaskFun:__call(...)
-  return M.arun(self._fun, ...)
-end
-
---- Create an async function
---- @param fun function
---- @return async.TaskFun
-function M.async(fun)
-  return setmetatable({ _fun = fun }, TaskFun)
 end
 
 --- Returns the status of a task’s thread.
@@ -389,21 +372,12 @@ function M.status(task)
 end
 
 --- @async
---- @generic R1, R2, R3, R4
---- @param fun fun(callback: fun(r1: R1, r2: R2, r3: R3, r4: R4)): any?
---- @return R1, R2, R3, R4
-local function yield(fun)
-  assert(type(fun) == 'function', 'Expected function')
-  return coroutine.yield(fun)
-end
-
---- @async
 --- @param task Gitsigns.async.Task
 --- @return any ...
 local function await_task(task)
   --- @param callback fun(err?: string, ...: any)
-  --- @return function
-  local res = pack_len(yield(function(callback)
+  --- @return Gitsigns.async.Task
+  local res = pack_len(coroutine.yield(function(callback)
     task:await(callback)
     return task
   end))
@@ -419,6 +393,7 @@ local function await_task(task)
 end
 
 --- Asynchronous blocking wait
+--- @async
 --- @param argc integer
 --- @param fun Gitsigns.async.CallbackFn
 --- @param ... any func arguments
@@ -428,33 +403,22 @@ local function await_cbfun(argc, fun, ...)
 
   --- @param callback fun(...:any)
   --- @return any?
-  return yield(function(callback)
+  return coroutine.yield(function(callback)
     args[argc] = callback
     args.n = math.max(args.n, argc)
     return fun(unpack_len(args))
   end)
 end
 
---- @param taskfun async.TaskFun
---- @param ... any
---- @return any ...
-local function await_taskfun(taskfun, ...)
-  return taskfun._fun(...)
-end
-
 --- Asynchronous blocking wait
 ---
 --- Example:
 --- ```lua
---- local task = async.arun(function()
+--- local task = async.run(function()
 ---    return 1, 'a'
 --- end)
 ---
---- local task_fun = async.async(function(arg)
----    return 2, 'b', arg
---- end)
----
---- async.arun(function()
+--- async.run(function()
 ---   do -- await a callback function
 ---     async.await(1, vim.schedule)
 ---   end
@@ -463,26 +427,11 @@ end
 ---     local n, s = async.await(task)
 ---     assert(n == 1 and s == 'a')
 ---   end
----
----   do -- await a started task function (new async context)
----     local n, s, arg = async.await(task_fun('A'))
----     assert(n == 2)
----     assert(s == 'b')
----     assert(args == 'A')
----   end
----
----   do -- await a task function (re-using the current async context)
----     local n, s, arg = async.await(task_fun, 'B')
----     assert(n == 2)
----     assert(s == 'b')
----     assert(args == 'B')
----   end
 --- end)
 --- ```
 --- @async
 --- @overload fun(argc: integer, func: Gitsigns.async.CallbackFn, ...:any): any ...
 --- @overload fun(task: Gitsigns.async.Task): any ...
---- @overload fun(taskfun: async.TaskFun): any ...
 function M.await(...)
   assert(running(), 'Not in async context')
 
@@ -492,8 +441,6 @@ function M.await(...)
     return await_cbfun(...)
   elseif getmetatable(arg1) == Task then
     return await_task(...)
-  elseif getmetatable(arg1) == TaskFun then
-    return await_taskfun(...)
   end
 
   error('Invalid arguments, expected Task or (argc, func) got: ' .. type(arg1), 2)
@@ -506,7 +453,7 @@ end
 --- ```lua
 --- --- Note the callback argument is not present in the return function
 --- --- @type fun(timeout: integer)
---- local sleep = async.awrap(2, function(timeout, callback)
+--- local sleep = async.wrap(2, function(timeout, callback)
 ---   local timer = vim.uv.new_timer()
 ---   timer:start(timeout * 1000, 0, callback)
 ---   -- uv_timer_t provides a close method so timer will be
@@ -514,18 +461,18 @@ end
 ---   return timer
 --- end)
 ---
---- async.arun(function()
+--- async.run(function()
 ---   print('hello')
 ---   sleep(2)
 ---   print('world')
 --- end)
 --- ```
 ---
---- local atimer = async.awrap(
+--- local atimer = async.wrap(
 --- @param argc integer
 --- @param func Gitsigns.async.CallbackFn
 --- @return async function
-function M.awrap(argc, func)
+function M.wrap(argc, func)
   assert(type(argc) == 'number')
   assert(type(func) == 'function')
   --- @async
@@ -571,196 +518,7 @@ end
 if vim.schedule then
   --- An async function that when called will yield to the Neovim scheduler to be
   --- able to call the API.
-  M.schedule = M.awrap(1, vim.schedule)
-end
-
---- Create a function that runs a function when it is garbage collected.
---- @generic F
---- @param f F
---- @param gc fun()
---- @return F
-local function gc_fun(f, gc)
-  local proxy = newproxy(true)
-  local proxy_mt = getmetatable(proxy)
-  proxy_mt.__gc = gc
-  proxy_mt.__call = function(_, ...)
-    return f(...)
-  end
-
-  return proxy
-end
-
---- @param task_cbs table<Gitsigns.async.Task,function>
-local function gc_cbs(task_cbs)
-  for task, tcb in pairs(task_cbs) do
-    for j, cb in pairs(task._callbacks) do
-      if cb == tcb then
-        task._callbacks[j] = nil
-        break
-      end
-    end
-  end
-end
-
---- @async
---- Example:
---- ```lua
---- local task1 = async.arun(function()
----   return 1, 'a'
---- end)
----
---- local task2 = async.arun(function()
----   return 1, 'a'
---- end)
----
---- local task3 = async.arun(function()
----   error('task3 error')
---- end)
----
---- async.arun(function()
----   for i, err, r1, r2 in async.iter({task1, task2, task3})
----     print(i, err, r1, r2)
----   end
---- end)
---- ```
----
---- Prints:
---- ```
---- 1 nil 1 'a'
---- 2 nil 2 'b'
---- 3 'task3 error' nil nil
---- ```
----
---- @param tasks Gitsigns.async.Task[]
---- @return fun(): (integer?, any?, ...)
-function M.iter(tasks)
-  assert(running(), 'Not in async context')
-
-  local results = {} --- @type [integer, any, ...][]
-
-  -- Iter blocks in an async context so only one waiter is needed
-  local waiter = nil
-
-  local remaining = #tasks
-
-  local task_cbs = {} --- @type table<Gitsigns.async.Task,function>
-
-  --- If can_gc_cbs is true, then the iterator function has been garbage
-  --- collected and means any awaiters can also be garbage collected. The
-  --- only time we can't do this is if with the special case when iter() is
-  --- called anonymously (`local i = async.iter(tasks)()`), so we should not
-  --- garbage collect the callbacks until at least one awaiter is called.
-  local can_gc_cbs = false
-
-  for i, task in ipairs(tasks) do
-    local function cb(err, ...)
-      if can_gc_cbs == true then
-        gc_cbs(task_cbs)
-      end
-
-      local callback = waiter
-
-      -- Clear waiter before calling it
-      waiter = nil
-
-      remaining = remaining - 1
-      if callback then
-        -- Iterator is waiting, yield to it
-        callback(i, err, ...)
-      else
-        -- Task finished before Iterator was called. Store results.
-        table.insert(results, pack_len(i, err, ...))
-      end
-    end
-
-    task_cbs[task] = cb
-    task:await(cb)
-  end
-
-  return gc_fun(
-    M.awrap(1, function(callback)
-      if next(results) then
-        local res = table.remove(results, 1)
-        callback(unpack_len(res))
-      elseif remaining == 0 then
-        callback() -- finish
-      else
-        assert(not waiter, 'internal error: waiter already set')
-        waiter = callback
-      end
-    end),
-    function()
-      -- Don't gc callbacks just yet. Wait until at least one of them is called.
-      can_gc_cbs = true
-    end
-  )
-end
-
-do -- join()
-  --- @param results table<integer,table>
-  --- @param i integer
-  --- @param ... any
-  --- @return boolean
-  local function collect(results, i, ...)
-    if i then
-      results[i] = pack_len(...)
-    end
-    return i ~= nil
-  end
-
-  --- @param iter fun(): ...
-  --- @return table<integer,table>
-  local function drain_iter(iter)
-    local results = {} --- @type table<integer,table>
-    while collect(results, iter()) do
-    end
-    return results
-  end
-
-  --- @async
-  --- Wait for all tasks to finish and return their results.
-  ---
-  --- Example:
-  --- ```lua
-  --- local task1 = async.arun(function()
-  ---   return 1, 'a'
-  --- end)
-  ---
-  --- local task2 = async.arun(function()
-  ---   return 1, 'a'
-  --- end)
-  ---
-  --- local task3 = async.arun(function()
-  ---   error('task3 error')
-  --- end)
-  ---
-  --- async.arun(function()
-  ---   local results = async.join({task1, task2, task3})
-  ---   print(vim.inspect(results))
-  --- end)
-  --- ```
-  ---
-  --- Prints:
-  --- ```
-  --- {
-  ---   [1] = { nil, 1, 'a' },
-  ---   [2] = { nil, 2, 'b' },
-  ---   [3] = { 'task2 error' },
-  --- }
-  --- ```
-  --- @param tasks Gitsigns.async.Task[]
-  --- @return table<integer,[any?,...?]>
-  function M.join(tasks)
-    assert(running(), 'Not in async context')
-    return drain_iter(M.iter(tasks))
-  end
-
-  --- @async
-  --- @param tasks Gitsigns.async.Task[]
-  --- @return integer?, any?, ...?
-  function M.joinany(tasks)
-    return M.iter(tasks)()
-  end
+  M.schedule = M.wrap(1, vim.schedule)
 end
 
 return M

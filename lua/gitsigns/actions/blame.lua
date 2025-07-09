@@ -180,22 +180,23 @@ local function reblame(blame, win, revision, parent)
       if not ok then
         error('Timeout waiting for attach')
       end
-      async.arun(M.blame):raise_on_error()
+      async.run(M.blame):raise_on_error()
     end)
   )
 end
 
+--- @async
 --- @param win integer
 --- @param bwin integer
 --- @param open 'vsplit'|'tabnew'
 --- @param bcache Gitsigns.CacheEntry
-local show_commit = async.async(function(win, bwin, open, bcache)
+local function show_commit(win, bwin, open, bcache)
   local cursor = api.nvim_win_get_cursor(bwin)[1]
   local blame = assert(bcache.blame)
   local sha = assert(blame[cursor]).commit.sha
   api.nvim_set_current_win(win)
   require('gitsigns.actions.show_commit')(sha, open)
-end)
+end
 
 --- @param augroup integer
 --- @param wins integer[]
@@ -359,14 +360,14 @@ function M.blame()
   })
 
   pmap('n', 's', function()
-    show_commit(win, blm_win, 'vsplit', bcache)
+    async.run(show_commit, win, blm_win, 'vsplit', bcache):raise_on_error()
   end, {
     desc = 'Show commit in a vertical split',
     buffer = blm_bufnr,
   })
 
   pmap('n', 'S', function()
-    show_commit(win, blm_win, 'tabnew', bcache)
+    async.run(show_commit, win, blm_win, 'tabnew', bcache):raise_on_error()
   end, {
     desc = 'Show commit in a new tab',
     buffer = blm_bufnr,

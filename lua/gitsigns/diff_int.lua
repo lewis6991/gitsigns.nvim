@@ -14,7 +14,7 @@ end
 --- @param f function
 --- @param args any[]
 --- @param cb function(...)
-local new_thread = async.awrap(3, function(f, args, cb)
+local new_thread = async.wrap(3, function(f, args, cb)
   local encode, decode = getencdec()
   uv.new_work(function(getencdec_bc, fd, argse)
     local getencdec0 = getencdec or assert(loadstring(getencdec_bc))

@@ -524,7 +524,7 @@ M.select_hunk = function(opts)
 
   local hunk --- @type Gitsigns.Hunk.Hunk?
   async
-    .arun(function()
+    .run(function()
       hunk = bcache:get_hunk(nil, opts.greedy ~= false)
     end)
     :wait()

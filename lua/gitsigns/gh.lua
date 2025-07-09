@@ -3,7 +3,7 @@ local log = require('gitsigns.debug.log')
 local system = require('gitsigns.system').system
 
 --- @type async fun(cmd: string[], opts?: vim.SystemOpts): vim.SystemCompleted
-local asystem = async.awrap(3, system)
+local asystem = async.wrap(3, system)
 
 --- @class gitsigns.gh.PrInfo
 --- @field url string

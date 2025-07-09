@@ -9,7 +9,7 @@ local tointeger = require('gitsigns.util').tointeger
 local M = {}
 
 --- @type fun(cmd: string[], opts?: vim.SystemOpts): vim.SystemCompleted
-local asystem = async.awrap(3, system)
+local asystem = async.wrap(3, system)
 
 --- @class (exact) Gitsigns.Version
 --- @field major integer
