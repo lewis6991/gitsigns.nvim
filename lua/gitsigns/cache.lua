@@ -203,6 +203,9 @@ function CacheEntry:schedule(check_compare_text)
 end
 
 --- @async
+--- @param greedy? boolean
+--- @param staged? boolean
+--- @return Gitsigns.Hunk.Hunk[]?
 function CacheEntry:get_hunks(greedy, staged)
   if greedy and config.diff_opts.linematch then
     -- Re-run the diff without linematch
@@ -225,10 +228,10 @@ function CacheEntry:get_hunks(greedy, staged)
   end
 
   if staged then
-    return vim.deepcopy((assert(self.hunks_staged)))
+    return self.hunks_staged and vim.deepcopy(self.hunks_staged) or nil
   end
 
-  return vim.deepcopy((assert(self.hunks)))
+  return self.hunks and vim.deepcopy(self.hunks) or nil
 end
 
 --- @param hunks? Gitsigns.Hunk.Hunk[]?
