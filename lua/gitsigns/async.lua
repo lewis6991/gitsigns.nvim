@@ -13,7 +13,9 @@ end
 --- @param first? Start
 --- @return std.Unpack<T, Start, End>
 local function unpack_len(t, first)
-  return unpack(t --[[@as T]], first or 1, t.n or table.maxn(t --[[@as T]]))
+  -- EmmyLuaLs/emmylua-analyzer-rust#619
+  --- @diagnostic disable-next-line: param-type-not-match, missing-return-value, generic-constraint-mismatch
+  return unpack(t, first or 1, t.n or table.maxn(t))
 end
 
 --- @class Gitsigns.async
