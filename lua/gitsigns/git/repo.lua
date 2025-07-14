@@ -132,6 +132,7 @@ function M.get(cwd, gitdir, toplevel)
   repo_cache[gitdir] = repo_cache[gitdir] or { 0, new(info) }
   repo_cache[gitdir][1] = repo_cache[gitdir][1] + 1
 
+  --- @diagnostic disable-next-line: undefined-field EmmyLuaLs/emmylua-analyzer-rust#617
   return repo_cache[gitdir][2]
 end
 

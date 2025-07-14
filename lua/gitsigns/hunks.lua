@@ -422,7 +422,7 @@ function M.find_nearest_hunk(lnum, hunks, direction, wrap)
       return #hunks
     end
     for i = 1, #hunks do
-      if lnum <= math.max(assert(hunks[i]).vend, 1) then
+      if lnum <= math.max(hunks[i].vend, 1) then
         if i > 1 and math.max(assert(hunks[i - 1]).vend, 1) < lnum then
           return i - 1
         elseif wrap then
