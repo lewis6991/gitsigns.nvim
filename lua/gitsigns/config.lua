@@ -44,6 +44,11 @@
 --- @field ignore_whitespace? boolean
 --- @field extra_opts? string[]
 
+--- @class (exact) Gitsigns.Config.HeatMap
+--- @field enable boolean
+--- @field style 'line'|'sign'
+--- @field alpha number|'auto'
+
 --- @class (exact) Gitsigns.Config
 --- @field package _config table<string,any> config store
 --- @field debug_mode boolean
@@ -58,6 +63,7 @@
 --- @field linehl boolean
 --- @field culhl boolean
 --- @field show_deleted boolean
+--- @field heat_map Gitsigns.Config.HeatMap
 --- @field sign_priority integer
 --- @field _on_attach_pre? fun(bufnr: integer, callback: fun(_: table))
 --- @field on_attach? fun(bufnr: integer): boolean?
@@ -424,6 +430,14 @@ M.schema = {
       Show the old version of hunks inline in the buffer (via virtual lines).
 
       Note: Virtual lines currently use the highlight `GitSignsDeleteVirtLn`.
+    ]],
+  },
+
+  heat_map = {
+    type = 'table',
+    default = { enable = false, style = 'sign', alpha = 'auto' },
+    description = [[
+      Show a blame heatmap for the current buffer.
     ]],
   },
 
