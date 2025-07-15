@@ -866,7 +866,6 @@ function M.build(user_config)
     else
       local ty = s.type
       if type(ty) == 'string' or type(ty) == 'function' then
-        --- @diagnostic disable-next-line: param-type-not-match EmmyLuaLs/emmylua-analyzer-rust#585
         validate(k, v, ty)
       end
       if s.deprecated then
