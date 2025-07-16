@@ -477,7 +477,6 @@ local function get_marker_text(marker)
     FUNCTIONS = function()
       return gen_functions_doc({
         'lua/gitsigns.lua',
-        'lua/gitsigns/attach.lua',
         'lua/gitsigns/actions.lua',
       })
     end,
