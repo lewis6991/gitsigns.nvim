@@ -47,6 +47,7 @@ local function bufread(bufnr, dbufnr, base, relpath)
 
   vim.bo[dbufnr].modifiable = modifiable
   vim.bo[dbufnr].modified = false
+  -- TODO(lewis6991): make this blocking
   require('gitsigns.attach').attach(dbufnr, nil, 'BufReadCmd')
 end
 

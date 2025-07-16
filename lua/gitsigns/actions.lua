@@ -55,6 +55,45 @@ local function complete_heads(arglead)
   )
 end
 
+--- Detach Gitsigns from all buffers it is attached to.
+function M.detach_all()
+  require('gitsigns.attach').detach_all()
+end
+
+--- Detach Gitsigns from the buffer {bufnr}. If {bufnr} is not
+--- provided then the current buffer is used.
+---
+--- @param bufnr integer Buffer number
+function M.detach(bufnr)
+  require('gitsigns.attach').detach(bufnr)
+end
+
+--- Attach Gitsigns to the buffer.
+---
+--- Attributes: ~
+---     {async}
+---
+--- @param bufnr integer Buffer number
+--- @param ctx Gitsigns.GitContext|nil
+---     Git context data that may optionally be used to attach to any
+---     buffer that represents a real git object.
+---     • {file}: (string)
+---       Path to the file represented by the buffer, relative to the
+---       top-level.
+---     • {toplevel}: (string?)
+---       Path to the top-level of the parent git repository.
+---     • {gitdir}: (string?)
+---       Path to the git directory of the parent git repository
+---       (typically the ".git/" directory).
+---     • {commit}: (string?)
+---       The git revision that the file belongs to.
+---     • {base}: (string?)
+---       The git revision that the file should be compared to.
+--- @param _trigger? string
+M.attach = async.create(3, function(bufnr, ctx, _trigger)
+  require('gitsigns.attach').attach(bufnr or api.nvim_get_current_buf(), ctx, _trigger)
+end)
+
 --- Toggle |gitsigns-config-signbooleancolumn|
 ---
 --- @param value boolean|nil Value to set toggle. If `nil`

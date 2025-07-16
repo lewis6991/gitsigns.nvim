@@ -171,7 +171,7 @@ end
 --- @param cbuf integer
 --- @param ctx? Gitsigns.GitContext
 --- @param aucmd? string
-local attach_throttled = throttle_by_id(function(cbuf, ctx, aucmd)
+M.attach = throttle_by_id(function(cbuf, ctx, aucmd)
   local __FUNC__ = 'attach'
   local passed_ctx = ctx ~= nil
 
@@ -313,8 +313,8 @@ end
 --- provided then the current buffer is used.
 ---
 --- @param bufnr integer Buffer number
---- @param _keep_signs? boolean
-function M.detach(bufnr, _keep_signs)
+--- @param keep_signs? boolean
+function M.detach(bufnr, keep_signs)
   -- When this is called interactively (with no arguments) we want to remove all
   -- the signs, however if called via a detach event (due to nvim_buf_attach)
   -- then we don't want to clear the signs in case the buffer is just being
@@ -329,38 +329,12 @@ function M.detach(bufnr, _keep_signs)
     return
   end
 
-  manager.detach(bufnr, _keep_signs)
+  manager.detach(bufnr, keep_signs)
 
   -- Clear status variables
   Status:clear(bufnr)
 
   Cache.destroy(bufnr)
 end
-
---- Attach Gitsigns to the buffer.
----
---- Attributes: ~
----     {async}
----
---- @param bufnr integer Buffer number
---- @param ctx Gitsigns.GitContext|nil
----     Git context data that may optionally be used to attach to any
----     buffer that represents a real git object.
----     • {file}: (string)
----       Path to the file represented by the buffer, relative to the
----       top-level.
----     • {toplevel}: (string?)
----       Path to the top-level of the parent git repository.
----     • {gitdir}: (string?)
----       Path to the git directory of the parent git repository
----       (typically the ".git/" directory).
----     • {commit}: (string?)
----       The git revision that the file belongs to.
----     • {base}: (string?)
----       The git revision that the file should be compared to.
---- @param _trigger? string
-M.attach = async.create(3, function(bufnr, ctx, _trigger)
-  attach_throttled(bufnr or api.nvim_get_current_buf(), ctx, _trigger)
-end)
 
 return M

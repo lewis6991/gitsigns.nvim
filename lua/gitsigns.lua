@@ -177,7 +177,7 @@ local function setup_attach()
         log().dprint('Attaching is disabled')
         return
       end
-      require('gitsigns.attach').attach(bufnr, nil, args.event)
+      require('gitsigns.actions').attach(bufnr, nil, args.event)
     end,
   })
 
@@ -198,7 +198,7 @@ local function setup_attach()
       if api.nvim_buf_is_loaded(buf) and api.nvim_buf_get_name(buf) ~= '' then
         -- Make sure to run each attach in its on async context in case one of the
         -- attaches is aborted.
-        require('gitsigns.attach').attach(buf, nil, 'setup')
+        require('gitsigns.actions').attach(buf, nil, 'setup')
       end
     end
   end
@@ -257,11 +257,6 @@ end
 --- @type gitsigns.main|gitsigns.actions|gitsigns.attach|gitsigns.debug
 M = setmetatable(M, {
   __index = function(_, f)
-    local attach = require('gitsigns.attach')
-    if attach[f] then
-      return attach[f]
-    end
-
     local actions = require('gitsigns.actions')
     if actions[f] then
       return actions[f]
