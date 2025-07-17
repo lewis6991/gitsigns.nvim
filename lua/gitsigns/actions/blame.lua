@@ -373,6 +373,7 @@ function M.blame()
   blm_wlo.spell = false
   blm_wlo.winfixwidth = true
   blm_wlo.wrap = false
+  blm_wlo.list = false
 
   if vim.wo[win].winbar ~= '' and blm_wlo.winbar == '' then
     local name = api.nvim_buf_get_name(bufnr)
