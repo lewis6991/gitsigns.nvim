@@ -330,7 +330,7 @@ function M.create_patch(relpath, hunks, mode_bits, invert)
 
     table.insert(
       results,
-      string.format('@@ -%s,%s +%s,%s @@', start, pre_count, start + offset, now_count)
+      ('@@ -%s,%s +%s,%s @@'):format(start, pre_count, start + offset, now_count)
     )
     for _, l in ipairs(pre_lines) do
       results[#results + 1] = '-' .. l
