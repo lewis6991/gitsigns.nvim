@@ -16,12 +16,24 @@ local M = {}
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @param qflist table[]
 local function hunks_to_qflist(buf_or_filename, hunks, qflist)
-  for i, hunk in ipairs(hunks) do
+  for _, hunk in ipairs(hunks) do
+    local kind = hunk.type == 'add' and 'Added' or hunk.type == 'delete' and 'Removed' or 'Changed'
+    local header = ('-%s%s +%s%s'):format(
+      hunk.removed.start,
+      hunk.removed.count ~= 1 and ',' .. tostring(hunk.removed.count) or '',
+      hunk.added.start,
+      hunk.added.count ~= 1 and ',' .. tostring(hunk.added.count) or ''
+    )
+    local text = ('%-7s (%s): %s'):format(
+      kind,
+      header,
+      hunk.added.lines[1] or hunk.removed.lines[1]
+    )
     qflist[#qflist + 1] = {
       bufnr = type(buf_or_filename) == 'number' and buf_or_filename or nil,
       filename = type(buf_or_filename) == 'string' and buf_or_filename or nil,
       lnum = hunk.added.start,
-      text = string.format('Lines %d-%d (%d/%d)', hunk.added.start, hunk.vend, i, #hunks),
+      text = text,
     }
   end
 end
