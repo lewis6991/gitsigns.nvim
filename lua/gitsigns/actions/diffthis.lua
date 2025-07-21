@@ -1,4 +1,5 @@
 local async = require('gitsigns.async')
+local config = require('gitsigns.config').config
 local manager = require('gitsigns.manager')
 local message = require('gitsigns.message')
 local util = require('gitsigns.util')
@@ -151,7 +152,7 @@ local function diffthis_rev(base, opts)
     bufname,
     mods = {
       vertical = opts.vertical,
-      split = opts.split or 'aboveleft',
+      split = opts.split or config.diffthis.split,
       keepalt = true,
     },
   })

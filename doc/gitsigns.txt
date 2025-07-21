@@ -758,6 +758,15 @@ diff_opts                                          *gitsigns-config-diff_opts*
        • ignore_whitespace_change_at_eol: boolean
             Ignore white space changes at end of line.
 
+diffthis                                            *gitsigns-config-diffthis*
+      Type: `table`
+      Default: >
+        `{
+          split = "aboveleft"
+        }`
+<
+      Options for the `:Gitsigns diffthis` command.
+
 base                                                    *gitsigns-config-base*
       Type: `string`, Default: index
 
