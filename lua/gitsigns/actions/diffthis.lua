@@ -59,7 +59,9 @@ local function bufwrite(bufnr, dbufnr, base)
   local bcache = assert(cache[bufnr])
   local buftext = util.buf_lines(dbufnr)
   base = util.norm_base(base)
-  bcache.git_obj:stage_lines(buftext)
+  bcache.git_obj.lock:with(function()
+    bcache.git_obj:stage_lines(buftext)
+  end)
   async.schedule()
   if not api.nvim_buf_is_valid(bufnr) then
     return

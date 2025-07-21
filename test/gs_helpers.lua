@@ -310,7 +310,7 @@ local function check_signs(signs, bufnr)
   eq(signs, act, vim.inspect(buf_signs))
 end
 
---- @param attrs {signs:table<string,integer>,status:table<string,string|integer>}
+--- @param attrs {signs?:table<string,integer>,status?:table<string,string|integer>}
 --- @param bufnr? integer
 function M.check(attrs, bufnr)
   bufnr = bufnr or 0

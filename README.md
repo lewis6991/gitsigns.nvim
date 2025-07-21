@@ -280,6 +280,7 @@ require('gitsigns').setup{
   end
 }
 ```
+
 ## 🔗 Plugin Integrations
 
 ### [vim-fugitive]

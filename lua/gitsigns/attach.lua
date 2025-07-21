@@ -12,7 +12,6 @@ local config = require('gitsigns.config').config
 local dprint = log.dprint
 local dprintf = log.dprintf
 local throttle_by_id = require('gitsigns.debounce').throttle_by_id
-local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 
 local api = vim.api
 local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
@@ -218,9 +217,7 @@ end
 
 --- @async
 --- @param bufnr integer
-local function watcher_handler0(bufnr)
-  local __FUNC__ = 'watcher_handler'
-
+local function watcher_handler(bufnr)
   local bcache = cache[bufnr]
   if not bcache then
     return
@@ -228,21 +225,7 @@ local function watcher_handler0(bufnr)
 
   dprintf('Watcher handler called for buffer %d %s', bufnr, bcache.file)
 
-  -- Avoid cache hit for detached buffer
-  -- ref: https://github.com/lewis6991/gitsigns.nvim/issues/956
-  if not bcache:schedule() then
-    dprint('buffer invalid (1)')
-    return
-  end
-
   local git_obj = bcache.git_obj
-
-  git_obj.repo:update_abbrev_head()
-
-  if not bcache:schedule() then
-    dprint('buffer invalid (2)')
-    return
-  end
 
   Status:update(bufnr, { head = git_obj.repo.abbrev_head })
 
@@ -252,7 +235,7 @@ local function watcher_handler0(bufnr)
   bcache:invalidate(true)
   git_obj:refresh()
   if not bcache:schedule() then
-    dprint('buffer invalid (3)')
+    dprint('buffer invalid (1)')
     return
   end
 
@@ -261,22 +244,13 @@ local function watcher_handler0(bufnr)
     -- moved. Check if it was moved and switch to it.
     handle_moved(bufnr, old_relpath)
     if not bcache:schedule() then
-      dprint('buffer invalid (4)')
+      dprint('buffer invalid (2)')
       return
     end
   end
 
   require('gitsigns.manager').update(bufnr)
 end
-
---- Debounce to:
---- - wait for all changes to the gitdir to complete.
---- Throttle to:
---- - ensure handler is only triggered once per git operation.
---- - prevent updates to the same buffer from interleaving as the handler is
----   async.
-local watcher_handler =
-  debounce_trailing(200, async.create(1, throttle_by_id(watcher_handler0, true)), 1)
 
 --- @async
 --- Ensure attaches cannot be interleaved for the same buffer.
@@ -382,8 +356,13 @@ M.attach = throttle_by_id(function(cbuf, ctx, aucmd)
 
   if config.watch_gitdir.enable then
     dprintf('Watching git dir')
+    --- Throttle to:
+    --- - ensure handler is only triggered once per git operation.
+    --- - prevent updates to the same buffer from interleaving as the handler is
+    ---   async.
+    local throttled_watcher_handler = throttle_by_id(watcher_handler, true)
     cache[cbuf].deregister_watcher = git_obj.repo:register_callback(function()
-      watcher_handler(cbuf)
+      async.run(throttled_watcher_handler, cbuf)
     end)
   end
 

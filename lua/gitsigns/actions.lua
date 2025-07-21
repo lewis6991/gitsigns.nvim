@@ -236,35 +236,32 @@ M.stage_hunk = mk_repeatable(async.create(2, function(range, opts)
     return
   end
 
-  if bcache:locked() then
-    print('Error: busy')
-    return
-  end
-
   if not util.Path.exists(bcache.file) then
     print('Error: Cannot stage lines. Please add the file to the working tree.')
     return
   end
 
-  local hunk = bcache:get_hunk(range, opts.greedy ~= false, false)
+  bcache.git_obj.lock:with(function()
+    local hunk = bcache:get_hunk(range, opts.greedy ~= false, false)
 
-  local invert = false
-  if not hunk then
-    invert = true
-    hunk = bcache:get_hunk(range, opts.greedy ~= false, true)
-  end
+    local invert = false
+    if not hunk then
+      invert = true
+      hunk = bcache:get_hunk(range, opts.greedy ~= false, true)
+    end
 
-  if not hunk then
-    api.nvim_echo({ { 'No hunk to stage', 'WarningMsg' } }, false, {})
-    return
-  end
+    if not hunk then
+      api.nvim_echo({ { 'No hunk to stage', 'WarningMsg' } }, false, {})
+      return
+    end
 
-  local err = bcache.git_obj:stage_hunks({ hunk }, invert)
-  if err then
-    message.error(err)
-    return
-  end
-  table.insert(bcache.staged_diffs, hunk)
+    local err = bcache.git_obj:stage_hunks({ hunk }, invert)
+    if err then
+      message.error(err)
+      return
+    end
+    table.insert(bcache.staged_diffs, hunk)
+  end)
 
   bcache:invalidate(true)
   update(bufnr)
@@ -367,22 +364,20 @@ M.undo_stage_hunk = async.create(0, function()
     return
   end
 
-  if bcache:locked() then
-    print('Error: busy')
-    return
-  end
+  bcache.git_obj.lock:with(function()
+    local hunk = table.remove(bcache.staged_diffs)
+    if not hunk then
+      print('No hunks to undo')
+      return
+    end
 
-  local hunk = table.remove(bcache.staged_diffs)
-  if not hunk then
-    print('No hunks to undo')
-    return
-  end
+    local err = bcache.git_obj:stage_hunks({ hunk }, true)
+    if err then
+      message.error(err)
+      return
+    end
+  end)
 
-  local err = bcache.git_obj:stage_hunks({ hunk }, true)
-  if err then
-    message.error(err)
-    return
-  end
   bcache:invalidate(true)
   update(bufnr)
 end)
@@ -398,32 +393,29 @@ M.stage_buffer = async.create(0, function()
     return
   end
 
-  if bcache:locked() then
-    print('Error: busy')
-    return
-  end
+  bcache.git_obj.lock:with(function()
+    -- Only process files with existing hunks
+    local hunks = bcache.hunks
+    if not hunks or #hunks == 0 then
+      print('No unstaged changes in file to stage')
+      return
+    end
 
-  -- Only process files with existing hunks
-  local hunks = bcache.hunks
-  if not hunks or #hunks == 0 then
-    print('No unstaged changes in file to stage')
-    return
-  end
+    if not util.Path.exists(bcache.git_obj.file) then
+      print('Error: Cannot stage file. Please add it to the working tree.')
+      return
+    end
 
-  if not util.Path.exists(bcache.git_obj.file) then
-    print('Error: Cannot stage file. Please add it to the working tree.')
-    return
-  end
+    local err = bcache.git_obj:stage_hunks(hunks)
+    if err then
+      message.error(err)
+      return
+    end
 
-  local err = bcache.git_obj:stage_hunks(hunks)
-  if err then
-    message.error(err)
-    return
-  end
-
-  for _, hunk in ipairs(hunks) do
-    table.insert(bcache.staged_diffs, hunk)
-  end
+    for _, hunk in ipairs(hunks) do
+      table.insert(bcache.staged_diffs, hunk)
+    end
+  end)
 
   bcache:invalidate(true)
   update(bufnr)
@@ -442,20 +434,18 @@ M.reset_buffer_index = async.create(0, function()
     return
   end
 
-  if bcache:locked() then
-    print('Error: busy')
-    return
-  end
+  bcache.git_obj.lock:with(function()
+    -- `bcache.staged_diffs` won't contain staged changes outside of current
+    -- neovim session so signs added from this unstage won't be complete They will
+    -- however be fixed by gitdir watcher and properly updated We should implement
+    -- some sort of initial population from git diff, after that this function can
+    -- be improved to check if any staged hunks exists and it can undo changes
+    -- using git apply line by line instead of resetting whole file
+    bcache.staged_diffs = {}
 
-  -- `bcache.staged_diffs` won't contain staged changes outside of current
-  -- neovim session so signs added from this unstage won't be complete They will
-  -- however be fixed by gitdir watcher and properly updated We should implement
-  -- some sort of initial population from git diff, after that this function can
-  -- be improved to check if any staged hunks exists and it can undo changes
-  -- using git apply line by line instead of resetting whole file
-  bcache.staged_diffs = {}
+    bcache.git_obj:unstage_file()
+  end)
 
-  bcache.git_obj:unstage_file()
   bcache:invalidate(true)
   update(bufnr)
 end)
