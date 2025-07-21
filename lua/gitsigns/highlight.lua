@@ -323,7 +323,16 @@ do --- temperature highlight
     local normalized_t = (t - min) / (math.max(max, t) - min)
     local raw_temp_color = Color.temp(normalized_t)
 
-    normal_bg = normal_bg or Color.int_to_rgb(assert(api.nvim_get_hl(0, { name = 'Normal' }).bg))
+    if normal_bg == nil then
+      local normal_hl = api.nvim_get_hl(0, { name = 'Normal' })
+      if normal_hl.bg then
+        normal_bg = Color.int_to_rgb(normal_hl.bg)
+      elseif vim.o.background == 'light' then
+        normal_bg = { 255, 255, 255 } -- white
+      else
+        normal_bg = { 0, 0, 0 } -- black
+      end
+    end
 
     local color = Color.rgb_to_int(Color.blend(raw_temp_color, normal_bg, alpha))
 
