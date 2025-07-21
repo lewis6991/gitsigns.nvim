@@ -43,6 +43,11 @@ local function wait_for_attach(bufnr)
   })
 end
 
+local revparse_pat = ('run_job: git .* rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD'):gsub(
+  '%-',
+  '%%-'
+)
+
 describe('gitsigns (with screen)', function()
   local screen --- @type test.screen
   local config --- @type table
@@ -106,9 +111,7 @@ describe('gitsigns (with screen)', function()
     match_dag({
       'attach(1): Attaching (trigger=BufReadPost)',
       p('run_job: git .* config user.name'),
-      p(
-        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
-      ),
+      p(revparse_pat),
       p(
         'run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
           .. vim.pesc(test_file)
@@ -136,9 +139,7 @@ describe('gitsigns (with screen)', function()
 
     match_debug_messages({
       'attach(1): Attaching (trigger=BufReadPost)',
-      np(
-        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
-      ),
+      np(revparse_pat),
       n('new: Not in git repo'),
       n('attach(1): Empty git obj'),
     })
@@ -149,9 +150,7 @@ describe('gitsigns (with screen)', function()
 
     match_debug_messages({
       n('attach(1): Attaching (trigger=BufWritePost)'),
-      np(
-        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
-      ),
+      np(revparse_pat),
       n('new: Not in git repo'),
       n('attach(1): Empty git obj'),
     })
@@ -187,10 +186,7 @@ describe('gitsigns (with screen)', function()
       match_debug_messages({
         'attach(1): Attaching (trigger=BufReadPost)',
         n('run_job: git --version'),
-        p(
-          'run_job: git .* '
-            .. vim.pesc('rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD')
-        ),
+        p(revparse_pat),
         n('new: Not in git repo'),
         n('attach(1): Empty git obj'),
       })
@@ -206,9 +202,7 @@ describe('gitsigns (with screen)', function()
 
       match_debug_messages({
         'attach(1): Attaching (trigger=BufReadPost)',
-        np(
-          'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
-        ),
+        np(revparse_pat),
         np('run_job: git .* config user.name'),
         np('run_job: git .* ls%-files .*/dummy_ignored.txt'),
         n('attach(1): Cannot resolve file in repo'),
@@ -222,9 +216,7 @@ describe('gitsigns (with screen)', function()
 
       match_debug_messages({
         'attach(1): Attaching (trigger=BufNewFile)',
-        np(
-          'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
-        ),
+        np(revparse_pat),
         np('run_job: git .* config user.name'),
         np(
           'run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
@@ -356,9 +348,7 @@ describe('gitsigns (with screen)', function()
       edit(test_file)
       match_debug_messages({
         'attach(1): Attaching (trigger=BufReadPost)',
-        np(
-          'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
-        ),
+        np(revparse_pat),
         np('run_job: git .* rev%-parse %-%-short HEAD'),
         np('run_job: git .* config user.name'),
         np('run_job: git .* %-%-git%-dir .* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*'),
@@ -471,9 +461,7 @@ describe('gitsigns (with screen)', function()
         edit(newfile)
         match_debug_messages({
           'attach(1): Attaching (trigger=BufNewFile)',
-          np(
-            'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
-          ),
+          np(revparse_pat),
           np('run_job: git .* config user.name'),
           np('run_job: git .* ls%-files .*'),
           n('attach(1): Cannot resolve file in repo'),
@@ -482,9 +470,7 @@ describe('gitsigns (with screen)', function()
 
         local messages = {
           'attach(1): Attaching (trigger=BufWritePost)',
-          np(
-            'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
-          ),
+          np(revparse_pat),
           np('run_job: git .* ls%-files .*'),
           n('attach(1): Watching git dir'),
         }

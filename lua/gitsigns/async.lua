@@ -436,6 +436,7 @@ end
 --- end)
 --- ```
 --- @async
+--- @overload fun(func: Gitsigns.async.CallbackFn): any ...
 --- @overload fun(argc: integer, func: Gitsigns.async.CallbackFn, ...:any): any ...
 --- @overload fun(task: Gitsigns.async.Task): any ...
 function M.await(...)
@@ -445,6 +446,8 @@ function M.await(...)
 
   if type(arg1) == 'number' then
     return await_cbfun(...)
+  elseif type(arg1) == 'function' then
+    return await_cbfun(1, ...)
   elseif getmetatable(arg1) == Task then
     return await_task(...)
   end
@@ -526,6 +529,194 @@ if vim.schedule then
   --- An async function that when called will yield to the Neovim scheduler to be
   --- able to call the API.
   M.schedule = M.wrap(1, vim.schedule)
+end
+
+do --- M.event()
+  --- An event can be used to notify multiple tasks that some event has
+  --- happened. An Event object manages an internal flag that can be set to true
+  --- with the `set()` method and reset to `false` with the `clear()` method.
+  --- The `wait()` method blocks until the flag is set to `true`. The flag is
+  --- set to `false` initially.
+  --- @class Gitsigns.async.Event
+  --- @field private _is_set boolean
+  --- @field private _waiters function[]
+  local Event = {}
+  Event.__index = Event
+
+  --- Set the event.
+  ---
+  --- All tasks waiting for event to be set will be immediately awakened.
+  --- @param max_woken? integer
+  function Event:set(max_woken)
+    if self._is_set then
+      return
+    end
+    self._is_set = true
+    local waiters = self._waiters
+    local waiters_to_notify = {} --- @type function[]
+    max_woken = max_woken or #waiters
+    while #waiters > 0 and #waiters_to_notify < max_woken do
+      waiters_to_notify[#waiters_to_notify + 1] = table.remove(waiters, 1)
+    end
+    if #waiters > 0 then
+      self._is_set = false
+    end
+    for _, waiter in ipairs(waiters_to_notify) do
+      waiter()
+    end
+  end
+
+  --- Wait until the event is set.
+  ---
+  --- If the event is set, return `true` immediately. Otherwise block until
+  --- another task calls set().
+  --- @async
+  function Event:wait()
+    M.await(function(callback)
+      if self._is_set then
+        callback()
+      else
+        table.insert(self._waiters, callback)
+      end
+    end)
+  end
+
+  --- Clear (unset) the event.
+  ---
+  --- Tasks awaiting on wait() will now block until the set() method is called
+  --- again.
+  function Event:clear()
+    self._is_set = false
+  end
+
+  --- Create a new event
+  ---
+  --- An event can signal to multiple listeners to resume execution
+  --- The event can be set from a non-async context.
+  ---
+  --- ```lua
+  ---  local event = vim.async.event()
+  ---
+  ---  local worker = vim.async.run(function()
+  ---    sleep(1000)
+  ---    event.set()
+  ---  end)
+  ---
+  ---  local listeners = {
+  ---    vim.async.run(function()
+  ---      event.wait()
+  ---      print("First listener notified")
+  ---    end),
+  ---    vim.async.run(function()
+  ---      event.wait()
+  ---      print("Second listener notified")
+  ---    end),
+  ---  }
+  --- ```
+  --- @return Gitsigns.async.Event
+  function M.event()
+    return setmetatable({
+      _waiters = {},
+      _is_set = false,
+    }, Event)
+  end
+end
+
+do --- M.semaphore()
+  --- A semaphore manages an internal counter which is decremented by each
+  --- `acquire()` call and incremented by each `release()` call. The counter can
+  --- never go below zero; when `acquire()` finds that it is zero, it blocks,
+  --- waiting until some task calls `release()`.
+  ---
+  --- The preferred way to use a Semaphore is with the `with()` method, which
+  --- automatically acquires and releases the semaphore around a function call.
+  --- @class Gitsigns.async.Semaphore
+  --- @field private _permits integer
+  --- @field private _max_permits integer
+  --- @field package _event Gitsigns.async.Event
+  local Semaphore = {}
+  Semaphore.__index = Semaphore
+
+  --- Executes the given function within the semaphore's context, ensuring
+  --- that the semaphore's constraints are respected.
+  --- @async
+  --- @generic R
+  --- @param fn async fun(): R... # Function to execute within the semaphore's context.
+  --- @return R... # Result(s) of the executed function.
+  function Semaphore:with(fn)
+    self:acquire()
+    local r = pack_len(pcall(fn))
+    self:release()
+    local stat = r[1]
+    if not stat then
+      local err = r[2]
+      error(err)
+    end
+    return unpack_len(r, 2)
+  end
+
+  --- Acquire a semaphore.
+  ---
+  --- If the internal counter is greater than zero, decrement it by `1` and
+  --- return immediately. If it is `0`, wait until a `release()` is called.
+  --- @async
+  function Semaphore:acquire()
+    self._event:wait()
+    self._permits = self._permits - 1
+    assert(self._permits >= 0, 'Semaphore value is negative')
+    if self._permits == 0 then
+      self._event:clear()
+    end
+  end
+
+  --- Release a semaphore.
+  ---
+  --- Increments the internal counter by `1`. Can wake
+  --- up a task waiting to acquire the semaphore.
+  function Semaphore:release()
+    if self._permits >= self._max_permits then
+      error('Semaphore value is greater than max permits', 2)
+    end
+    self._permits = self._permits + 1
+    self._event:set(1)
+  end
+
+  --- Create an async semaphore that allows up to a given number of acquisitions.
+  ---
+  --- ```lua
+  --- vim.async.run(function()
+  ---   local semaphore = vim.async.semaphore(2)
+  ---
+  ---   local tasks = {}
+  ---
+  ---   local value = 0
+  ---   for i = 1, 10 do
+  ---     tasks[i] = vim.async.run(function()
+  ---       semaphore:with(function()
+  ---         value = value + 1
+  ---         sleep(10)
+  ---         print(value) -- Never more than 2
+  ---         value = value - 1
+  ---       end)
+  ---     end)
+  ---   end
+  ---
+  ---   vim.async.join(tasks)
+  ---   assert(value <= 2)
+  --- end)
+  --- ```
+  --- @param permits? integer (default: 1)
+  --- @return Gitsigns.async.Semaphore
+  function M.semaphore(permits)
+    permits = permits or 1
+    local obj = setmetatable({
+      _max_permits = permits,
+      _permits = permits,
+      _event = M.event(),
+    }, Semaphore)
+    obj._event:set()
+    return obj
+  end
 end
 
 return M

@@ -30,8 +30,6 @@ local M = {
 --- @field git_obj            Gitsigns.GitObj
 --- @field blame?             Gitsigns.CacheEntry.Blame
 --- @field commits?           table<string,Gitsigns.CommitInfo?>
----
---- @field update_lock?       true Update in progress
 local CacheEntry = M.CacheEntry
 
 --- @param rev? string
@@ -44,10 +42,6 @@ function CacheEntry:get_rev_bufname(rev, filename)
     return ('gitsigns://%s//%s'):format(gitdir, rev)
   end
   return ('gitsigns://%s//%s:%s'):format(gitdir, rev, filename or self.git_obj.relpath)
-end
-
-function CacheEntry:locked()
-  return self.git_obj.lock or self.update_lock or false
 end
 
 --- Invalidate any state dependent on the buffer content.
@@ -346,7 +340,6 @@ function CacheEntry:destroy()
     self.deregister_watcher()
     self.deregister_watcher = nil
   end
-  self.git_obj.repo:unref()
 end
 
 ---@type table<integer,Gitsigns.CacheEntry?>

@@ -300,7 +300,7 @@ M.update = throttle_by_id(function(bufnr)
   if not bcache or not bcache:schedule() then
     return
   end
-  bcache.update_lock = true
+  bcache.git_obj.lock:acquire()
 
   local old_hunks, old_hunks_staged = bcache.hunks, bcache.hunks_staged
   bcache.hunks, bcache.hunks_staged = nil, nil
@@ -374,7 +374,8 @@ M.update = throttle_by_id(function(bufnr)
     summary.head = git_obj.repo.abbrev_head
     Status:update(bufnr, summary)
   end
-  bcache.update_lock = nil
+
+  bcache.git_obj.lock:release()
 end, true)
 
 M.update_debounced = debounce_trailing(function()

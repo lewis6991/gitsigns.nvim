@@ -31,7 +31,7 @@ M.Repo = Repo
 --- @field repo Gitsigns.Repo
 --- @field has_conflicts? boolean
 ---
---- @field lock? true
+--- @field lock Gitsigns.async.Semaphore
 local Obj = {}
 Obj.__index = Obj
 
@@ -132,9 +132,7 @@ end
 
 --- @async
 function Obj:unstage_file()
-  self.lock = true
   self.repo:command({ 'reset', self.file })
-  self.lock = nil
   autocmd_changed(self.file)
 end
 
@@ -152,7 +150,6 @@ end
 --- @async
 --- @private
 function Obj:ensure_file_in_index()
-  self.lock = true
   if self.object_name and not self.has_conflicts then
     return
   end
@@ -167,18 +164,15 @@ function Obj:ensure_file_in_index()
   end
 
   self:refresh()
-  self.lock = nil
 end
 
 --- @async
 --- Stage 'lines' as the entire contents of the file
 --- @param lines string[]
 function Obj:stage_lines(lines)
-  self.lock = true
   local relpath = assert(self.relpath)
   local new_object = self.repo:hash_object(relpath, lines)
   self.repo:update_index(self.mode_bits, new_object, relpath)
-  self.lock = nil
   autocmd_changed(self.file)
 end
 
@@ -191,7 +185,6 @@ end)
 --- @param invert? boolean
 --- @return string? err
 function Obj:stage_hunks(hunks, invert)
-  self.lock = true
   self:ensure_file_in_index()
 
   local relpath = assert(self.relpath)
@@ -217,7 +210,6 @@ function Obj:stage_hunks(hunks, invert)
   end)
 
   if not stat then
-    self.lock = nil
     return err
   end
 
@@ -225,7 +217,6 @@ function Obj:stage_hunks(hunks, invert)
   -- for the changes to settle.
   sleep(100)
 
-  self.lock = nil
   autocmd_changed(self.file)
 end
 
@@ -292,6 +283,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
   self.has_conflicts = info.has_conflicts
   self.i_crlf = info.i_crlf
   self.w_crlf = info.w_crlf
+  self.lock = async.semaphore(1)
 
   return self
 end

@@ -9,7 +9,6 @@ local cleanup = helpers.cleanup
 local command = helpers.api.nvim_command
 local test_config = helpers.test_config
 local match_debug_messages = helpers.match_debug_messages
-local match_dag = helpers.match_dag
 local n, p, np = helpers.n, helpers.p, helpers.np
 local setup_gitsigns = helpers.setup_gitsigns
 local test_file = helpers.test_file
@@ -41,11 +40,14 @@ describe('gitdir_watcher', function()
     command('Gitsigns clear_debug')
     edit(test_file)
 
+    local revparse_pat = ('run_job: git .* rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD'):gsub(
+      '%-',
+      '%%-'
+    )
+
     match_debug_messages({
       'attach(1): Attaching (trigger=BufReadPost)',
-      np(
-        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
-      ),
+      np(revparse_pat),
       np('run_job: git .* config user.name'),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
       n('attach(1): Watching git dir'),
@@ -59,16 +61,9 @@ describe('gitdir_watcher', function()
     local test_file2 = test_file .. '2'
     git('mv', test_file, test_file2)
 
-    match_dag({
-      "watcher_cb: Git dir update: 'index.lock' { rename = true }",
-      "watcher_cb: Git dir update: 'index' { rename = true }",
-      "watcher_cb: Git dir update: 'index' { rename = true }",
-    })
-
     match_debug_messages({
-      np(
-        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
-      ),
+      p('watcher_cb: Git dir update: .*'),
+      np(revparse_pat),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
       np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
       n('handle_moved(1): File moved to dummy.txt2'),
@@ -85,16 +80,9 @@ describe('gitdir_watcher', function()
 
     git('mv', test_file2, test_file3)
 
-    match_dag({
-      "watcher_cb: Git dir update: 'index.lock' { rename = true }",
-      "watcher_cb: Git dir update: 'index' { rename = true }",
-      "watcher_cb: Git dir update: 'index' { rename = true }",
-    })
-
     match_debug_messages({
-      p(
-        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
-      ),
+      p('watcher_cb: Git dir update: .*'),
+      np(revparse_pat),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file2)),
       np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
       n('handle_moved(1): File moved to dummy.txt3'),
@@ -109,16 +97,9 @@ describe('gitdir_watcher', function()
 
     git('mv', test_file3, test_file)
 
-    match_dag({
-      "watcher_cb: Git dir update: 'index.lock' { rename = true }",
-      "watcher_cb: Git dir update: 'index' { rename = true }",
-      "watcher_cb: Git dir update: 'index' { rename = true }",
-    })
-
     match_debug_messages({
-      p(
-        'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
-      ),
+      p('watcher_cb: Git dir update: .*'),
+      np(revparse_pat),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file3)),
       np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),

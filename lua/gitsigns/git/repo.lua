@@ -3,6 +3,7 @@ local git_command = require('gitsigns.git.cmd')
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
 local errors = require('gitsigns.git.errors')
+local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 
 local check_version = require('gitsigns.git.version').check
 
@@ -20,6 +21,8 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 --- Needed for to determine "You" in current line blame.
 --- @field username string
 --- @field package _watcher_callbacks table<fun(),true>
+--- @field package _watcher uv.uv_fs_event_t
+--- @field package _gc userdata Used for garbage collection
 local M = {}
 
 --- vim.inspect but on one line
@@ -27,36 +30,6 @@ local M = {}
 --- @return string
 local function inspect(x)
   return vim.inspect(x, { indent = '', newline = ' ' })
-end
-
---- @package
---- @param repo Gitsigns.Repo
---- @param err? string
---- @param filename string
---- @param events { change?: boolean, rename?: boolean }
-local function watcher_cb(repo, err, filename, events)
-  if err then
-    log.dprintf('Git dir update error: %s', err)
-    return
-  end
-
-  -- The luv docs say filename is passed as a string but it has been observed
-  -- to sometimes be nil.
-  --    https://github.com/lewis6991/gitsigns.nvim/issues/848
-  if not filename then
-    log.eprint('No filename')
-    return
-  end
-
-  log.dprintf("Git dir update: '%s' %s", filename, inspect(events))
-
-  if vim.startswith(filename, '.watchman-cookie') then
-    return
-  end
-
-  for cb in pairs(repo._watcher_callbacks) do
-    cb()
-  end
 end
 
 --- @param cb fun()
@@ -139,6 +112,7 @@ function M:get_show_text(object, encoding)
 end
 
 --- @async
+--- @package
 function M:update_abbrev_head()
   local info, err = M.get_info(self.toplevel)
   if not info then
@@ -146,6 +120,68 @@ function M:update_abbrev_head()
     return
   end
   self.abbrev_head = info.abbrev_head
+end
+
+--- @type table<string,Gitsigns.Repo?>
+local repo_cache = setmetatable({}, { __mode = 'v' })
+
+--- @param fn fun()
+--- @return userdata
+local function gc_proxy(fn)
+  local proxy = newproxy(true)
+  getmetatable(proxy).__gc = fn
+  return proxy
+end
+
+--- @generic T1, T, R
+--- @param fn fun(_:T1, _:T...): R...
+--- @param arg1 T1
+--- @return fun(_:T...): R...
+local function curry1(fn, arg1)
+  return function(...)
+    return fn(arg1, ...)
+  end
+end
+
+--- @param gitdir string
+--- @param err? string
+--- @param filename string
+--- @param events { change?: boolean, rename?: boolean }
+local function watcher_cb(gitdir, err, filename, events)
+  local __FUNC__ = 'watcher_cb'
+  -- do not use `self` here as it prevents garbage collection. Must use a
+  -- weak reference.
+  local repo = repo_cache[gitdir]
+  if not repo then
+    return -- garbage collected
+  end
+
+  if err then
+    log.dprintf('Git dir update error: %s', err)
+    return
+  end
+
+  -- The luv docs say filename is passed as a string but it has been observed
+  -- to sometimes be nil.
+  --    https://github.com/lewis6991/gitsigns.nvim/issues/848
+  if not filename then
+    log.eprint('No filename')
+    return
+  end
+
+  log.dprintf("Git dir update: '%s' %s", filename, inspect(events))
+
+  if vim.startswith(filename, '.watchman-cookie') then
+    return
+  end
+
+  async.run(function()
+    repo:update_abbrev_head()
+
+    for cb in pairs(repo._watcher_callbacks) do
+      vim.schedule(cb)
+    end
+  end)
 end
 
 --- @async
@@ -157,18 +193,24 @@ local function new(info)
   --- @cast self Gitsigns.Repo
 
   self.username = self:command({ 'config', 'user.name' }, { ignore_error = true })[1]
-  self._watcher_callbacks = {}
 
-  local w = assert(uv.new_fs_event())
-  w:start(self.gitdir, {}, function(err, filename, events)
-    watcher_cb(self, err, filename, events)
-  end)
+  do -- gitdir watcher
+    self._watcher_callbacks = {}
+    self._watcher = assert(uv.new_fs_event())
+
+    local debounced_handler = debounce_trailing(1000, curry1(watcher_cb, self.gitdir))
+    self._watcher:start(self.gitdir, {}, debounced_handler)
+
+    self._gc = gc_proxy(function()
+      self._watcher:stop()
+      self._watcher:close()
+    end)
+  end
 
   return self
 end
 
---- @type table<string,[integer,Gitsigns.Repo]?>
-local repo_cache = setmetatable({}, { __mode = 'v' })
+local sem = async.semaphore(1)
 
 --- @async
 --- @param cwd? string
@@ -177,31 +219,18 @@ local repo_cache = setmetatable({}, { __mode = 'v' })
 --- @return Gitsigns.Repo? repo
 --- @return string? err
 function M.get(cwd, gitdir, toplevel)
-  local info, err = M.get_info(cwd, gitdir, toplevel)
-  if not info then
-    return nil, err
-  end
+  --- EmmyLuaLs/emmylua-analyzer-rust#659
+  --- @return Gitsigns.Repo? repo
+  --- @return string? err
+  return sem:with(function()
+    local info, err = M.get_info(cwd, gitdir, toplevel)
+    if not info then
+      return nil, err
+    end
 
-  gitdir = info.gitdir
-  repo_cache[gitdir] = repo_cache[gitdir] or { 0, new(info) }
-  repo_cache[gitdir][1] = repo_cache[gitdir][1] + 1
-
-  return repo_cache[gitdir][2]
-end
-
-function M:unref()
-  local gitdir = self.gitdir
-  local repo = repo_cache[gitdir]
-  if not repo then
-    -- Already reclaimed by GC
-    return
-  end
-  local refcount = repo[1]
-  if refcount <= 1 then
-    repo_cache[gitdir] = nil
-  else
-    repo[1] = refcount - 1
-  end
+    repo_cache[info.gitdir] = repo_cache[info.gitdir] or new(info)
+    return repo_cache[info.gitdir]
+  end)
 end
 
 --- @async
