@@ -75,6 +75,8 @@ local function watcher_handler0(bufnr)
     return
   end
 
+  dprintf('Watcher handler called for buffer %d %s', bufnr, bcache.file)
+
   -- Avoid cache hit for detached buffer
   -- ref: https://github.com/lewis6991/gitsigns.nvim/issues/956
   if not bcache:schedule() then
@@ -156,6 +158,10 @@ function M.watch_gitdir(bufnr, gitdir)
     end
 
     dprintf("Git dir update: '%s' %s", filename, inspect(events))
+
+    if vim.startswith(filename, '.watchman-cookie') then
+      return
+    end
 
     watcher_handler(bufnr)
   end)
