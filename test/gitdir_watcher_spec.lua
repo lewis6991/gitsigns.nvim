@@ -48,7 +48,7 @@ describe('gitdir_watcher', function()
       ),
       np('run_job: git .* config user.name'),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
-      n('watch_gitdir(1): Watching git dir'),
+      n('attach(1): Watching git dir'),
       np('run_job: git .* show .*'),
     })
 
@@ -60,9 +60,9 @@ describe('gitdir_watcher', function()
     git('mv', test_file, test_file2)
 
     match_dag({
-      "watcher_cb(1): Git dir update: 'index.lock' { rename = true }",
-      "watcher_cb(1): Git dir update: 'index' { rename = true }",
-      "watcher_cb(1): Git dir update: 'index' { rename = true }",
+      "watcher_cb: Git dir update: 'index.lock' { rename = true }",
+      "watcher_cb: Git dir update: 'index' { rename = true }",
+      "watcher_cb: Git dir update: 'index' { rename = true }",
     })
 
     match_debug_messages({
@@ -86,9 +86,9 @@ describe('gitdir_watcher', function()
     git('mv', test_file2, test_file3)
 
     match_dag({
-      "watcher_cb(1): Git dir update: 'index.lock' { rename = true }",
-      "watcher_cb(1): Git dir update: 'index' { rename = true }",
-      "watcher_cb(1): Git dir update: 'index' { rename = true }",
+      "watcher_cb: Git dir update: 'index.lock' { rename = true }",
+      "watcher_cb: Git dir update: 'index' { rename = true }",
+      "watcher_cb: Git dir update: 'index' { rename = true }",
     })
 
     match_debug_messages({
@@ -110,9 +110,9 @@ describe('gitdir_watcher', function()
     git('mv', test_file3, test_file)
 
     match_dag({
-      "watcher_cb(1): Git dir update: 'index.lock' { rename = true }",
-      "watcher_cb(1): Git dir update: 'index' { rename = true }",
-      "watcher_cb(1): Git dir update: 'index' { rename = true }",
+      "watcher_cb: Git dir update: 'index.lock' { rename = true }",
+      "watcher_cb: Git dir update: 'index' { rename = true }",
+      "watcher_cb: Git dir update: 'index' { rename = true }",
     })
 
     match_debug_messages({

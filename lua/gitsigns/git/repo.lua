@@ -19,7 +19,55 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 --- Username configured for the repo.
 --- Needed for to determine "You" in current line blame.
 --- @field username string
+--- @field package _watcher_callbacks table<fun(),true>
 local M = {}
+
+--- vim.inspect but on one line
+--- @param x any
+--- @return string
+local function inspect(x)
+  return vim.inspect(x, { indent = '', newline = ' ' })
+end
+
+--- @package
+--- @param repo Gitsigns.Repo
+--- @param err? string
+--- @param filename string
+--- @param events { change?: boolean, rename?: boolean }
+local function watcher_cb(repo, err, filename, events)
+  if err then
+    log.dprintf('Git dir update error: %s', err)
+    return
+  end
+
+  -- The luv docs say filename is passed as a string but it has been observed
+  -- to sometimes be nil.
+  --    https://github.com/lewis6991/gitsigns.nvim/issues/848
+  if not filename then
+    log.eprint('No filename')
+    return
+  end
+
+  log.dprintf("Git dir update: '%s' %s", filename, inspect(events))
+
+  if vim.startswith(filename, '.watchman-cookie') then
+    return
+  end
+
+  for cb in pairs(repo._watcher_callbacks) do
+    cb()
+  end
+end
+
+--- @param cb fun()
+--- @return fun() deregister
+function M:register_callback(cb)
+  self._watcher_callbacks[cb] = true
+
+  return function()
+    self._watcher_callbacks[cb] = nil
+  end
+end
 
 --- Run git command the with the objects gitdir and toplevel
 --- @async
@@ -109,6 +157,12 @@ local function new(info)
   --- @cast self Gitsigns.Repo
 
   self.username = self:command({ 'config', 'user.name' }, { ignore_error = true })[1]
+  self._watcher_callbacks = {}
+
+  local w = assert(uv.new_fs_event())
+  w:start(self.gitdir, {}, function(err, filename, events)
+    watcher_cb(self, err, filename, events)
+  end)
 
   return self
 end

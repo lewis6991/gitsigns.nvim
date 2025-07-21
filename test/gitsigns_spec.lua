@@ -113,7 +113,7 @@ describe('gitsigns (with screen)', function()
         'run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
           .. vim.pesc(test_file)
       ),
-      'watch_gitdir(1): Watching git dir',
+      'attach(1): Watching git dir',
     })
 
     check({
@@ -486,7 +486,7 @@ describe('gitsigns (with screen)', function()
             'run_job: git .* rev%-parse %-%-show%-toplevel %-%-absolute%-git%-dir %-%-abbrev%-ref HEAD'
           ),
           np('run_job: git .* ls%-files .*'),
-          n('watch_gitdir(1): Watching git dir'),
+          n('attach(1): Watching git dir'),
         }
 
         if not internal_diff then
@@ -880,14 +880,15 @@ describe('gitsigns attach', function()
 
     eq('gitsigns://' .. scratch .. '/.git//:0:sub/test', api.nvim_buf_get_name(0))
 
-    local git_obj = exec_lua(function()
-      return require('gitsigns.cache').cache[1].git_obj
+    local gfile, toplevel, gitdir, abbrev_head = exec_lua(function()
+      local git_obj = require('gitsigns.cache').cache[1].git_obj
+      return git_obj.file, git_obj.repo.toplevel, git_obj.repo.gitdir, git_obj.repo.abbrev_head
     end)
 
-    eq(file, git_obj.file)
-    eq(scratch, git_obj.repo.toplevel)
-    eq(scratch .. '/.git', git_obj.repo.gitdir)
-    eq('main', git_obj.repo.abbrev_head)
+    eq(file, gfile)
+    eq(scratch, toplevel)
+    eq(scratch .. '/.git', gitdir)
+    eq('main', abbrev_head)
   end)
 
   it('does not error when attaching to files out of tree (#1297)', function()
