@@ -31,9 +31,11 @@ return function(base, open)
     commit_buf = api.nvim_create_buf(true, true)
     api.nvim_buf_set_name(commit_buf, buffer_name)
     api.nvim_buf_set_lines(commit_buf, 0, -1, false, res)
+    vim.bo[commit_buf].modifiable = false
+    vim.bo[commit_buf].buftype = 'nofile'
+    vim.bo[commit_buf].filetype = 'git'
+    vim.bo[commit_buf].bufhidden = 'wipe'
   end
   vim.cmd[open]({ mods = { keepalt = true } })
   api.nvim_win_set_buf(0, commit_buf)
-  vim.bo[commit_buf].filetype = 'git'
-  vim.bo[commit_buf].bufhidden = 'wipe'
 end
