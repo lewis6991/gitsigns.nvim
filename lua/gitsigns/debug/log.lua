@@ -183,15 +183,18 @@ local function build_msg(m, verbose)
   -- Scrub some messages
   if not verbose and ctx == 'run_job' then
     ctx = 'git'
-    --- @type string
     msg = msg
       :gsub(vim.pesc('--no-pager --no-optional-locks --literal-pathspecs -c gc.auto=0 '), '')
       :gsub(vim.pesc('-c core.quotepath=off'), '')
 
     local cwd = vim.uv.cwd()
     if cwd then
-      --- @type string
       msg = msg:gsub(vim.pesc(cwd), '$CWD')
+    end
+
+    local home = vim.env.HOME
+    if home then
+      msg = msg:gsub(vim.pesc(home), '$HOME')
     end
   end
 
@@ -205,7 +208,12 @@ local function build_msg(m, verbose)
 end
 
 function M.show()
+  local lastm --- @type number?
   for _, m in ipairs(M.messages) do
+    if lastm and m[1] - lastm > 200 then
+      vim.api.nvim_echo({ { '|', 'NonText' } }, false, {})
+    end
+    lastm = m[1]
     vim.api.nvim_echo(build_msg(m), false, {})
   end
 end
