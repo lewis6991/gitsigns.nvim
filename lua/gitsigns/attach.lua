@@ -362,7 +362,7 @@ M.attach = throttle_by_id(function(cbuf, ctx, aucmd)
     ---   async.
     local throttled_watcher_handler = throttle_by_id(watcher_handler, true)
     cache[cbuf].deregister_watcher = git_obj.repo:register_callback(function()
-      async.run(throttled_watcher_handler, cbuf)
+      async.run(throttled_watcher_handler, cbuf):raise_on_error()
     end)
   end
 

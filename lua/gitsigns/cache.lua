@@ -20,6 +20,10 @@ local M = {
 --- @field compare_text?      string[]
 --- @field hunks?             Gitsigns.Hunk.Hunk[]
 --- @field force_next_update? boolean
+---
+--- An update is required for the buffer next time it comes into view
+--- @field update_on_view?    boolean
+---
 --- @field file_mode?         boolean
 ---
 --- @field compare_text_head? string[]

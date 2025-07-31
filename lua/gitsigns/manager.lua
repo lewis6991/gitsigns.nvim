@@ -289,6 +289,17 @@ local function update_show_deleted(bufnr, hunks)
   end
 end
 
+--- @param bufnr integer
+--- @return boolean
+local function buf_in_view(bufnr)
+  for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
+    if api.nvim_win_get_buf(win) == bufnr then
+      return true
+    end
+  end
+  return false
+end
+
 --- @async
 --- Ensure updates cannot be interleaved.
 --- Since updates are asynchronous we need to make sure an update isn't performed
@@ -300,6 +311,13 @@ M.update = throttle_by_id(function(bufnr)
   if not bcache or not bcache:schedule() then
     return
   end
+
+  if not buf_in_view(bufnr) then
+    log.dprint('Buffer not in view, deferring update')
+    bcache.update_on_view = true
+    return
+  end
+  bcache.update_on_view = nil
 
   -- Try to debug #1381
   local got_lock = false
@@ -463,6 +481,34 @@ function M.setup()
       M.update_debounced(buf)
     end,
   })
+
+  do -- deferred updates from file watcher
+    api.nvim_create_autocmd('TabEnter', {
+      group = 'gitsigns',
+      desc = 'Gitsigns: deferred updates',
+      callback = function()
+        for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
+          local bufnr = api.nvim_win_get_buf(win)
+          if cache[bufnr] and cache[bufnr].update_on_view then
+            log.dprint('TabEnter update')
+            async.run(M.update, bufnr):raise_on_error()
+          end
+        end
+      end,
+    })
+
+    api.nvim_create_autocmd('BufEnter', {
+      group = 'gitsigns',
+      desc = 'Gitsigns: deferred updates',
+      callback = function(args)
+        local bufnr = args.buf
+        if cache[bufnr] and cache[bufnr].update_on_view then
+          log.dprint('BufEnter update')
+          async.run(M.update, bufnr):raise_on_error()
+        end
+      end,
+    })
+  end
 end
 
 return M
