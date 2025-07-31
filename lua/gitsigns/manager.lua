@@ -300,82 +300,92 @@ M.update = throttle_by_id(function(bufnr)
   if not bcache or not bcache:schedule() then
     return
   end
-  bcache.git_obj.lock:acquire()
 
-  local old_hunks, old_hunks_staged = bcache.hunks, bcache.hunks_staged
-  bcache.hunks, bcache.hunks_staged = nil, nil
-
-  local git_obj = bcache.git_obj
-  local file_mode = bcache.file_mode
-
-  if not bcache.compare_text or config._refresh_staged_on_update or file_mode then
-    if file_mode then
-      bcache.compare_text = util.file_lines(git_obj.file)
-    else
-      bcache.compare_text = git_obj:get_show_text()
+  -- Try to debug #1381
+  local got_lock = false
+  vim.defer_fn(function()
+    if not got_lock then
+      log.eprint('Could not get lock in 4 seconds, releasing lock')
+      bcache.git_obj.lock:release()
     end
-    if not bcache:schedule(true) then
-      return
-    end
-  end
+  end, 4000)
 
-  local buftext = util.buf_lines(bufnr)
+  bcache.git_obj.lock:with(function()
+    got_lock = true
 
-  bcache.hunks = run_diff(bcache.compare_text, buftext)
-  if not bcache:schedule() then
-    return
-  end
+    local old_hunks, old_hunks_staged = bcache.hunks, bcache.hunks_staged
+    bcache.hunks, bcache.hunks_staged = nil, nil
 
-  local bufname = api.nvim_buf_get_name(bufnr)
-  local rev_is_index = not git_obj:from_tree()
+    local git_obj = bcache.git_obj
+    local file_mode = bcache.file_mode
 
-  if
-    config.signs_staged_enable
-    and not file_mode
-    and (rev_is_index or bufname:match('^fugitive://') or bufname:match('^gitsigns://'))
-  then
-    if not bcache.compare_text_head or config._refresh_staged_on_update then
-      -- When the revision is from the index, we compare against HEAD to
-      -- show the staged changes.
-      --
-      -- When showing a revision buffer (a buffer that represents the revision
-      -- of a specific file and does not have a corresponding file on disk), we
-      -- utilize the staged signs to represent the changes introduced in that
-      -- revision. Therefore we compare against the previous commit. Note there
-      -- should not be any normal signs for these buffers.
-      local staged_rev = rev_is_index and 'HEAD' or git_obj.revision .. '^'
-      bcache.compare_text_head = git_obj:get_show_text(staged_rev)
+    if not bcache.compare_text or config._refresh_staged_on_update or file_mode then
+      if file_mode then
+        bcache.compare_text = util.file_lines(git_obj.file)
+      else
+        bcache.compare_text = git_obj:get_show_text()
+      end
       if not bcache:schedule(true) then
         return
       end
     end
-    local hunks_head = run_diff(bcache.compare_text_head, buftext)
+
+    local buftext = util.buf_lines(bufnr)
+
+    bcache.hunks = run_diff(bcache.compare_text, buftext)
     if not bcache:schedule() then
       return
     end
-    bcache.hunks_staged = Hunks.filter_common(hunks_head, bcache.hunks)
-  end
 
-  -- Note the decoration provider may have invalidated bcache.hunks at this
-  -- point
-  if
-    bcache.force_next_update
-    or Hunks.compare_heads(bcache.hunks, old_hunks)
-    or Hunks.compare_heads(bcache.hunks_staged, old_hunks_staged)
-  then
-    -- Apply signs to the window. Other signs will be added by the decoration
-    -- provider as they are drawn.
-    apply_win_signs(bufnr, vim.fn.line('w0'), vim.fn.line('w$'), true)
+    local bufname = api.nvim_buf_get_name(bufnr)
+    local rev_is_index = not git_obj:from_tree()
 
-    update_show_deleted(bufnr, bcache.hunks)
-    bcache.force_next_update = false
+    if
+      config.signs_staged_enable
+      and not file_mode
+      and (rev_is_index or bufname:match('^fugitive://') or bufname:match('^gitsigns://'))
+    then
+      if not bcache.compare_text_head or config._refresh_staged_on_update then
+        -- When the revision is from the index, we compare against HEAD to
+        -- show the staged changes.
+        --
+        -- When showing a revision buffer (a buffer that represents the revision
+        -- of a specific file and does not have a corresponding file on disk), we
+        -- utilize the staged signs to represent the changes introduced in that
+        -- revision. Therefore we compare against the previous commit. Note there
+        -- should not be any normal signs for these buffers.
+        local staged_rev = rev_is_index and 'HEAD' or git_obj.revision .. '^'
+        bcache.compare_text_head = git_obj:get_show_text(staged_rev)
+        if not bcache:schedule(true) then
+          return
+        end
+      end
+      local hunks_head = run_diff(bcache.compare_text_head, buftext)
+      if not bcache:schedule() then
+        return
+      end
+      bcache.hunks_staged = Hunks.filter_common(hunks_head, bcache.hunks)
+    end
 
-    local summary = Hunks.get_summary(bcache.hunks)
-    summary.head = git_obj.repo.abbrev_head
-    Status:update(bufnr, summary)
-  end
+    -- Note the decoration provider may have invalidated bcache.hunks at this
+    -- point
+    if
+      bcache.force_next_update
+      or Hunks.compare_heads(bcache.hunks, old_hunks)
+      or Hunks.compare_heads(bcache.hunks_staged, old_hunks_staged)
+    then
+      -- Apply signs to the window. Other signs will be added by the decoration
+      -- provider as they are drawn.
+      apply_win_signs(bufnr, vim.fn.line('w0'), vim.fn.line('w$'), true)
 
-  bcache.git_obj.lock:release()
+      update_show_deleted(bufnr, bcache.hunks)
+      bcache.force_next_update = false
+
+      local summary = Hunks.get_summary(bcache.hunks)
+      summary.head = git_obj.repo.abbrev_head
+      Status:update(bufnr, summary)
+    end
+  end)
 end, true)
 
 M.update_debounced = debounce_trailing(function()
