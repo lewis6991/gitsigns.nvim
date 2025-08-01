@@ -825,7 +825,7 @@ M.schema = {
 
   _new_sign_calc = {
     type = 'boolean',
-    default = false,
+    default = true,
     description = [[
       Use new sign calculation method
     ]],
