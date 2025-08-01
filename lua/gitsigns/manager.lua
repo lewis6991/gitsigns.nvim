@@ -301,6 +301,27 @@ local function buf_in_view(bufnr)
 end
 
 --- @async
+--- @param bcache Gitsigns.CacheEntry
+--- @param fn async fun()
+local function update_lock(bcache, fn)
+  if not config._update_lock then
+    fn()
+    return
+  end
+
+  -- Try to debug #1381
+  local got_lock = false
+  vim.defer_fn(function()
+    if not got_lock then
+      log.eprint('Could not get lock in 4 seconds, releasing lock')
+      bcache.git_obj.lock:release()
+    end
+  end, 4000)
+
+  bcache.git_obj.lock:with(fn)
+end
+
+--- @async
 --- Ensure updates cannot be interleaved.
 --- Since updates are asynchronous we need to make sure an update isn't performed
 --- whilst another one is in progress. If this happens then schedule another
@@ -319,16 +340,7 @@ M.update = throttle_by_id(function(bufnr)
   end
   bcache.update_on_view = nil
 
-  -- Try to debug #1381
-  local got_lock = false
-  vim.defer_fn(function()
-    if not got_lock then
-      log.eprint('Could not get lock in 4 seconds, releasing lock')
-      bcache.git_obj.lock:release()
-    end
-  end, 4000)
-
-  bcache.git_obj.lock:with(function()
+  update_lock(bcache, function()
     got_lock = true
 
     local old_hunks, old_hunks_staged = bcache.hunks, bcache.hunks_staged
