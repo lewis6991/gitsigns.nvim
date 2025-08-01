@@ -9,7 +9,8 @@
 --- @field description string
 
 --- @class (exact) Gitsigns.DiffthisOpts
---- @field split string
+--- @field vertical? boolean
+--- @field split? string
 
 --- @class (exact) Gitsigns.DiffOpts
 --- @field algorithm 'myers'|'minimal'|'patience'|'histogram'
@@ -87,6 +88,7 @@
 --- @field _verbose boolean
 --- @field _test_mode boolean
 --- @field _new_sign_calc boolean
+--- @field _update_lock boolean
 
 --- @class Gitsigns.config
 local M = {}
@@ -826,6 +828,14 @@ M.schema = {
     default = false,
     description = [[
       Use new sign calculation method
+    ]],
+  },
+
+  _update_lock = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      Acquire a lock when updating signs.
     ]],
   },
 
