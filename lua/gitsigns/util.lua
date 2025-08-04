@@ -340,7 +340,7 @@ function M.convert_blame_info(x)
   return ret
 end
 
---- Efficiently remove items from middle of a list a list.
+--- Efficiently remove items from middle of a list.
 ---
 --- Calling table.remove() in a loop will re-index the tail of the table on
 --- every iteration, instead this function will re-index  the table exactly
