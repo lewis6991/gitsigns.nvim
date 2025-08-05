@@ -24,7 +24,19 @@ local function gh_cmd(args, cwd)
   local obj = asystem({ 'gh', unpack(args) }, { cwd = cwd })
 
   if obj.code ~= 0 then
-    log.eprintf("Error running 'gh %s': %s", table.concat(args, ' '), obj.stderr or '[no stderr]')
+    if
+      obj.stderr:match(
+        'none of the git remotes configured for this repository point to a known GitHub host'
+      )
+    then
+      return
+    end
+    log.eprintf(
+      "Error running 'gh %s', code=%d: %s",
+      table.concat(args, ' '),
+      obj.code,
+      obj.stderr or '[no stderr]'
+    )
     return
   end
 
