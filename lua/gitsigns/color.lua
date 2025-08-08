@@ -29,7 +29,9 @@ function M.gradient(stops, t)
   local segment_index = math.floor(t / segment_length)
 
   if segment_index >= num_stops - 1 then
-    return { stops[num_stops][1], stops[num_stops][2], stops[num_stops][3] }
+    local lstop = stops[num_stops]
+    --- @cast lstop -?
+    return { lstop[1], lstop[2], lstop[3] }
   end
 
   local local_t = (t - segment_index * segment_length) / segment_length

@@ -22,6 +22,7 @@ local function gh_cmd(args, cwd)
   end
   --- @diagnostic disable-next-line: param-type-not-match EmmyLuaLs/emmylua-analyzer-rust#594
   local obj = asystem({ 'gh', unpack(args) }, { cwd = cwd })
+  --- @cast obj.stderr -?
 
   if obj.code ~= 0 then
     if

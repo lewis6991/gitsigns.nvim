@@ -80,7 +80,7 @@ local function asinteger(x)
 end
 
 --- @param readline fun(): string?
---- @param commits table<string,Gitsigns.CommitInfo>
+--- @param commits table<string,Gitsigns.CommitInfo?>
 --- @param result table<integer,Gitsigns.BlameInfo>
 local function incremental_iter(readline, commits, result)
   local line = assert(readline())
@@ -94,7 +94,6 @@ local function incremental_iter(readline, commits, result)
   local final_lnum = asinteger(final_lnum_str)
   local size = asinteger(size_str)
 
-  --- @type table<string,string|integer|true>
   local commit = commits[sha]
     or {
       sha = sha,
@@ -219,7 +218,7 @@ end
 --- @param revision? string
 --- @param opts? Gitsigns.BlameOpts
 --- @return table<integer, Gitsigns.BlameInfo>
---- @return table<string, Gitsigns.CommitInfo>
+--- @return table<string, Gitsigns.CommitInfo?>
 function M.run_blame(obj, contents, lnum, revision, opts)
   local ret = {} --- @type table<integer,Gitsigns.BlameInfo>
 
@@ -244,7 +243,7 @@ function M.run_blame(obj, contents, lnum, revision, opts)
 
   local ignore_file = obj.repo.toplevel .. '/.git-blame-ignore-revs'
 
-  local commits = {} --- @type table<string,Gitsigns.CommitInfo>
+  local commits = {} --- @type table<string,Gitsigns.CommitInfo?>
 
   local reader = buffered_line_reader(function(readline)
     incremental_iter(readline, commits, ret)

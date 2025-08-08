@@ -8,6 +8,8 @@ local config = require('gitsigns.config').config
 --- @return fun(v:string): any decode
 local function getencdec()
   local m = jit and package.preload['string.buffer'] and require('string.buffer') or vim.mpack
+  --- @diagnostic disable-next-line: need-check-nil, undefined-field
+  --- EmmyLuaLs/emmylua-analyzer-rust#697
   return m.encode, m.decode
 end
 

@@ -14,7 +14,7 @@ end
 --- @return std.Unpack<T, Start, End>
 local function unpack_len(t, first)
   -- EmmyLuaLs/emmylua-analyzer-rust#619
-  --- @diagnostic disable-next-line: param-type-not-match, missing-return-value, generic-constraint-mismatch
+  --- @diagnostic disable-next-line: param-type-not-match, undefined-field, missing-return-value
   return unpack(t, first or 1, t.n or table.maxn(t))
 end
 
