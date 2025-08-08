@@ -60,7 +60,7 @@ local function bufwrite(bufnr, dbufnr, base)
   local bcache = assert(cache[bufnr])
   local buftext = util.buf_lines(dbufnr)
   base = util.norm_base(base)
-  bcache.git_obj.lock:with(function()
+  bcache.git_obj:lock(function()
     bcache.git_obj:stage_lines(buftext)
   end)
   async.schedule()
@@ -130,10 +130,6 @@ local function create_revision_buf(bufnr, base, relpath)
 
   return bufname, dbuf
 end
-
---- @class Gitsigns.DiffthisOpts
---- @field vertical? boolean
---- @field split? string
 
 --- @async
 --- @param base string?

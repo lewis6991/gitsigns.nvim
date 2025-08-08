@@ -241,7 +241,7 @@ M.stage_hunk = mk_repeatable(async.create(2, function(range, opts)
     return
   end
 
-  bcache.git_obj.lock:with(function()
+  bcache.git_obj:lock(function()
     local hunk = bcache:get_hunk(range, opts.greedy ~= false, false)
 
     local invert = false
@@ -364,7 +364,7 @@ M.undo_stage_hunk = async.create(0, function()
     return
   end
 
-  bcache.git_obj.lock:with(function()
+  bcache.git_obj:lock(function()
     local hunk = table.remove(bcache.staged_diffs)
     if not hunk then
       print('No hunks to undo')
@@ -393,7 +393,7 @@ M.stage_buffer = async.create(0, function()
     return
   end
 
-  bcache.git_obj.lock:with(function()
+  bcache.git_obj:lock(function()
     -- Only process files with existing hunks
     local hunks = bcache.hunks
     if not hunks or #hunks == 0 then
@@ -434,7 +434,7 @@ M.reset_buffer_index = async.create(0, function()
     return
   end
 
-  bcache.git_obj.lock:with(function()
+  bcache.git_obj:lock(function()
     -- `bcache.staged_diffs` won't contain staged changes outside of current
     -- neovim session so signs added from this unstage won't be complete They will
     -- however be fixed by gitdir watcher and properly updated We should implement
