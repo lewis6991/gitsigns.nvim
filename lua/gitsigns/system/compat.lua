@@ -129,7 +129,8 @@ local function setup_output(output, text)
 
   local pipe = assert(uv.new_pipe(false))
 
-  --- @type fun(err: string?, data: string?)
+  --- @param err? string
+  --- @param data? string
   local function handler_with_close(err, data)
     handler(err, data)
     if data == nil then

@@ -21,7 +21,7 @@ end
 
 --- @param bufnr integer
 --- @param status Gitsigns.StatusObj
-function M:update(bufnr, status)
+function M.update(bufnr, status)
   if not api.nvim_buf_is_loaded(bufnr) then
     return
   end
@@ -39,7 +39,7 @@ function M:update(bufnr, status)
   autocmd_update(bufnr)
 end
 
-function M:clear(bufnr)
+function M.clear(bufnr)
   if not api.nvim_buf_is_loaded(bufnr) then
     return
   end

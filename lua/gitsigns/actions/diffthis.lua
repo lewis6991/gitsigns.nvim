@@ -42,7 +42,7 @@ local function bufread(bufnr, dbufnr, base, relpath)
 
   local modifiable = vim.bo[dbufnr].modifiable
   vim.bo[dbufnr].modifiable = true
-  Status:update(dbufnr, { head = base })
+  Status.update(dbufnr, { head = base })
 
   util.set_lines(dbufnr, 0, -1, text)
 

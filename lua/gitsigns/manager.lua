@@ -413,7 +413,7 @@ M.update = throttle_by_id(function(bufnr)
 
       local summary = Hunks.get_summary(bcache.hunks)
       summary.head = git_obj.repo.abbrev_head
-      Status:update(bufnr, summary)
+      Status.update(bufnr, summary)
     end
   end)
 end, true)

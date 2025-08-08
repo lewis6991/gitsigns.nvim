@@ -227,7 +227,7 @@ local function watcher_handler(bufnr)
 
   local git_obj = bcache.git_obj
 
-  Status:update(bufnr, { head = git_obj.repo.abbrev_head })
+  Status.update(bufnr, { head = git_obj.repo.abbrev_head })
 
   local was_tracked = git_obj.object_name ~= nil
   local old_relpath = git_obj.relpath
@@ -324,7 +324,7 @@ M.attach = throttle_by_id(function(cbuf, ctx, aucmd)
     return
   end
 
-  Status:update(cbuf, {
+  Status.update(cbuf, {
     head = git_obj.repo.abbrev_head,
     root = git_obj.repo.toplevel,
     gitdir = git_obj.repo.gitdir,
@@ -427,7 +427,7 @@ function M.detach(bufnr, keep_signs)
   manager.detach(bufnr, keep_signs)
 
   -- Clear status variables
-  Status:clear(bufnr)
+  Status.clear(bufnr)
 
   Cache.destroy(bufnr)
 end
