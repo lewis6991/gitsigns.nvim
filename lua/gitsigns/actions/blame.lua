@@ -86,7 +86,11 @@ local function render(blame, win, main_win, buf_sha)
   local entries = blame.entries
 
   for _, b in pairs(entries) do
-    max_author_len = math.max(max_author_len, (vim.str_utfindex(b.commit.author, 'utf-8')))
+    if vim.fn.has('nvim-0.11') == 1 then
+      max_author_len = math.max(max_author_len, (vim.str_utfindex(b.commit.author, 'utf-8')))
+    else
+      max_author_len = math.max(max_author_len, #b.commit.author)
+    end
   end
 
   local lines = {} --- @type string[]
