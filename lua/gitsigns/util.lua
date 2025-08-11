@@ -443,4 +443,23 @@ function M.cygpath(path, mode)
   return assert(vim.split(stdout, '\n')[1])
 end
 
+--- Flattens a nested table structure into a flat array of strings. Only
+--- traverses numeric keys, recursively flattening tables and collecting
+--- strings.
+--- @param x table<any,any> The input table to flatten.
+--- @return string[] A flat array of strings extracted from the nested table.
+function M.flatten(x)
+  local ret = {} --- @type string[]
+  for k, v in pairs(x) do
+    if type(k) == 'number' then
+      if type(v) == 'table' then
+        vim.list_extend(ret, M.flatten(v))
+      elseif type(v) == 'string' then
+        ret[#ret + 1] = v
+      end
+    end
+  end
+  return ret
+end
+
 return M

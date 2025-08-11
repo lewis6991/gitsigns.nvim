@@ -256,22 +256,25 @@ function M.run_blame(obj, contents, lnum, revision, opts)
 
   local contents_str = contents and table.concat(contents, '\n') or nil
 
-  local _, stderr = obj.repo:command({
-    'blame',
-    '--incremental',
-    contents and { '--contents', '-' },
-    opts.ignore_whitespace and '-w',
-    lnum and { '-L', lnum .. ',+1' },
-    opts.extra_opts,
-    uv.fs_stat(ignore_file) and { '--ignore-revs-file', ignore_file },
-    revision,
-    '--',
-    obj.file,
-  }, {
-    stdin = contents_str,
-    stdout = on_stdout,
-    ignore_error = true,
-  })
+  local _, stderr = obj.repo:command(
+    util.flatten({
+      'blame',
+      '--incremental',
+      contents and { '--contents', '-' },
+      opts.ignore_whitespace and '-w',
+      lnum and { '-L', lnum .. ',+1' },
+      opts.extra_opts,
+      uv.fs_stat(ignore_file) and { '--ignore-revs-file', ignore_file },
+      revision,
+      '--',
+      obj.file,
+    }),
+    {
+      stdin = contents_str,
+      stdout = on_stdout,
+      ignore_error = true,
+    }
+  )
 
   if stderr then
     local msg = 'Error running git-blame: ' .. stderr
