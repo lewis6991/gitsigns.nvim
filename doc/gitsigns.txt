@@ -175,12 +175,14 @@ show({revision}, {callback?})                                *gitsigns.show()*
                 If {base} is the index, then the opened buffer is editable and
                 any written changes will update the index accordingly.
 
-                Examples: >vim
-                  " View the index version of the file
-                  :Gitsigns show
+                Examples: >lua
+                  -- View the index version of the file
+                  require('gitsigns').show()
+                  -- :Gitsigns show
 
-                  " View revision of file in the last commit
-                  :Gitsigns show ~1
+                  -- View revision of file in the last commit
+                  require('gitsigns').show('~1')
+                  -- :Gitsigns show ~1
 <
 
                 For a more complete list of ways to specify bases, see
@@ -199,12 +201,14 @@ diffthis({base}, {opts}, {callback?})                    *gitsigns.diffthis()*
                 If {base} is the index, then the opened buffer is editable and
                 any written changes will update the index accordingly.
 
-                Examples: >vim
-                  " Diff against the index
-                  :Gitsigns diffthis
+                Examples: >lua
+                  -- Diff against the index
+                  require('gitsigns').diffthis()
+                  -- :Gitsigns diffthis
 
-                  " Diff against the last commit
-                  :Gitsigns diffthis ~1
+                  -- Diff against the last commit
+                  require('gitsigns').diffthis('~1')
+                  -- :Gitsigns diffthis ~1
 <
 
                 For a more complete list of ways to specify bases, see
@@ -239,23 +243,29 @@ change_base({base}, {global}, {callback?})              *gitsigns.change_base()*
                 Attributes: ~
                     {async}
 
-                Examples: >vim
-                  " Change base to 1 commit behind head
-                  :lua require('gitsigns').change_base('HEAD~1')
+                Examples: >lua
+                  -- Change base to 1 commit behind head
+                  require('gitsigns').change_base('HEAD~1')
+                  -- :Gitsigns change_base HEAD~1
 
-                  " Also works using the Gitsigns command
+                  -- Also works using the Gitsigns command
                   :Gitsigns change_base HEAD~1
 
-                  " Other variations
-                  :Gitsigns change_base ~1
-                  :Gitsigns change_base ~
-                  :Gitsigns change_base ^
+                  -- Other variations
+                  require('gitsigns').change_base('~1')
+                  -- :Gitsigns change_base ~1
+                  require('gitsigns').change_base('~')
+                  -- :Gitsigns change_base ~
+                  require('gitsigns').change_base('^')
+                  -- :Gitsigns change_base ^
 
-                  " Commits work too
-                  :Gitsigns change_base 92eb3dd
+                  -- Commits work too
+                  require('gitsigns').change_base('92eb3dd')
+                  -- :Gitsigns change_base 92eb3dd
 
-                  " Revert to original base
-                  :Gitsigns change_base
+                  -- Revert to original base
+                  require('gitsigns').change_base()
+                  -- :Gitsigns change_base
 <
 
                 For a more complete list of ways to specify bases, see

@@ -10,7 +10,7 @@ endif
 .DEFAULT_GOAL := build
 
 .PHONY: build
-build: gen_help stylua-run
+build: doc stylua-run
 
 ################################################################################
 # nvim-test
@@ -64,13 +64,13 @@ NVIM := $(XDG_DATA_HOME)/nvim-test/nvim-runner-$(NVIM_RUNNER_VERSION)/bin/nvim
 # Docs
 ################################################################################
 
-.PHONY: gen_help
-gen_help: $(NVIM_TEST)
+.PHONY: doc
+doc: $(NVIM_TEST)
 	$(NVIM) -l ./gen_help.lua
 	@echo Updated help
 
 .PHONY: doc-check
-doc-check: gen_help
+doc-check: doc
 	git diff --exit-code -- doc
 
 ################################################################################
