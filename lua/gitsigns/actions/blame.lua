@@ -328,6 +328,22 @@ local function pmap(mode, lhs, cb, opts)
   end, opts)
 end
 
+local blame_bufname_prefix = 'gitsigns-blame:'
+
+---@alias blme_bufname string the buffer name of the blame buffer
+---@alias blm_win integer the win id of the blame window
+---
+---@type table<blme_bufname, blm_win>
+local buf_name_to_blame_map = {}
+
+local function is_blame_window_open_for_buffer(blm_bufname, current_bufname)
+  local blmwin = buf_name_to_blame_map[blm_bufname]
+  if blmwin then
+    api.nvim_win_close(blmwin, true)
+    return true
+  end
+end
+
 --- @async
 function M.blame()
   local __FUNC__ = 'blame'
@@ -335,12 +351,21 @@ function M.blame()
   local win = api.nvim_get_current_win()
   local bcache = cache[bufnr]
   if not bcache then
+    local current_bufname = vim.api.nvim_buf_get_name(bufnr)
+    if vim.startswith(current_bufname, blame_bufname_prefix) then
+      api.nvim_win_close(0, true)
+    end
     log.dprint('Not attached')
     return
   end
 
   bcache:get_blame()
   local blame = assert(bcache.blame)
+
+  blm_bufname = (bcache:get_rev_bufname():gsub('^gitsigns:', blame_bufname_prefix))
+  if is_blame_window_open_for_buffer(blm_bufname) then
+    return
+  end
 
   -- Save position to align 'scrollbind'
   local top = vim.fn.line('w0') + vim.wo.scrolloff
@@ -349,9 +374,11 @@ function M.blame()
   vim.cmd.vsplit({ mods = { keepalt = true, split = 'aboveleft' } })
   local blm_win = api.nvim_get_current_win()
 
+  buf_name_to_blame_map[blm_bufname] = blm_win
+
   local blm_bufnr = api.nvim_create_buf(false, true)
   api.nvim_win_set_buf(blm_win, blm_bufnr)
-  api.nvim_buf_set_name(blm_bufnr, (bcache:get_rev_bufname():gsub('^gitsigns:', 'gitsigns-blame:')))
+  api.nvim_buf_set_name(blm_bufnr, blm_bufname)
 
   local revision = bcache.git_obj.revision
 
@@ -476,6 +503,7 @@ function M.blame()
       if api.nvim_win_is_valid(win) then
         cur_wlo.foldenable, cur_wlo.scrollbind, cur_wlo.wrap = unpack(cur_orig_wlo)
       end
+      buf_name_to_blame_map[blm_bufname] = nil
     end,
   })
 
