@@ -283,7 +283,7 @@ change_base({base}, {global}, {callback?})              *gitsigns.change_base()*
                     {base}   (string|nil): The object/revision to diff against.
                     {global} (boolean|nil): Change the base of all buffers.
 
-blame({callback?})                                          *gitsigns.blame()*
+blame({opts}, {callback?})                                  *gitsigns.blame()*
                 Run git-blame on the current file and open the results
                 in a scroll-bound vertical split.
 
@@ -297,6 +297,13 @@ blame({callback?})                                          *gitsigns.blame()*
 
                 Attributes: ~
                     {async}
+
+                Parameters: ~
+                    {opts} (table|nil): Additional options:
+                           • {ignore_whitespace}: (boolean)
+                             Ignore whitespace when running blame.
+                           • {extra_opts}: (string[])
+                             Extra options passed to `git-blame`.
 
 blame_line({opts}, {callback?})                        *gitsigns.blame_line()*
                 Run git blame on the current line and show the results in a
