@@ -44,9 +44,10 @@ local function flatten_virt_text(virt_text)
   return table.concat(res)
 end
 
+--- @param winid integer?
 --- @return integer
-local function win_width()
-  local winid = api.nvim_get_current_win()
+local function win_width(winid)
+  winid = winid or api.nvim_get_current_win()
   local wininfo = vim.fn.getwininfo(winid)[1]
   local textoff = wininfo and wininfo.textoff or 0
   return api.nvim_win_get_width(winid) - textoff
