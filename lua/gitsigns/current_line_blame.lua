@@ -127,10 +127,7 @@ local function handle_blame_info(bcache, lnum, blame_info, opts)
     -- obscured and the blame is truncated.
     if virt_text_pos == 'right_align' then
       local win = vim.fn.bufwinid(bufnr)
-      if
-        not vim.wo[win].wrap
-        and api.nvim_strwidth(virt_text_str) > (win_width() - line_len(bufnr, lnum))
-      then
+      if api.nvim_strwidth(virt_text_str) > (win_width(win) - line_len(bufnr, lnum)) then
         virt_text_pos = 'eol'
       end
     end
