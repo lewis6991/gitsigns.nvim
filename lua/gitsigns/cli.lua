@@ -63,7 +63,11 @@ M.run = async.create(1, function(params)
   local func = pos_args_raw[1]
 
   if not func then
-    func = async.await(3, vim.ui.select, M.complete('', 'Gitsigns '), {}) --[[@as string]]
+    func = async.await(3, function(...)
+      -- Need to wrap vim.ui.select as Snacks version of vim.ui.select returns a
+      -- module table with a close method which conflicts with the async lib
+      vim.ui.select(...)
+    end, M.complete('', 'Gitsigns '), {}) --[[@as string]]
     if not func then
       return
     end
