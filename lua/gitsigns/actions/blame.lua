@@ -59,11 +59,21 @@ local function get_hash_color(sha)
   return hl_name
 end
 
+--- @param str string
+--- @return integer
+local function get_str_len(str)
+  if vim.fn.has('nvim-0.11') == 1 then
+    return vim.str_utfindex(str, 'utf-8')
+  else
+    return vim.str_utfindex(str)
+  end
+end
+
 ---@param amount integer
 ---@param text string
 ---@return string
 local function lalign(amount, text)
-  local len = vim.str_utfindex(text, 'utf-8')
+  local len = get_str_len(text)
   return text .. string.rep(' ', math.max(0, amount - len))
 end
 
@@ -86,11 +96,7 @@ local function render(blame, win, main_win, buf_sha)
   local entries = blame.entries
 
   for _, b in pairs(entries) do
-    if vim.fn.has('nvim-0.11') == 1 then
-      max_author_len = math.max(max_author_len, (vim.str_utfindex(b.commit.author, 'utf-8')))
-    else
-      max_author_len = math.max(max_author_len, #b.commit.author)
-    end
+    max_author_len = math.max(max_author_len, get_str_len(b.commit.author))
   end
 
   local lines = {} --- @type string[]
