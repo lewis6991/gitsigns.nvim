@@ -623,7 +623,7 @@ signs_staged_enable                      *gitsigns-config-signs_staged_enable*
 
     Show signs for staged hunks.
 
-    When enabled the signs defined in |git-config-signs_staged|` are used.
+    When enabled the signs defined in |git-config-signs_staged| are used.
 
 worktrees                                          *gitsigns-config-worktrees*
       Type: `table`, Default: `{}`
@@ -931,7 +931,7 @@ current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
           • `%X`  time (e.g., 23:48:10)
           • `%Y`  full year (1998)
           • `%y`  two-digit year (98) [00-99]
-          • `%%`  the character `%´
+          • `%%`  the character `%`
           • `%R`  relative (e.g., 4 months ago)
 
       When a function:
