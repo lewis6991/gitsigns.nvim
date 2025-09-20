@@ -276,7 +276,7 @@ M.schema = {
     description = [[
     Show signs for staged hunks.
 
-    When enabled the signs defined in |git-config-signs_staged|` are used.
+    When enabled the signs defined in |git-config-signs_staged| are used.
     ]],
   },
 
@@ -694,7 +694,7 @@ M.schema = {
           • `%X`  time (e.g., 23:48:10)
           • `%Y`  full year (1998)
           • `%y`  two-digit year (98) [00-99]
-          • `%%`  the character `%´
+          • `%%`  the character `%`
           • `%R`  relative (e.g., 4 months ago)
 
       When a function:
