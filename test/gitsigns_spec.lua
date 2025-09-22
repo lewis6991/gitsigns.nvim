@@ -59,28 +59,29 @@ describe('gitsigns (with screen)', function()
 
     local default_attrs = {
       [1] = { foreground = Screen.colors.DarkBlue, background = Screen.colors.WebGray },
-      [2] = { foreground = Screen.colors.NvimDarkCyan },
-      [3] = { foreground = Screen.colors.NvimDarkGreen },
-      [4] = { foreground = Screen.colors.NvimDarkRed },
+      [2] = { foreground = Screen.colors.DodgerBlue },
+      [3] = { foreground = Screen.colors.SeaGreen },
+      [4] = { foreground = Screen.colors.Red },
       [5] = { foreground = Screen.colors.Brown },
       [6] = { foreground = Screen.colors.Blue1, bold = true },
       [7] = { bold = true },
       [8] = { foreground = Screen.colors.White, background = Screen.colors.Red },
       [9] = { foreground = Screen.colors.SeaGreen, bold = true },
-      [10] = { foreground = Screen.colors.Red },
-      [11] = { foreground = Screen.colors.NvimDarkRed, background = Screen.colors.WebGray },
-      [12] = { foreground = Screen.colors.NvimDarkCyan, background = Screen.colors.WebGray },
+      [11] = { foreground = Screen.colors.Red1, background = Screen.colors.WebGray },
+      [12] = { foreground = Screen.colors.DodgerBlue, background = Screen.colors.WebGray },
     }
 
     -- Use the classic vim colorscheme, not the new defaults in nvim >= 0.10
-    if fn.has('nvim-0.10') > 0 then
-      command('colorscheme vim')
-    else
-      default_attrs[2] = { background = Screen.colors.LightMagenta }
-      default_attrs[3] = { background = Screen.colors.LightBlue }
-      default_attrs[4] =
-        { background = Screen.colors.LightCyan1, bold = true, foreground = Screen.colors.Blue1 }
+    if fn.has('nvim-0.12') == 0 then
+      default_attrs[2].foreground = Screen.colors.NvimDarkCyan
+      default_attrs[3].foreground = Screen.colors.NvimDarkGreen
+      default_attrs[4].foreground = Screen.colors.NvimDarkRed
+      default_attrs[11].foreground = Screen.colors.NvimDarkRed
+      default_attrs[12] =
+        { foreground = Screen.colors.NvimDarkCyan, background = Screen.colors.Gray }
     end
+
+    command('colorscheme vim')
 
     screen:set_default_attr_ids(default_attrs)
 
