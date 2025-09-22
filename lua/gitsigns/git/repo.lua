@@ -3,7 +3,6 @@ local git_command = require('gitsigns.git.cmd')
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
 local errors = require('gitsigns.git.errors')
-local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 
 local check_version = require('gitsigns.git.version').check
 
@@ -20,10 +19,55 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 --- Username configured for the repo.
 --- Needed for to determine "You" in current line blame.
 --- @field username string
---- @field package _watcher_callbacks table<fun(),true>
---- @field package _watcher uv.uv_fs_event_t
---- @field package _gc userdata Used for garbage collection
+--- @field private _watcher_callbacks table<fun(),true>
+--- @field private _watcher uv.uv_fs_event_t
+--- Used for the debounced section of the watcher handler
+--- @field private _watcher_timer? uv.uv_timer_t
+--- @field private _watcher_gc userdata Used for garbage collection
 local M = {}
+
+--- @param gitdir string
+--- @return boolean
+local function is_rebasing(gitdir)
+  return util.Path.exists(util.Path.join(gitdir, 'rebase-merge'))
+    or util.Path.exists(util.Path.join(gitdir, 'rebase-apply'))
+end
+
+--- Return the abbreviated ref for HEAD (or short SHA if detached).
+--- Equivalent to `git rev-parse --abbrev-ref HEAD`
+--- @param gitdir string Must be an absolute path to the .git directory
+--- @return string abbrev_head
+local function abbrev_head(gitdir)
+  local head_path = util.Path.join(gitdir, 'HEAD')
+
+  -- TODO(lewis6991): should this be async?
+  vim.wait(1000, function()
+    return not util.Path.exists(head_path .. '.lock')
+  end, 10, true)
+
+  local f = assert(io.open(head_path, 'r'))
+  local head = f:read('*l')
+  f:close()
+
+  -- HEAD content is either:
+  --   "ref: refs/heads/<branch>"
+  --   "<commitsha>" (detached HEAD)
+  local refpath = head:match('^ref:%s*(.+)$')
+  if refpath then
+    -- Extract last path component (branch name)
+    return refpath:match('([^/]+)$') or refpath
+  end
+
+  assert(head:find('^[%x]+$'), 'Invalid HEAD content: ' .. head)
+
+  -- Detached HEAD -> like `git rev-parse --abbrev-ref HEAD`, return literal "HEAD"
+  local short_sha = log.debug_mode() and 'HEAD' or head:sub(1, 7)
+
+  if is_rebasing(gitdir) then
+    short_sha = short_sha .. '(rebasing)'
+  end
+  return short_sha
+end
 
 --- vim.inspect but on one line
 --- @param x any
@@ -116,17 +160,6 @@ function M:get_show_text(object, encoding)
   return stdout, stderr
 end
 
---- @async
---- @package
-function M:update_abbrev_head()
-  local info, err = M.get_info(self.toplevel)
-  if not info then
-    log.eprintf('Could not get info for repo at %s: %s', self.gitdir, err or '')
-    return
-  end
-  self.abbrev_head = info.abbrev_head
-end
-
 --- @type table<string,Gitsigns.Repo?>
 local repo_cache = setmetatable({}, { __mode = 'v' })
 
@@ -138,54 +171,94 @@ local function gc_proxy(fn)
   return proxy
 end
 
---- @generic T1, T, R
---- @param fn fun(_:T1, _:T...): R...
---- @param arg1 T1
---- @return fun(_:T...): R...
-local function curry1(fn, arg1)
-  return function(...)
-    return fn(arg1, ...)
-  end
+--- @param cb fun()
+function M:_start_watcher_timer(cb)
+  -- Debounced section
+  self._watcher_timer = self._watcher_timer or assert(uv.new_timer())
+  self._watcher_timer:start(200, 0, function()
+    self._watcher_timer:stop()
+    self._watcher_timer:close()
+    self._watcher_timer = nil
+    vim.schedule(cb)
+  end)
 end
 
---- @param gitdir string
---- @param err? string
---- @param filename string
---- @param events { change?: boolean, rename?: boolean }
-local function watcher_cb(gitdir, err, filename, events)
-  local __FUNC__ = 'watcher_cb'
-  -- do not use `self` here as it prevents garbage collection. Must use a
-  -- weak reference.
-  local repo = repo_cache[gitdir]
-  if not repo then
-    return -- garbage collected
-  end
+function M:_start_watcher()
+  self._watcher_callbacks = {}
+  self._watcher = assert(uv.new_fs_event())
 
-  if err then
-    log.dprintf('Git dir update error: %s', err)
-    return
-  end
+  local gitdir = self.gitdir
 
-  -- The luv docs say filename is passed as a string but it has been observed
-  -- to sometimes be nil.
-  --    https://github.com/lewis6991/gitsigns.nvim/issues/848
-  if not filename then
-    log.eprint('No filename')
-    return
-  end
+  -- Keep track of changed files, so the debounced section has information
+  -- about what changed.
+  local changed_files = {} --- @type table<string,true>
 
-  log.dprintf("Git dir update: '%s' %s", filename, inspect(events))
+  self._watcher:start(gitdir, {}, function(err, filename, events)
+    local __FUNC__ = 'watcher_cb'
 
-  if vim.startswith(filename, '.watchman-cookie') then
-    return
-  end
-
-  async.run(function()
-    repo:update_abbrev_head()
-
-    for cb in pairs(repo._watcher_callbacks) do
-      vim.schedule(cb)
+    -- Do not use `self` in luv callbacks as it prevents garbage collection.
+    -- Must use a weak reference.
+    local repo = repo_cache[gitdir]
+    if not repo then
+      return -- garbage collected
     end
+
+    if err then
+      log.dprintf('Git dir update error: %s', err)
+      return
+    end
+
+    -- The luv docs say filename is passed as a string but it has been observed
+    -- to sometimes be nil.
+    --    https://github.com/lewis6991/gitsigns.nvim/issues/848
+    if not filename then
+      log.eprint('No filename')
+      return
+    end
+
+    for _, ex in ipairs({
+      '.watchman-cookie',
+      'index.lock',
+    }) do
+      if vim.startswith(filename, ex) then
+        log.dprintf("Git dir update: '%s' %s (ignoring)", filename, inspect(events))
+        return
+      end
+    end
+
+    log.dprintf("Git dir update: '%s' %s", filename, inspect(events))
+
+    changed_files[filename] = true
+
+    -- Debounced section
+    repo:_start_watcher_timer(function()
+      local __FUNC__ = 'watcher (debounced)'
+
+      -- Do not use `self` in luv callbacks as it prevents garbage collection.
+      -- Must use a weak reference.
+      repo = repo_cache[gitdir]
+      if not repo then
+        return -- garbage collected
+      end
+
+      local head_changed = changed_files.HEAD or false
+
+      changed_files = {}
+
+      if head_changed then
+        repo.abbrev_head = abbrev_head(gitdir)
+        log.dprintf('HEAD changed, updating abbrev_head to %s', repo.abbrev_head)
+      end
+
+      for cb in pairs(repo._watcher_callbacks) do
+        vim.schedule(cb)
+      end
+    end)
+  end)
+
+  self._watcher_gc = gc_proxy(function()
+    self._watcher:stop()
+    self._watcher:close()
   end)
 end
 
@@ -198,19 +271,7 @@ local function new(info)
   --- @cast self Gitsigns.Repo
 
   self.username = self:command({ 'config', 'user.name' }, { ignore_error = true })[1]
-
-  do -- gitdir watcher
-    self._watcher_callbacks = {}
-    self._watcher = assert(uv.new_fs_event())
-
-    local debounced_handler = debounce_trailing(1000, curry1(watcher_cb, self.gitdir))
-    self._watcher:start(self.gitdir, {}, debounced_handler)
-
-    self._gc = gc_proxy(function()
-      self._watcher:stop()
-      self._watcher:close()
-    end)
-  end
+  self:_start_watcher()
 
   return self
 end
@@ -239,12 +300,12 @@ function M.get(cwd, gitdir, toplevel)
 end
 
 --- @async
---- @param gitdir? string
+--- @param gitdir string
 --- @param head_str string
 --- @param cwd string
 --- @return string
 local function process_abbrev_head(gitdir, head_str, cwd)
-  if not gitdir or head_str ~= 'HEAD' then
+  if head_str ~= 'HEAD' then
     return head_str
   end
 
@@ -253,14 +314,12 @@ local function process_abbrev_head(gitdir, head_str, cwd)
     cwd = cwd,
   })[1] or ''
 
+  -- Make tests easier
   if short_sha ~= '' and log.debug_mode() then
     short_sha = 'HEAD'
   end
 
-  if
-    util.Path.exists(util.Path.join(gitdir, 'rebase-merge'))
-    or util.Path.exists(util.Path.join(gitdir, 'rebase-apply'))
-  then
+  if is_rebasing(gitdir) then
     return short_sha .. '(rebasing)'
   end
 

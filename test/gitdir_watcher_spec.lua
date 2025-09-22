@@ -63,7 +63,6 @@ describe('gitdir_watcher', function()
 
     match_debug_messages({
       p('watcher_cb: Git dir update: .*'),
-      np(revparse_pat),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
       np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
       n('handle_moved(1): File moved to dummy.txt2'),
@@ -82,7 +81,6 @@ describe('gitdir_watcher', function()
 
     match_debug_messages({
       p('watcher_cb: Git dir update: .*'),
-      np(revparse_pat),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file2)),
       np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
       n('handle_moved(1): File moved to dummy.txt3'),
@@ -99,7 +97,6 @@ describe('gitdir_watcher', function()
 
     match_debug_messages({
       p('watcher_cb: Git dir update: .*'),
-      np(revparse_pat),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file3)),
       np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
       np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
