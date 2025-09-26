@@ -331,6 +331,176 @@ describe('gitsigns (with screen)', function()
     end)
   end)
 
+  describe('falls back from right_align to eol when text is too long  (#1322)', function()
+    before_each(function()
+      setup_test_repo({
+        test_file_text = {
+          'short',
+          string.rep('a', 25),
+          string.rep('b', 40),
+        },
+      })
+
+      config.current_line_blame = true
+      config.current_line_blame_formatter = ' <author>, <author_time:%R> - <summary>'
+      config.current_line_blame_opts = { virt_text_pos = 'right_align' }
+      setup_gitsigns(config)
+    end)
+
+    it('with nowrap', function()
+      edit(test_file)
+      command('set nowrap')
+      feed('gg')
+
+      screen:expect({
+        grid = [[
+        ^short {MATCH:{6: You, %d+ second}}|
+        aaaaaaaaaaaaaaaaaaaa|
+        bbbbbbbbbbbbbbbbbbbb|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+      ]],
+      })
+
+      -- Medium line: blame should fallback to eol (no space for right_align)
+      feed('j')
+      screen:expect({
+        grid = [[
+        short               |
+        ^aaaaaaaaaaaaaaaaaaaa|
+        bbbbbbbbbbbbbbbbbbbb|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+      ]],
+      })
+
+      -- Move to very long line
+      feed('j')
+      screen:expect({
+        grid = [[
+        short               |
+        aaaaaaaaaaaaaaaaaaaa|
+        ^bbbbbbbbbbbbbbbbbbbb|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+      ]],
+      })
+    end)
+
+    it('with wrap', function()
+      edit(test_file)
+      command('set wrap')
+      feed('gg')
+
+      -- Short line: blame should appear with right_align (normal behavior)
+      screen:expect({
+        grid = [[
+        ^short {MATCH:{6: You, %d+ second}}|
+        aaaaaaaaaaaaaaaaaaaa|
+        aaaaa               |
+        bbbbbbbbbbbbbbbbbbbb|
+        bbbbbbbbbbbbbbbbbbbb|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+      ]],
+      })
+
+      -- Move to medium line (will wrap and blame appears at end of wrapped line)
+      feed('j')
+      screen:expect({
+        grid = [[
+        short               |
+        ^aaaaaaaaaaaaaaaaaaaa|
+        {MATCH:aaaaa {6: You, %d second.*}}|
+        bbbbbbbbbbbbbbbbbbbb|
+        bbbbbbbbbbbbbbbbbbbb|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+      ]],
+      })
+
+      -- Move to very long line (wraps across multiple lines, no blame visible)
+      feed('j')
+      screen:expect({
+        grid = [[
+        short               |
+        aaaaaaaaaaaaaaaaaaaa|
+        aaaaa               |
+        ^bbbbbbbbbbbbbbbbbbbb|
+        bbbbbbbbbbbbbbbbbbbb|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+        {6:~                   }|
+      ]],
+      })
+    end)
+  end)
+
   --  TODO(lewis6991): All deprecated fields removed. Re-add when we have another deprecated field
   -- describe('configuration', function()
   --   it('handled deprecated fields', function()
