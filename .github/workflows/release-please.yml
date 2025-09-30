@@ -65,7 +65,7 @@ jobs:
       - uses: leafo/gh-actions-luarocks@v4
 
       - name: Update doc
-        run: make gen_help
+        run: make doc
 
       - name: Update PR
         run: |
