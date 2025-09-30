@@ -214,7 +214,7 @@ end
 --- @async
 --- @param obj Gitsigns.GitObj
 --- @param contents? string[]
---- @param lnum? integer
+--- @param lnum? integer|[integer, integer]
 --- @param revision? string
 --- @param opts? Gitsigns.BlameOpts
 --- @return table<integer, Gitsigns.BlameInfo>
@@ -262,7 +262,7 @@ function M.run_blame(obj, contents, lnum, revision, opts)
       '--incremental',
       contents and { '--contents', '-' },
       opts.ignore_whitespace and '-w',
-      lnum and { '-L', lnum .. ',+1' },
+      lnum and { '-L', type(lnum) == 'table' and (lnum[1] .. ',' .. lnum[2]) or (lnum .. ',+1') },
       opts.extra_opts,
       uv.fs_stat(ignore_file) and { '--ignore-revs-file', ignore_file },
       revision,
