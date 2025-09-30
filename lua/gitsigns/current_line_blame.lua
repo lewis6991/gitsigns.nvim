@@ -234,13 +234,8 @@ function M.setup()
   -- show current buffer line blame immediately
   M.update(api.nvim_get_current_buf())
 
-  local update_events = { 'BufEnter', 'CursorMoved', 'CursorMovedI' }
+  local update_events = { 'BufEnter', 'CursorMoved', 'CursorMovedI', 'WinResized' }
   local reset_events = { 'InsertEnter', 'BufLeave' }
-
-  if vim.fn.exists('#WinResized') == 1 then
-    -- For nvim 0.9+
-    update_events[#update_events + 1] = 'WinResized'
-  end
 
   if config.current_line_blame_opts.use_focus then
     update_events[#update_events + 1] = 'FocusGained'
