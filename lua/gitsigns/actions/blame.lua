@@ -336,7 +336,7 @@ local blame_bufname_prefix = 'gitsigns-blame:'
 ---@type table<blme_bufname, blm_win>
 local buf_name_to_blame_map = {}
 
-local function is_blame_window_open_for_buffer(blm_bufname, current_bufname)
+local function is_blame_window_open_for_buffer(blm_bufname)
   local blmwin = buf_name_to_blame_map[blm_bufname]
   if blmwin then
     api.nvim_win_close(blmwin, true)
