@@ -140,24 +140,14 @@ end
 
 local ns = api.nvim_create_namespace('gitsigns_popup')
 
---- @param lines string[]
---- @param highlights Gitsigns.HlMark[]
---- @return integer bufnr
-local function create_buf(lines, highlights)
-  local ts = vim.bo.tabstop
-  local bufnr = api.nvim_create_buf(false, true)
-  assert(bufnr ~= 0, 'Failed to create buffer')
-
-  vim.bo[bufnr].bufhidden = 'wipe'
-
+--- @param bufnr integer
+--- @param lines_spec Gitsigns.LineSpec[]
+local function update_buf(bufnr, lines_spec)
+  local lines, highlights = partition_linesspec(lines_spec)
   -- In case nvim was opened with '-M'
   vim.bo[bufnr].modifiable = true
   api.nvim_buf_set_lines(bufnr, 0, -1, true, lines)
   vim.bo[bufnr].modifiable = false
-
-  -- Set tabstop before calculating the buffer width so that the correct width
-  -- is calculated
-  vim.bo[bufnr].tabstop = ts
 
   for _, hl in ipairs(highlights) do
     local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, ns, hl.start_row, hl.start_col or 0, {
@@ -171,8 +161,38 @@ local function create_buf(lines, highlights)
       error(vim.inspect(hl) .. '\n' .. err)
     end
   end
+end
+
+--- @param lines_spec Gitsigns.LineSpec[]
+--- @return integer bufnr
+local function create_buf(lines_spec)
+  local ts = vim.bo.tabstop
+  local bufnr = api.nvim_create_buf(false, true)
+  assert(bufnr ~= 0, 'Failed to create buffer')
+
+  vim.bo[bufnr].bufhidden = 'wipe'
+
+  -- Set tabstop before calculating the buffer width so that the correct width
+  -- is calculated
+  vim.bo[bufnr].tabstop = ts
+
+  update_buf(bufnr, lines_spec)
 
   return bufnr
+end
+
+--- @param winid integer
+--- @param bufnr integer
+--- @param opts vim.api.keyset.win_config
+local function update_win(winid, bufnr, opts)
+  local lines = api.nvim_buf_get_lines(bufnr, 0, -1, true)
+  local width = opts.width or bufnr_calc_width(bufnr, lines)
+  local height = opts.height or #lines
+  api.nvim_win_set_width(winid, width)
+  api.nvim_win_set_height(winid, height)
+  if not opts.height then
+    expand_height(winid, #lines, opts.border)
+  end
 end
 
 --- @param bufnr integer
@@ -259,10 +279,18 @@ end
 --- @param id? string
 --- @return integer winid, integer bufnr
 function M.create(lines_spec, opts, id)
-  local lines, highlights = partition_linesspec(lines_spec)
-  local bufnr = create_buf(lines, highlights)
+  local bufnr = create_buf(lines_spec)
   local winid = create_win(bufnr, opts, id)
   return winid, bufnr
+end
+
+--- @param winid integer
+--- @param bufnr integer
+--- @param lines_spec Gitsigns.LineSpec[]
+--- @param opts vim.api.keyset.win_config
+function M.update(winid, bufnr, lines_spec, opts)
+  update_buf(bufnr, lines_spec)
+  update_win(winid, bufnr, opts)
 end
 
 --- @param id string
