@@ -152,7 +152,7 @@ end
 
 --- @async
 --- @param contents? string[]
---- @param lnum? integer
+--- @param lnum? integer|[integer, integer]
 --- @param revision? string
 --- @param opts? Gitsigns.BlameOpts
 --- @return table<integer,Gitsigns.BlameInfo?>
