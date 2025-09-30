@@ -115,7 +115,8 @@ local function create_blame_linespec(full, result, repo, fileformat, with_gh)
 
   --- @type Gitsigns.LineSpec
   local title = {
-    { result.abbrev_sha .. ' ', 'Directory', commit_url },
+    { result.abbrev_sha, 'Directory', commit_url },
+    { ' ', 'NormalFloat' },
   }
 
   if gh then
