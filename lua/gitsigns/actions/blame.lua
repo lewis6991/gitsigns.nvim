@@ -63,7 +63,7 @@ end
 ---@param text string
 ---@return string
 local function lalign(amount, text)
-  local len = vim.str_utfindex(text, 'utf-8')
+  local len = vim.fn.strdisplaywidth(text)
   return text .. string.rep(' ', math.max(0, amount - len))
 end
 
@@ -86,11 +86,7 @@ local function render(blame, win, main_win, buf_sha)
   local entries = blame.entries
 
   for _, b in pairs(entries) do
-    if vim.fn.has('nvim-0.11') == 1 then
-      max_author_len = math.max(max_author_len, (vim.str_utfindex(b.commit.author, 'utf-8')))
-    else
-      max_author_len = math.max(max_author_len, #b.commit.author)
-    end
+    max_author_len = math.max(max_author_len, vim.fn.strdisplaywidth(b.commit.author))
   end
 
   local lines = {} --- @type string[]
