@@ -4,6 +4,17 @@ local util = require('gitsigns.util')
 
 local api = vim.api
 
+local SHOW_FORMAT = table.concat({
+  'commit' .. '%x20%H',
+  'tree' .. '%x20%T',
+  'parent' .. '%x20%P',
+  'author' .. '%x20%an%x20<%ae>%x20%ad',
+  'committer' .. '%x20%cn%x20<%ce>%x20%cd',
+  'encoding' .. '%x20%e',
+  '',
+  '%B',
+}, '%n')
+
 --- @param base? string?
 --- @param open? 'vsplit'|'tabnew'
 --- @async
@@ -16,7 +27,13 @@ return function(base, open)
     return
   end
 
-  local res = bcache.git_obj.repo:command({ 'show', base })
+  local res = bcache.git_obj.repo:command({ 'show', '--format=format:' .. SHOW_FORMAT, base })
+
+  -- Remove encoding line if it's not set to something meaningful
+  if assert(res[6]):match('^encoding (unknown)?') == nil then
+    table.remove(res, 6)
+  end
+
   async.schedule()
   local buffer_name = bcache:get_rev_bufname(base, false)
   local commit_buf = nil
