@@ -177,18 +177,18 @@ function CacheEntry:get_blame(lnum, opts)
     self:wait_for_hunks()
     blame = blame or { entries = {} }
     local Hunks = require('gitsigns.hunks')
-    local has_hunks = false
+    local has_blameable_line = true
     if lnum then
       local start_lnum = type(lnum) == 'table' and lnum[1] or lnum
       local end_lnum = type(lnum) == 'table' and lnum[2] or lnum
       for curr_lnum = start_lnum, end_lnum do
-        has_hunks = not not Hunks.find_hunk(curr_lnum, self.hunks)
-        if not has_hunks then
+        has_blameable_line = not Hunks.find_hunk(curr_lnum, self.hunks)
+        if not has_blameable_line then
           break
         end
       end
     end
-    if lnum and has_hunks then
+    if lnum and not has_blameable_line then
       --- Bypass running blame (which can be expensive) if we know lnum is in a hunk
       local Blame = require('gitsigns.git.blame')
       local relpath = assert(self.git_obj.relpath)
