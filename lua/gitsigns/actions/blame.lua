@@ -450,6 +450,17 @@ function M.blame()
 
   local group = api.nvim_create_augroup('GitsignsBlame', {})
 
+  api.nvim_create_autocmd('BufHidden', {
+    buffer = bufnr,
+    group = group,
+    once = true,
+    callback = function()
+      if api.nvim_win_is_valid(blm_win) then
+        api.nvim_win_close(blm_win, true)
+      end
+    end,
+  })
+
   api.nvim_create_autocmd({ 'CursorMoved', 'BufLeave' }, {
     buffer = blm_bufnr,
     group = group,
