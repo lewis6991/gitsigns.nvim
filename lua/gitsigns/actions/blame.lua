@@ -455,7 +455,9 @@ function M.blame()
     group = group,
     callback = function()
       api.nvim_buf_clear_namespace(blm_bufnr, ns_hl, 0, -1)
-      api.nvim_buf_clear_namespace(bufnr, ns_hl, 0, -1)
+      if api.nvim_buf_is_valid(bufnr) then
+        api.nvim_buf_clear_namespace(bufnr, ns_hl, 0, -1)
+      end
     end,
   })
 
