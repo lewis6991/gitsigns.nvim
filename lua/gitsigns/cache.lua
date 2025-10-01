@@ -177,12 +177,15 @@ function CacheEntry:get_blame(lnum, opts)
     self:wait_for_hunks()
     blame = blame or { entries = {} }
     local Hunks = require('gitsigns.hunks')
-    local has_hunks = true
+    local has_hunks = false
     if lnum then
       local start_lnum = type(lnum) == 'table' and lnum[1] or lnum
       local end_lnum = type(lnum) == 'table' and lnum[2] or lnum
       for curr_lnum = start_lnum, end_lnum do
         has_hunks = not not Hunks.find_hunk(curr_lnum, self.hunks)
+        if not has_hunks then
+          break
+        end
       end
     end
     if lnum and has_hunks then
