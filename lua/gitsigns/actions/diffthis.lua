@@ -36,8 +36,11 @@ local function bufread(bufnr, dbufnr, base, relpath)
     end
   end
 
+  -- TODO(lewis6991): This doesn't work if the buffer is for a different file
+  -- from bufnr. This function should take a repo object instead.
   vim.bo[dbufnr].fileformat = vim.bo[bufnr].fileformat
-  vim.bo[dbufnr].filetype = vim.bo[bufnr].filetype
+
+  vim.bo[dbufnr].filetype = vim.filetype.match({ buf = dbufnr })
   vim.bo[dbufnr].bufhidden = 'wipe'
 
   local modifiable = vim.bo[dbufnr].modifiable
