@@ -45,6 +45,12 @@ local function parse_git_path(name)
     rel_path = tail:match('^[^/]+/(.*)')
   end
 
+  -- Fugitive worktree buffers do not have a path
+  -- 'fugitive:///<gitdir>//<commit>/'
+  if rel_path == '' then
+    return
+  end
+
   dprintf("%s buffer for file '%s' from path '%s' on commit '%s'", plugin, rel_path, name, commit)
   return rel_path, commit, gitdir
 end
@@ -179,7 +185,7 @@ local function handle_moved(bufnr, old_relpath)
     git_obj.relpath = new_name
     git_obj.file = git_obj.repo.toplevel .. '/' .. new_name
   elseif git_obj.orig_relpath then
-    local orig_file = Util.Path.join(git_obj.repo.toplevel, git_obj.orig_relpath)
+    local orig_file = Path.join(git_obj.repo.toplevel, git_obj.orig_relpath)
     if not git_obj.repo:file_info(orig_file, git_obj.revision) then
       return
     end
@@ -192,7 +198,7 @@ local function handle_moved(bufnr, old_relpath)
     return
   end
 
-  git_obj.file = Util.Path.join(git_obj.repo.toplevel, git_obj.relpath)
+  git_obj.file = Path.join(git_obj.repo.toplevel, git_obj.relpath)
   bcache.file = git_obj.file
   git_obj:refresh()
   if not bcache:schedule() then
@@ -302,7 +308,7 @@ M.attach = throttle_by_id(function(cbuf, ctx, aucmd)
   end
 
   local revision = ctx.base or config.base
-  local git_obj = git.Obj.new(file, revision, encoding, ctx.gitdir, ctx.toplevel)
+  local git_obj = git.Obj.new(file, revision, encoding, ctx.gitdir, toplevel)
 
   if not git_obj and not passed_ctx then
     for _, wt in ipairs(config.worktrees) do
