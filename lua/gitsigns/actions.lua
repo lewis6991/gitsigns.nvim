@@ -642,8 +642,14 @@ end
 ---
 --- Attributes: ~
 ---     {async}
-M.blame = async.create(0, function()
-  require('gitsigns.actions.blame').blame()
+---
+--- @param opts table|nil Additional options:
+---     • {ignore_whitespace}: (boolean)
+---       Ignore whitespace when running blame.
+---     • {extra_opts}: (string[])
+---       Extra options passed to `git-blame`.
+M.blame = async.create(1, function(opts)
+  require('gitsigns.actions.blame').blame(opts)
 end)
 
 --- @async
