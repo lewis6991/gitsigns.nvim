@@ -70,6 +70,7 @@ end
 
 --- Attach Gitsigns to the buffer.
 ---
+--- @type fun(bufnr: integer, ctx: Gitsigns.GitContext|nil, _trigger?: string): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 ---
@@ -215,6 +216,7 @@ end
 --- range only includes a portion of a particular hunk, only the
 --- lines within the range will be staged.
 ---
+--- @type fun(range: table|nil, opts: table|nil): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 ---
@@ -298,6 +300,7 @@ end
 --- meaning if a range only includes a portion of a particular
 --- hunk, only the lines within the range will be reset.
 ---
+--- @type fun(range: table|nil, opts: table|nil): Gitsigns.async.Task
 --- @param range table|nil List-like table of two integers making
 ---     up the line range from which you want to reset the hunks.
 ---     If running via command line, then this is taken from the
@@ -355,6 +358,7 @@ end
 --- Note: only the calls to stage_hunk() performed in the current
 --- session can be undone.
 ---
+--- @type fun(): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 M.undo_stage_hunk = async.create(0, function()
@@ -384,6 +388,7 @@ end)
 
 --- Stage all hunks in current buffer.
 ---
+--- @type fun(): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 M.stage_buffer = async.create(0, function()
@@ -425,6 +430,7 @@ end)
 --- Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
 --- stages, this runs an `git reset` on current buffers file.
 ---
+--- @type fun(): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 M.reset_buffer_index = async.create(0, function()
@@ -454,6 +460,7 @@ end)
 --- (popup or inline) was previously opened, it will be re-opened
 --- at the next hunk.
 ---
+--- @type fun(direction: 'first'|'last'|'next'|'prev', opts: table|nil): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 ---
@@ -493,12 +500,14 @@ end
 --- (popup or inline) was previously opened, it will be re-opened
 --- at the next hunk.
 ---
+--- @type fun(opts: table|nil): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 ---
 --- Parameters: ~
 ---     See |gitsigns.nav_hunk()|.
 M.next_hunk = async.create(1, function(opts)
+  --- @cast opts Gitsigns.NavOpts?
   require('gitsigns.actions.nav').nav_hunk('next', opts)
 end)
 
@@ -511,12 +520,14 @@ end
 --- (popup or inline) was previously opened, it will be re-opened
 --- at the previous hunk.
 ---
+--- @type fun(opts: table|nil): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 ---
 --- Parameters: ~
 ---     See |gitsigns.nav_hunk()|.
 M.prev_hunk = async.create(1, function(opts)
+  --- @cast opts Gitsigns.NavOpts?
   require('gitsigns.actions.nav').nav_hunk('prev', opts)
 end)
 
@@ -532,6 +543,7 @@ M.preview_hunk = function()
 end
 
 --- Preview the hunk at the cursor position inline in the buffer.
+--- @type fun(): Gitsigns.async.Task
 M.preview_hunk_inline = async.create(0, function()
   require('gitsigns.actions.preview').preview_hunk_inline()
 end)
@@ -610,6 +622,7 @@ end
 --- floating window. If already open, calling this will cause the
 --- window to get focus.
 ---
+--- @type fun(opts: table|nil): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 ---
@@ -632,6 +645,7 @@ end
 --- Run git-blame on the current file and open the results
 --- in a scroll-bound vertical split.
 ---
+--- @type fun(): Gitsigns.async.Task
 --- Mappings:
 ---   <CR> is mapped to open a menu with the other mappings
 ---        Note: <Alt> must be held to activate the mappings whilst the menu is
@@ -663,6 +677,7 @@ end
 --- and true, then change the base revision of all buffers,
 --- including any new buffers.
 ---
+--- @type fun(base: string|nil, global: boolean|nil): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 ---
@@ -753,6 +768,7 @@ end
 --- For a more complete list of ways to specify bases, see
 --- |gitsigns-revision|.
 ---
+--- @type fun(base: string|nil, opts: table|nil): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 ---
@@ -828,6 +844,7 @@ CP.diffthis = complete_heads
 --- For a more complete list of ways to specify bases, see
 --- |gitsigns-revision|.
 ---
+--- @type fun(revision: string?): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 ---
@@ -848,7 +865,8 @@ CP.show = complete_heads
 
 --- Show revision {base} commit in split or tab
 ---
---- @param revision? string? (default: 'HEAD')
+--- @type fun(revision?: string, open?: 'vsplit'|'tabnew'): Gitsigns.async.Task
+--- @param revision? string (default: 'HEAD')
 --- @param open? 'vsplit'|'tabnew'
 M.show_commit = async.create(2, function(revision, open)
   require('gitsigns.actions.show_commit')(revision, open)
@@ -864,6 +882,7 @@ CP.show_commit = complete_heads
 --- Populate the quickfix list with hunks. Automatically opens the
 --- quickfix window.
 ---
+--- @type fun(target: integer|'attached'|'all'|nil, opts: table|nil): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 ---
@@ -970,6 +989,7 @@ end
 
 --- Refresh all buffers.
 ---
+--- @type fun(): Gitsigns.async.Task
 --- Attributes: ~
 ---     {async}
 M.refresh = async.create(0, function()
