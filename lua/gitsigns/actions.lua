@@ -571,9 +571,9 @@ end
 
 --- Get hunk array for specified buffer.
 ---
---- @param bufnr integer Buffer number, if not provided (or 0)
+--- @param bufnr integer? Buffer number, if not provided (or 0)
 ---             will use current buffer.
---- @return table|nil : Array of hunk objects.
+--- @return Gitsigns.Hunk.Hunk_Public[]? : Array of hunk objects.
 ---     Each hunk object has keys:
 ---         • `"type"`: String with possible values: "add", "change",
 ---           "delete"
@@ -588,7 +588,9 @@ end
 ---           • `"start"`: Line number (1-based)
 ---           • `"count"`: Line count
 M.get_hunks = function(bufnr)
-  bufnr = bufnr or current_buf()
+  if bufnr == nil or bufnr == 0 then
+    bufnr = current_buf()
+  end
   if not cache[bufnr] then
     return
   end
