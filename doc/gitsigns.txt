@@ -311,11 +311,11 @@ get_hunks({bufnr})                                      *gitsigns.get_hunks()*
                 Get hunk array for specified buffer.
 
                 Parameters: ~
-                    {bufnr} (integer): Buffer number, if not provided (or 0)
+                    {bufnr} (integer?): Buffer number, if not provided (or 0)
                             will use current buffer.
 
                 Returns: ~
-                    (table|nil): Array of hunk objects.
+                    (Gitsigns.Hunk.Hunk_Public[]?): Array of hunk objects.
                     Each hunk object has keys:
                         • `"type"`: String with possible values: "add", "change",
                           "delete"
