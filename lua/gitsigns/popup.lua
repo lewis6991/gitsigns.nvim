@@ -265,7 +265,7 @@ local function create_win(bufnr, opts, id)
     buffer = api.nvim_get_current_buf(),
     group = group_id,
     callback = function()
-      if api.nvim_win_is_valid(winid) then
+      if api.nvim_win_is_valid(winid) and api.nvim_get_current_win() ~= winid then
         api.nvim_win_set_config(winid, opts1)
       end
     end,
