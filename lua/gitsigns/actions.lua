@@ -646,6 +646,24 @@ M.blame = async.create(0, function()
   require('gitsigns.actions.blame').blame()
 end)
 
+--- Copy the commit SHA of the current line to the clipboard.
+---
+--- Attributes: ~
+---     {async}
+M.copy_commit_sha = async.create(0, function()
+  require('gitsigns.actions.blame_commit').copy_commit_sha()
+end)
+
+--- Open the commit of the current line in the browser.
+--- Uses the GitHub CLI (`gh`) if available, otherwise attempts
+--- to construct the URL from the git remote.
+---
+--- Attributes: ~
+---     {async}
+M.open_commit_in_browser = async.create(0, function()
+  require('gitsigns.actions.blame_commit').open_commit_in_browser()
+end)
+
 --- @async
 --- @param bcache Gitsigns.CacheEntry
 --- @param base string?

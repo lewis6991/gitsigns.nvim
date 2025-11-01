@@ -275,6 +275,20 @@ change_base({base}, {global}, {callback?})              *gitsigns.change_base()*
                     {base}   (string|nil): The object/revision to diff against.
                     {global} (boolean|nil): Change the base of all buffers.
 
+open_commit_in_browser({callback?})        *gitsigns.open_commit_in_browser()*
+                Open the commit of the current line in the browser.
+                Uses the GitHub CLI (`gh`) if available, otherwise attempts
+                to construct the URL from the git remote.
+
+                Attributes: ~
+                    {async}
+
+copy_commit_sha({callback?})                      *gitsigns.copy_commit_sha()*
+                Copy the commit SHA of the current line to the clipboard.
+
+                Attributes: ~
+                    {async}
+
 blame({callback?})                                          *gitsigns.blame()*
                 Run git-blame on the current file and open the results
                 in a scroll-bound vertical split.

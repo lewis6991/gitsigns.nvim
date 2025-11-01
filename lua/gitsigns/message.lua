@@ -3,6 +3,11 @@ local levels = vim.log.levels
 local M = {}
 
 --- @type fun(fmt: string, ...: string)
+M.info = vim.schedule_wrap(function(fmt, ...)
+  vim.notify(fmt:format(...), levels.INFO, { title = 'gitsigns' })
+end)
+
+--- @type fun(fmt: string, ...: string)
 M.warn = vim.schedule_wrap(function(fmt, ...)
   vim.notify(fmt:format(...), levels.WARN, { title = 'gitsigns' })
 end)
