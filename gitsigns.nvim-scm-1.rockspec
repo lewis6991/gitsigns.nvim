@@ -32,6 +32,7 @@ end
 build = {
   type = 'builtin',
   copy_directories = {
-    'doc'
+    'doc',
+    'plugin'
   }
 }
