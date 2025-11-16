@@ -302,6 +302,14 @@ local function render_block(header, block, params, returns, deprecated)
     })
   end
 
+  block = vim.tbl_filter(
+    --- @param v string
+    --- @return boolean
+    function(v)
+      return not v:match('@type fun%(.*%): Gitsigns.async.Task$')
+    end,
+    block
+  )
   list_extend(res, block)
 
   -- filter arguments beginning with '_'

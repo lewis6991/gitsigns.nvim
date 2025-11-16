@@ -165,7 +165,7 @@ show_commit({revision}, {open}, {callback?})              *gitsigns.show_commit(
                 Show revision {base} commit in split or tab
 
                 Parameters: ~
-                    {revision?} (string?): (default: 'HEAD')
+                    {revision?} (string): (default: 'HEAD')
                     {open?}     ('vsplit'|'tabnew'):
 
 show({revision}, {callback?})                                *gitsigns.show()*
