@@ -164,11 +164,12 @@ local function render(blame, win, main_win, buf_sha)
 end
 
 --- @async
+--- @param opts Gitsigns.BlameOpts?
 --- @param blame table<integer,Gitsigns.BlameInfo?>
 --- @param win integer
 --- @param revision? string
 --- @param parent? boolean
-local function reblame(blame, win, revision, parent)
+local function reblame(opts, blame, win, revision, parent)
   local blm_win = api.nvim_get_current_win()
   local lnum = api.nvim_win_get_cursor(blm_win)[1]
   local sha = assert(blame[lnum]).commit.sha
@@ -187,7 +188,7 @@ local function reblame(blame, win, revision, parent)
     return
   end
   async.schedule()
-  M.blame()
+  M.blame(opts)
 end
 
 --- @async
@@ -329,7 +330,8 @@ local function pmap(mode, lhs, cb, opts)
 end
 
 --- @async
-function M.blame()
+--- @param opts Gitsigns.BlameOpts?
+function M.blame(opts)
   local __FUNC__ = 'blame'
   local bufnr = api.nvim_get_current_buf()
   local win = api.nvim_get_current_win()
@@ -339,7 +341,8 @@ function M.blame()
     return
   end
 
-  bcache:get_blame()
+  local lnum = nil
+  bcache:get_blame(lnum, opts)
   local blame = assert(bcache.blame)
 
   -- Save position to align 'scrollbind'
@@ -406,7 +409,7 @@ function M.blame()
   })
 
   pmap('n', 'r', function()
-    async.run(reblame, blame.entries, win, bcache.git_obj.revision):raise_on_error()
+    async.run(reblame, opts, blame.entries, win, bcache.git_obj.revision):raise_on_error()
   end, {
     desc = 'Reblame at commit',
     buffer = blm_bufnr,
@@ -420,7 +423,7 @@ function M.blame()
   })
 
   pmap('n', 'R', function()
-    async.run(reblame, blame.entries, win, bcache.git_obj.revision, true):raise_on_error()
+    async.run(reblame, opts, blame.entries, win, bcache.git_obj.revision, true):raise_on_error()
   end, {
     desc = 'Reblame at commit parent',
     buffer = blm_bufnr,
