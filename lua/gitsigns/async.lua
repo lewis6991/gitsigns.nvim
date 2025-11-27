@@ -150,7 +150,7 @@ end
 ---   local result = task:wait() -- wait indefinitely
 --- ```
 --- @param timeout? integer Timeout in milliseconds
---- @return any ... result
+--- @return R... result
 function Task:wait(timeout)
   local res = pack_len(self:pwait(timeout))
   local stat = res[1]
@@ -354,10 +354,10 @@ end
 --- -- Since uv functions have sync versions. You can just do:
 --- local stat = vim.fs_stat('foo.txt')
 --- ```
---- @generic T
---- @param func async fun(...:T...)
+--- @generic T, R
+--- @param func async fun(...:T...): R...
 --- @param ... T...
---- @return Gitsigns.async.Task
+--- @return Gitsigns.async.Task<R>
 function M.run(func, ...)
   local task = Task._new(func)
   task:_resume(...)
