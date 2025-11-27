@@ -158,19 +158,16 @@ local function show_deleted_in_float(bufnr, nsd, hunk, staged)
 
     -- Navigate to hunk
     vim.cmd('normal! ' .. tostring(hunk.removed.start) .. 'gg')
-    vim.cmd('normal! ' .. vim.api.nvim_replace_termcodes('z<CR>', true, false, true))
+    vim.cmd('normal! ' .. api.nvim_replace_termcodes('z<CR>', true, false, true))
   end)
-
-  local last_lnum = api.nvim_buf_line_count(bufnr)
 
   -- Apply highlights
 
-  for i = hunk.removed.start, hunk.removed.start + hunk.removed.count do
+  for i = hunk.removed.start, hunk.removed.start + hunk.removed.count - 1 do
     api.nvim_buf_set_extmark(pbufnr, nsd, i - 1, 0, {
       hl_group = 'GitSignsDeleteVirtLn',
       hl_eol = true,
       end_row = i,
-      strict = i == last_lnum,
       priority = 1000,
     })
   end
@@ -235,6 +232,7 @@ end)
 
 --- Preview the hunk at the cursor position inline in the buffer.
 --- @async
+--- @return integer? winid
 function M.preview_hunk_inline()
   local bufnr = current_buf()
 
@@ -269,6 +267,8 @@ function M.preview_hunk_inline()
   if hunk.added.start <= 1 then
     feedkeys(hunk.removed.count .. '<C-y>')
   end
+
+  return winid
 end
 
 --- @param bufnr integer

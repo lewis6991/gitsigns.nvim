@@ -22,9 +22,12 @@
     "insertSpace": true
   },
   "workspace": {
+    "library": [
+      "$VIMRUNTIME",
+      "deps/nvim-test"
+    ],
     "ignoreDir": [
-      ".luarocks",
-      "deps"
+      ".luarocks"
     ]
   }
 }
