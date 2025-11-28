@@ -98,7 +98,7 @@ local BLAME_THRESHOLD_LEN = 10000
 
 --- @async
 --- @private
---- @param lnum? integer
+--- @param lnum? integer|[integer, integer]
 --- @param opts? Gitsigns.BlameOpts
 --- @return table<integer,Gitsigns.BlameInfo?>
 --- @return table<string,Gitsigns.CommitInfo?>
@@ -157,29 +157,58 @@ end
 
 --- If lnum is nil then run blame for the entire buffer.
 --- @async
---- @param lnum? integer
+--- @param lnum? integer|[integer, integer]
 --- @param opts? Gitsigns.BlameOpts
 --- @return Gitsigns.BlameInfo?
 function CacheEntry:get_blame(lnum, opts)
   local blame = self.blame
 
-  if not blame or not self:blame_valid(lnum) then
+  local blame_valid = true
+  if type(lnum) == 'table' then
+    local curr_lnum = lnum[1]
+    while blame_valid and curr_lnum <= lnum[2] do
+      blame_valid = self:blame_valid(curr_lnum)
+      curr_lnum = curr_lnum + 1
+    end
+  else
+    blame_valid = self:blame_valid(lnum)
+  end
+  if not blame or not blame_valid then
     self:wait_for_hunks()
     blame = blame or { entries = {} }
     local Hunks = require('gitsigns.hunks')
-    if lnum and Hunks.find_hunk(lnum, self.hunks) then
+    local has_blameable_line = true
+    if lnum then
+      local start_lnum = type(lnum) == 'table' and lnum[1] or lnum
+      local end_lnum = type(lnum) == 'table' and lnum[2] or lnum
+      for curr_lnum = start_lnum, end_lnum do
+        has_blameable_line = not Hunks.find_hunk(curr_lnum, self.hunks)
+        if not has_blameable_line then
+          break
+        end
+      end
+    end
+    if lnum and not has_blameable_line then
       --- Bypass running blame (which can be expensive) if we know lnum is in a hunk
       local Blame = require('gitsigns.git.blame')
       local relpath = assert(self.git_obj.relpath)
-      local info = Blame.get_blame_nc(relpath, lnum)
-      blame.entries[lnum] = info
-      blame.max_time = info.commit.author_time
+      local start_lnum = type(lnum) == 'table' and lnum[1] or lnum
+      local end_lnum = type(lnum) == 'table' and lnum[2] or lnum
+      for curr_lnum = start_lnum, end_lnum do
+        local info = Blame.get_blame_nc(relpath, curr_lnum)
+        blame.entries[curr_lnum] = info
+        blame.max_time = info.commit.author_time
+      end
     else
       -- Refresh/update cache
       local b, commits, full = self:run_blame(lnum, opts)
       self.commits = vim.tbl_extend('force', self.commits or {}, commits)
       if lnum and not full then
-        blame.entries[lnum] = b[lnum]
+        local start_lnum = type(lnum) == 'table' and lnum[1] or lnum
+        local end_lnum = type(lnum) == 'table' and lnum[2] or lnum
+        for curr_lnum = start_lnum, end_lnum do
+          blame.entries[curr_lnum] = b[curr_lnum]
+        end
       else
         blame.entries = b
       end
