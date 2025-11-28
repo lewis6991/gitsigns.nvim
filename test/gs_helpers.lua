@@ -113,7 +113,6 @@ function M.expectf(cond, interval)
   local duration = 0
   interval = interval or 1
   while duration < timeout do
-    --- @type boolean, boolean?
     local ok, ret = pcall(cond)
     if ok and (ret == nil or ret == true) then
       return
@@ -286,7 +285,7 @@ local function check_signs(signs, bufnr)
   local buf_signs = {} --- @type string[]
   local buf_marks = helpers.api.nvim_buf_get_extmarks(bufnr, -1, 0, -1, { details = true })
   for _, s in ipairs(buf_marks) do
-    buf_signs[#buf_signs + 1] = s[4].sign_hl_group
+    buf_signs[#buf_signs + 1] = assert(s[4]).sign_hl_group
   end
 
   --- @type table<string,integer>

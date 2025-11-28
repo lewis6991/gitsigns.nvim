@@ -6,35 +6,32 @@ local eq = helpers.eq
 helpers.env()
 
 --- @param hunks [string,integer,integer,integer,integer][]
---- @return [string,integer,integer][]
+--- @return [string,integer,integer?][]
 local function calc_signs(hunks)
+  local hunks1 = {} --- @type Gitsigns.Hunk.Hunk[]
   for i, hunk in ipairs(hunks) do
-    if hunk[1] then
-      hunks[i] = {
-        added = { count = hunk[4], start = hunk[5] },
-        removed = { count = hunk[2], start = hunk[3] },
-        type = hunk[1],
-      }
-    end
+    hunks1[i] = {
+      added = { count = hunk[4], start = hunk[5] },
+      removed = { count = hunk[2], start = hunk[3] },
+      type = hunk[1],
+    }
   end
 
-  --- @type Gitsigns.Sign[]
   local signs = exec_lua(
     --- @param hunks0 Gitsigns.Hunk.Hunk[]
-    --- @return Gitsigns.Sign[]
     function(hunks0)
       local Hunks = require('gitsigns.hunks')
-      local signs = {}
+      local signs0 = {} --- @type Gitsigns.Sign[]
       for i, hunk in ipairs(hunks0) do
         local prev_hunk, next_hunk = hunks0[i - 1], hunks0[i + 1]
-        vim.list_extend(signs, Hunks.calc_signs(prev_hunk, hunk, next_hunk))
+        vim.list_extend(signs0, Hunks.calc_signs(prev_hunk, hunk, next_hunk))
       end
-      return signs
+      return signs0
     end,
-    hunks
+    hunks1
   )
 
-  local r = {} --- @type [string,integer,integer][]
+  local r = {} --- @type [string,integer,integer?][]
   for i, s in ipairs(signs) do
     r[i] = { s.type, s.lnum, s.count }
   end

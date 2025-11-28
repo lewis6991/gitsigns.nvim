@@ -10,7 +10,7 @@ endif
 .DEFAULT_GOAL := build
 
 .PHONY: build
-build: doc stylua-run
+build: doc format
 
 ################################################################################
 # nvim-test
@@ -99,12 +99,12 @@ $(STYLUA): $(STYLUA_ZIP)
 
 LUA_FILES := $(shell git ls-files lua test)
 
-.PHONY: stylua-check
-stylua-check: $(STYLUA)
+.PHONY: format-check
+format-check: $(STYLUA)
 	$(STYLUA) --check $(LUA_FILES)
 
-.PHONY: stylua-run
-stylua-run: $(STYLUA)
+.PHONY: format
+format: $(STYLUA)
 	$(STYLUA) $(LUA_FILES)
 
 ################################################################################
