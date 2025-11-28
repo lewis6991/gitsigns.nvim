@@ -56,11 +56,6 @@ describe('highlights', function()
   it('get set up correctly', function()
     command('set termguicolors')
 
-    config.signs.add.hl = nil
-    config.signs.change.hl = nil
-    config.signs.delete.hl = nil
-    config.signs.changedelete.hl = nil
-    config.signs.topdelete.hl = nil
     config.numhl = true
     config.linehl = true
     config._test_mode = true
@@ -84,14 +79,7 @@ describe('highlights', function()
 
   it('update when colorscheme changes', function()
     command('set termguicolors')
-
-    config.signs.add.hl = nil
-    config.signs.change.hl = nil
-    config.signs.delete.hl = nil
-    config.signs.changedelete.hl = nil
-    config.signs.topdelete.hl = nil
     config.linehl = true
-
     setup_gitsigns(config)
   end)
 end)
