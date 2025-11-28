@@ -33,7 +33,7 @@ helpers.env()
 
 ---@param bufnr? integer
 local function wait_for_attach(bufnr)
-  helpers.expectf(function()
+  expectf(function()
     return exec_lua(function(bufnr0)
       return vim.b[bufnr0 or 0].gitsigns_status_dict.gitdir ~= nil
     end, bufnr)
@@ -770,7 +770,12 @@ describe('gitsigns (with screen)', function()
           signs = { changed = 1, added = 4 },
         })
 
-        exec_lua('require("gitsigns.actions").stage_hunk()')
+        -- Minor delay to avoid the test being flaky
+        helpers.sleep(50)
+
+        exec_lua(function()
+          require('gitsigns.actions').stage_hunk()
+        end)
 
         check({
           status = { head = 'HEAD(rebasing)', added = 0, changed = 0, removed = 0 },
@@ -1038,7 +1043,7 @@ describe('gitsigns attach', function()
     eq('gitsigns://' .. scratch .. '/.git//:0:sub/test', api.nvim_buf_get_name(0))
 
     local gfile, toplevel, gitdir, abbrev_head = exec_lua(function()
-      local git_obj = require('gitsigns.cache').cache[1].git_obj
+      local git_obj = assert(require('gitsigns.cache').cache[1]).git_obj
       return git_obj.file, git_obj.repo.toplevel, git_obj.repo.gitdir, git_obj.repo.abbrev_head
     end)
 

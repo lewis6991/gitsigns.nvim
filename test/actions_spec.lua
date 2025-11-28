@@ -51,6 +51,7 @@ end
 
 local delay = 10
 
+--- @param cmd string
 local function command(cmd)
   helpers.sleep(delay)
   helpers.api.nvim_command(cmd)
@@ -72,7 +73,7 @@ local function retry(f)
     if ok then
       return
     end
-    delay = delay * 1.6
+    delay = math.ceil(delay * 1.6)
     print('failed, retrying with delay', delay)
   end
 
