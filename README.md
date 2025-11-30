@@ -70,6 +70,12 @@ Deep buffer integration for Git
     - Enable with `setup({ current_line_blame = true })`.
     - Toggle with `:Gitsigns toggle_current_line_blame`
 
+  - Copy the commit SHA of the current line to the clipboard with `:Gitsigns copy_commit_sha`.
+
+  - Open the commit of the current line in your browser with `:Gitsigns open_commit_in_browser`.
+    - Uses GitHub CLI (`gh`) if available, otherwise parses the git remote URL.
+    - Supports GitHub, GitLab, and Bitbucket.
+
 </details>
 
 <details>
@@ -261,6 +267,9 @@ require('gitsigns').setup{
     map('n', '<leader>hb', function()
       gitsigns.blame_line({ full = true })
     end)
+
+    map('n', '<leader>hy', gitsigns.copy_commit_sha)
+    map('n', '<leader>ho', gitsigns.open_commit_in_browser)
 
     map('n', '<leader>hd', gitsigns.diffthis)
 
