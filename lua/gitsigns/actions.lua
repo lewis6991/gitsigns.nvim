@@ -610,6 +610,9 @@ end
 --- floating window. If already open, calling this will cause the
 --- window to get focus.
 ---
+--- If a handler function is specified, it will be called with
+--- the blame info, and the floating window will not be opened.
+---
 --- Attributes: ~
 ---     {async}
 ---
@@ -620,6 +623,8 @@ end
 ---       Ignore whitespace when running blame.
 ---     • {extra_opts}: (string[])
 ---       Extra options passed to `git-blame`.
+---     • {handler}: (Gitsigns.LineBlameHandlerFun)
+---       Handler for blame info.
 M.blame_line = async.create(1, function(opts)
   --- @cast opts Gitsigns.LineBlameOpts?
   require('gitsigns.actions.blame_line')(opts)

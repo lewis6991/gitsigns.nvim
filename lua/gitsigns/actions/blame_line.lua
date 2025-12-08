@@ -145,15 +145,17 @@ end
 
 --- @class (exact) Gitsigns.LineBlameOpts : Gitsigns.BlameOpts
 --- @field full? boolean
+--- @field handler? Gitsigns.LineBlameHandlerFun
+--- @alias Gitsigns.LineBlameHandlerFun fun(info: Gitsigns.BlameInfoPublic, repo: Gitsigns.Repo, fileformat: string)
 
 --- @async
 --- @param opts Gitsigns.LineBlameOpts?
 return function(opts)
-  if popup.focus_open('blame') then
+  opts = opts or {}
+
+  if not opts.handler and popup.focus_open('blame') then
     return
   end
-
-  opts = opts or {}
 
   local bufnr = api.nvim_get_current_buf()
   local bcache = cache[bufnr]
@@ -184,6 +186,11 @@ return function(opts)
   end
 
   local result = util.convert_blame_info(assert(info))
+
+  if opts.handler then
+    opts.handler(result, bcache.git_obj.repo, fileformat)
+    return
+  end
 
   local blame_linespec =
     create_blame_linespec(opts.full, result, bcache.git_obj.repo, fileformat, false)
