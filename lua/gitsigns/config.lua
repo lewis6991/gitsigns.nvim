@@ -534,22 +534,28 @@ M.schema = {
       local added, changed, removed = status.added, status.changed, status.removed
       local status_txt = {}
       if added and added > 0 then
-        table.insert(status_txt, '+' .. added)
+        table.insert(status_txt, '%#GitSignsAdd#+' .. added .. '%##')
       end
       if changed and changed > 0 then
-        table.insert(status_txt, '~' .. changed)
+        table.insert(status_txt, '%#GitSignsChange#~' .. changed .. '%##')
       end
       if removed and removed > 0 then
-        table.insert(status_txt, '-' .. removed)
+        table.insert(status_txt, '%#GitSignsDelete#-' .. removed .. '%##')
       end
       return table.concat(status_txt, ' ')
     end,
     default_help = [[function(status)
       local added, changed, removed = status.added, status.changed, status.removed
       local status_txt = {}
-      if added   and added   > 0 then table.insert(status_txt, '+'..added  ) end
-      if changed and changed > 0 then table.insert(status_txt, '~'..changed) end
-      if removed and removed > 0 then table.insert(status_txt, '-'..removed) end
+      if added and added > 0 then
+        table.insert(status_txt, '%#GitSignsAdd#+' .. added .. '%##')
+      end
+      if changed and changed > 0 then
+        table.insert(status_txt, '%#GitSignsChange#~' .. changed .. '%##')
+      end
+      if removed and removed > 0 then
+        table.insert(status_txt, '%#GitSignsDelete#-' .. removed .. '%##')
+      end
       return table.concat(status_txt, ' ')
     end]],
     description = [[
