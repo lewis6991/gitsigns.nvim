@@ -171,15 +171,18 @@ return function(opts)
 
   local fileformat = vim.bo[bufnr].fileformat
   local lnum = api.nvim_win_get_cursor(0)[1]
+  ---@async
   local function is_stale()
-    return api.nvim_get_current_buf() ~= bufnr or api.nvim_win_get_cursor(0)[1] ~= lnum
+    return not bcache:schedule()
+      or api.nvim_get_current_buf() ~= bufnr
+      or api.nvim_win_get_cursor(0)[1] ~= lnum
   end
   local info = bcache:get_blame(lnum, opts)
   pcall(function()
     loading:close()
   end)
 
-  if not bcache:schedule() or is_stale() then
+  if is_stale() then
     return
   end
 
@@ -188,7 +191,7 @@ return function(opts)
   local blame_linespec =
     create_blame_linespec(opts.full, result, bcache.git_obj.repo, fileformat, false)
 
-  if not bcache:schedule() or is_stale() then
+  if is_stale() then
     return
   end
 
@@ -196,7 +199,7 @@ return function(opts)
 
   blame_linespec = create_blame_linespec(opts.full, result, bcache.git_obj.repo, fileformat, true)
 
-  if not bcache:schedule() or is_stale() then
+  if is_stale() then
     return
   end
 
