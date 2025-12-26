@@ -213,7 +213,7 @@ end
 --- @param relpath string?
 --- @return boolean did_attach
 function M.show(bufnr, base, relpath)
-  __FUNC__ = 'show'
+  local __FUNC__ = 'show'
 
   bufnr = bufnr or api.nvim_get_current_buf()
 

@@ -380,7 +380,7 @@ function M.blame()
     blm_wlo.winbar = vim.fn.fnamemodify(name, ':.')
   end
 
-  if vim.fn.exists('&winfixbuf') then
+  if vim.fn.exists('&winfixbuf') == 1 then
     blm_wlo.winfixbuf = true
   end
 

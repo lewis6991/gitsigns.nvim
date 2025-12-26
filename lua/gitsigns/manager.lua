@@ -331,8 +331,6 @@ M.update = throttle_by_id(function(bufnr)
   bcache.update_on_view = nil
 
   update_lock(bcache, function()
-    got_lock = true
-
     local old_hunks, old_hunks_staged = bcache.hunks, bcache.hunks_staged
     bcache.hunks, bcache.hunks_staged = nil, nil
 
