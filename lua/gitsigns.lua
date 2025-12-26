@@ -1,7 +1,7 @@
 local api = vim.api
 local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
---- @class gitsigns.main
+--- @class gitsigns.main: gitsigns.actions,gitsigns.attach,gitsigns.debug
 local M = {}
 
 local cwd_watcher ---@type uv.uv_fs_event_t?
@@ -254,7 +254,6 @@ function M.setup(cfg)
   end
 end
 
---- @type gitsigns.main|gitsigns.actions|gitsigns.attach|gitsigns.debug
 M = setmetatable(M, {
   __index = function(_, f)
     local actions = require('gitsigns.actions')

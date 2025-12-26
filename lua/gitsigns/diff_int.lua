@@ -53,7 +53,7 @@ local function run_diff(a, b, opts, linematch)
   if linematch ~= false then
     linematch0 = opts.linematch
   end
-  return vim.diff(a, b, {
+  return (vim.text and vim.text.diff or vim.diff)(a, b, {
     result_type = 'indices',
     algorithm = opts.algorithm,
     indent_heuristic = opts.indent_heuristic,
