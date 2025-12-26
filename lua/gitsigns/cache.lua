@@ -183,7 +183,7 @@ function CacheEntry:get_blame(lnum, opts)
       local end_lnum = type(lnum) == 'table' and lnum[2] or lnum
       for curr_lnum = start_lnum, end_lnum do
         has_blameable_line = not Hunks.find_hunk(curr_lnum, self.hunks)
-        if not has_blameable_line then
+        if has_blameable_line then
           break
         end
       end
