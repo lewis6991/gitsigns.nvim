@@ -56,23 +56,7 @@ function M.complete(arglead, line)
   return matches
 end
 
-M.run = async.create(1, function(params)
-  local __FUNC__ = 'cli.run'
-  local pos_args_raw, named_args_raw = argparse.parse_args(params.args)
-
-  local func = pos_args_raw[1]
-
-  if not func then
-    func = async.await(3, function(...)
-      -- Need to wrap vim.ui.select as Snacks version of vim.ui.select returns a
-      -- module table with a close method which conflicts with the async lib
-      vim.ui.select(...)
-    end, M.complete('', 'Gitsigns '), {}) --[[@as string]]
-    if not func then
-      return
-    end
-  end
-
+local run = function(func, params, pos_args_raw, named_args_raw)
   local pos_args = vim.tbl_map(parse_to_lua, vim.list_slice(pos_args_raw, 2))
   local named_args = vim.tbl_map(parse_to_lua, named_args_raw)
   local args = vim.tbl_extend('error', pos_args, named_args)
@@ -101,6 +85,25 @@ M.run = async.create(1, function(params)
   end
 
   message.error('%s is not a valid function or action', func)
+end
+
+M.run = async.create(1, function(params)
+  local __FUNC__ = 'cli.run'
+  local pos_args_raw, named_args_raw = argparse.parse_args(params.args)
+
+  local func = pos_args_raw[1]
+
+  if not func then
+    vim.ui.select(M.complete('', 'Gitsigns '), {}, function(item)
+      if not item then
+        return
+      end
+      run(item, params, pos_args_raw, named_args_raw)
+    end)
+    return
+  end
+
+  run(func, params, pos_args_raw, named_args_raw)
 end)
 
 return M
