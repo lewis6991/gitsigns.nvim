@@ -171,11 +171,12 @@ return function(opts)
 
   local fileformat = vim.bo[bufnr].fileformat
   local lnum = api.nvim_win_get_cursor(0)[1]
+  local popup_winid, popup_bufnr
   ---@async
   local function is_stale()
     return not bcache:schedule()
-      or api.nvim_get_current_buf() ~= bufnr
-      or api.nvim_win_get_cursor(0)[1] ~= lnum
+      or api.nvim_get_current_buf() ~= popup_bufnr
+        and (api.nvim_get_current_buf() ~= bufnr or api.nvim_win_get_cursor(0)[1] ~= lnum)
   end
   local info = bcache:get_blame(lnum, opts)
   pcall(function()
@@ -195,7 +196,7 @@ return function(opts)
     return
   end
 
-  local popup_winid, popup_bufnr = popup.create(blame_linespec, config.preview_config, 'blame')
+  popup_winid, popup_bufnr = popup.create(blame_linespec, config.preview_config, 'blame')
 
   blame_linespec = create_blame_linespec(opts.full, result, bcache.git_obj.repo, fileformat, true)
 
