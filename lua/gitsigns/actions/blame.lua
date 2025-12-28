@@ -453,7 +453,7 @@ function M.blame(opts)
 
   local group = api.nvim_create_augroup('GitsignsBlame', {})
 
-  api.nvim_create_autocmd('BufHidden', {
+  api.nvim_create_autocmd({ 'BufHidden', 'QuitPre' }, {
     buffer = bufnr,
     group = group,
     once = true,
