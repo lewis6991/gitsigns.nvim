@@ -578,6 +578,15 @@ function M.linespec_for_hunk(hunk, fileformat)
       }
       hls[#hls + 1] = { { spec.sym .. l, { mark } } }
     end
+    if config.diff_opts.internal then
+      if
+        spec.lines == removed and hunk.removed.no_nl_at_eof
+        or spec.lines == added and hunk.added.no_nl_at_eof
+      then
+        local mark = { start_row = 0, end_row = 1, hl_group = 'GitSignsNoEOLPreview' }
+        hls[#hls + 1] = { { spec.sym .. '\\ No newline at end of file', { mark } } }
+      end
+    end
   end
 
   if config.diff_opts.internal then

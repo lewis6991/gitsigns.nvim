@@ -126,6 +126,14 @@ vim.list_extend(M.hls, {
     },
   },
 
+  {
+    GitSignsNoEOLPreview = {
+      'DiffNoEOL',
+      'Constant',
+      desc = 'Used for "No newline at end of file".',
+    },
+  },
+
   { GitSignsCurrentLineBlame = { 'NonText', desc = 'Used for current line blame.' } },
 
   {

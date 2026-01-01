@@ -970,6 +970,25 @@ describe('gitsigns (with screen)', function()
 
     check_screen(true)
   end)
+
+  it('shows "No newline at end of file" in preview popup', function()
+    setup_test_repo({ test_file_text = { 'a' } })
+    setup_gitsigns(config)
+    screen:try_resize(30, 10)
+    edit(test_file)
+    wait_for_attach()
+
+    -- Remove newline at end of file (`printf a >a`)
+    local file_path = scratch .. '/dummy.txt'
+    local f = assert(io.open(file_path, 'wb'))
+    f:write('a') -- Write without trailing newline
+    f:close()
+
+    command('checktime')
+    helpers.sleep(50)
+    feed('mhp')
+    screen:expect({ any = [[No newline at end of file]] })
+  end)
 end)
 
 describe('gitsigns attach', function()

@@ -1273,6 +1273,11 @@ GitSignsDeletePreview
         Used for deleted lines in previews.
 
         Fallbacks: `GitGutterDeleteLine`, `SignifyLineDelete`, `DiffDelete`
+                                                        *hl-GitSignsNoEOLPreview*
+GitSignsNoEOLPreview
+        Used for "No newline at end of file".
+
+        Fallbacks: `DiffNoEOL`, `Constant`
                                                         *hl-GitSignsCurrentLineBlame*
 GitSignsCurrentLineBlame
         Used for current line blame.
