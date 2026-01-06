@@ -356,9 +356,7 @@ function M.blame(opts)
   api.nvim_win_set_buf(blm_win, blm_bufnr)
   api.nvim_buf_set_name(blm_bufnr, (bcache:get_rev_bufname():gsub('^gitsigns:', 'gitsigns-blame:')))
 
-  local revision = bcache.git_obj.revision
-
-  local commit_lines = render(blame, blm_win, win, revision)
+  local commit_lines = render(blame, blm_win, win, bcache.git_obj.revision)
 
   local blm_bo = vim.bo[blm_bufnr]
   blm_bo.buftype = 'nofile'

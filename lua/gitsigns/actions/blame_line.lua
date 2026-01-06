@@ -204,7 +204,7 @@ return function(opts)
     return
   end
 
-  if vim.api.nvim_win_is_valid(popup_winid) and vim.api.nvim_buf_is_valid(popup_bufnr) then
+  if api.nvim_win_is_valid(popup_winid) and api.nvim_buf_is_valid(popup_bufnr) then
     popup.update(popup_winid, popup_bufnr, blame_linespec, config.preview_config)
   end
 end

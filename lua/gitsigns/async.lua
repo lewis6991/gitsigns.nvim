@@ -4,6 +4,7 @@ local pcall = copcall or pcall
 --- @param ... T...
 --- @return [T...] & { n: integer }
 local function pack_len(...)
+  --- @diagnostic disable-next-line: return-type-mismatch
   return { n = select('#', ...), ... }
 end
 
@@ -15,7 +16,7 @@ end
 local function unpack_len(t, first)
   -- EmmyLuaLs/emmylua-analyzer-rust#619
   --- @diagnostic disable-next-line: param-type-not-match, undefined-field, missing-return-value
-  return unpack(t, first or 1, t.n or table.maxn(t))
+  return unpack(t, first or 1, t.n or table.maxn(t --[[@as table]]))
 end
 
 --- @class Gitsigns.async
@@ -615,6 +616,7 @@ do --- M.semaphore()
     self:release()
     local stat = r[1]
     if not stat then
+      --- @diagnostic disable-next-line: undefined-field
       local err = r[2]
       error(err)
     end

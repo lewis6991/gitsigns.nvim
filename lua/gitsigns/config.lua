@@ -9,8 +9,11 @@
 --- @field description string
 
 --- @class (exact) Gitsigns.DiffthisOpts
+---
+--- Split window vertically. Default to `config.diff_opts.vertical`. If running
+--- via command line, then shi is taken from the command modifiers.
 --- @field vertical? boolean
---- @field split? string
+--- @field split? 'aboveleft'|'belowright'|'topleft'|'botright'
 
 --- @class (exact) Gitsigns.DiffOpts
 --- @field algorithm 'myers'|'minimal'|'patience'|'histogram'
@@ -45,7 +48,9 @@
 --- @field use_focus? boolean
 
 --- @class (exact) Gitsigns.BlameOpts
+--- Ignore whitespace when running blame.
 --- @field ignore_whitespace? boolean
+--- Extra options passed to `git-blame`.
 --- @field extra_opts? string[]
 
 --- @class (exact) Gitsigns.Config
@@ -909,7 +914,7 @@ function M.build(user_config)
       local ty = s.type
       if type(ty) == 'string' or type(ty) == 'function' then
         --- EmmyLuaLs/emmylua-analyzer-rust#696
-        --- @diagnostic disable-next-line: param-type-not-match
+        --- @diagnostic disable-next-line: param-type-not-match, param-type-mismatch
         validate(k, v, ty)
       end
       if s.deprecated then

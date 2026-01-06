@@ -1,3 +1,5 @@
 doc/tags
 
 deps
+emydoc/
+.nvimlog

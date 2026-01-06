@@ -57,6 +57,7 @@ function M.statuscolumn(bufnr, lnum)
       local s = signs.signs[id]
       if s then
         vim.list_extend(res, { '%#' .. s[2] .. '#', s[1], '%*' })
+        --- @diagnostic disable-next-line: missing-parameter
         res_len = res_len + vim.str_utfindex(s[1])
       end
     end
