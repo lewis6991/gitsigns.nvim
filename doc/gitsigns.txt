@@ -111,11 +111,14 @@ setup({cfg})                                                *gitsigns.setup()*
                     {cfg} (table|nil): Configuration for Gitsigns.
                           See |gitsigns-usage| for more details.
 
-refresh({callback?})                                      *gitsigns.refresh()*
+refresh({callback})                                       *gitsigns.refresh()*
                 Refresh all buffers.
 
                 Attributes: ~
                     {async}
+
+                Parameters: ~
+                    {callback?} (fun(err?:): string)
 
 get_actions()                                         *gitsigns.get_actions()*
                 Get all the available line specific actions for the current
@@ -140,7 +143,7 @@ setloclist({nr}, {target})                             *gitsigns.setloclist()*
                              `0` for the current window (default).
                     {target} (integer|'attached'|'all'|nil): See |gitsigns.setqflist()|.
 
-setqflist({target}, {opts}, {callback?})                *gitsigns.setqflist()*
+setqflist({target}, {opts}, {callback})                 *gitsigns.setqflist()*
                 Populate the quickfix list with hunks. Automatically opens the
                 quickfix window.
 
@@ -148,35 +151,37 @@ setqflist({target}, {opts}, {callback?})                *gitsigns.setqflist()*
                     {async}
 
                 Parameters: ~
-                    {target} (integer|'attached'|'all'|nil):
-                             Specifies which files hunks are collected from.
-                             Possible values.
-                             • [integer]: The buffer with the matching buffer
-                               number. `0` for current buffer (default).
-                             • `"attached"`: All attached buffers.
-                             • `"all"`: All modified files for each git
-                               directory of all attached buffers in addition
-                               to the current working directory.
-                    {opts}   (table|nil): Additional options:
-                             • {use_location_list}: (boolean)
-                               Populate the location list instead of the
-                               quickfix list. Default to `false`.
-                             • {nr}: (integer)
-                               Window number or ID when using location list.
-                               Expand folds when navigating to a hunk which is
-                               inside a fold. Defaults to `0`.
-                             • {open}: (boolean)
-                               Open the quickfix/location list viewer.
-                               Defaults to `true`.
+                    {target}    (integer|'attached'|'all'|nil):
+                                Specifies which files hunks are collected from.
+                                Possible values.
+                                • [integer]: The buffer with the matching buffer
+                                  number. `0` for current buffer (default).
+                                • `"attached"`: All attached buffers.
+                                • `"all"`: All modified files for each git
+                                  directory of all attached buffers in addition
+                                  to the current working directory.
+                    {opts}      (table|nil): Additional options:
+                                • {use_location_list}: (boolean)
+                                  Populate the location list instead of the
+                                  quickfix list. Default to `false`.
+                                • {nr}: (integer)
+                                  Window number or ID when using location list.
+                                  Expand folds when navigating to a hunk which is
+                                  inside a fold. Defaults to `0`.
+                                • {open}: (boolean)
+                                  Open the quickfix/location list viewer.
+                                  Defaults to `true`.
+                    {callback?} (fun(err?:): string)
 
-show_commit({revision}, {open}, {callback?})              *gitsigns.show_commit()*
+show_commit({revision}, {open}, {callback})              *gitsigns.show_commit()*
                 Show revision {base} commit in split or tab
 
                 Parameters: ~
                     {revision?} (string?): (default: 'HEAD')
                     {open?}     ('vsplit'|'tabnew'):
+                    {callback?} (fun(err?:): string)
 
-show({revision}, {callback?})                                *gitsigns.show()*
+show({revision}, {callback})                                 *gitsigns.show()*
                 Show revision {base} of the current file, if it is given, or
                 with the currently set base (index by default).
 
@@ -200,9 +205,10 @@ show({revision}, {callback?})                                *gitsigns.show()*
                     {async}
 
                 Parameters: ~
-                    {revision} (string?):
+                    {revision}  (string?):
+                    {callback?} (fun(err?:): string)
 
-diffthis({base}, {opts}, {callback?})                    *gitsigns.diffthis()*
+diffthis({base}, {opts}, {callback})                     *gitsigns.diffthis()*
                 Perform a |vimdiff| on the given file with {base} if it is
                 given, or with the currently set base (index by default).
 
@@ -226,15 +232,16 @@ diffthis({base}, {opts}, {callback?})                    *gitsigns.diffthis()*
                     {async}
 
                 Parameters: ~
-                    {base} (string|nil): Revision to diff against. Defaults to index.
-                    {opts} (table|nil): Additional options:
-                           • {vertical}: {boolean}. Split window vertically. Defaults to
-                             config.diff_opts.vertical. If running via command line, then
-                             this is taken from the command modifiers.
-                           • {split}: {string}. One of: 'aboveleft', 'belowright',
-                             'botright', 'rightbelow', 'leftabove', 'topleft'. Defaults to
-                             'aboveleft'. If running via command line, then this is taken
-                             from the command modifiers.
+                    {base}      (string|nil): Revision to diff against. Defaults to index.
+                    {opts}      (table|nil): Additional options:
+                                • {vertical}: {boolean}. Split window vertically. Defaults to
+                                  config.diff_opts.vertical. If running via command line, then
+                                  this is taken from the command modifiers.
+                                • {split}: {string}. One of: 'aboveleft', 'belowright',
+                                  'botright', 'rightbelow', 'leftabove', 'topleft'. Defaults to
+                                  'aboveleft'. If running via command line, then this is taken
+                                  from the command modifiers.
+                    {callback?} (fun(err?:): string)
 
 reset_base({global})                                   *gitsigns.reset_base()*
                 Reset the base revision to diff against back to the
@@ -242,7 +249,7 @@ reset_base({global})                                   *gitsigns.reset_base()*
 
                 Alias for `change_base(nil, {global})` .
 
-change_base({base}, {global}, {callback?})              *gitsigns.change_base()*
+change_base({base}, {global}, {callback})              *gitsigns.change_base()*
                 Change the base revision to diff against. If {base} is not
                 given, then the original base is used. If {global} is given
                 and true, then change the base revision of all buffers,
@@ -280,10 +287,11 @@ change_base({base}, {global}, {callback?})              *gitsigns.change_base()*
                 |gitsigns-revision|.
 
                 Parameters: ~
-                    {base}   (string|nil): The object/revision to diff against.
-                    {global} (boolean|nil): Change the base of all buffers.
+                    {base}      (string?): The object/revision to diff against.
+                    {global}    (boolean?): Change the base of all buffers.
+                    {callback?} (fun(err?:): string)
 
-blame({opts}, {callback?})                                  *gitsigns.blame()*
+blame({opts}, {callback})                                   *gitsigns.blame()*
                 Run git-blame on the current file and open the results
                 in a scroll-bound vertical split.
 
@@ -299,13 +307,14 @@ blame({opts}, {callback?})                                  *gitsigns.blame()*
                     {async}
 
                 Parameters: ~
-                    {opts} (table|nil): Additional options:
-                           • {ignore_whitespace}: (boolean)
-                             Ignore whitespace when running blame.
-                           • {extra_opts}: (string[])
-                             Extra options passed to `git-blame`.
+                    {opts}      (table|nil): Additional options:
+                                • {ignore_whitespace}: (boolean)
+                                  Ignore whitespace when running blame.
+                                • {extra_opts}: (string[])
+                                  Extra options passed to `git-blame`.
+                    {callback?} (fun(err?:): string)
 
-blame_line({opts}, {callback?})                        *gitsigns.blame_line()*
+blame_line({opts}, {callback})                         *gitsigns.blame_line()*
                 Run git blame on the current line and show the results in a
                 floating window. If already open, calling this will cause the
                 window to get focus.
@@ -314,13 +323,14 @@ blame_line({opts}, {callback?})                        *gitsigns.blame_line()*
                     {async}
 
                 Parameters: ~
-                    {opts} (table|nil): Additional options:
-                           • {full}: (boolean)
-                             Display full commit message with hunk.
-                           • {ignore_whitespace}: (boolean)
-                             Ignore whitespace when running blame.
-                           • {extra_opts}: (string[])
-                             Extra options passed to `git-blame`.
+                    {opts}      (table|nil): Additional options:
+                                • {full}: (boolean)
+                                  Display full commit message with hunk.
+                                • {ignore_whitespace}: (boolean)
+                                  Ignore whitespace when running blame.
+                                • {extra_opts}: (string[])
+                                  Extra options passed to `git-blame`.
+                    {callback?} (fun(err?:): string)
 
 get_hunks({bufnr})                                      *gitsigns.get_hunks()*
                 Get hunk array for specified buffer.
@@ -349,20 +359,22 @@ select_hunk({opts})                                   *gitsigns.select_hunk()*
                 Select the hunk under the cursor.
 
                 Parameters: ~
-                    {opts} (table|nil): Additional options:
+                    {opts} (table?): Additional options:
                            • {greedy}: (boolean)
                              Select all contiguous hunks. Only useful if 'diff_opts'
                              contains `linematch`. Defaults to `true`.
 
-preview_hunk_inline({callback?})              *gitsigns.preview_hunk_inline()*
+preview_hunk_inline({callback})               *gitsigns.preview_hunk_inline()*
                 Preview the hunk at the cursor position inline in the buffer.
+                Parameters: ~
+                    {callback?} (fun(err?:): string)
 
 preview_hunk()                                       *gitsigns.preview_hunk()*
                 Preview the hunk at the cursor position in a floating
                 window. If the preview is already open, calling this
                 will cause the window to get focus.
 
-prev_hunk({opts}, {callback?})                          *gitsigns.prev_hunk()*
+prev_hunk({opts}, {callback})                           *gitsigns.prev_hunk()*
                 DEPRECATED: use |gitsigns.nav_hunk()|
 
                 Jump to the previous hunk in the current buffer. If a hunk preview
@@ -375,7 +387,7 @@ prev_hunk({opts}, {callback?})                          *gitsigns.prev_hunk()*
                 Parameters: ~
                     See |gitsigns.nav_hunk()|.
 
-next_hunk({opts}, {callback?})                          *gitsigns.next_hunk()*
+next_hunk({opts}, {callback})                           *gitsigns.next_hunk()*
                 DEPRECATED: use |gitsigns.nav_hunk()|
 
                 Jump to the next hunk in the current buffer. If a hunk preview
@@ -388,7 +400,7 @@ next_hunk({opts}, {callback?})                          *gitsigns.next_hunk()*
                 Parameters: ~
                     See |gitsigns.nav_hunk()|.
 
-nav_hunk({direction}, {opts}, {callback?})                 *gitsigns.nav_hunk()*
+nav_hunk({direction}, {opts}, {callback})                 *gitsigns.nav_hunk()*
                 Jump to hunk in the current buffer. If a hunk preview
                 (popup or inline) was previously opened, it will be re-opened
                 at the next hunk.
@@ -419,8 +431,9 @@ nav_hunk({direction}, {opts}, {callback?})                 *gitsigns.nav_hunk()*
                                   Which kinds of hunks to target. Defaults to `'unstaged'`.
                                 • {count}: (integer)
                                   Number of times to advance. Defaults to |v:count1|.
+                    {callback?} (fun(err?:): string)
 
-reset_buffer_index({callback?})                *gitsigns.reset_buffer_index()*
+reset_buffer_index({callback})                 *gitsigns.reset_buffer_index()*
                 Unstage all hunks for current buffer in the index. Note:
                 Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
                 stages, this runs an `git reset` on current buffers file.
@@ -428,13 +441,19 @@ reset_buffer_index({callback?})                *gitsigns.reset_buffer_index()*
                 Attributes: ~
                     {async}
 
-stage_buffer({callback?})                            *gitsigns.stage_buffer()*
+                Parameters: ~
+                    {callback?} (fun(err?:): string)
+
+stage_buffer({callback})                             *gitsigns.stage_buffer()*
                 Stage all hunks in current buffer.
 
                 Attributes: ~
                     {async}
 
-undo_stage_hunk({callback?})                      *gitsigns.undo_stage_hunk()*
+                Parameters: ~
+                    {callback?} (fun(err?:): string)
+
+undo_stage_hunk({callback})                       *gitsigns.undo_stage_hunk()*
                 DEPRECATED: use |gitsigns.stage_hunk()| on staged signs
 
                 Undo the last call of stage_hunk().
@@ -445,10 +464,13 @@ undo_stage_hunk({callback?})                      *gitsigns.undo_stage_hunk()*
                 Attributes: ~
                     {async}
 
+                Parameters: ~
+                    {callback?} (fun(err?:): string)
+
 reset_buffer()                                       *gitsigns.reset_buffer()*
                 Reset the lines of all hunks in the buffer.
 
-reset_hunk({range}, {opts}, {callback?})               *gitsigns.reset_hunk()*
+reset_hunk({range}, {opts}, {callback})                *gitsigns.reset_hunk()*
                 Reset the lines of the hunk at the cursor position, or all
                 lines in the given range. If {range} is provided, all lines in
                 the given range are reset. This supports partial-hunks,
@@ -456,16 +478,17 @@ reset_hunk({range}, {opts}, {callback?})               *gitsigns.reset_hunk()*
                 hunk, only the lines within the range will be reset.
 
                 Parameters: ~
-                    {range} (table|nil): List-like table of two integers making
-                            up the line range from which you want to reset the hunks.
-                            If running via command line, then this is taken from the
-                            command modifiers.
-                    {opts}  (table|nil): Additional options:
-                            • {greedy}: (boolean)
-                              Stage all contiguous hunks. Only useful if 'diff_opts'
-                              contains `linematch`. Defaults to `true`.
+                    {range}     (table|nil): List-like table of two integers making
+                                up the line range from which you want to reset the hunks.
+                                If running via command line, then this is taken from the
+                                command modifiers.
+                    {opts}      (table|nil): Additional options:
+                                • {greedy}: (boolean)
+                                  Stage all contiguous hunks. Only useful if 'diff_opts'
+                                  contains `linematch`. Defaults to `true`.
+                    {callback?} (fun(err?:): string)
 
-stage_hunk({range}, {opts}, {callback?})               *gitsigns.stage_hunk()*
+stage_hunk({range}, {opts}, {callback})                *gitsigns.stage_hunk()*
                 Stage the hunk at the cursor position, or all lines in the
                 given range. If {range} is provided, all lines in the given
                 range are staged. This supports partial-hunks, meaning if a
@@ -548,29 +571,30 @@ toggle_signs({value})                                *gitsigns.toggle_signs()*
                 Returns: ~
                     (boolean): Current value of |gitsigns-config-signcolumn|
 
-attach({bufnr}, {ctx}, {callback?})                        *gitsigns.attach()*
+attach({bufnr}, {ctx}, {callback})                         *gitsigns.attach()*
                 Attach Gitsigns to the buffer.
 
                 Attributes: ~
                     {async}
 
                 Parameters: ~
-                    {bufnr} (integer): Buffer number
-                    {ctx}   (table|nil):
-                            Git context data that may optionally be used to attach to any
-                            buffer that represents a real git object.
-                            • {file}: (string)
-                              Path to the file represented by the buffer, relative to the
-                              top-level.
-                            • {toplevel}: (string?)
-                              Path to the top-level of the parent git repository.
-                            • {gitdir}: (string?)
-                              Path to the git directory of the parent git repository
-                              (typically the ".git/" directory).
-                            • {commit}: (string?)
-                              The git revision that the file belongs to.
-                            • {base}: (string?)
-                              The git revision that the file should be compared to.
+                    {bufnr}     (integer): Buffer number
+                    {ctx}       (table|nil):
+                                Git context data that may optionally be used to attach to any
+                                buffer that represents a real git object.
+                                • {file}: (string)
+                                  Path to the file represented by the buffer, relative to the
+                                  top-level.
+                                • {toplevel}: (string?)
+                                  Path to the top-level of the parent git repository.
+                                • {gitdir}: (string?)
+                                  Path to the git directory of the parent git repository
+                                  (typically the ".git/" directory).
+                                • {commit}: (string?)
+                                  The git revision that the file belongs to.
+                                • {base}: (string?)
+                                  The git revision that the file should be compared to.
+                    {callback?} (fun(err?:): string)
 
 detach({bufnr})                                            *gitsigns.detach()*
                 Detach Gitsigns from the buffer {bufnr}. If {bufnr} is not

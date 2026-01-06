@@ -136,8 +136,7 @@ local function parse_func_header(line)
   -- match:
   --   prefix.name = ...
   --   function prefix.name(...
-  local func = line:match('^%w+%.([%w_]+) =')
-    or line:match('^function %w+%.([%w_]+)%(')
+  local func = line:match('^%w+%.([%w_]+) =') or line:match('^function %w+%.([%w_]+)%(')
   if not func then
     error('Unable to parse: ' .. line)
   end
@@ -150,10 +149,6 @@ local function parse_func_header(line)
     end
   end
 
-  if line:match('async.create%(%d, function%(') then
-    args[#args + 1] = '{callback?}'
-  end
-
   return string.format(
     '%-40s%38s',
     string.format('%s(%s)', func, table.concat(args, ', ')),
@@ -162,16 +157,16 @@ local function parse_func_header(line)
 end
 
 --- @param x string
---- @return string? name
---- @return string? type
---- @return string? description
+--- @return string name
+--- @return string type
+--- @return string description
 local function parse_param(x)
   local name, ty, des = x:match('([^ ]+) +([^ ]+) *(.*)')
-  return name, ty, des
+  return assert(name), assert(ty), assert(des)
 end
 
 --- @param x string
---- @return string? type
+--- @return string type
 --- @return string? name
 --- @return string? description
 local function parse_return(x)
@@ -180,7 +175,7 @@ local function parse_return(x)
     return ty, name, des
   end
   ty = x:match('([^ ]+)')
-  return ty
+  return assert(ty)
 end
 
 --- @param x string[]
@@ -196,7 +191,7 @@ local function trim_lines(x)
 
   local r = {} --- @type string[]
   for _, e in ipairs(x) do
-    r[#r + 1] = e:sub(min_pad + 1)
+    r[#r + 1] = e:sub(assert(min_pad) + 1)
   end
 
   return r
@@ -254,7 +249,7 @@ end
 --- @param doc_comment string
 --- @param desc string[]
 --- @param params [string, string, string[]][]
---- @param returns [string, string, string[]][]
+--- @param returns [string?, string, string[]?][]
 --- @return EmmyState
 local function process_doc_comment(state, doc_comment, desc, params, returns)
   if state == 'none' then
@@ -264,12 +259,14 @@ local function process_doc_comment(state, doc_comment, desc, params, returns)
   local emmy_type, emmy_str = doc_comment:match(' ?@([a-z]+) (.*)')
 
   if emmy_type == 'param' then
+    assert(emmy_str)
     local name, ty, pdesc = parse_param(emmy_str)
     params[#params + 1] = { name, ty, { pdesc } }
     return 'in_param'
   end
 
   if emmy_type == 'return' then
+    assert(emmy_str)
     local ty, name, rdesc = parse_return(emmy_str)
     returns[#returns + 1] = { name, ty, { rdesc } }
     return 'in_return'
@@ -278,12 +275,12 @@ local function process_doc_comment(state, doc_comment, desc, params, returns)
   if state == 'in_param' then
     -- Consume any remaining doc document lines as the description for the
     -- last parameter
-    local lastdes = params[#params][3]
+    local lastdes = assert(params[#params])[3]
     lastdes[#lastdes + 1] = doc_comment
   elseif state == 'in_return' then
     -- Consume any remaining doc document lines as the description for the
     -- last return
-    local lastdes = returns[#returns][3]
+    local lastdes = assert(returns[#returns])[3]
     lastdes[#lastdes + 1] = doc_comment
   else
     if doc_comment ~= '' and doc_comment ~= '<' then
@@ -302,7 +299,7 @@ end
 --- @param deprecated string?
 --- @return string[]?
 local function render_block(header, block, params, returns, deprecated)
-  if vim.startswith(header, '_') then
+  if startswith(header, '_') then
     return
   end
 
@@ -310,8 +307,8 @@ local function render_block(header, block, params, returns, deprecated)
 
   if deprecated then
     list_extend(res, {
-      '                DEPRECATED: '..deprecated,
-      ''
+      '                DEPRECATED: ' .. deprecated,
+      '',
     })
   end
 
@@ -368,7 +365,7 @@ local function gen_functions_doc_from_file(path)
   local state = 'none' --- @type EmmyState
   local desc = {} --- @type string[]
   local params = {} --- @type [string, string, string[]][]
-  local returns = {} --- @type [string, string, string[]][]
+  local returns = {} --- @type [string?, string, string[]?][]
   local deprecated --- @type string?
 
   for l in i do
@@ -504,7 +501,8 @@ local function main()
   local out = assert(io.open('doc/gitsigns.txt', 'w'))
 
   for l in template do
-    local marker = l:match('{{(.*)}}')
+    local l1 = l
+    local marker = l1:match('{{(.*)}}')
     if marker then
       local sub = get_marker_text(marker)
       if sub then
@@ -513,10 +511,10 @@ local function main()
         end
         --- @type string
         sub = sub:gsub('%%', '%%%%')
-        l = l:gsub('{{' .. marker .. '}}', sub)
+        l1 = l1:gsub('{{' .. marker .. '}}', sub)
       end
     end
-    out:write(l or '', '\n')
+    out:write(l1 or '', '\n')
   end
 end
 
