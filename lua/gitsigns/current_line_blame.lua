@@ -214,17 +214,24 @@ local function update(bufnr)
   handle_blame_info(bcache, lnum, blame_info, opts)
 end
 
+local update_throttled = debounce.throttle_async({ hash = 1 }, update)
+
 -- TODO(lewis6991): opts.delay is always defined as the schema set
 -- deep_extend=true
-M.update = debounce.debounce_trailing(function()
-  return config.current_line_blame_opts.delay
-end, async.create(1, debounce.throttle_by_id(update)))
+M.update = debounce.debounce_trailing(
+  function()
+    return config.current_line_blame_opts.delay
+  end,
+  --- @param bufnr integer
+  function(bufnr)
+    async.run(update_throttled, bufnr):raise_on_error()
+  end
+)
 
 function M.setup()
   for k in pairs(cache) do
     reset(k)
   end
-
   local group = api.nvim_create_augroup('gitsigns_blame', {})
 
   if not config.current_line_blame then

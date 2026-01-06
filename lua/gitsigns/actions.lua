@@ -26,11 +26,7 @@ local M = {}
 --- @field global? boolean
 --- @field [integer] any
 
---- @class Gitsigns.CmdParams
---- @field range integer
---- @field line1 integer
---- @field line2 integer
---- @field count integer
+--- @class Gitsigns.CmdParams : vim.api.keyset.create_user_command.command_args
 --- @field smods Gitsigns.CmdParams.Smods
 
 --- Variations of functions from M which are used for the Gitsigns command
@@ -91,7 +87,7 @@ end
 ---       The git revision that the file should be compared to.
 --- @param _trigger? string
 M.attach = async.create(3, function(bufnr, ctx, _trigger)
-  require('gitsigns.attach').attach(bufnr or api.nvim_get_current_buf(), ctx, _trigger)
+  require('gitsigns.attach').attach(bufnr or current_buf(), ctx, _trigger)
 end)
 
 --- Toggle |gitsigns-config-signbooleancolumn|

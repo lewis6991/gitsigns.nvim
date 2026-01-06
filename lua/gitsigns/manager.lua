@@ -7,7 +7,7 @@ local Signs = require('gitsigns.signs')
 local Status = require('gitsigns.status')
 
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
-local throttle_by_id = require('gitsigns.debounce').throttle_by_id
+local throttle_async = require('gitsigns.debounce').throttle_async
 
 local cache = require('gitsigns.cache').cache
 local Config = require('gitsigns.config')
@@ -186,7 +186,7 @@ function M.on_lines(buf, first, last_orig, last_new)
     end
   end
 
-  M.update_debounced(buf)
+  M.update_sync_debounced(buf)
 end
 
 local ns = api.nvim_create_namespace('gitsigns')
@@ -365,7 +365,7 @@ end
 --- whilst another one is in progress. If this happens then schedule another
 --- update after the current one has completed.
 --- @param bufnr integer
-M.update = throttle_by_id(function(bufnr)
+M.update = throttle_async({ hash = 1, schedule = true }, function(bufnr)
   local bcache = cache[bufnr]
   if not bcache or not bcache:schedule() then
     return
@@ -452,11 +452,13 @@ M.update = throttle_by_id(function(bufnr)
       Status.update(bufnr, summary)
     end
   end)
-end, true)
+end)
 
-M.update_debounced = debounce_trailing(function()
+M.update_sync_debounced = debounce_trailing(function()
   return config.update_debounce
-end, async.create(1, M.update), 1)
+end, function(bufnr)
+  async.run(M.update, bufnr):raise_on_error()
+end, 1)
 
 --- @param bufnr integer
 --- @param keep_signs? boolean
@@ -513,7 +515,7 @@ function M.setup()
 
     for k, v in pairs(cache) do
       v:invalidate(true)
-      M.update_debounced(k)
+      M.update_sync_debounced(k)
     end
   end)
 
@@ -527,7 +529,7 @@ function M.setup()
         return
       end
       bcache:invalidate(true)
-      M.update_debounced(buf)
+      M.update_sync_debounced(buf)
     end,
   })
 
