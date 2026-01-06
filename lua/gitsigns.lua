@@ -149,7 +149,9 @@ end
 
 local function setup_cli()
   api.nvim_create_user_command('Gitsigns', function(params)
-    require('gitsigns.cli').run(params)
+    async().run(function()
+      require('gitsigns.cli').run(params)
+    end)
   end, {
     force = true,
     nargs = '*',

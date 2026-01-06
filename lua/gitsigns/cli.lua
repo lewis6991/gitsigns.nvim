@@ -56,7 +56,9 @@ function M.complete(arglead, line)
   return matches
 end
 
-M.run = async.create(1, function(params)
+--- @async
+--- @param params vim.api.keyset.create_user_command.command_args
+function M.run(params)
   local __FUNC__ = 'cli.run'
   local pos_args_raw, named_args_raw = argparse.parse_args(params.args)
 
@@ -101,6 +103,6 @@ M.run = async.create(1, function(params)
   end
 
   message.error('%s is not a valid function or action', func)
-end)
+end
 
 return M

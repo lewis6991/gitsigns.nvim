@@ -11,7 +11,7 @@ local cache = Cache.cache
 local config = require('gitsigns.config').config
 local dprint = log.dprint
 local dprintf = log.dprintf
-local throttle_by_id = require('gitsigns.debounce').throttle_by_id
+local throttle_async = require('gitsigns.debounce').throttle_async
 
 local api = vim.api
 local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
@@ -70,7 +70,7 @@ local function on_reload(_, bufnr)
   local __FUNC__ = 'on_reload'
   assert(cache[bufnr]):invalidate()
   dprint('Reload')
-  manager.update_debounced(bufnr)
+  manager.update_sync_debounced(bufnr)
 end
 
 --- @param _ 'detach'
@@ -223,7 +223,7 @@ end
 
 --- @async
 --- @param bufnr integer
-local function watcher_handler(bufnr)
+local function repo_update_handler(bufnr)
   local bcache = cache[bufnr]
   if not bcache then
     return
@@ -265,7 +265,7 @@ end
 --- @param cbuf integer
 --- @param ctx? Gitsigns.GitContext
 --- @param aucmd? string
-M.attach = throttle_by_id(function(cbuf, ctx, aucmd)
+M.attach = throttle_async({ hash = 1 }, function(cbuf, ctx, aucmd)
   local __FUNC__ = 'attach'
   local passed_ctx = ctx ~= nil
 
@@ -362,13 +362,17 @@ M.attach = throttle_by_id(function(cbuf, ctx, aucmd)
 
   if config.watch_gitdir.enable then
     dprintf('Watching git dir')
+
     --- Throttle to:
     --- - ensure handler is only triggered once per git operation.
     --- - prevent updates to the same buffer from interleaving as the handler is
     ---   async.
-    local throttled_watcher_handler = throttle_by_id(watcher_handler, true)
-    cache[cbuf].deregister_watcher = git_obj.repo:register_callback(function()
-      async.run(throttled_watcher_handler, cbuf):raise_on_error()
+    local throttled_repo_update_handler = throttle_async({ schedule = true }, function()
+      repo_update_handler(cbuf)
+    end)
+
+    cache[cbuf].deregister_watcher = git_obj.repo:on_update(function()
+      async.run(throttled_repo_update_handler):raise_on_error()
     end)
   end
 
@@ -389,7 +393,7 @@ M.attach = throttle_by_id(function(cbuf, ctx, aucmd)
     group = 'gitsigns',
     buffer = cbuf,
     callback = function()
-      manager.update_debounced(cbuf)
+      manager.update_sync_debounced(cbuf)
     end,
   })
 

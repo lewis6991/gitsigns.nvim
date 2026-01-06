@@ -76,9 +76,15 @@ local function inspect(x)
   return vim.inspect(x, { indent = '', newline = ' ' })
 end
 
---- @param cb fun()
---- @return fun() deregister
-function M:register_callback(cb)
+--- Registers a callback to be invoked on update events.
+---
+--- The provided callback function `cb` will be stored and called when an update
+--- occurs. Returns a deregister function that, when called, will remove the
+--- callback from the watcher.
+---
+--- @param cb fun() Callback function to be invoked on update.
+--- @return fun() deregister Function to remove the callback from the watcher.
+function M:on_update(cb)
   self._watcher_callbacks[cb] = true
 
   return function()
