@@ -123,11 +123,11 @@ local setup = Util.once(function()
   })
 end)
 
---- @class Gitsigns.GitContext
---- @field file string
---- @field toplevel? string
---- @field gitdir? string
---- @field base? string
+--- @class (exact) Gitsigns.GitContext
+--- @field file string Path to the file represented by the buffer.
+--- @field toplevel? string Path to the top-level of the parent git repository.
+--- @field gitdir? string Path to the git directory of the parent git repository.
+--- @field base? string Git revision to compare against.
 
 --- @async
 --- @param bufnr integer

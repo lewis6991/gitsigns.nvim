@@ -88,12 +88,14 @@ local function gen_hl(staged, kind, ty)
 
   local sty = (staged and 'staged ' or '')
 
-  return hl,
-    {
-      desc = ("Used for %s of '%s' %ssigns."):format(what, ty, sty),
-      fg_factor = staged and 0.5 or nil,
-      unpack(fallbacks),
-    }
+  --- @type Gitsigns.Hldef
+  local spec = {
+    desc = ("Used for %s of '%s' %ssigns."):format(what, ty, sty),
+    fg_factor = staged and 0.5 or nil,
+    unpack(fallbacks),
+  }
+
+  return hl, spec
 end
 
 for _, staged in ipairs({ false, true }) do

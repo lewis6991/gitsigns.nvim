@@ -294,12 +294,12 @@ end
 --- @param on_exit? fun(out: vim.SystemCompleted)
 --- @return vim.SystemObj
 local function system(cmd, opts, on_exit)
-  ---@diagnostic disable-next-line: param-type-not-match FIXME
+  ---@diagnostic disable-next-line
   vim.validate({
     cmd = { cmd, 'table' },
     opts = { opts, 'table', true },
     on_exit = { on_exit, 'function', true },
-  })
+  }) ---@diagnostic disable-line
 
   opts = opts or {}
 

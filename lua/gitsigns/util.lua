@@ -162,7 +162,7 @@ function M.set_lines(bufnr, start_row, end_row, lines)
   end
   if start_row == 0 and end_row == -1 then
     if lines[#lines] == '' then
-      lines = vim.deepcopy(lines)
+      lines = vim.deepcopy(lines) --[[@as string[] ]]
       lines[#lines] = nil
     else
       vim.bo[bufnr].eol = false

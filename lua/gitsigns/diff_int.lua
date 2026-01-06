@@ -8,7 +8,7 @@ local config = require('gitsigns.config').config
 --- @return fun(v:string): any decode
 local function getencdec()
   local m = jit and package.preload['string.buffer'] and require('string.buffer') or vim.mpack
-  --- @diagnostic disable-next-line: need-check-nil, undefined-field
+  --- @diagnostic disable-next-line: need-check-nil, undefined-field, return-type-mismatch
   --- EmmyLuaLs/emmylua-analyzer-rust#697
   return m.encode, m.decode
 end
@@ -53,6 +53,7 @@ local function run_diff(a, b, opts, linematch)
   if linematch ~= false then
     linematch0 = opts.linematch
   end
+  --- @diagnostic disable-next-line: deprecated
   return (vim.text and vim.text.diff or vim.diff)(a, b, {
     result_type = 'indices',
     algorithm = opts.algorithm,

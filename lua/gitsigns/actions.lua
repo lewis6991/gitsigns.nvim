@@ -29,6 +29,16 @@ local M = {}
 --- @class Gitsigns.CmdParams : vim.api.keyset.create_user_command.command_args
 --- @field smods Gitsigns.CmdParams.Smods
 
+--- @class (exact) Gitsigns.HunkOpts
+--- Operate on/select all contiguous hunks. Only useful if 'diff_opts'
+--- contains `linematch`. Defaults to `true`.
+--- @field greedy? boolean
+
+--- @class (exact) Gitsigns.SetqflistOpts
+--- @field use_location_list? boolean Populate the location list instead of the quickfix list.
+--- @field nr? integer Window number or ID when using location list. Defaults to `0`.
+--- @field open? boolean Open the quickfix/location list viewer. Defaults to `true`.
+
 --- Variations of functions from M which are used for the Gitsigns command
 --- @type table<string,fun(args: Gitsigns.CmdArgs, params: Gitsigns.CmdParams)>
 local C = {}
@@ -85,36 +95,24 @@ end
 
 --- Attach Gitsigns to the buffer.
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
 --- @param bufnr integer Buffer number
---- @param ctx Gitsigns.GitContext|nil
----     Git context data that may optionally be used to attach to any
----     buffer that represents a real git object.
----     • {file}: (string)
----       Path to the file represented by the buffer, relative to the
----       top-level.
----     • {toplevel}: (string?)
----       Path to the top-level of the parent git repository.
----     • {gitdir}: (string?)
----       Path to the git directory of the parent git repository
----       (typically the ".git/" directory).
----     • {commit}: (string?)
----       The git revision that the file belongs to.
----     • {base}: (string?)
----       The git revision that the file should be compared to.
---- @param _trigger? string
+--- @param ctx Gitsigns.GitContext?
+---   Git context data that may optionally be used to attach to any buffer that represents a git
+---   object.
+--- @param trigger? string
 --- @param callback? fun(err?: string)
-function M.attach(bufnr, ctx, _trigger, callback)
-  async_run(callback, require('gitsigns.attach').attach, bufnr or current_buf(), ctx, _trigger)
+function M.attach(bufnr, ctx, trigger, callback)
+  async_run(callback, require('gitsigns.attach').attach, bufnr or current_buf(), ctx, trigger)
 end
 
---- Toggle |gitsigns-config-signbooleancolumn|
+--- Toggle [[gitsigns-config-signbooleancolumn]]
 ---
 --- @param value boolean|nil Value to set toggle. If `nil`
 ---     the toggle value is inverted.
---- @return boolean : Current value of |gitsigns-config-signcolumn|
+--- @return boolean : Current value of [[gitsigns-config-signcolumn]]
 function M.toggle_signs(value)
   if value ~= nil then
     config.signcolumn = value
@@ -124,12 +122,12 @@ function M.toggle_signs(value)
   return config.signcolumn
 end
 
---- Toggle |gitsigns-config-numhl|
+--- Toggle [[gitsigns-config-numhl]]
 ---
 --- @param value boolean|nil Value to set toggle. If `nil`
 ---     the toggle value is inverted.
 ---
---- @return boolean : Current value of |gitsigns-config-numhl|
+--- @return boolean : Current value of [[gitsigns-config-numhl]]
 function M.toggle_numhl(value)
   if value ~= nil then
     config.numhl = value
@@ -139,11 +137,11 @@ function M.toggle_numhl(value)
   return config.numhl
 end
 
---- Toggle |gitsigns-config-linehl|
+--- Toggle [[gitsigns-config-linehl]]
 ---
 --- @param value boolean|nil Value to set toggle. If `nil`
 ---     the toggle value is inverted.
---- @return boolean : Current value of |gitsigns-config-linehl|
+--- @return boolean : Current value of [[gitsigns-config-linehl]]
 M.toggle_linehl = function(value)
   if value ~= nil then
     config.linehl = value
@@ -153,11 +151,11 @@ M.toggle_linehl = function(value)
   return config.linehl
 end
 
---- Toggle |gitsigns-config-word_diff|
+--- Toggle [[gitsigns-config-word_diff]]
 ---
 --- @param value boolean|nil Value to set toggle. If `nil`
 ---     the toggle value is inverted.
---- @return boolean : Current value of |gitsigns-config-word_diff|
+--- @return boolean : Current value of [[gitsigns-config-word_diff]]
 function M.toggle_word_diff(value)
   if value ~= nil then
     config.word_diff = value
@@ -169,11 +167,11 @@ function M.toggle_word_diff(value)
   return config.word_diff
 end
 
---- Toggle |gitsigns-config-current_line_blame|
+--- Toggle [[gitsigns-config-current_line_blame]]
 ---
 --- @param value boolean|nil Value to set toggle. If `nil`
 ---     the toggle value is inverted.
---- @return boolean : Current value of |gitsigns-config-current_line_blame|
+--- @return boolean : Current value of [[gitsigns-config-current_line_blame]]
 function M.toggle_current_line_blame(value)
   if value ~= nil then
     config.current_line_blame = value
@@ -183,12 +181,12 @@ function M.toggle_current_line_blame(value)
   return config.current_line_blame
 end
 
---- @deprecated Use |gitsigns.preview_hunk_inline()|
---- Toggle |gitsigns-config-show_deleted|
+--- @deprecated Use [[gitsigns.preview_hunk_inline()]]
+--- Toggle [[gitsigns-config-show_deleted]]
 ---
 --- @param value boolean|nil Value to set toggle. If `nil`
 ---     the toggle value is inverted.
---- @return boolean : Current value of |gitsigns-config-show_deleted|
+--- @return boolean : Current value of [[gitsigns-config-show_deleted]]
 function M.toggle_deleted(value)
   if value ~= nil then
     config.show_deleted = value
@@ -216,7 +214,7 @@ local function update(bufnr)
 end
 
 --- @param params Gitsigns.CmdParams
---- @return [integer,integer]? range Range of lines to operate on.
+--- @return [integer, integer]? range Range of lines to operate on.
 local function get_range(params)
   local range --- @type [integer, integer]?
   if params.range > 0 then
@@ -231,18 +229,16 @@ end
 --- range only includes a portion of a particular hunk, only the
 --- lines within the range will be staged.
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
---- @param range table|nil List-like table of two integers making
----             up the line range from which you want to stage the hunks.
----             If running via command line, then this is taken from the
----             command modifiers.
---- @param opts table|nil Additional options:
----             • {greedy}: (boolean)
----               Stage all contiguous hunks. Only useful if 'diff_opts'
----               contains `linematch`. Defaults to `true`.
-M.stage_hunk = mk_repeatable(function(range, opts, callback)
+--- @param range [integer, integer]? List-like table of two integers making
+---   up the line range from which you want to stage the hunks.
+---   If running via command line, then this is taken from the
+---   command modifiers.
+--- @param opts Gitsigns.HunkOpts? Additional options.
+--- @param callback? fun(err?: string)
+function M.stage_hunk(range, opts, callback)
   --- @cast range [integer, integer]?
 
   opts = opts or {}
@@ -283,7 +279,9 @@ M.stage_hunk = mk_repeatable(function(range, opts, callback)
     bcache:invalidate(true)
     update(bufnr)
   end)
-end)
+end
+
+M.stage_hunk = mk_repeatable(M.stage_hunk)
 
 C.stage_hunk = function(_, params)
   M.stage_hunk(get_range(params))
@@ -316,16 +314,13 @@ end
 --- meaning if a range only includes a portion of a particular
 --- hunk, only the lines within the range will be reset.
 ---
---- @param range table|nil List-like table of two integers making
----     up the line range from which you want to reset the hunks.
----     If running via command line, then this is taken from the
----     command modifiers.
---- @param opts table|nil Additional options:
----     • {greedy}: (boolean)
----       Stage all contiguous hunks. Only useful if 'diff_opts'
----       contains `linematch`. Defaults to `true`.
+--- @param range [integer, integer]? List-like table of two integers making
+---   up the line range from which you want to reset the hunks.
+---   If running via command line, then this is taken from the
+---   command modifiers.
+--- @param opts Gitsigns.HunkOpts? Additional options.
 --- @param callback? fun(err?: string)
-M.reset_hunk = mk_repeatable(function(range, opts, callback)
+function M.reset_hunk(range, opts, callback)
   --- @cast range [integer, integer]?
 
   async_run(callback, function()
@@ -345,7 +340,9 @@ M.reset_hunk = mk_repeatable(function(range, opts, callback)
 
     reset_hunk(bufnr, hunk)
   end)
-end)
+end
+
+M.reset_hunk = mk_repeatable(M.reset_hunk)
 
 function C.reset_hunk(_, params)
   M.reset_hunk(get_range(params))
@@ -370,14 +367,14 @@ function M.reset_buffer()
   end
 end
 
---- @deprecated use |gitsigns.stage_hunk()| on staged signs
+--- @deprecated use [[gitsigns.stage_hunk()]] on staged signs
 --- Undo the last call of stage_hunk().
 ---
 --- Note: only the calls to stage_hunk() performed in the current
 --- session can be undone.
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
 --- @param callback? fun(err?: string)
 function M.undo_stage_hunk(callback)
@@ -409,8 +406,8 @@ end
 
 --- Stage all hunks in current buffer.
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
 --- @param callback? fun(err?: string)
 function M.stage_buffer(callback)
@@ -451,11 +448,11 @@ function M.stage_buffer(callback)
 end
 
 --- Unstage all hunks for current buffer in the index. Note:
---- Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
+--- Unlike [[gitsigns.undo_stage_hunk()]] this doesn't simply undo
 --- stages, this runs an `git reset` on current buffers file.
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
 --- @param callback? fun(err?: string)
 function M.reset_buffer_index(callback)
@@ -487,31 +484,11 @@ end
 --- (popup or inline) was previously opened, it will be re-opened
 --- at the next hunk.
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
 --- @param direction 'first'|'last'|'next'|'prev'
---- @param opts table|nil Configuration table. Keys:
----     • {wrap}: (boolean)
----       Whether to loop around file or not. Defaults
----       to the value 'wrapscan'
----     • {navigation_message}: (boolean)
----       Whether to show navigation messages or not.
----       Looks at 'shortmess' for default behaviour.
----     • {foldopen}: (boolean)
----       Expand folds when navigating to a hunk which is
----       inside a fold. Defaults to `true` if 'foldopen'
----       contains `search`.
----     • {preview}: (boolean)
----       Automatically open preview_hunk() upon navigating
----       to a hunk.
----     • {greedy}: (boolean)
----       Only navigate between non-contiguous hunks. Only useful if
----       'diff_opts' contains `linematch`. Defaults to `true`.
----     • {target}: (`'unstaged'|'staged'|'all'`)
----       Which kinds of hunks to target. Defaults to `'unstaged'`.
----     • {count}: (integer)
----       Number of times to advance. Defaults to |v:count1|.
+--- @param opts Gitsigns.NavOpts? Configuration options.
 --- @param callback? fun(err?: string)
 function M.nav_hunk(direction, opts, callback)
   async_run(callback, function()
@@ -521,19 +498,19 @@ function M.nav_hunk(direction, opts, callback)
 end
 
 function C.nav_hunk(args, _)
+  --- @diagnostic disable-next-line: param-type-mismatch
   M.nav_hunk(args[1], args)
 end
 
---- @deprecated use |gitsigns.nav_hunk()|
+--- @deprecated use [[gitsigns.nav_hunk()]]
 --- Jump to the next hunk in the current buffer. If a hunk preview
 --- (popup or inline) was previously opened, it will be re-opened
 --- at the next hunk.
 ---
---- Attributes: ~
----     {async}
+--- See [[gitsigns.nav_hunk()]].
 ---
---- Parameters: ~
----     See |gitsigns.nav_hunk()|.
+--- Attributes:
+--- - {async}
 function M.next_hunk(opts, callback)
   async_run(callback, function()
     require('gitsigns.actions.nav').nav_hunk('next', opts)
@@ -541,19 +518,19 @@ function M.next_hunk(opts, callback)
 end
 
 function C.next_hunk(args, _)
+  --- @diagnostic disable-next-line: param-type-mismatch
   M.nav_hunk('next', args)
 end
 
---- @deprecated use |gitsigns.nav_hunk()|
+--- @deprecated use [[gitsigns.nav_hunk()]]
 --- Jump to the previous hunk in the current buffer. If a hunk preview
 --- (popup or inline) was previously opened, it will be re-opened
 --- at the previous hunk.
 ---
---- Attributes: ~
----     {async}
+--- See [[gitsigns.nav_hunk()]].
 ---
---- Parameters: ~
----     See |gitsigns.nav_hunk()|.
+--- Attributes:
+--- - {async}
 function M.prev_hunk(opts, callback)
   async_run(callback, function()
     require('gitsigns.actions.nav').nav_hunk('prev', opts)
@@ -561,6 +538,7 @@ function M.prev_hunk(opts, callback)
 end
 
 function C.prev_hunk(args, _)
+  --- @diagnostic disable-next-line: param-type-mismatch
   M.nav_hunk('prev', args)
 end
 
@@ -581,10 +559,7 @@ end
 
 --- Select the hunk under the cursor.
 ---
---- @param opts table? Additional options:
----             • {greedy}: (boolean)
----               Select all contiguous hunks. Only useful if 'diff_opts'
----               contains `linematch`. Defaults to `true`.
+--- @param opts Gitsigns.HunkOpts? Additional options.
 function M.select_hunk(opts)
   local bufnr = current_buf()
   local bcache = cache[bufnr]
@@ -616,20 +591,20 @@ end
 ---
 --- @param bufnr integer Buffer number, if not provided (or 0)
 ---             will use current buffer.
---- @return table|nil : Array of hunk objects.
----     Each hunk object has keys:
----         • `"type"`: String with possible values: "add", "change",
----           "delete"
----         • `"head"`: Header that appears in the unified diff
----           output.
----         • `"lines"`: Line contents of the hunks prefixed with
----           either `"-"` or `"+"`.
----         • `"removed"`: Sub-table with fields:
----           • `"start"`: Line number (1-based)
----           • `"count"`: Line count
----         • `"added"`: Sub-table with fields:
----           • `"start"`: Line number (1-based)
----           • `"count"`: Line count
+--- @return table? : Array of hunk objects.
+---   Each hunk object has keys:
+---   - `"type"`: String with possible values: "add", "change",
+---     "delete"
+---   - `"head"`: Header that appears in the unified diff
+---     output.
+---   - `"lines"`: Line contents of the hunks prefixed with
+---     either `"-"` or `"+"`.
+---   - `"removed"`: Sub-table with fields:
+---     - `"start"`: Line number (1-based)
+---     - `"count"`: Line count
+---   - `"added"`: Sub-table with fields:
+---     - `"start"`: Line number (1-based)
+---     - `"count"`: Line count
 M.get_hunks = function(bufnr)
   bufnr = bufnr or current_buf()
   if not cache[bufnr] then
@@ -653,16 +628,10 @@ end
 --- floating window. If already open, calling this will cause the
 --- window to get focus.
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
---- @param opts table|nil Additional options:
----     • {full}: (boolean)
----       Display full commit message with hunk.
----     • {ignore_whitespace}: (boolean)
----       Ignore whitespace when running blame.
----     • {extra_opts}: (string[])
----       Extra options passed to `git-blame`.
+--- @param opts Gitsigns.LineBlameOpts? Additional options.
 --- @param callback? fun(err?: string)
 function M.blame_line(opts, callback)
   --- @cast opts Gitsigns.LineBlameOpts?
@@ -670,6 +639,7 @@ function M.blame_line(opts, callback)
 end
 
 C.blame_line = function(args, _)
+  --- @diagnostic disable-next-line: param-type-mismatch
   M.blame_line(args)
 end
 
@@ -684,14 +654,10 @@ end
 ---   S   [Show commit] in a new tab.
 ---   r   [Reblame at commit]
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
---- @param opts table|nil Additional options:
----     • {ignore_whitespace}: (boolean)
----       Ignore whitespace when running blame.
----     • {extra_opts}: (string[])
----       Extra options passed to `git-blame`.
+--- @param opts Gitsigns.BlameOpts? Additional options.
 --- @param callback? fun(err?: string)
 function M.blame(opts, callback)
   async_run(callback, require('gitsigns.actions.blame').blame, opts)
@@ -714,10 +680,11 @@ end
 --- and true, then change the base revision of all buffers,
 --- including any new buffers.
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
---- Examples: >lua
+--- Examples:
+--- ```lua
 ---   -- Change base to 1 commit behind head
 ---   require('gitsigns').change_base('HEAD~1')
 ---   -- :Gitsigns change_base HEAD~1
@@ -740,10 +707,10 @@ end
 ---   -- Revert to original base
 ---   require('gitsigns').change_base()
 ---   -- :Gitsigns change_base
---- <
+--- ```
 ---
 --- For a more complete list of ways to specify bases, see
---- |gitsigns-revision|.
+--- [[gitsigns-revision]].
 ---
 --- @param base string? The object/revision to diff against.
 --- @param global boolean? Change the base of all buffers.
@@ -788,13 +755,14 @@ C.reset_base = function(args, _)
   M.change_base(nil, (args[1] or args.global))
 end
 
---- Perform a |vimdiff| on the given file with {base} if it is
+--- Perform a [[vimdiff]] on the given file with {base} if it is
 --- given, or with the currently set base (index by default).
 ---
 --- If {base} is the index, then the opened buffer is editable and
 --- any written changes will update the index accordingly.
 ---
---- Examples: >lua
+--- Examples:
+--- ```lua
 ---   -- Diff against the index
 ---   require('gitsigns').diffthis()
 ---   -- :Gitsigns diffthis
@@ -802,23 +770,16 @@ end
 ---   -- Diff against the last commit
 ---   require('gitsigns').diffthis('~1')
 ---   -- :Gitsigns diffthis ~1
---- <
+--- ```
 ---
 --- For a more complete list of ways to specify bases, see
---- |gitsigns-revision|.
+--- [[gitsigns-revision]].
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
 --- @param base string|nil Revision to diff against. Defaults to index.
---- @param opts table|nil Additional options:
----     • {vertical}: {boolean}. Split window vertically. Defaults to
----       config.diff_opts.vertical. If running via command line, then
----       this is taken from the command modifiers.
----     • {split}: {string}. One of: 'aboveleft', 'belowright',
----       'botright', 'rightbelow', 'leftabove', 'topleft'. Defaults to
----       'aboveleft'. If running via command line, then this is taken
----       from the command modifiers.
+--- @param opts Gitsigns.DiffthisOpts? Additional options.
 --- @param callback? fun(err?: string)
 function M.diffthis(base, opts, callback)
   --- @cast opts Gitsigns.DiffthisOpts
@@ -870,7 +831,8 @@ CP.diffthis = complete_heads
 --- If {base} is the index, then the opened buffer is editable and
 --- any written changes will update the index accordingly.
 ---
---- Examples: >lua
+--- Examples:
+--- ```lua
 ---   -- View the index version of the file
 ---   require('gitsigns').show()
 ---   -- :Gitsigns show
@@ -878,13 +840,13 @@ CP.diffthis = complete_heads
 ---   -- View revision of file in the last commit
 ---   require('gitsigns').show('~1')
 ---   -- :Gitsigns show ~1
---- <
+--- ```
 ---
 --- For a more complete list of ways to specify bases, see
---- |gitsigns-revision|.
+--- [[gitsigns-revision]].
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
 --- @param revision string?
 --- @param callback? fun(err?: string)
@@ -921,29 +883,19 @@ CP.show_commit = complete_heads
 --- Populate the quickfix list with hunks. Automatically opens the
 --- quickfix window.
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
---- @param target integer|'attached'|'all'|nil
----     Specifies which files hunks are collected from.
----     Possible values.
----     • [integer]: The buffer with the matching buffer
----       number. `0` for current buffer (default).
----     • `"attached"`: All attached buffers.
----     • `"all"`: All modified files for each git
----       directory of all attached buffers in addition
----       to the current working directory.
---- @param opts table|nil Additional options:
----     • {use_location_list}: (boolean)
----       Populate the location list instead of the
----       quickfix list. Default to `false`.
----     • {nr}: (integer)
----       Window number or ID when using location list.
----       Expand folds when navigating to a hunk which is
----       inside a fold. Defaults to `0`.
----     • {open}: (boolean)
----       Open the quickfix/location list viewer.
----       Defaults to `true`.
+--- @param target integer|'attached'|'all'? #
+--- Specifies which files hunks are collected from.
+---   Possible values.
+---   - [integer]: The buffer with the matching buffer
+---     number. `0` for current buffer (default).
+---   - `"attached"`: All attached buffers.
+---   - `"all"`: All modified files for each git
+---     directory of all attached buffers in addition
+---     to the current working directory.
+--- @param opts Gitsigns.SetqflistOpts? Additional options.
 --- @param callback? fun(err?: string)
 function M.setqflist(target, opts, callback)
   async_run(callback, require('gitsigns.actions.qflist').setqflist, target, opts)
@@ -951,6 +903,7 @@ end
 
 function C.setqflist(args)
   local target = tointeger(args[1]) or args[1]
+  --- @diagnostic disable-next-line: param-type-mismatch
   M.setqflist(target, args)
 end
 
@@ -959,12 +912,12 @@ end
 ---
 --- Alias for: `setqflist({target}, { use_location_list = true, nr = {nr} }`
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
---- @param nr? integer Window number or the |window-ID|.
+--- @param nr? integer Window number or the [[window-ID]].
 ---     `0` for the current window (default).
---- @param target integer|'attached'|'all'|nil See |gitsigns.setqflist()|.
+--- @param target integer|'attached'|'all'|nil See [[gitsigns.setqflist()]].
 function M.setloclist(nr, target)
   M.setqflist(target, {
     nr = nr,
@@ -1028,8 +981,8 @@ end
 
 --- Refresh all buffers.
 ---
---- Attributes: ~
----     {async}
+--- Attributes:
+--- - {async}
 ---
 --- @param callback? fun(err?: string)
 function M.refresh(callback)

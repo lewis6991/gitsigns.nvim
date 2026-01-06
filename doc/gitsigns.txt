@@ -97,514 +97,515 @@ an optional {callback} argument.
 
 
 statuscolumn({bufnr}, {lnum})                        *gitsigns.statuscolumn()*
-                Parameters: ~
-                    {bufnr?} (integer): Buffer number. Defaults to current buffer.
-                    {lnum?}  (integer): Line number to return status for. Defaults to `vim.v.lnum`
 
-                Returns: ~
-                    (string)
+    Parameters: ~
+        {bufnr} (`integer?`): Buffer number. Defaults to current buffer.
+        {lnum}  (`integer?`): Line number to return status for. Defaults to
+                              `vim.v.lnum`
+
+    Returns: ~
+        (`string`)
 
 setup({cfg})                                                *gitsigns.setup()*
-                Setup and start Gitsigns.
+    Setup and start Gitsigns.
 
-                Parameters: ~
-                    {cfg} (table|nil): Configuration for Gitsigns.
-                          See |gitsigns-usage| for more details.
+    Parameters: ~
+        {cfg} (`table?`): Configuration for Gitsigns.
+              See |gitsigns-usage| for more details.
 
 refresh({callback})                                       *gitsigns.refresh()*
-                Refresh all buffers.
+    Refresh all buffers.
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Parameters: ~
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {callback} (`(fun(err: string?))?`)
 
 get_actions()                                         *gitsigns.get_actions()*
-                Get all the available line specific actions for the current
-                buffer at the cursor position.
+    Get all the available line specific actions for the current
+    buffer at the cursor position.
 
-
-                Returns: ~
-                    (table|nil): Dictionary of action name to function which when called
-                    performs action.
+    Returns: ~
+        (`table?`): Dictionary of action name to function which when called
+        performs action.
 
 setloclist({nr}, {target})                             *gitsigns.setloclist()*
-                Populate the location list with hunks. Automatically opens the
-                location list window.
+    Populate the location list with hunks. Automatically opens the
+    location list window.
 
-                Alias for: `setqflist({target}, { use_location_list = true, nr = {nr} }`
+    Alias for: `setqflist({target}, { use_location_list = true, nr = {nr} }`
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Parameters: ~
-                    {nr?}    (integer): Window number or the |window-ID|.
-                             `0` for the current window (default).
-                    {target} (integer|'attached'|'all'|nil): See |gitsigns.setqflist()|.
+    Parameters: ~
+        {nr}     (`integer?`): Window number or the |window-ID|.
+                 `0` for the current window (default).
+        {target} (`(integer|"attached"|"all")?`): See |gitsigns.setqflist()|.
 
 setqflist({target}, {opts}, {callback})                 *gitsigns.setqflist()*
-                Populate the quickfix list with hunks. Automatically opens the
-                quickfix window.
+    Populate the quickfix list with hunks. Automatically opens the
+    quickfix window.
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Parameters: ~
-                    {target}    (integer|'attached'|'all'|nil):
-                                Specifies which files hunks are collected from.
-                                Possible values.
-                                • [integer]: The buffer with the matching buffer
-                                  number. `0` for current buffer (default).
-                                • `"attached"`: All attached buffers.
-                                • `"all"`: All modified files for each git
-                                  directory of all attached buffers in addition
-                                  to the current working directory.
-                    {opts}      (table|nil): Additional options:
-                                • {use_location_list}: (boolean)
-                                  Populate the location list instead of the
-                                  quickfix list. Default to `false`.
-                                • {nr}: (integer)
-                                  Window number or ID when using location list.
-                                  Expand folds when navigating to a hunk which is
-                                  inside a fold. Defaults to `0`.
-                                • {open}: (boolean)
-                                  Open the quickfix/location list viewer.
-                                  Defaults to `true`.
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {target}   (`(integer|"attached"|"all")?`):
+                   Specifies which files hunks are collected from.
+                     Possible values.
+                     • [integer]: The buffer with the matching buffer
+                       number. `0` for current buffer (default).
+                     • `"attached"`: All attached buffers.
+                     • `"all"`: All modified files for each git
+                       directory of all attached buffers in addition
+                       to the current working directory.
+        {opts}     (`Gitsigns.SetqflistOpts?`): Additional options.
+                   • {use_location_list}: (`boolean?`)
+                     Populate the location list instead of the quickfix list.
+                   • {nr}: (`integer?`)
+                     Window number or ID when using location list. Defaults to
+                     `0`.
+                   • {open}: (`boolean?`)
+                     Open the quickfix/location list viewer. Defaults to `true`.
+        {callback} (`(fun(err: string?))?`)
 
 show_commit({revision}, {open}, {callback})              *gitsigns.show_commit()*
-                Show revision {base} commit in split or tab
+    Show revision {base} commit in split or tab
 
-                Parameters: ~
-                    {revision?} (string?): (default: 'HEAD')
-                    {open?}     ('vsplit'|'tabnew'):
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {revision} (`string?`): (default: 'HEAD')
+        {open}     (`("vsplit"|"tabnew")?`)
+        {callback} (`(fun(err: string?))?`)
 
 show({revision}, {callback})                                 *gitsigns.show()*
-                Show revision {base} of the current file, if it is given, or
-                with the currently set base (index by default).
+    Show revision {base} of the current file, if it is given, or
+    with the currently set base (index by default).
 
-                If {base} is the index, then the opened buffer is editable and
-                any written changes will update the index accordingly.
+    If {base} is the index, then the opened buffer is editable and
+    any written changes will update the index accordingly.
 
-                Examples: >lua
-                  -- View the index version of the file
-                  require('gitsigns').show()
-                  -- :Gitsigns show
+    Examples: >lua
+      -- View the index version of the file
+      require('gitsigns').show()
+      -- :Gitsigns show
 
-                  -- View revision of file in the last commit
-                  require('gitsigns').show('~1')
-                  -- :Gitsigns show ~1
+      -- View revision of file in the last commit
+      require('gitsigns').show('~1')
+      -- :Gitsigns show ~1
 <
 
-                For a more complete list of ways to specify bases, see
-                |gitsigns-revision|.
+    For a more complete list of ways to specify bases, see
+    |gitsigns-revision|.
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Parameters: ~
-                    {revision}  (string?):
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {revision} (`string?`)
+        {callback} (`(fun(err: string?))?`)
 
 diffthis({base}, {opts}, {callback})                     *gitsigns.diffthis()*
-                Perform a |vimdiff| on the given file with {base} if it is
-                given, or with the currently set base (index by default).
+    Perform a |vimdiff| on the given file with {base} if it is
+    given, or with the currently set base (index by default).
 
-                If {base} is the index, then the opened buffer is editable and
-                any written changes will update the index accordingly.
+    If {base} is the index, then the opened buffer is editable and
+    any written changes will update the index accordingly.
 
-                Examples: >lua
-                  -- Diff against the index
-                  require('gitsigns').diffthis()
-                  -- :Gitsigns diffthis
+    Examples: >lua
+      -- Diff against the index
+      require('gitsigns').diffthis()
+      -- :Gitsigns diffthis
 
-                  -- Diff against the last commit
-                  require('gitsigns').diffthis('~1')
-                  -- :Gitsigns diffthis ~1
+      -- Diff against the last commit
+      require('gitsigns').diffthis('~1')
+      -- :Gitsigns diffthis ~1
 <
 
-                For a more complete list of ways to specify bases, see
-                |gitsigns-revision|.
+    For a more complete list of ways to specify bases, see
+    |gitsigns-revision|.
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Parameters: ~
-                    {base}      (string|nil): Revision to diff against. Defaults to index.
-                    {opts}      (table|nil): Additional options:
-                                • {vertical}: {boolean}. Split window vertically. Defaults to
-                                  config.diff_opts.vertical. If running via command line, then
-                                  this is taken from the command modifiers.
-                                • {split}: {string}. One of: 'aboveleft', 'belowright',
-                                  'botright', 'rightbelow', 'leftabove', 'topleft'. Defaults to
-                                  'aboveleft'. If running via command line, then this is taken
-                                  from the command modifiers.
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {base}     (`string?`): Revision to diff against. Defaults to index.
+        {opts}     (`Gitsigns.DiffthisOpts?`): Additional options.
+                   • {vertical}: (`boolean?`)
+                     Split window vertically. Default to
+                     `config.diff_opts.vertical`. If running via command line,
+                     then shi is taken from the command modifiers.
+                   • {split}:
+                   (`("aboveleft"|"belowright"|"topleft"|"botright")?`)
+        {callback} (`(fun(err: string?))?`)
 
 reset_base({global})                                   *gitsigns.reset_base()*
-                Reset the base revision to diff against back to the
-                index.
+    Reset the base revision to diff against back to the
+    index.
 
-                Alias for `change_base(nil, {global})` .
+    Alias for `change_base(nil, {global})` .
+
+    Parameters: ~
+        {global} (`any`)
 
 change_base({base}, {global}, {callback})              *gitsigns.change_base()*
-                Change the base revision to diff against. If {base} is not
-                given, then the original base is used. If {global} is given
-                and true, then change the base revision of all buffers,
-                including any new buffers.
+    Change the base revision to diff against. If {base} is not
+    given, then the original base is used. If {global} is given
+    and true, then change the base revision of all buffers,
+    including any new buffers.
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Examples: >lua
-                  -- Change base to 1 commit behind head
-                  require('gitsigns').change_base('HEAD~1')
-                  -- :Gitsigns change_base HEAD~1
+    Examples: >lua
+      -- Change base to 1 commit behind head
+      require('gitsigns').change_base('HEAD~1')
+      -- :Gitsigns change_base HEAD~1
 
-                  -- Also works using the Gitsigns command
-                  :Gitsigns change_base HEAD~1
+      -- Also works using the Gitsigns command
+      :Gitsigns change_base HEAD~1
 
-                  -- Other variations
-                  require('gitsigns').change_base('~1')
-                  -- :Gitsigns change_base ~1
-                  require('gitsigns').change_base('~')
-                  -- :Gitsigns change_base ~
-                  require('gitsigns').change_base('^')
-                  -- :Gitsigns change_base ^
+      -- Other variations
+      require('gitsigns').change_base('~1')
+      -- :Gitsigns change_base ~1
+      require('gitsigns').change_base('~')
+      -- :Gitsigns change_base ~
+      require('gitsigns').change_base('^')
+      -- :Gitsigns change_base ^
 
-                  -- Commits work too
-                  require('gitsigns').change_base('92eb3dd')
-                  -- :Gitsigns change_base 92eb3dd
+      -- Commits work too
+      require('gitsigns').change_base('92eb3dd')
+      -- :Gitsigns change_base 92eb3dd
 
-                  -- Revert to original base
-                  require('gitsigns').change_base()
-                  -- :Gitsigns change_base
+      -- Revert to original base
+      require('gitsigns').change_base()
+      -- :Gitsigns change_base
 <
 
-                For a more complete list of ways to specify bases, see
-                |gitsigns-revision|.
+    For a more complete list of ways to specify bases, see
+    |gitsigns-revision|.
 
-                Parameters: ~
-                    {base}      (string?): The object/revision to diff against.
-                    {global}    (boolean?): Change the base of all buffers.
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {base}     (`string?`): The object/revision to diff against.
+        {global}   (`boolean?`): Change the base of all buffers.
+        {callback} (`(fun(err: string?))?`)
 
 blame({opts}, {callback})                                   *gitsigns.blame()*
-                Run git-blame on the current file and open the results
-                in a scroll-bound vertical split.
+    Run git-blame on the current file and open the results
+    in a scroll-bound vertical split.
 
-                Mappings:
-                  <CR> is mapped to open a menu with the other mappings
-                       Note: <Alt> must be held to activate the mappings whilst the menu is
-                       open.
-                  s   [Show commit] in a vertical split.
-                  S   [Show commit] in a new tab.
-                  r   [Reblame at commit]
+    Mappings:
+      <CR> is mapped to open a menu with the other mappings
+           Note: <Alt> must be held to activate the mappings whilst the menu is
+           open.
+      s   [Show commit] in a vertical split.
+      S   [Show commit] in a new tab.
+      r   [Reblame at commit]
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Parameters: ~
-                    {opts}      (table|nil): Additional options:
-                                • {ignore_whitespace}: (boolean)
-                                  Ignore whitespace when running blame.
-                                • {extra_opts}: (string[])
-                                  Extra options passed to `git-blame`.
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {opts}     (`Gitsigns.BlameOpts?`): Additional options.
+                   • {ignore_whitespace}: (`boolean?`)
+                     Ignore whitespace when running blame.
+                   • {extra_opts}: (`string[]?`)
+                     Extra options passed to `git-blame`.
+        {callback} (`(fun(err: string?))?`)
 
 blame_line({opts}, {callback})                         *gitsigns.blame_line()*
-                Run git blame on the current line and show the results in a
-                floating window. If already open, calling this will cause the
-                window to get focus.
+    Run git blame on the current line and show the results in a
+    floating window. If already open, calling this will cause the
+    window to get focus.
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Parameters: ~
-                    {opts}      (table|nil): Additional options:
-                                • {full}: (boolean)
-                                  Display full commit message with hunk.
-                                • {ignore_whitespace}: (boolean)
-                                  Ignore whitespace when running blame.
-                                • {extra_opts}: (string[])
-                                  Extra options passed to `git-blame`.
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {opts}     (`Gitsigns.LineBlameOpts?`): Additional options.
+                   • {full}: (`boolean?`)
+                   • {ignore_whitespace}: (`boolean?`)
+                     Ignore whitespace when running blame.
+                   • {extra_opts}: (`string[]?`)
+                     Extra options passed to `git-blame`.
+        {callback} (`(fun(err: string?))?`)
 
 get_hunks({bufnr})                                      *gitsigns.get_hunks()*
-                Get hunk array for specified buffer.
+    Get hunk array for specified buffer.
 
-                Parameters: ~
-                    {bufnr} (integer): Buffer number, if not provided (or 0)
-                            will use current buffer.
+    Parameters: ~
+        {bufnr} (`integer`): Buffer number, if not provided (or 0)
+                will use current buffer.
 
-                Returns: ~
-                    (table|nil): Array of hunk objects.
-                    Each hunk object has keys:
-                        • `"type"`: String with possible values: "add", "change",
-                          "delete"
-                        • `"head"`: Header that appears in the unified diff
-                          output.
-                        • `"lines"`: Line contents of the hunks prefixed with
-                          either `"-"` or `"+"`.
-                        • `"removed"`: Sub-table with fields:
-                          • `"start"`: Line number (1-based)
-                          • `"count"`: Line count
-                        • `"added"`: Sub-table with fields:
-                          • `"start"`: Line number (1-based)
-                          • `"count"`: Line count
+    Returns: ~
+        (`table?`): Array of hunk objects.
+        Each hunk object has keys:
+        • `"type"`: String with possible values: "add", "change",
+          "delete"
+        • `"head"`: Header that appears in the unified diff
+          output.
+        • `"lines"`: Line contents of the hunks prefixed with
+          either `"-"` or `"+"`.
+        • `"removed"`: Sub-table with fields:
+          • `"start"`: Line number (1-based)
+          • `"count"`: Line count
+        • `"added"`: Sub-table with fields:
+          • `"start"`: Line number (1-based)
+          • `"count"`: Line count
 
 select_hunk({opts})                                   *gitsigns.select_hunk()*
-                Select the hunk under the cursor.
+    Select the hunk under the cursor.
 
-                Parameters: ~
-                    {opts} (table?): Additional options:
-                           • {greedy}: (boolean)
-                             Select all contiguous hunks. Only useful if 'diff_opts'
-                             contains `linematch`. Defaults to `true`.
+    Parameters: ~
+        {opts} (`Gitsigns.HunkOpts?`): Additional options.
+               • {greedy}: (`boolean?`)
+                 Operate on/select all contiguous hunks. Only useful if
+                 'diff_opts' contains `linematch`. Defaults to `true`.
 
 preview_hunk_inline({callback})               *gitsigns.preview_hunk_inline()*
-                Preview the hunk at the cursor position inline in the buffer.
-                Parameters: ~
-                    {callback?} (fun(err?:): string)
+    Preview the hunk at the cursor position inline in the buffer.
+
+    Parameters: ~
+        {callback} (`(fun(err: string?))?`)
 
 preview_hunk()                                       *gitsigns.preview_hunk()*
-                Preview the hunk at the cursor position in a floating
-                window. If the preview is already open, calling this
-                will cause the window to get focus.
+    Preview the hunk at the cursor position in a floating
+    window. If the preview is already open, calling this
+    will cause the window to get focus.
 
 prev_hunk({opts}, {callback})                           *gitsigns.prev_hunk()*
-                DEPRECATED: use |gitsigns.nav_hunk()|
+    DEPRECATED: use |gitsigns.nav_hunk()|
 
-                Jump to the previous hunk in the current buffer. If a hunk preview
-                (popup or inline) was previously opened, it will be re-opened
-                at the previous hunk.
+    Jump to the previous hunk in the current buffer. If a hunk preview
+    (popup or inline) was previously opened, it will be re-opened
+    at the previous hunk.
 
-                Attributes: ~
-                    {async}
+    See |gitsigns.nav_hunk()|.
 
-                Parameters: ~
-                    See |gitsigns.nav_hunk()|.
+    Attributes: ~
+        {async}
+
+    Parameters: ~
+        {opts}     (`any`)
+        {callback} (`any`)
 
 next_hunk({opts}, {callback})                           *gitsigns.next_hunk()*
-                DEPRECATED: use |gitsigns.nav_hunk()|
+    DEPRECATED: use |gitsigns.nav_hunk()|
 
-                Jump to the next hunk in the current buffer. If a hunk preview
-                (popup or inline) was previously opened, it will be re-opened
-                at the next hunk.
+    Jump to the next hunk in the current buffer. If a hunk preview
+    (popup or inline) was previously opened, it will be re-opened
+    at the next hunk.
 
-                Attributes: ~
-                    {async}
+    See |gitsigns.nav_hunk()|.
 
-                Parameters: ~
-                    See |gitsigns.nav_hunk()|.
+    Attributes: ~
+        {async}
+
+    Parameters: ~
+        {opts}     (`any`)
+        {callback} (`any`)
 
 nav_hunk({direction}, {opts}, {callback})                 *gitsigns.nav_hunk()*
-                Jump to hunk in the current buffer. If a hunk preview
-                (popup or inline) was previously opened, it will be re-opened
-                at the next hunk.
+    Jump to hunk in the current buffer. If a hunk preview
+    (popup or inline) was previously opened, it will be re-opened
+    at the next hunk.
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Parameters: ~
-                    {direction} ('first'|'last'|'next'|'prev'):
-                    {opts}      (table|nil): Configuration table. Keys:
-                                • {wrap}: (boolean)
-                                  Whether to loop around file or not. Defaults
-                                  to the value 'wrapscan'
-                                • {navigation_message}: (boolean)
-                                  Whether to show navigation messages or not.
-                                  Looks at 'shortmess' for default behaviour.
-                                • {foldopen}: (boolean)
-                                  Expand folds when navigating to a hunk which is
-                                  inside a fold. Defaults to `true` if 'foldopen'
-                                  contains `search`.
-                                • {preview}: (boolean)
-                                  Automatically open preview_hunk() upon navigating
-                                  to a hunk.
-                                • {greedy}: (boolean)
-                                  Only navigate between non-contiguous hunks. Only useful if
-                                  'diff_opts' contains `linematch`. Defaults to `true`.
-                                • {target}: (`'unstaged'|'staged'|'all'`)
-                                  Which kinds of hunks to target. Defaults to `'unstaged'`.
-                                • {count}: (integer)
-                                  Number of times to advance. Defaults to |v:count1|.
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {direction} (`("first"|"last"|"next"|"prev")`)
+        {opts}      (`Gitsigns.NavOpts?`): Configuration options.
+                    • {wrap}: (`boolean`)
+                      Whether to loop around file or not. Defaults to the value
+                      'wrapscan'
+                    • {foldopen}: (`boolean`)
+                      Expand folds when navigating to a hunk which is inside a
+                      fold. Defaults to `true` if 'foldopen' contains `search`.
+                    • {navigation_message}: (`boolean`)
+                      Whether to show navigation messages or not. Looks at
+                      'shortmess' for default behaviour.
+                    • {greedy}: (`boolean`)
+                      Only navigate between non-contiguous hunks. Only useful if
+                      'diff_opts' contains `linematch`. Defaults to `true`.
+                    • {preview}: (`boolean?`)
+                      Automatically open preview_hunk() upon navigating to a
+                      hunk.
+                    • {count}: (`integer`)
+                      Number of times to advance. Defaults to |v:count1|.
+                    • {target}: (`("unstaged"|"staged"|"all")`)
+                      Which kinds of hunks to target. Defaults to `'unstaged'`.
+        {callback}  (`(fun(err: string?))?`)
 
 reset_buffer_index({callback})                 *gitsigns.reset_buffer_index()*
-                Unstage all hunks for current buffer in the index. Note:
-                Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
-                stages, this runs an `git reset` on current buffers file.
+    Unstage all hunks for current buffer in the index. Note:
+    Unlike |gitsigns.undo_stage_hunk()| this doesn't simply undo
+    stages, this runs an `git reset` on current buffers file.
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Parameters: ~
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {callback} (`(fun(err: string?))?`)
 
 stage_buffer({callback})                             *gitsigns.stage_buffer()*
-                Stage all hunks in current buffer.
+    Stage all hunks in current buffer.
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Parameters: ~
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {callback} (`(fun(err: string?))?`)
 
 undo_stage_hunk({callback})                       *gitsigns.undo_stage_hunk()*
-                DEPRECATED: use |gitsigns.stage_hunk()| on staged signs
+    DEPRECATED: use |gitsigns.stage_hunk()| on staged signs
 
-                Undo the last call of stage_hunk().
+    Undo the last call of stage_hunk().
 
-                Note: only the calls to stage_hunk() performed in the current
-                session can be undone.
+    Note: only the calls to stage_hunk() performed in the current
+    session can be undone.
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Parameters: ~
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {callback} (`(fun(err: string?))?`)
 
 reset_buffer()                                       *gitsigns.reset_buffer()*
-                Reset the lines of all hunks in the buffer.
+    Reset the lines of all hunks in the buffer.
 
 reset_hunk({range}, {opts}, {callback})                *gitsigns.reset_hunk()*
-                Reset the lines of the hunk at the cursor position, or all
-                lines in the given range. If {range} is provided, all lines in
-                the given range are reset. This supports partial-hunks,
-                meaning if a range only includes a portion of a particular
-                hunk, only the lines within the range will be reset.
+    Reset the lines of the hunk at the cursor position, or all
+    lines in the given range. If {range} is provided, all lines in
+    the given range are reset. This supports partial-hunks,
+    meaning if a range only includes a portion of a particular
+    hunk, only the lines within the range will be reset.
 
-                Parameters: ~
-                    {range}     (table|nil): List-like table of two integers making
-                                up the line range from which you want to reset the hunks.
-                                If running via command line, then this is taken from the
-                                command modifiers.
-                    {opts}      (table|nil): Additional options:
-                                • {greedy}: (boolean)
-                                  Stage all contiguous hunks. Only useful if 'diff_opts'
-                                  contains `linematch`. Defaults to `true`.
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {range}    (`(integer,integer)?`): List-like table of two integers
+                                           making
+                   up the line range from which you want to reset the hunks.
+                   If running via command line, then this is taken from the
+                   command modifiers.
+        {opts}     (`Gitsigns.HunkOpts?`): Additional options.
+                   • {greedy}: (`boolean?`)
+                     Operate on/select all contiguous hunks. Only useful if
+                     'diff_opts' contains `linematch`. Defaults to `true`.
+        {callback} (`(fun(err: string?))?`)
 
 stage_hunk({range}, {opts}, {callback})                *gitsigns.stage_hunk()*
-                Stage the hunk at the cursor position, or all lines in the
-                given range. If {range} is provided, all lines in the given
-                range are staged. This supports partial-hunks, meaning if a
-                range only includes a portion of a particular hunk, only the
-                lines within the range will be staged.
+    Stage the hunk at the cursor position, or all lines in the
+    given range. If {range} is provided, all lines in the given
+    range are staged. This supports partial-hunks, meaning if a
+    range only includes a portion of a particular hunk, only the
+    lines within the range will be staged.
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Parameters: ~
-                    {range} (table|nil): List-like table of two integers making
-                            up the line range from which you want to stage the hunks.
-                            If running via command line, then this is taken from the
-                            command modifiers.
-                    {opts}  (table|nil): Additional options:
-                            • {greedy}: (boolean)
-                              Stage all contiguous hunks. Only useful if 'diff_opts'
-                              contains `linematch`. Defaults to `true`.
+    Parameters: ~
+        {range}    (`(integer,integer)?`): List-like table of two integers
+                                           making
+                   up the line range from which you want to stage the hunks.
+                   If running via command line, then this is taken from the
+                   command modifiers.
+        {opts}     (`Gitsigns.HunkOpts?`): Additional options.
+                   • {greedy}: (`boolean?`)
+                     Operate on/select all contiguous hunks. Only useful if
+                     'diff_opts' contains `linematch`. Defaults to `true`.
+        {callback} (`(fun(err: string?))?`)
 
 toggle_deleted({value})                            *gitsigns.toggle_deleted()*
-                DEPRECATED: Use |gitsigns.preview_hunk_inline()|
+    DEPRECATED: Use |gitsigns.preview_hunk_inline()|
 
-                Toggle |gitsigns-config-show_deleted|
+    Toggle |gitsigns-config-show_deleted|
 
-                Parameters: ~
-                    {value} (boolean|nil): Value to set toggle. If `nil`
-                            the toggle value is inverted.
+    Parameters: ~
+        {value} (`boolean?`): Value to set toggle. If `nil`
+                the toggle value is inverted.
 
-                Returns: ~
-                    (boolean): Current value of |gitsigns-config-show_deleted|
+    Returns: ~
+        (`boolean`): Current value of |gitsigns-config-show_deleted|
 
 toggle_current_line_blame({value})      *gitsigns.toggle_current_line_blame()*
-                Toggle |gitsigns-config-current_line_blame|
+    Toggle |gitsigns-config-current_line_blame|
 
-                Parameters: ~
-                    {value} (boolean|nil): Value to set toggle. If `nil`
-                            the toggle value is inverted.
+    Parameters: ~
+        {value} (`boolean?`): Value to set toggle. If `nil`
+                the toggle value is inverted.
 
-                Returns: ~
-                    (boolean): Current value of |gitsigns-config-current_line_blame|
+    Returns: ~
+        (`boolean`): Current value of |gitsigns-config-current_line_blame|
 
 toggle_word_diff({value})                        *gitsigns.toggle_word_diff()*
-                Toggle |gitsigns-config-word_diff|
+    Toggle |gitsigns-config-word_diff|
 
-                Parameters: ~
-                    {value} (boolean|nil): Value to set toggle. If `nil`
-                            the toggle value is inverted.
+    Parameters: ~
+        {value} (`boolean?`): Value to set toggle. If `nil`
+                the toggle value is inverted.
 
-                Returns: ~
-                    (boolean): Current value of |gitsigns-config-word_diff|
+    Returns: ~
+        (`boolean`): Current value of |gitsigns-config-word_diff|
 
 toggle_linehl({value})                              *gitsigns.toggle_linehl()*
-                Toggle |gitsigns-config-linehl|
+    Toggle |gitsigns-config-linehl|
 
-                Parameters: ~
-                    {value} (boolean|nil): Value to set toggle. If `nil`
-                            the toggle value is inverted.
+    Parameters: ~
+        {value} (`boolean?`): Value to set toggle. If `nil`
+                the toggle value is inverted.
 
-                Returns: ~
-                    (boolean): Current value of |gitsigns-config-linehl|
+    Returns: ~
+        (`boolean`): Current value of |gitsigns-config-linehl|
 
 toggle_numhl({value})                                *gitsigns.toggle_numhl()*
-                Toggle |gitsigns-config-numhl|
+    Toggle |gitsigns-config-numhl|
 
-                Parameters: ~
-                    {value} (boolean|nil): Value to set toggle. If `nil`
-                                the toggle value is inverted.
+    Parameters: ~
+        {value} (`boolean?`): Value to set toggle. If `nil`
+                the toggle value is inverted.
 
-
-                Returns: ~
-                    (boolean): Current value of |gitsigns-config-numhl|
+    Returns: ~
+        (`boolean`): Current value of |gitsigns-config-numhl|
 
 toggle_signs({value})                                *gitsigns.toggle_signs()*
-                Toggle |gitsigns-config-signbooleancolumn|
+    Toggle |gitsigns-config-signbooleancolumn|
 
-                Parameters: ~
-                    {value} (boolean|nil): Value to set toggle. If `nil`
-                            the toggle value is inverted.
+    Parameters: ~
+        {value} (`boolean?`): Value to set toggle. If `nil`
+                the toggle value is inverted.
 
-                Returns: ~
-                    (boolean): Current value of |gitsigns-config-signcolumn|
+    Returns: ~
+        (`boolean`): Current value of |gitsigns-config-signcolumn|
 
-attach({bufnr}, {ctx}, {callback})                         *gitsigns.attach()*
-                Attach Gitsigns to the buffer.
+attach({bufnr}, {ctx}, {trigger}, {callback})                   *gitsigns.attach()*
+    Attach Gitsigns to the buffer.
 
-                Attributes: ~
-                    {async}
+    Attributes: ~
+        {async}
 
-                Parameters: ~
-                    {bufnr}     (integer): Buffer number
-                    {ctx}       (table|nil):
-                                Git context data that may optionally be used to attach to any
-                                buffer that represents a real git object.
-                                • {file}: (string)
-                                  Path to the file represented by the buffer, relative to the
-                                  top-level.
-                                • {toplevel}: (string?)
-                                  Path to the top-level of the parent git repository.
-                                • {gitdir}: (string?)
-                                  Path to the git directory of the parent git repository
-                                  (typically the ".git/" directory).
-                                • {commit}: (string?)
-                                  The git revision that the file belongs to.
-                                • {base}: (string?)
-                                  The git revision that the file should be compared to.
-                    {callback?} (fun(err?:): string)
+    Parameters: ~
+        {bufnr}    (`integer`): Buffer number
+        {ctx}      (`Gitsigns.GitContext?`): • {file}: (`string`)
+                     Path to the file represented by the buffer.
+                   • {toplevel}: (`string?`)
+                     Path to the top-level of the parent git repository.
+                   • {gitdir}: (`string?`)
+                     Path to the git directory of the parent git repository.
+                   • {base}: (`string?`)
+                     Git revision to compare against.
+        {trigger}  (`string?`)
+        {callback} (`(fun(err: string?))?`)
 
 detach({bufnr})                                            *gitsigns.detach()*
-                Detach Gitsigns from the buffer {bufnr}. If {bufnr} is not
-                provided then the current buffer is used.
+    Detach Gitsigns from the buffer {bufnr}. If {bufnr} is not
+    provided then the current buffer is used.
 
-                Parameters: ~
-                    {bufnr} (integer): Buffer number
+    Parameters: ~
+        {bufnr} (`integer`): Buffer number
 
 detach_all()                                           *gitsigns.detach_all()*
-                Detach Gitsigns from all buffers it is attached to.
+    Detach Gitsigns from all buffers it is attached to.
 
 
 ==============================================================================
@@ -617,437 +618,436 @@ precedence. This allows only specific sub-fields to be configured without
 having to redefine the whole field.
 
 signs                                                  *gitsigns-config-signs*
-      Type: `table[extended]`
-      Default: >
-        {
-          add          = { text = '┃' },
-          change       = { text = '┃' },
-          delete       = { text = '▁' },
-          topdelete    = { text = '▔' },
-          changedelete = { text = '~' },
-          untracked    = { text = '┆' },
-        }
+    Type: `table[extended]`
+    Default: >
+    {
+      add          = { text = '┃' },
+      change       = { text = '┃' },
+      delete       = { text = '▁' },
+      topdelete    = { text = '▔' },
+      changedelete = { text = '~' },
+      untracked    = { text = '┆' },
+    }
 <
-      Configuration for signs:
-        • `text` specifies the character to use for the sign.
-        • `show_count` to enable showing count of hunk, e.g. number of deleted
-          lines.
+    Configuration for signs:
+      • `text` specifies the character to use for the sign.
+      • `show_count` to enable showing count of hunk, e.g. number of deleted
+        lines.
 
-      The highlights `GitSigns[kind][type]` is used for each kind of sign. E.g.
-      'add' signs uses the highlights:
-        • `GitSignsAdd`   (for normal text signs)
-        • `GitSignsAddNr` (for signs when `config.numhl == true`)
-        • `GitSignsAddLn `(for signs when `config.linehl == true`)
-        • `GitSignsAddCul `(for signs when `config.culhl == true`)
+    The highlights `GitSigns[kind][type]` is used for each kind of sign. E.g.
+    'add' signs uses the highlights:
+      • `GitSignsAdd`   (for normal text signs)
+      • `GitSignsAddNr` (for signs when `config.numhl == true`)
+      • `GitSignsAddLn `(for signs when `config.linehl == true`)
+      • `GitSignsAddCul `(for signs when `config.culhl == true`)
 
-      See |gitsigns-highlight-groups|.
+    See |gitsigns-highlight-groups|.
 
 signs_staged                                    *gitsigns-config-signs_staged*
-      Type: `table[extended]`
-      Default: >
-        {
-          add          = { text = '┃' },
-          change       = { text = '┃' },
-          delete       = { text = '▁' },
-          topdelete    = { text = '▔' },
-          changedelete = { text = '~' },
-        }
+    Type: `table[extended]`
+    Default: >
+    {
+      add          = { text = '┃' },
+      change       = { text = '┃' },
+      delete       = { text = '▁' },
+      topdelete    = { text = '▔' },
+      changedelete = { text = '~' },
+    }
 <
     Configuration for signs of staged hunks.
 
     See |gitsigns-config-signs|.
 
 signs_staged_enable                      *gitsigns-config-signs_staged_enable*
-      Type: `boolean`, Default: `true`
+    Type: `boolean`, Default: `true`
 
     Show signs for staged hunks.
 
     When enabled the signs defined in |git-config-signs_staged| are used.
 
 worktrees                                          *gitsigns-config-worktrees*
-      Type: `table`, Default: `{}`
+    Type: `table`, Default: `{}`
 
-      Detached working trees.
+    Detached working trees.
 
-      Array of tables with the keys `gitdir` and `toplevel`.
+    Array of tables with the keys `gitdir` and `toplevel`.
 
-      If normal attaching fails, then each entry in the table is attempted
-      with the work tree details set.
+    If normal attaching fails, then each entry in the table is attempted
+    with the work tree details set.
 
-      Example: >lua
-        worktrees = {
-          {
-            toplevel = vim.env.HOME,
-            gitdir = vim.env.HOME .. '/projects/dotfiles/.git'
-          }
+    Example: >lua
+      worktrees = {
+        {
+          toplevel = vim.env.HOME,
+          gitdir = vim.env.HOME .. '/projects/dotfiles/.git'
         }
+      }
 
 on_attach                                          *gitsigns-config-on_attach*
-      Type: `function`, Default: `nil`
+    Type: `function`, Default: `nil`
 
-      Callback called when attaching to a buffer. Mainly used to setup keymaps.
-      The buffer number is passed as the first argument.
+    Callback called when attaching to a buffer. Mainly used to setup keymaps.
+    The buffer number is passed as the first argument.
 
-      This callback can return `false` to prevent attaching to the buffer.
+    This callback can return `false` to prevent attaching to the buffer.
 
-      Example: >lua
-        on_attach = function(bufnr)
-          if vim.api.nvim_buf_get_name(bufnr):match(<PATTERN>) then
-            -- Don't attach to specific buffers whose name matches a pattern
-            return false
-          end
-
-          -- Setup keymaps
-          vim.api.nvim_buf_set_keymap(bufnr, 'n', 'hs', '<cmd>lua require"gitsigns".stage_hunk()<CR>', {})
-          ... -- More keymaps
+    Example: >lua
+      on_attach = function(bufnr)
+        if vim.api.nvim_buf_get_name(bufnr):match(<PATTERN>) then
+          -- Don't attach to specific buffers whose name matches a pattern
+          return false
         end
+
+        -- Setup keymaps
+        vim.api.nvim_buf_set_keymap(bufnr, 'n', 'hs', '<cmd>lua require"gitsigns".stage_hunk()<CR>', {})
+        ... -- More keymaps
+      end
 <
 
 watch_gitdir                                    *gitsigns-config-watch_gitdir*
-      Type: `table[extended]`
-      Default: >
-        `{
-          enable = true,
-          follow_files = true
-        }`
+    Type: `table[extended]`
+    Default: >
+    `{
+      enable = true,
+      follow_files = true
+    }`
 <
-      When opening a file, a libuv watcher is placed on the respective
-      `.git` directory to detect when changes happen to use as a trigger to
-      update signs.
+    When opening a file, a libuv watcher is placed on the respective
+    `.git` directory to detect when changes happen to use as a trigger to
+    update signs.
 
-      Fields: ~
-        • `enable`:
-            Whether the watcher is enabled.
+    Fields: ~
+      • `enable`:
+          Whether the watcher is enabled.
 
-        • `follow_files`:
-            If a file is moved with `git mv`, switch the buffer to the new location.
+      • `follow_files`:
+          If a file is moved with `git mv`, switch the buffer to the new location.
 
 sign_priority                                  *gitsigns-config-sign_priority*
-      Type: `number`, Default: `6`
+    Type: `number`, Default: `6`
 
-      Priority to use for signs.
+    Priority to use for signs.
 
 signcolumn                                        *gitsigns-config-signcolumn*
-      Type: `boolean`, Default: `true`
+    Type: `boolean`, Default: `true`
 
-      Enable/disable symbols in the sign column.
+    Enable/disable symbols in the sign column.
 
-      When enabled the highlights defined in `signs.*.hl` and symbols defined
-      in `signs.*.text` are used.
+    When enabled the highlights defined in `signs.*.hl` and symbols defined
+    in `signs.*.text` are used.
 
 numhl                                                  *gitsigns-config-numhl*
-      Type: `boolean`, Default: `false`
+    Type: `boolean`, Default: `false`
 
-      Enable/disable line number highlights.
+    Enable/disable line number highlights.
 
-      When enabled the highlights defined in `signs.*.numhl` are used. If
-      the highlight group does not exist, then it is automatically defined
-      and linked to the corresponding highlight group in `signs.*.hl`.
+    When enabled the highlights defined in `signs.*.numhl` are used. If
+    the highlight group does not exist, then it is automatically defined
+    and linked to the corresponding highlight group in `signs.*.hl`.
 
 linehl                                                *gitsigns-config-linehl*
-      Type: `boolean`, Default: `false`
+    Type: `boolean`, Default: `false`
 
-      Enable/disable line highlights.
+    Enable/disable line highlights.
 
-      When enabled the highlights defined in `signs.*.linehl` are used. If
-      the highlight group does not exist, then it is automatically defined
-      and linked to the corresponding highlight group in `signs.*.hl`.
+    When enabled the highlights defined in `signs.*.linehl` are used. If
+    the highlight group does not exist, then it is automatically defined
+    and linked to the corresponding highlight group in `signs.*.hl`.
 
 culhl                                                  *gitsigns-config-culhl*
-      Type: `boolean`, Default: `false`
+    Type: `boolean`, Default: `false`
 
-      Enable/disable highlights for the sign column when the cursor is on
-      the same line.
+    Enable/disable highlights for the sign column when the cursor is on
+    the same line.
 
-      When enabled the highlights defined in `signs.*.culhl` are used. If
-      the highlight group does not exist, then it is automatically defined
-      and linked to the corresponding highlight group in `signs.*.hl`.
+    When enabled the highlights defined in `signs.*.culhl` are used. If
+    the highlight group does not exist, then it is automatically defined
+    and linked to the corresponding highlight group in `signs.*.hl`.
 
 show_deleted                                    *gitsigns-config-show_deleted*
-      DEPRECATED
+    DEPRECATED
 
-      Type: `boolean`, Default: `false`
+    Type: `boolean`, Default: `false`
 
-      Show the old version of hunks inline in the buffer (via virtual lines).
+    Show the old version of hunks inline in the buffer (via virtual lines).
 
-      Note: Virtual lines currently use the highlight `GitSignsDeleteVirtLn`.
+    Note: Virtual lines currently use the highlight `GitSignsDeleteVirtLn`.
 
 diff_opts                                          *gitsigns-config-diff_opts*
-      Type: `table[extended]`, Default: derived from 'diffopt'
+    Type: `table[extended]`, Default: derived from 'diffopt'
 
-      Diff options. If the default value is used, then changes to 'diffopt' are
-      automatically applied.
+    Diff options. If the default value is used, then changes to 'diffopt' are
+    automatically applied.
 
-      Fields: ~
-        • algorithm: string
-            Diff algorithm to use. Values:
-            • "myers"      the default algorithm
-            • "minimal"    spend extra time to generate the
-                           smallest possible diff
-            • "patience"   patience diff algorithm
-            • "histogram"  histogram diff algorithm
-        • internal: boolean
-            Use Neovim's built in xdiff library for running diffs.
-        • indent_heuristic: boolean
-            Use the indent heuristic for the internal
-            diff library.
-        • vertical: boolean
-            Start diff mode with vertical splits.
-        • linematch: integer
-            Enable second-stage diff on hunks to align lines.
-            Requires `internal=true`.
-       • ignore_blank_lines: boolean
-            Ignore changes where lines are blank.
-       • ignore_whitespace_change: boolean
-            Ignore changes in amount of white space.
-            It should ignore adding trailing white space,
-            but not leading white space.
-       • ignore_whitespace: boolean
-           Ignore all white space changes.
-       • ignore_whitespace_change_at_eol: boolean
-            Ignore white space changes at end of line.
+    Fields: ~
+      • algorithm: string
+          Diff algorithm to use. Values:
+          • "myers"      the default algorithm
+          • "minimal"    spend extra time to generate the
+                         smallest possible diff
+          • "patience"   patience diff algorithm
+          • "histogram"  histogram diff algorithm
+      • internal: boolean
+          Use Neovim's built in xdiff library for running diffs.
+      • indent_heuristic: boolean
+          Use the indent heuristic for the internal
+          diff library.
+      • vertical: boolean
+          Start diff mode with vertical splits.
+      • linematch: integer
+          Enable second-stage diff on hunks to align lines.
+          Requires `internal=true`.
+     • ignore_blank_lines: boolean
+          Ignore changes where lines are blank.
+     • ignore_whitespace_change: boolean
+          Ignore changes in amount of white space.
+          It should ignore adding trailing white space,
+          but not leading white space.
+     • ignore_whitespace: boolean
+         Ignore all white space changes.
+     • ignore_whitespace_change_at_eol: boolean
+          Ignore white space changes at end of line.
 
 diffthis                                            *gitsigns-config-diffthis*
-      Type: `table`
-      Default: >
-        `{
-          split = "aboveleft"
-        }`
+    Type: `table`
+    Default: >
+    `{
+      split = "aboveleft"
+    }`
 <
-      Options for the `:Gitsigns diffthis` command.
+    Options for the `:Gitsigns diffthis` command.
 
 base                                                    *gitsigns-config-base*
-      Type: `string`, Default: index
+    Type: `string`, Default: index
 
-      The object/revision to diff against.
-      See |gitsigns-revision|.
+    The object/revision to diff against.
+    See |gitsigns-revision|.
 
 count_chars                                      *gitsigns-config-count_chars*
-      Type: `table`
-      Default: >
-        `{ "1", "2", "3", "4", "5", "6", "7", "8", "9",
-          ["+"] = ">"
-        }`
+    Type: `table`
+    Default: >
+    `{ "1", "2", "3", "4", "5", "6", "7", "8", "9",
+      ["+"] = ">"
+    }`
 <
-      The count characters used when `signs.*.show_count` is enabled. The
-      `+` entry is used as a fallback. With the default, any count outside
-      of 1-9 uses the `>` character in the sign.
+    The count characters used when `signs.*.show_count` is enabled. The
+    `+` entry is used as a fallback. With the default, any count outside
+    of 1-9 uses the `>` character in the sign.
 
-      Possible use cases for this field:
-        • to specify unicode characters for the counts instead of 1-9.
-        • to define characters to be used for counts greater than 9.
+    Possible use cases for this field:
+      • to specify unicode characters for the counts instead of 1-9.
+      • to define characters to be used for counts greater than 9.
 
 status_formatter                            *gitsigns-config-status_formatter*
-      Type: `function`
-      Default: >
-        function(status)
-          local added, changed, removed = status.added, status.changed, status.removed
-          local status_txt = {}
-          if added   and added   > 0 then table.insert(status_txt, '+'..added  ) end
-          if changed and changed > 0 then table.insert(status_txt, '~'..changed) end
-          if removed and removed > 0 then table.insert(status_txt, '-'..removed) end
-          return table.concat(status_txt, ' ')
-        end
+    Type: `function`
+    Default: >
+    function(status)
+      local added, changed, removed = status.added, status.changed, status.removed
+      local status_txt = {}
+      if added   and added   > 0 then table.insert(status_txt, '+'..added  ) end
+      if changed and changed > 0 then table.insert(status_txt, '~'..changed) end
+      if removed and removed > 0 then table.insert(status_txt, '-'..removed) end
+      return table.concat(status_txt, ' ')
+    end
 <
-      Function used to format `b:gitsigns_status`.
+    Function used to format `b:gitsigns_status`.
 
 max_file_length                              *gitsigns-config-max_file_length*
-      Type: `number`, Default: `40000`
+    Type: `number`, Default: `40000`
 
-      Max file length (in lines) to attach to.
+    Max file length (in lines) to attach to.
 
 preview_config                                *gitsigns-config-preview_config*
-      Type: `table[extended]`
-      Default: >
-        `{
-          col = 1,
-          relative = "cursor",
-          row = 0,
-          style = "minimal"
-        }`
+    Type: `table[extended]`
+    Default: >
+    `{
+      col = 1,
+      relative = "cursor",
+      row = 0,
+      style = "minimal"
+    }`
 <
-      Option overrides for the Gitsigns preview window. Table is passed directly
-      to `nvim_open_win`.
+    Option overrides for the Gitsigns preview window. Table is passed directly
+    to `nvim_open_win`.
 
 auto_attach                                      *gitsigns-config-auto_attach*
-      Type: `boolean`, Default: `true`
+    Type: `boolean`, Default: `true`
 
-      Automatically attach to files.
+    Automatically attach to files.
 
 attach_to_untracked                      *gitsigns-config-attach_to_untracked*
-      Type: `boolean`, Default: `false`
+    Type: `boolean`, Default: `false`
 
-      Attach to untracked files.
+    Attach to untracked files.
 
 update_debounce                              *gitsigns-config-update_debounce*
-      Type: `number`, Default: `100`
+    Type: `number`, Default: `100`
 
-      Debounce time for updates (in milliseconds).
+    Debounce time for updates (in milliseconds).
 
 current_line_blame                        *gitsigns-config-current_line_blame*
-      Type: `boolean`, Default: `false`
+    Type: `boolean`, Default: `false`
 
-      Adds an unobtrusive and customisable blame annotation at the end of
-      the current line.
+    Adds an unobtrusive and customisable blame annotation at the end of
+    the current line.
 
-      The highlight group used for the text is `GitSignsCurrentLineBlame`.
+    The highlight group used for the text is `GitSignsCurrentLineBlame`.
 
 current_line_blame_opts              *gitsigns-config-current_line_blame_opts*
-      Type: `table[extended]`
-      Default: >
-        `{
-          delay = 1000,
-          use_focus = true,
-          virt_text = true,
-          virt_text_pos = "eol",
-          virt_text_priority = 100
-        }`
+    Type: `table[extended]`
+    Default: >
+    `{
+      delay = 1000,
+      use_focus = true,
+      virt_text = true,
+      virt_text_pos = "eol",
+      virt_text_priority = 100
+    }`
 <
-      Options for the current line blame annotation.
+    Options for the current line blame annotation.
 
-      Fields: ~
-        • virt_text: boolean
-          Whether to show a virtual text blame annotation.
-        • virt_text_pos: string
-          Blame annotation position. Available values:
-            `eol`         Right after eol character.
-            `overlay`     Display over the specified column, without
-                          shifting the underlying text.
-            `right_align` Display right aligned in the window.
-        • delay: integer
-          Sets the delay (in milliseconds) before blame virtual text is
-          displayed.
-        • ignore_whitespace: boolean
-          Ignore whitespace when running blame.
-        • virt_text_priority: integer
-          Priority of virtual text.
-        • use_focus: boolean
-          Enable only when buffer is in focus
-        • extra_opts: string[]
-          Extra options passed to `git-blame`.
+    Fields: ~
+      • virt_text: boolean
+        Whether to show a virtual text blame annotation.
+      • virt_text_pos: string
+        Blame annotation position. Available values:
+          `eol`         Right after eol character.
+          `overlay`     Display over the specified column, without
+                        shifting the underlying text.
+          `right_align` Display right aligned in the window.
+      • delay: integer
+        Sets the delay (in milliseconds) before blame virtual text is
+        displayed.
+      • ignore_whitespace: boolean
+        Ignore whitespace when running blame.
+      • virt_text_priority: integer
+        Priority of virtual text.
+      • use_focus: boolean
+        Enable only when buffer is in focus
+      • extra_opts: string[]
+        Extra options passed to `git-blame`.
 
 current_line_blame_formatter    *gitsigns-config-current_line_blame_formatter*
-      Type: `string|function`, Default: `" <author>, <author_time:%R> - <summary> "`
+    Type: `string|function`, Default: `" <author>, <author_time:%R> - <summary> "`
 
-      String or function used to format the virtual text of
-      |gitsigns-config-current_line_blame|.
+    String or function used to format the virtual text of
+    |gitsigns-config-current_line_blame|.
 
-      When a string, accepts the following format specifiers:
+    When a string, accepts the following format specifiers:
 
-          • `<abbrev_sha>`
-          • `<orig_lnum>`
-          • `<final_lnum>`
-          • `<author>`
-          • `<author_mail>`
-          • `<author_time>` or `<author_time:FORMAT>`
-          • `<author_tz>`
-          • `<committer>`
-          • `<committer_mail>`
-          • `<committer_time>` or `<committer_time:FORMAT>`
-          • `<committer_tz>`
-          • `<summary>`
-          • `<previous>`
-          • `<filename>`
+        • `<abbrev_sha>`
+        • `<orig_lnum>`
+        • `<final_lnum>`
+        • `<author>`
+        • `<author_mail>`
+        • `<author_time>` or `<author_time:FORMAT>`
+        • `<author_tz>`
+        • `<committer>`
+        • `<committer_mail>`
+        • `<committer_time>` or `<committer_time:FORMAT>`
+        • `<committer_tz>`
+        • `<summary>`
+        • `<previous>`
+        • `<filename>`
 
-        For `<author_time:FORMAT>` and `<committer_time:FORMAT>`, `FORMAT` can
-        be any valid date format that is accepted by `os.date()` with the
-        addition of `%R` (defaults to `%Y-%m-%d`):
+      For `<author_time:FORMAT>` and `<committer_time:FORMAT>`, `FORMAT` can
+      be any valid date format that is accepted by `os.date()` with the
+      addition of `%R` (defaults to `%Y-%m-%d`):
 
-          • `%a`  abbreviated weekday name (e.g., Wed)
-          • `%A`  full weekday name (e.g., Wednesday)
-          • `%b`  abbreviated month name (e.g., Sep)
-          • `%B`  full month name (e.g., September)
-          • `%c`  date and time (e.g., 09/16/98 23:48:10)
-          • `%d`  day of the month (16) [01-31]
-          • `%H`  hour, using a 24-hour clock (23) [00-23]
-          • `%I`  hour, using a 12-hour clock (11) [01-12]
-          • `%M`  minute (48) [00-59]
-          • `%m`  month (09) [01-12]
-          • `%p`  either "am" or "pm" (pm)
-          • `%S`  second (10) [00-61]
-          • `%w`  weekday (3) [0-6 = Sunday-Saturday]
-          • `%x`  date (e.g., 09/16/98)
-          • `%X`  time (e.g., 23:48:10)
-          • `%Y`  full year (1998)
-          • `%y`  two-digit year (98) [00-99]
-          • `%%`  the character `%`
-          • `%R`  relative (e.g., 4 months ago)
+        • `%a`  abbreviated weekday name (e.g., Wed)
+        • `%A`  full weekday name (e.g., Wednesday)
+        • `%b`  abbreviated month name (e.g., Sep)
+        • `%B`  full month name (e.g., September)
+        • `%c`  date and time (e.g., 09/16/98 23:48:10)
+        • `%d`  day of the month (16) [01-31]
+        • `%H`  hour, using a 24-hour clock (23) [00-23]
+        • `%I`  hour, using a 12-hour clock (11) [01-12]
+        • `%M`  minute (48) [00-59]
+        • `%m`  month (09) [01-12]
+        • `%p`  either "am" or "pm" (pm)
+        • `%S`  second (10) [00-61]
+        • `%w`  weekday (3) [0-6 = Sunday-Saturday]
+        • `%x`  date (e.g., 09/16/98)
+        • `%X`  time (e.g., 23:48:10)
+        • `%Y`  full year (1998)
+        • `%y`  two-digit year (98) [00-99]
+        • `%%`  the character `%`
+        • `%R`  relative (e.g., 4 months ago)
 
-      When a function:
-        Parameters: ~
-          {name}       Git user name returned from `git config user.name` .
-          {blame_info} Table with the following keys:
-                         • `abbrev_sha`: string
-                         • `orig_lnum`: integer
-                         • `final_lnum`: integer
-                         • `author`: string
-                         • `author_mail`: string
-                         • `author_time`: integer
-                         • `author_tz`: string
-                         • `committer`: string
-                         • `committer_mail`: string
-                         • `committer_time`: integer
-                         • `committer_tz`: string
-                         • `summary`: string
-                         • `previous`: string
-                         • `filename`: string
-                         • `boundary`: true?
+    When a function:
+      Parameters: ~
+        {name}       Git user name returned from `git config user.name` .
+        {blame_info} Table with the following keys:
+                       • `abbrev_sha`: string
+                       • `orig_lnum`: integer
+                       • `final_lnum`: integer
+                       • `author`: string
+                       • `author_mail`: string
+                       • `author_time`: integer
+                       • `author_tz`: string
+                       • `committer`: string
+                       • `committer_mail`: string
+                       • `committer_time`: integer
+                       • `committer_tz`: string
+                       • `summary`: string
+                       • `previous`: string
+                       • `filename`: string
+                       • `boundary`: true?
 
-                       Note that the keys map onto the output of:
-                         `git blame --line-porcelain`
+                     Note that the keys map onto the output of:
+                       `git blame --line-porcelain`
 
-        Return: ~
-          The result of this function is passed directly to the `opts.virt_text`
-          field of |nvim_buf_set_extmark| and thus must be a list of
-          [text, highlight] tuples.
+      Return: ~
+        The result of this function is passed directly to the `opts.virt_text`
+        field of |nvim_buf_set_extmark| and thus must be a list of
+        [text, highlight] tuples.
 
 current_line_blame_formatter_nc
                              *gitsigns-config-current_line_blame_formatter_nc*
-      Type: `string|function`, Default: `" <author>"`
+    Type: `string|function`, Default: `" <author>"`
 
-      String or function used to format the virtual text of
-      |gitsigns-config-current_line_blame| for lines that aren't committed.
+    String or function used to format the virtual text of
+    |gitsigns-config-current_line_blame| for lines that aren't committed.
 
-      See |gitsigns-config-current_line_blame_formatter| for more information.
+    See |gitsigns-config-current_line_blame_formatter| for more information.
 
 trouble                                              *gitsigns-config-trouble*
-      Type: `boolean`, Default: true if installed
+    Type: `boolean`, Default: true if installed
 
-      When using setqflist() or setloclist(), open Trouble instead of the
-      quickfix/location list window.
+    When using setqflist() or setloclist(), open Trouble instead of the
+    quickfix/location list window.
 
 gh                                                        *gitsigns-config-gh*
-      Type: `boolean`, Default: `false`
+    Type: `boolean`, Default: `false`
 
-      Enable GitHub integration. This allows the following features:
-      • `:Gitsigns blame_line` will show PR numbers (with a hyperlink)
+    Enable GitHub integration. This allows the following features:
+    • `:Gitsigns blame_line` will show PR numbers (with a hyperlink)
 
 word_diff                                          *gitsigns-config-word_diff*
-      Type: `boolean`, Default: `false`
+    Type: `boolean`, Default: `false`
 
-      Highlight intra-line word differences in the buffer.
-      Requires `config.diff_opts.internal = true` .
+    Highlight intra-line word differences in the buffer.
+    Requires `config.diff_opts.internal = true` .
 
-      Uses the highlights:
-        • For word diff in previews:
-          • `GitSignsAddInline`
-          • `GitSignsChangeInline`
-          • `GitSignsDeleteInline`
-        • For word diff in buffer:
-          • `GitSignsAddLnInline`
-          • `GitSignsChangeLnInline`
-          • `GitSignsDeleteLnInline`
-        • For word diff in virtual lines (e.g. show_deleted):
-          • `GitSignsAddVirtLnInline`
-          • `GitSignsChangeVirtLnInline`
-          • `GitSignsDeleteVirtLnInline`
+    Uses the highlights:
+      • For word diff in previews:
+        • `GitSignsAddInline`
+        • `GitSignsChangeInline`
+        • `GitSignsDeleteInline`
+      • For word diff in buffer:
+        • `GitSignsAddLnInline`
+        • `GitSignsChangeLnInline`
+        • `GitSignsDeleteLnInline`
+      • For word diff in virtual lines (e.g. show_deleted):
+        • `GitSignsAddVirtLnInline`
+        • `GitSignsChangeVirtLnInline`
+        • `GitSignsDeleteVirtLnInline`
 
 debug_mode                                        *gitsigns-config-debug_mode*
-      Type: `boolean`, Default: `false`
+    Type: `boolean`, Default: `false`
 
-      Enables debug logging and makes the following functions
-      available: `dump_cache`, `debug_messages`, `clear_debug`.
-
+    Enables debug logging and makes the following functions
+    available: `dump_cache`, `debug_messages`, `clear_debug`.
 
 ==============================================================================
 HIGHLIGHT GROUPS                                   *gitsigns-highlight-groups*
@@ -1059,299 +1059,299 @@ searching for other defined highlights in order.
 
                                                         *hl-GitSignsAdd*
 GitSignsAdd
-        Used for the text of 'add' signs.
+    Used for the text of 'add' signs.
 
-        Fallbacks: `GitGutterAdd`, `SignifySignAdd`, `DiffAddedGutter`, `Added`, `DiffAdd`
+    Fallbacks: `GitGutterAdd`, `SignifySignAdd`, `DiffAddedGutter`, `Added`, `DiffAdd`
                                                         *hl-GitSignsChange*
 GitSignsChange
-        Used for the text of 'change' signs.
+    Used for the text of 'change' signs.
 
-        Fallbacks: `GitGutterChange`, `SignifySignChange`, `DiffModifiedGutter`, `Changed`, `DiffChange`
+    Fallbacks: `GitGutterChange`, `SignifySignChange`, `DiffModifiedGutter`, `Changed`, `DiffChange`
                                                         *hl-GitSignsDelete*
 GitSignsDelete
-        Used for the text of 'delete' signs.
+    Used for the text of 'delete' signs.
 
-        Fallbacks: `GitGutterDelete`, `SignifySignDelete`, `DiffRemovedGutter`, `Removed`, `DiffDelete`
+    Fallbacks: `GitGutterDelete`, `SignifySignDelete`, `DiffRemovedGutter`, `Removed`, `DiffDelete`
                                                         *hl-GitSignsChangedelete*
 GitSignsChangedelete
-        Used for the text of 'changedelete' signs.
+    Used for the text of 'changedelete' signs.
 
-        Fallbacks: `GitSignsChange`
+    Fallbacks: `GitSignsChange`
                                                         *hl-GitSignsTopdelete*
 GitSignsTopdelete
-        Used for the text of 'topdelete' signs.
+    Used for the text of 'topdelete' signs.
 
-        Fallbacks: `GitSignsDelete`
+    Fallbacks: `GitSignsDelete`
                                                         *hl-GitSignsUntracked*
 GitSignsUntracked
-        Used for the text of 'untracked' signs.
+    Used for the text of 'untracked' signs.
 
-        Fallbacks: `GitSignsAdd`
+    Fallbacks: `GitSignsAdd`
                                                         *hl-GitSignsAddNr*
 GitSignsAddNr
-        Used for number column (when `config.numhl == true`) of 'add' signs.
+    Used for number column (when `config.numhl == true`) of 'add' signs.
 
-        Fallbacks: `GitGutterAddLineNr`, `GitSignsAdd`
+    Fallbacks: `GitGutterAddLineNr`, `GitSignsAdd`
                                                         *hl-GitSignsChangeNr*
 GitSignsChangeNr
-        Used for number column (when `config.numhl == true`) of 'change' signs.
+    Used for number column (when `config.numhl == true`) of 'change' signs.
 
-        Fallbacks: `GitGutterChangeLineNr`, `GitSignsChange`
+    Fallbacks: `GitGutterChangeLineNr`, `GitSignsChange`
                                                         *hl-GitSignsDeleteNr*
 GitSignsDeleteNr
-        Used for number column (when `config.numhl == true`) of 'delete' signs.
+    Used for number column (when `config.numhl == true`) of 'delete' signs.
 
-        Fallbacks: `GitGutterDeleteLineNr`, `GitSignsDelete`
+    Fallbacks: `GitGutterDeleteLineNr`, `GitSignsDelete`
                                                         *hl-GitSignsChangedeleteNr*
 GitSignsChangedeleteNr
-        Used for number column (when `config.numhl == true`) of 'changedelete' signs.
+    Used for number column (when `config.numhl == true`) of 'changedelete' signs.
 
-        Fallbacks: `GitSignsChangeNr`
+    Fallbacks: `GitSignsChangeNr`
                                                         *hl-GitSignsTopdeleteNr*
 GitSignsTopdeleteNr
-        Used for number column (when `config.numhl == true`) of 'topdelete' signs.
+    Used for number column (when `config.numhl == true`) of 'topdelete' signs.
 
-        Fallbacks: `GitSignsDeleteNr`
+    Fallbacks: `GitSignsDeleteNr`
                                                         *hl-GitSignsUntrackedNr*
 GitSignsUntrackedNr
-        Used for number column (when `config.numhl == true`) of 'untracked' signs.
+    Used for number column (when `config.numhl == true`) of 'untracked' signs.
 
-        Fallbacks: `GitSignsAddNr`
+    Fallbacks: `GitSignsAddNr`
                                                         *hl-GitSignsAddLn*
 GitSignsAddLn
-        Used for buffer line (when `config.linehl == true`) of 'add' signs.
+    Used for buffer line (when `config.linehl == true`) of 'add' signs.
 
-        Fallbacks: `GitGutterAddLine`, `SignifyLineAdd`, `DiffAdd`
+    Fallbacks: `GitGutterAddLine`, `SignifyLineAdd`, `DiffAdd`
                                                         *hl-GitSignsChangeLn*
 GitSignsChangeLn
-        Used for buffer line (when `config.linehl == true`) of 'change' signs.
+    Used for buffer line (when `config.linehl == true`) of 'change' signs.
 
-        Fallbacks: `GitGutterChangeLine`, `SignifyLineChange`, `DiffChange`
+    Fallbacks: `GitGutterChangeLine`, `SignifyLineChange`, `DiffChange`
                                                         *hl-GitSignsChangedeleteLn*
 GitSignsChangedeleteLn
-        Used for buffer line (when `config.linehl == true`) of 'changedelete' signs.
+    Used for buffer line (when `config.linehl == true`) of 'changedelete' signs.
 
-        Fallbacks: `GitSignsChangeLn`
+    Fallbacks: `GitSignsChangeLn`
                                                         *hl-GitSignsTopdeleteLn*
 GitSignsTopdeleteLn
-        Used for buffer line (when `config.linehl == true`) of 'topdelete' signs.
+    Used for buffer line (when `config.linehl == true`) of 'topdelete' signs.
 
-        Fallbacks: `GitSignsDeleteLn`
+    Fallbacks: `GitSignsDeleteLn`
                                                         *hl-GitSignsUntrackedLn*
 GitSignsUntrackedLn
-        Used for buffer line (when `config.linehl == true`) of 'untracked' signs.
+    Used for buffer line (when `config.linehl == true`) of 'untracked' signs.
 
-        Fallbacks: `GitSignsAddLn`
+    Fallbacks: `GitSignsAddLn`
                                                         *hl-GitSignsAddCul*
 GitSignsAddCul
-        Used for the text (when the cursor is on the same line as the sign) of 'add' signs.
+    Used for the text (when the cursor is on the same line as the sign) of 'add' signs.
 
-        Fallbacks: `GitSignsAdd`
+    Fallbacks: `GitSignsAdd`
                                                         *hl-GitSignsChangeCul*
 GitSignsChangeCul
-        Used for the text (when the cursor is on the same line as the sign) of 'change' signs.
+    Used for the text (when the cursor is on the same line as the sign) of 'change' signs.
 
-        Fallbacks: `GitSignsChange`
+    Fallbacks: `GitSignsChange`
                                                         *hl-GitSignsDeleteCul*
 GitSignsDeleteCul
-        Used for the text (when the cursor is on the same line as the sign) of 'delete' signs.
+    Used for the text (when the cursor is on the same line as the sign) of 'delete' signs.
 
-        Fallbacks: `GitSignsDelete`
+    Fallbacks: `GitSignsDelete`
                                                         *hl-GitSignsChangedeleteCul*
 GitSignsChangedeleteCul
-        Used for the text (when the cursor is on the same line as the sign) of 'changedelete' signs.
+    Used for the text (when the cursor is on the same line as the sign) of 'changedelete' signs.
 
-        Fallbacks: `GitSignsChangeCul`
+    Fallbacks: `GitSignsChangeCul`
                                                         *hl-GitSignsTopdeleteCul*
 GitSignsTopdeleteCul
-        Used for the text (when the cursor is on the same line as the sign) of 'topdelete' signs.
+    Used for the text (when the cursor is on the same line as the sign) of 'topdelete' signs.
 
-        Fallbacks: `GitSignsDeleteCul`
+    Fallbacks: `GitSignsDeleteCul`
                                                         *hl-GitSignsUntrackedCul*
 GitSignsUntrackedCul
-        Used for the text (when the cursor is on the same line as the sign) of 'untracked' signs.
+    Used for the text (when the cursor is on the same line as the sign) of 'untracked' signs.
 
-        Fallbacks: `GitSignsAddCul`
+    Fallbacks: `GitSignsAddCul`
                                                         *hl-GitSignsStagedAdd*
 GitSignsStagedAdd
-        Used for the text of 'add' staged signs.
+    Used for the text of 'add' staged signs.
 
-        Fallbacks: `GitSignsAdd` (fg=50%)
+    Fallbacks: `GitSignsAdd` (fg=50%)
                                                         *hl-GitSignsStagedChange*
 GitSignsStagedChange
-        Used for the text of 'change' staged signs.
+    Used for the text of 'change' staged signs.
 
-        Fallbacks: `GitSignsChange` (fg=50%)
+    Fallbacks: `GitSignsChange` (fg=50%)
                                                         *hl-GitSignsStagedDelete*
 GitSignsStagedDelete
-        Used for the text of 'delete' staged signs.
+    Used for the text of 'delete' staged signs.
 
-        Fallbacks: `GitSignsDelete` (fg=50%)
+    Fallbacks: `GitSignsDelete` (fg=50%)
                                                         *hl-GitSignsStagedChangedelete*
 GitSignsStagedChangedelete
-        Used for the text of 'changedelete' staged signs.
+    Used for the text of 'changedelete' staged signs.
 
-        Fallbacks: `GitSignsChangedelete` (fg=50%)
+    Fallbacks: `GitSignsChangedelete` (fg=50%)
                                                         *hl-GitSignsStagedTopdelete*
 GitSignsStagedTopdelete
-        Used for the text of 'topdelete' staged signs.
+    Used for the text of 'topdelete' staged signs.
 
-        Fallbacks: `GitSignsTopdelete` (fg=50%)
+    Fallbacks: `GitSignsTopdelete` (fg=50%)
                                                         *hl-GitSignsStagedUntracked*
 GitSignsStagedUntracked
-        Used for the text of 'untracked' staged signs.
+    Used for the text of 'untracked' staged signs.
 
-        Fallbacks: `GitSignsUntracked` (fg=50%)
+    Fallbacks: `GitSignsUntracked` (fg=50%)
                                                         *hl-GitSignsStagedAddNr*
 GitSignsStagedAddNr
-        Used for number column (when `config.numhl == true`) of 'add' staged signs.
+    Used for number column (when `config.numhl == true`) of 'add' staged signs.
 
-        Fallbacks: `GitSignsAddNr` (fg=50%)
+    Fallbacks: `GitSignsAddNr` (fg=50%)
                                                         *hl-GitSignsStagedChangeNr*
 GitSignsStagedChangeNr
-        Used for number column (when `config.numhl == true`) of 'change' staged signs.
+    Used for number column (when `config.numhl == true`) of 'change' staged signs.
 
-        Fallbacks: `GitSignsChangeNr` (fg=50%)
+    Fallbacks: `GitSignsChangeNr` (fg=50%)
                                                         *hl-GitSignsStagedDeleteNr*
 GitSignsStagedDeleteNr
-        Used for number column (when `config.numhl == true`) of 'delete' staged signs.
+    Used for number column (when `config.numhl == true`) of 'delete' staged signs.
 
-        Fallbacks: `GitSignsDeleteNr` (fg=50%)
+    Fallbacks: `GitSignsDeleteNr` (fg=50%)
                                                         *hl-GitSignsStagedChangedeleteNr*
 GitSignsStagedChangedeleteNr
-        Used for number column (when `config.numhl == true`) of 'changedelete' staged signs.
+    Used for number column (when `config.numhl == true`) of 'changedelete' staged signs.
 
-        Fallbacks: `GitSignsChangedeleteNr` (fg=50%)
+    Fallbacks: `GitSignsChangedeleteNr` (fg=50%)
                                                         *hl-GitSignsStagedTopdeleteNr*
 GitSignsStagedTopdeleteNr
-        Used for number column (when `config.numhl == true`) of 'topdelete' staged signs.
+    Used for number column (when `config.numhl == true`) of 'topdelete' staged signs.
 
-        Fallbacks: `GitSignsTopdeleteNr` (fg=50%)
+    Fallbacks: `GitSignsTopdeleteNr` (fg=50%)
                                                         *hl-GitSignsStagedUntrackedNr*
 GitSignsStagedUntrackedNr
-        Used for number column (when `config.numhl == true`) of 'untracked' staged signs.
+    Used for number column (when `config.numhl == true`) of 'untracked' staged signs.
 
-        Fallbacks: `GitSignsUntrackedNr` (fg=50%)
+    Fallbacks: `GitSignsUntrackedNr` (fg=50%)
                                                         *hl-GitSignsStagedAddLn*
 GitSignsStagedAddLn
-        Used for buffer line (when `config.linehl == true`) of 'add' staged signs.
+    Used for buffer line (when `config.linehl == true`) of 'add' staged signs.
 
-        Fallbacks: `GitSignsAddLn` (fg=50%)
+    Fallbacks: `GitSignsAddLn` (fg=50%)
                                                         *hl-GitSignsStagedChangeLn*
 GitSignsStagedChangeLn
-        Used for buffer line (when `config.linehl == true`) of 'change' staged signs.
+    Used for buffer line (when `config.linehl == true`) of 'change' staged signs.
 
-        Fallbacks: `GitSignsChangeLn` (fg=50%)
+    Fallbacks: `GitSignsChangeLn` (fg=50%)
                                                         *hl-GitSignsStagedChangedeleteLn*
 GitSignsStagedChangedeleteLn
-        Used for buffer line (when `config.linehl == true`) of 'changedelete' staged signs.
+    Used for buffer line (when `config.linehl == true`) of 'changedelete' staged signs.
 
-        Fallbacks: `GitSignsChangedeleteLn` (fg=50%)
+    Fallbacks: `GitSignsChangedeleteLn` (fg=50%)
                                                         *hl-GitSignsStagedTopdeleteLn*
 GitSignsStagedTopdeleteLn
-        Used for buffer line (when `config.linehl == true`) of 'topdelete' staged signs.
+    Used for buffer line (when `config.linehl == true`) of 'topdelete' staged signs.
 
-        Fallbacks: `GitSignsTopdeleteLn` (fg=50%)
+    Fallbacks: `GitSignsTopdeleteLn` (fg=50%)
                                                         *hl-GitSignsStagedUntrackedLn*
 GitSignsStagedUntrackedLn
-        Used for buffer line (when `config.linehl == true`) of 'untracked' staged signs.
+    Used for buffer line (when `config.linehl == true`) of 'untracked' staged signs.
 
-        Fallbacks: `GitSignsUntrackedLn` (fg=50%)
+    Fallbacks: `GitSignsUntrackedLn` (fg=50%)
                                                         *hl-GitSignsStagedAddCul*
 GitSignsStagedAddCul
-        Used for the text (when the cursor is on the same line as the sign) of 'add' staged signs.
+    Used for the text (when the cursor is on the same line as the sign) of 'add' staged signs.
 
-        Fallbacks: `GitSignsAddCul` (fg=50%)
+    Fallbacks: `GitSignsAddCul` (fg=50%)
                                                         *hl-GitSignsStagedChangeCul*
 GitSignsStagedChangeCul
-        Used for the text (when the cursor is on the same line as the sign) of 'change' staged signs.
+    Used for the text (when the cursor is on the same line as the sign) of 'change' staged signs.
 
-        Fallbacks: `GitSignsChangeCul` (fg=50%)
+    Fallbacks: `GitSignsChangeCul` (fg=50%)
                                                         *hl-GitSignsStagedDeleteCul*
 GitSignsStagedDeleteCul
-        Used for the text (when the cursor is on the same line as the sign) of 'delete' staged signs.
+    Used for the text (when the cursor is on the same line as the sign) of 'delete' staged signs.
 
-        Fallbacks: `GitSignsDeleteCul` (fg=50%)
+    Fallbacks: `GitSignsDeleteCul` (fg=50%)
                                                         *hl-GitSignsStagedChangedeleteCul*
 GitSignsStagedChangedeleteCul
-        Used for the text (when the cursor is on the same line as the sign) of 'changedelete' staged signs.
+    Used for the text (when the cursor is on the same line as the sign) of 'changedelete' staged signs.
 
-        Fallbacks: `GitSignsChangedeleteCul` (fg=50%)
+    Fallbacks: `GitSignsChangedeleteCul` (fg=50%)
                                                         *hl-GitSignsStagedTopdeleteCul*
 GitSignsStagedTopdeleteCul
-        Used for the text (when the cursor is on the same line as the sign) of 'topdelete' staged signs.
+    Used for the text (when the cursor is on the same line as the sign) of 'topdelete' staged signs.
 
-        Fallbacks: `GitSignsTopdeleteCul` (fg=50%)
+    Fallbacks: `GitSignsTopdeleteCul` (fg=50%)
                                                         *hl-GitSignsStagedUntrackedCul*
 GitSignsStagedUntrackedCul
-        Used for the text (when the cursor is on the same line as the sign) of 'untracked' staged signs.
+    Used for the text (when the cursor is on the same line as the sign) of 'untracked' staged signs.
 
-        Fallbacks: `GitSignsUntrackedCul` (fg=50%)
+    Fallbacks: `GitSignsUntrackedCul` (fg=50%)
                                                         *hl-GitSignsAddPreview*
 GitSignsAddPreview
-        Used for added lines in previews.
+    Used for added lines in previews.
 
-        Fallbacks: `GitGutterAddLine`, `SignifyLineAdd`, `DiffAdd`
+    Fallbacks: `GitGutterAddLine`, `SignifyLineAdd`, `DiffAdd`
                                                         *hl-GitSignsDeletePreview*
 GitSignsDeletePreview
-        Used for deleted lines in previews.
+    Used for deleted lines in previews.
 
-        Fallbacks: `GitGutterDeleteLine`, `SignifyLineDelete`, `DiffDelete`
+    Fallbacks: `GitGutterDeleteLine`, `SignifyLineDelete`, `DiffDelete`
                                                         *hl-GitSignsNoEOLPreview*
 GitSignsNoEOLPreview
-        Used for "No newline at end of file".
+    Used for "No newline at end of file".
 
-        Fallbacks: `DiffNoEOL`, `Constant`
+    Fallbacks: `DiffNoEOL`, `Constant`
                                                         *hl-GitSignsCurrentLineBlame*
 GitSignsCurrentLineBlame
-        Used for current line blame.
+    Used for current line blame.
 
-        Fallbacks: `NonText`
+    Fallbacks: `NonText`
                                                         *hl-GitSignsAddInline*
 GitSignsAddInline
-        Used for added word diff regions in inline previews.
+    Used for added word diff regions in inline previews.
 
-        Fallbacks: `TermCursor`
+    Fallbacks: `TermCursor`
                                                         *hl-GitSignsDeleteInline*
 GitSignsDeleteInline
-        Used for deleted word diff regions in inline previews.
+    Used for deleted word diff regions in inline previews.
 
-        Fallbacks: `TermCursor`
+    Fallbacks: `TermCursor`
                                                         *hl-GitSignsChangeInline*
 GitSignsChangeInline
-        Used for changed word diff regions in inline previews.
+    Used for changed word diff regions in inline previews.
 
-        Fallbacks: `TermCursor`
+    Fallbacks: `TermCursor`
                                                         *hl-GitSignsAddLnInline*
 GitSignsAddLnInline
-        Used for added word diff regions when `config.word_diff == true`.
+    Used for added word diff regions when `config.word_diff == true`.
 
-        Fallbacks: `GitSignsAddInline`
+    Fallbacks: `GitSignsAddInline`
                                                         *hl-GitSignsChangeLnInline*
 GitSignsChangeLnInline
-        Used for changed word diff regions when `config.word_diff == true`.
+    Used for changed word diff regions when `config.word_diff == true`.
 
-        Fallbacks: `GitSignsChangeInline`
+    Fallbacks: `GitSignsChangeInline`
                                                         *hl-GitSignsDeleteLnInline*
 GitSignsDeleteLnInline
-        Used for deleted word diff regions when `config.word_diff == true`.
+    Used for deleted word diff regions when `config.word_diff == true`.
 
-        Fallbacks: `GitSignsDeleteInline`
+    Fallbacks: `GitSignsDeleteInline`
                                                         *hl-GitSignsDeleteVirtLn*
 GitSignsDeleteVirtLn
-        Used for deleted lines shown by inline `preview_hunk_inline()` or `show_deleted()`.
+    Used for deleted lines shown by inline `preview_hunk_inline()` or `show_deleted()`.
 
-        Fallbacks: `GitGutterDeleteLine`, `SignifyLineDelete`, `DiffDelete`
+    Fallbacks: `GitGutterDeleteLine`, `SignifyLineDelete`, `DiffDelete`
                                                         *hl-GitSignsDeleteVirtLnInLine*
 GitSignsDeleteVirtLnInLine
-        Used for word diff regions in lines shown by inline `preview_hunk_inline()` or `show_deleted()`.
+    Used for word diff regions in lines shown by inline `preview_hunk_inline()` or `show_deleted()`.
 
-        Fallbacks: `GitSignsDeleteLnInline`
+    Fallbacks: `GitSignsDeleteLnInline`
                                                         *hl-GitSignsVirtLnum*
 GitSignsVirtLnum
-        Used for line numbers in inline hunks previews.
+    Used for line numbers in inline hunks previews.
 
-        Fallbacks: `GitSignsDeleteVirtLn`
+    Fallbacks: `GitSignsDeleteVirtLn`
 
 ==============================================================================
 COMMAND                                                      *gitsigns-command*
