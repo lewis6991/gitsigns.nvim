@@ -229,11 +229,17 @@ function M.match_debug_messages(spec)
   end)
 end
 
+function M.setup_path()
+  exec_lua(function(path)
+    package.path = path
+  end, package.path)
+end
+
 --- @param config? table
 --- @param on_attach? boolean
 function M.setup_gitsigns(config, on_attach)
-  exec_lua(function(path, config0, on_attach0)
-    package.path = path
+  M.setup_path()
+  exec_lua(function(config0, on_attach0)
     if config0 and config0.on_attach then
       local maps = config0.on_attach --[[@as [string,string,string][] ]]
       config0.on_attach = function(bufnr)
@@ -249,7 +255,7 @@ function M.setup_gitsigns(config, on_attach)
     end
     require('gitsigns').setup(config0)
     vim.o.diffopt = 'internal,filler,closeoff'
-  end, package.path, config, on_attach)
+  end, config, on_attach)
 end
 
 --- @param status table<string,string|integer>
