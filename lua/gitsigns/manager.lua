@@ -455,11 +455,14 @@ M.update = throttle_async({ hash = 1, schedule = true }, function(bufnr)
   end)
 end)
 
-M.update_sync_debounced = debounce_trailing(function()
-  return config.update_debounce
-end, function(bufnr)
+M.update_sync_debounced = debounce_trailing({
+  timeout = function()
+    return config.update_debounce
+  end,
+  hash = 1,
+}, function(bufnr)
   async.run(M.update, bufnr):raise_on_error()
-end, 1)
+end)
 
 --- @param bufnr integer
 --- @param keep_signs? boolean

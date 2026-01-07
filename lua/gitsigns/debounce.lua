@@ -2,6 +2,10 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 local M = {}
 
+--- @class gitsigns.debounce.debounce_trailing.Opts
+--- @field timeout integer|fun():integer Timeout in ms
+--- @field hash? integer|fun(...): any Function that determines id from arguments to `fn`
+
 --- Debounces a function on the trailing edge.
 ---
 --- Example waveform
@@ -13,16 +17,24 @@ local M = {}
 ---   With a debounce period of 3 units, the debounced function fires at 3 and 9.
 ---
 --- @generic F: function
---- @param timeout integer|fun():integer Timeout in ms
+--- @param opts gitsigns.debounce.debounce_trailing.Opts|integer|fun():integer
 --- @param fn F Function to debounce
---- @param hash? integer|fun(...): any Function that determines id from arguments to fn
 --- @return F Debounced function.
-function M.debounce_trailing(timeout, fn, hash)
-  local running = {} --- @type table<any, uv.uv_timer_t>
+function M.debounce_trailing(opts, fn)
+  local timeout --- @type (integer|fun():integer)?
+  local hash --- @type (integer|fun(...): any)?
+
+  if type(opts) == 'table' then
+    timeout = opts.timeout
+    hash = opts.hash
+  else
+    timeout = opts
+  end
 
   -- Normalize hash to a function if it's a number (argument index)
   if type(hash) == 'number' then
     local hash_i = hash
+    --- @return any
     hash = function(...)
       return select(hash_i, ...)
     end
@@ -38,9 +50,11 @@ function M.debounce_trailing(timeout, fn, hash)
     end
   end
 
+  local running = {} --- @type table<any, uv.uv_timer_t?>
+
   return function(...)
     local id = hash and hash(...) or true
-    local argv = { ... }
+    local argv, argc = { ... }, select('#', ...)
 
     local timer = running[id]
     if not timer or timer:is_closing() then
@@ -48,12 +62,10 @@ function M.debounce_trailing(timeout, fn, hash)
       running[id] = timer
     end
 
-    timer:stop() -- Always stop before (re)starting
     timer:start(timeout(), 0, function()
-      timer:stop()
-      running[id] = nil
-      fn(unpack(argv, 1, table.maxn(argv)))
       timer:close()
+      running[id] = nil
+      fn(unpack(argv, 1, argc))
     end)
   end
 end
