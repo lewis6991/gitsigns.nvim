@@ -462,4 +462,19 @@ function M.flatten(x)
   return ret
 end
 
+--- @param fn fun()
+--- @return userdata
+function M.gc_proxy(fn)
+  local proxy = newproxy(true)
+  getmetatable(proxy).__gc = fn
+  return proxy
+end
+
+--- @generic T
+--- @param x T
+--- @return {ref: T}
+function M.weak_ref(x)
+  return setmetatable({ ref = x }, { __mode = 'v' })
+end
+
 return M

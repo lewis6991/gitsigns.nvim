@@ -1,3 +1,4 @@
+--- @diagnostic disable: access-invisible
 local helpers = require('test.gs_helpers')
 
 local clear = helpers.clear
@@ -140,5 +141,64 @@ describe('gitdir_watcher', function()
 
     helpers.check({ signs = {} }, b1)
     helpers.check({ signs = {} }, b2)
+  end)
+
+  it('garbage collects repo and watcher', function()
+    setup_test_repo()
+    helpers.setup_path()
+
+    local result = helpers.exec_lua(function(scratch)
+      local async = require('gitsigns.async')
+      local Repo = require('gitsigns.git.repo')
+
+      local repo, err = async.run(Repo.get, scratch):wait(5000)
+      assert(repo, err)
+
+      local gitdir = repo.gitdir
+      local watcher = repo._watcher
+      local handle = watcher.handle
+
+      local function get_upvalue(fn, key)
+        for i = 1, 50 do
+          local name, value = debug.getupvalue(fn, i)
+          if not name then
+            break
+          end
+          if name == key then
+            return value
+          end
+        end
+      end
+
+      local repo_cache = get_upvalue(Repo.get, 'repo_cache')
+      assert(repo_cache, 'repo_cache not found')
+
+      local weak = setmetatable({ repo, watcher }, { __mode = 'v' })
+
+      --- @diagnostic disable-next-line: unused, assign-type-mismatch
+      --- assign to nil to allow gc
+      watcher, repo = nil, nil
+
+      vim.wait(2000, function()
+        collectgarbage('collect')
+
+        return weak[1] == nil
+          and weak[2] == nil
+          and repo_cache[gitdir] == nil
+          and handle:is_closing()
+      end, 20, false)
+
+      return {
+        repo_gced = weak[1] == nil,
+        watcher_gced = weak[2] == nil,
+        cache_cleared = repo_cache[gitdir] == nil,
+        handle_closed = handle:is_closing(),
+      }
+    end, helpers.scratch)
+
+    eq(true, result.repo_gced)
+    eq(true, result.watcher_gced)
+    eq(true, result.cache_cleared)
+    eq(true, result.handle_closed)
   end)
 end)
