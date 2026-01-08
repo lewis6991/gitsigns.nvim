@@ -151,7 +151,7 @@ end
 ---   local result = task:wait() -- wait indefinitely
 --- ```
 --- @param timeout? integer Timeout in milliseconds
---- @return R... result
+--- @return R
 function Task:wait(timeout)
   local res = pack_len(self:pwait(timeout))
   local stat = res[1]

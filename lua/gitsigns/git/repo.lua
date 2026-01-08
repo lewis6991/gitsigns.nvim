@@ -3,6 +3,7 @@ local git_command = require('gitsigns.git.cmd')
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
 local errors = require('gitsigns.git.errors')
+local Watcher = require('gitsigns.git.repo.watcher')
 
 local check_version = require('gitsigns.git.version').check
 
@@ -19,11 +20,7 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 --- Username configured for the repo.
 --- Needed for to determine "You" in current line blame.
 --- @field username string
---- @field private _watcher_callbacks table<fun(),true>
---- @field private _watcher uv.uv_fs_event_t
---- Used for the debounced section of the watcher handler
---- @field private _watcher_timer? uv.uv_timer_t
---- @field private _watcher_gc userdata Used for garbage collection
+--- @field private _watcher Gitsigns.Repo.Watcher
 local M = {}
 
 --- @param gitdir string
@@ -68,28 +65,16 @@ local function abbrev_head(gitdir)
   end
   return short_sha
 end
-
---- vim.inspect but on one line
---- @param x any
---- @return string
-local function inspect(x)
-  return vim.inspect(x, { indent = '', newline = ' ' })
-end
-
 --- Registers a callback to be invoked on update events.
 ---
 --- The provided callback function `cb` will be stored and called when an update
 --- occurs. Returns a deregister function that, when called, will remove the
 --- callback from the watcher.
 ---
---- @param cb fun() Callback function to be invoked on update.
+--- @param callback fun() Callback function to be invoked on update.
 --- @return fun() deregister Function to remove the callback from the watcher.
-function M:on_update(cb)
-  self._watcher_callbacks[cb] = true
-
-  return function()
-    self._watcher_callbacks[cb] = nil
-  end
+function M:on_update(callback)
+  return self._watcher:on_update(callback)
 end
 
 --- Run git command the with the objects gitdir and toplevel
@@ -169,115 +154,19 @@ end
 --- @type table<string,Gitsigns.Repo?>
 local repo_cache = setmetatable({}, { __mode = 'v' })
 
---- @param fn fun()
---- @return userdata
-local function gc_proxy(fn)
-  local proxy = newproxy(true)
-  getmetatable(proxy).__gc = fn
-  return proxy
-end
-
---- @param cb fun()
-function M:_start_watcher_timer(cb)
-  -- Debounced section
-  self._watcher_timer = self._watcher_timer or assert(uv.new_timer())
-  self._watcher_timer:start(200, 0, function()
-    self._watcher_timer:stop()
-    self._watcher_timer:close()
-    self._watcher_timer = nil
-    vim.schedule(cb)
-  end)
-end
-
-function M:_start_watcher()
-  self._watcher_callbacks = {}
-  self._watcher = assert(uv.new_fs_event())
-
-  local gitdir = self.gitdir
-
-  -- Keep track of changed files, so the debounced section has information
-  -- about what changed.
-  local changed_files = {} --- @type table<string,true>
-
-  self._watcher:start(gitdir, {}, function(err, filename, events)
-    local __FUNC__ = 'watcher_cb'
-
-    -- Do not use `self` in luv callbacks as it prevents garbage collection.
-    -- Must use a weak reference.
-    local repo = repo_cache[gitdir]
-    if not repo then
-      return -- garbage collected
-    end
-
-    if err then
-      log.dprintf('Git dir update error: %s', err)
-      return
-    end
-
-    -- The luv docs say filename is passed as a string but it has been observed
-    -- to sometimes be nil.
-    --    https://github.com/lewis6991/gitsigns.nvim/issues/848
-    if not filename then
-      log.eprint('No filename')
-      return
-    end
-
-    for _, ex in ipairs({
-      '.watchman-cookie',
-      'index.lock',
-    }) do
-      if vim.startswith(filename, ex) then
-        log.dprintf("Git dir update: '%s' %s (ignoring)", filename, inspect(events))
-        return
-      end
-    end
-
-    log.dprintf("Git dir update: '%s' %s", filename, inspect(events))
-
-    changed_files[filename] = true
-
-    -- Debounced section
-    repo:_start_watcher_timer(function()
-      local __FUNC__ = 'watcher (debounced)'
-
-      -- Do not use `self` in luv callbacks as it prevents garbage collection.
-      -- Must use a weak reference.
-      repo = repo_cache[gitdir]
-      if not repo then
-        return -- garbage collected
-      end
-
-      local head_changed = changed_files.HEAD or false
-
-      changed_files = {}
-
-      if head_changed then
-        repo.abbrev_head = abbrev_head(gitdir)
-        log.dprintf('HEAD changed, updating abbrev_head to %s', repo.abbrev_head)
-      end
-
-      for cb in pairs(repo._watcher_callbacks) do
-        vim.schedule(cb)
-      end
-    end)
-  end)
-
-  self._watcher_gc = gc_proxy(function()
-    self._watcher:stop()
-    self._watcher:close()
-  end)
-end
-
 --- @async
 --- @private
 --- @param info Gitsigns.RepoInfo
 --- @return Gitsigns.Repo
-local function new(info)
+function M._new(info)
+  --- @type Gitsigns.Repo
   local self = setmetatable(info, { __index = M })
-  --- @cast self Gitsigns.Repo
-
   self.username = self:command({ 'config', 'user.name' }, { ignore_error = true })[1]
-  self:_start_watcher()
+  self._watcher = Watcher.new(self.gitdir)
+  self._watcher:on_head_update(function()
+    self.abbrev_head = abbrev_head(self.gitdir)
+    log.dprintf('HEAD changed, updating abbrev_head to %s', self.abbrev_head)
+  end)
 
   return self
 end
@@ -300,7 +189,7 @@ function M.get(cwd, gitdir, toplevel)
       return nil, err
     end
 
-    repo_cache[info.gitdir] = repo_cache[info.gitdir] or new(info)
+    repo_cache[info.gitdir] = repo_cache[info.gitdir] or M._new(info)
     return repo_cache[info.gitdir]
   end)
 end
