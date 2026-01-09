@@ -446,17 +446,20 @@ end
 --- Flattens a nested table structure into a flat array of strings. Only
 --- traverses numeric keys, recursively flattening tables and collecting
 --- strings.
---- @param x table<any,any> The input table to flatten.
---- @return string[] A flat array of strings extracted from the nested table.
+--- @param x table<integer,string|string[]?> The input table to flatten.
+--- @return string[] # A flat array of strings extracted from the nested table.
 function M.flatten(x)
   local ret = {} --- @type string[]
-  for k, v in pairs(x) do
-    if type(k) == 'number' then
-      if type(v) == 'table' then
-        vim.list_extend(ret, M.flatten(v))
-      elseif type(v) == 'string' then
-        ret[#ret + 1] = v
-      end
+  for i = 1, table.maxn(x) do
+    local v = x[i]
+    if type(v) == 'table' then
+      vim.list_extend(ret, M.flatten(v))
+    elseif type(v) == 'string' then
+      ret[#ret + 1] = v
+    elseif v == nil then
+      -- skip
+    else
+      error('Expected string or table, got ' .. type(v))
     end
   end
   return ret
