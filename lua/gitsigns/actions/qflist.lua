@@ -86,7 +86,6 @@ local function buildqflist(target)
             obj = ':0:' .. f
           end
           local a = r:get_show_text(obj)
-          async.schedule()
           local hunks = run_diff(a, util.file_lines(f_abs))
           hunks_to_qflist(f_abs, hunks, qflist)
         end

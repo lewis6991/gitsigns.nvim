@@ -34,6 +34,7 @@ local function git_command(args, spec)
 
   --- @type vim.SystemCompleted
   local obj = asystem(cmd, spec)
+  async.schedule()
 
   if not spec.ignore_error and obj.code > 0 then
     log.eprintf(

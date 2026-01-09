@@ -110,7 +110,6 @@ function M.show_commit(base, open, bufnr, ref_list, ref_list_ptr)
     table.remove(res, 6)
   end
 
-  Async.schedule()
   local buffer_name = bcache:get_rev_bufname(base, false)
   local commit_buf = nil
   -- find preexisting commit buffer or create a new one
