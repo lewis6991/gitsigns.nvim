@@ -32,6 +32,10 @@ local function git_command(args, spec)
     spec.text = true
   end
 
+  -- Force C locale to ensure consistent output format regardless of system locale
+  spec.env = spec.env or {}
+  spec.env.LC_ALL = 'C'
+
   --- @type vim.SystemCompleted
   local obj = asystem(cmd, spec)
 
