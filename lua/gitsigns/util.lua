@@ -441,10 +441,8 @@ function M.cygpath(path, mode)
   async.schedule()
 
   local result = vim.split(stdout, '\n')[1]
-  -- Strip trailing newline that may be present in cygpath output on MSYS2
-  while result:sub(-1) == '\n' or result:sub(-1) == '\r' do
-    result = result:sub(1, -2)
-  end
+  -- Strip trailing newline/carriage return that may be present in cygpath output on MSYS2
+  result = result:match('^(.-)[\r\n]*$')
 
   return assert(result)
 end
