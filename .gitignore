@@ -3,3 +3,5 @@ doc/tags
 deps
 emydoc/
 .nvimlog
+*.tar.gz
+*.zip
