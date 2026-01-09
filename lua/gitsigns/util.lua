@@ -442,7 +442,9 @@ function M.cygpath(path, mode)
 
   local result = vim.split(stdout, '\n')[1]
   -- Strip trailing newline/carriage return that may be present in cygpath output on MSYS2
-  result = result:match('^(.-)[\r\n]*$')
+  if result then
+    result = result:match('^(.-)[\r\n]*$')
+  end
 
   return assert(result)
 end
