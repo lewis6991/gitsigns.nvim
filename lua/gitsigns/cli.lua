@@ -59,7 +59,6 @@ end
 --- @async
 --- @param params vim.api.keyset.create_user_command.command_args
 function M.run(params)
-  local __FUNC__ = 'cli.run'
   local pos_args_raw, named_args_raw = argparse.parse_args(params.args)
 
   local func = pos_args_raw[1]

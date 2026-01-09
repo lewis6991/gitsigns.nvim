@@ -1,5 +1,6 @@
 local async = require('gitsigns.async')
 local git_command = require('gitsigns.git.cmd')
+local config = require('gitsigns.config').config
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
 local errors = require('gitsigns.git.errors')
@@ -20,7 +21,7 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 --- Username configured for the repo.
 --- Needed for to determine "You" in current line blame.
 --- @field username string
---- @field private _watcher Gitsigns.Repo.Watcher
+--- @field private _watcher? Gitsigns.Repo.Watcher
 local M = {}
 
 --- @param gitdir string
@@ -74,6 +75,7 @@ end
 --- @param callback fun() Callback function to be invoked on update.
 --- @return fun() deregister Function to remove the callback from the watcher.
 function M:on_update(callback)
+  assert(self._watcher, 'Watcher not initialized')
   return self._watcher:on_update(callback)
 end
 
@@ -162,13 +164,19 @@ function M._new(info)
   --- @type Gitsigns.Repo
   local self = setmetatable(info, { __index = M })
   self.username = self:command({ 'config', 'user.name' }, { ignore_error = true })[1]
-  self._watcher = Watcher.new(self.gitdir)
-  self._watcher:on_head_update(function()
-    self.abbrev_head = abbrev_head(self.gitdir)
-    log.dprintf('HEAD changed, updating abbrev_head to %s', self.abbrev_head)
-  end)
+  if config.watch_gitdir.enable then
+    self._watcher = Watcher.new(self.gitdir)
+    self._watcher:on_head_update(function()
+      self.abbrev_head = abbrev_head(self.gitdir)
+      log.dprintf('HEAD changed, updating abbrev_head to %s', self.abbrev_head)
+    end)
+  end
 
   return self
+end
+
+function M:has_watcher()
+  return self._watcher ~= nil
 end
 
 local sem = async.semaphore(1)

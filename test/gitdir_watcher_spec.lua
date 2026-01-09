@@ -41,18 +41,18 @@ describe('gitdir_watcher', function()
     command('Gitsigns clear_debug')
     edit(test_file)
 
-    local revparse_pat = ('run_job: git .* rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD'):gsub(
+    local revparse_pat = ('system.system: git .* rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD'):gsub(
       '%-',
       '%%-'
     )
 
     match_debug_messages({
-      'attach(1): Attaching (trigger=BufReadPost)',
+      'attach.attach(1): Attaching (trigger=BufReadPost)',
       np(revparse_pat),
-      np('run_job: git .* config user.name'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
-      n('attach(1): Watching git dir'),
-      np('run_job: git .* show .*'),
+      np('system.system: git .* config user.name'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file)),
+      np('attach%.attach%(1%): Watching git dir .*'),
+      np('system.system: git .* show .*'),
     })
 
     eq({ [1] = test_file }, get_bufs())
@@ -63,13 +63,13 @@ describe('gitdir_watcher', function()
     git('mv', test_file, test_file2)
 
     match_debug_messages({
-      p('watcher_cb: Git dir update: .*'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
-      np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
-      n('handle_moved(1): File moved to dummy.txt2'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file2)),
-      np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt to .*/dummy.txt2'),
-      np('run_job: git .* show .*'),
+      p('git.repo.watcher.watcher.handler: Git dir update: .*'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file)),
+      np('system.system: git .* diff %-%-name%-status .* %-%-cached'),
+      n('attach.handle_moved(1): File moved to dummy.txt2'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file2)),
+      np('attach%.handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt to .*/dummy.txt2'),
+      np('system.system: git .* show .*'),
     })
 
     eq({ [1] = test_file2 }, get_bufs())
@@ -81,13 +81,13 @@ describe('gitdir_watcher', function()
     git('mv', test_file2, test_file3)
 
     match_debug_messages({
-      p('watcher_cb: Git dir update: .*'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file2)),
-      np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
-      n('handle_moved(1): File moved to dummy.txt3'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file3)),
-      np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt2 to .*/dummy.txt3'),
-      np('run_job: git .* show .*'),
+      p('git.repo.watcher.watcher.handler: Git dir update: .*'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file2)),
+      np('system.system: git .* diff %-%-name%-status .* %-%-cached'),
+      n('attach.handle_moved(1): File moved to dummy.txt3'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file3)),
+      np('attach%.handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt2 to .*/dummy.txt3'),
+      np('system.system: git .* show .*'),
     })
 
     eq({ [1] = test_file3 }, get_bufs())
@@ -97,14 +97,14 @@ describe('gitdir_watcher', function()
     git('mv', test_file3, test_file)
 
     match_debug_messages({
-      p('watcher_cb: Git dir update: .*'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file3)),
-      np('run_job: git .* diff %-%-name%-status .* %-%-cached'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
-      n('handle_moved(1): Moved file reset'),
-      np('run_job: git .* ls%-files .* ' .. vim.pesc(test_file)),
-      np('handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt3 to .*/dummy.txt'),
-      np('run_job: git .* show .*'),
+      p('git.repo.watcher.watcher.handler: Git dir update: .*'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file3)),
+      np('system.system: git .* diff %-%-name%-status .* %-%-cached'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file)),
+      n('attach.handle_moved(1): Moved file reset'),
+      np('system.system: git .* ls%-files .* ' .. vim.pesc(test_file)),
+      np('attach%.handle_moved%(1%): Renamed buffer 1 from .*/dummy.txt3 to .*/dummy.txt'),
+      np('system.system: git .* show .*'),
     })
 
     eq({ [1] = test_file }, get_bufs())

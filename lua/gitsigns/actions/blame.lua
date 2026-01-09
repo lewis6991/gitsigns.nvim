@@ -332,7 +332,6 @@ end
 --- @async
 --- @param opts Gitsigns.BlameOpts?
 function M.blame(opts)
-  local __FUNC__ = 'blame'
   local bufnr = api.nvim_get_current_buf()
   local win = api.nvim_get_current_win()
   local bcache = cache[bufnr]

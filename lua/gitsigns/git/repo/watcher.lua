@@ -44,6 +44,7 @@ function Watcher.new(gitdir)
     handle:close()
   end)
 
+  log.dprintf('Starting git dir watcher on %s', gitdir)
   self.handle:start(gitdir, {}, Watcher.handler1(util.weak_ref(self)))
 
   return self
@@ -66,8 +67,6 @@ end
 --- @private
 --- @param weak_self {ref:Gitsigns.Repo.Watcher}
 function Watcher.handler2(weak_self)
-  local __FUNC__ = 'watcher (debounced)'
-
   local self = weak_self.ref
   if not self then
     return -- garbage collected
@@ -93,11 +92,12 @@ function Watcher.handler1(weak_self)
   --- @param filename string
   --- @param events { change: boolean?, rename: boolean? }
   return function(err, filename, events)
-    local __FUNC__ = 'watcher_cb'
+    local __FUNC__ = 'watcher.handler1'
 
     local watcher = weak_self.ref
     if not watcher then
-      return -- garbage collected
+      log.dprint('watcher was garbage collected')
+      return
     end
 
     if err then
