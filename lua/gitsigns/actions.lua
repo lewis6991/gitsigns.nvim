@@ -606,7 +606,9 @@ end
 ---     - `"start"`: Line number (1-based)
 ---     - `"count"`: Line count
 M.get_hunks = function(bufnr)
-  bufnr = bufnr or current_buf()
+  if (bufnr or 0) == 0 then
+    bufnr = current_buf()
+  end
   if not cache[bufnr] then
     return
   end
