@@ -170,7 +170,7 @@ end
 function Task:_traceback(msg, _lvl)
   _lvl = _lvl or 0
 
-  local thread = ('[%s] '):format(self._thread)
+  local thread = ('[%s] '):format(tostring(self._thread))
 
   local child = self._current_child
   if getmetatable(child) == Task then
