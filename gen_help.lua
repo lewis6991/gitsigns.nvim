@@ -838,7 +838,7 @@ end
 --- @return string|fun():string
 local function get_marker_text(marker)
   return ({
-    VERSION = 'v1.0.2', -- x-release-please-version
+    VERSION = 'v2.0.0', -- x-release-please-version
     CONFIG = gen_config_doc,
     FUNCTIONS = gen_functions_doc,
     HIGHLIGHTS = gen_highlights_doc,
