@@ -456,10 +456,10 @@ function M.flatten(x)
       vim.list_extend(ret, M.flatten(v))
     elseif type(v) == 'string' then
       ret[#ret + 1] = v
-    elseif v == nil then
+    elseif not v then
       -- skip
     else
-      error('Expected string or table, got ' .. type(v))
+      error('Expected string, table, false or nil, got ' .. type(v))
     end
   end
   return ret

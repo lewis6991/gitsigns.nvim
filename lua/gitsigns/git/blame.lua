@@ -239,6 +239,8 @@ function M.run_blame(obj, contents, lnum, revision, opts)
     return ret, {}
   end
 
+  --- @type Gitsigns.BlameOpts
+  --- EmmyLuaLs/emmylua-analyzer-rust#921
   opts = opts or {}
 
   local ignore_file = obj.repo.toplevel .. '/.git-blame-ignore-revs'
@@ -261,7 +263,7 @@ function M.run_blame(obj, contents, lnum, revision, opts)
       'blame',
       '--incremental',
       contents and { '--contents', '-' },
-      opts.ignore_whitespace and '-w',
+      opts.ignore_whitespace and '-w' or nil,
       lnum and { '-L', type(lnum) == 'table' and (lnum[1] .. ',' .. lnum[2]) or (lnum .. ',+1') },
       opts.extra_opts,
       uv.fs_stat(ignore_file) and { '--ignore-revs-file', ignore_file },
