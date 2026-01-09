@@ -107,6 +107,12 @@ local function create_revision_buf(bufnr, base, relpath)
     return
   end
 
+  -- Schedule to ensure we're not in a fast event context before setting buffer options
+  async.schedule()
+  if not api.nvim_buf_is_valid(dbuf) then
+    return
+  end
+
   -- allow editing the index revision
   if not base then
     vim.bo[dbuf].buftype = 'acwrite'
