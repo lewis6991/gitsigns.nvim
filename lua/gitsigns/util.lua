@@ -458,6 +458,8 @@ function M.flatten(x)
       ret[#ret + 1] = v
     elseif v == nil then
       -- skip
+    elseif type(v) == 'boolean' then
+      -- skip booleans fix
     else
       error('Expected string or table, got ' .. type(v))
     end
