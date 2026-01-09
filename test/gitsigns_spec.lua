@@ -1076,6 +1076,35 @@ describe('gitsigns attach', function()
     eq('main', abbrev_head)
   end)
 
+  it('does not error after git system callbacks (#1425)', function()
+    setup_test_repo()
+    setup_gitsigns(config)
+
+    edit(test_file)
+    wait_for_attach()
+
+    local ok = exec_lua(function()
+      local async = require('gitsigns.async')
+      local git_cmd = require('gitsigns.git.cmd')
+
+      return async
+        .run(function()
+          -- `git_cmd()` ultimately uses `vim.system`, whose on_exit callback runs
+          -- in fast event context. Ensure we yield to the scheduler after the
+          -- command completes so Neovim API calls here don't raise E5560.
+          git_cmd({ '--version' }, { text = true })
+
+          local b = vim.api.nvim_create_buf(false, true)
+          vim.bo[b].buftype = 'nofile'
+          vim.api.nvim_buf_delete(b, { force = true })
+          return true
+        end)
+        :wait()
+    end)
+
+    eq(true, ok)
+  end)
+
   it('does not error when attaching to files out of tree (#1297)', function()
     setup_test_repo()
     setup_gitsigns(config)
