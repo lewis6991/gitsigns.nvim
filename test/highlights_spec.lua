@@ -10,6 +10,7 @@ local expectf = helpers.expectf
 local match_dag = helpers.match_dag
 local p = helpers.p
 local setup_gitsigns = helpers.setup_gitsigns
+local eq = helpers.eq
 
 helpers.env()
 
@@ -81,5 +82,22 @@ describe('highlights', function()
     command('set termguicolors')
     config.linehl = true
     setup_gitsigns(config)
+  end)
+
+  it('get_temp_hl handles equal min/max', function()
+    helpers.setup_path()
+    local res = helpers.exec_lua(function()
+      vim.api.nvim_set_hl(0, 'Normal', { bg = 0x000000 })
+
+      package.loaded['gitsigns.highlight'] = nil
+      local hl = require('gitsigns.highlight')
+
+      local name = hl.get_temp_hl(0, 0, 0, 0.5, true)
+      local info = vim.api.nvim_get_hl(0, { name = name, link = false })
+      return { name = name, fg = info.fg }
+    end)
+
+    assert(res.name:match('^GitSignsColorTemp%.fg%.%d+$') ~= nil)
+    eq(0x00007F, res.fg)
   end)
 end)
