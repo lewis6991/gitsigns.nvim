@@ -152,7 +152,6 @@ end
 --- @param staged? boolean
 --- @return Gitsigns.Signs
 function M.new(staged)
-  local __FUNC__ = 'signs.init'
   local self = setmetatable({}, { __index = M })
   self.config = staged and config.signs_staged or config.signs
   Config.subscribe(staged and 'signs_staged' or 'signs', function()

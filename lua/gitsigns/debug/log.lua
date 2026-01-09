@@ -59,31 +59,128 @@ local function getvarvalue(name, lvl)
   return getfenv(func)[name]
 end
 
+--- @param info debuglib.DebugInfo
+--- @return string
+local function get_cur_module(info)
+  local src = info.source or '???'
+
+  if vim.startswith(src, '@') then
+    src = src:sub(2)
+  end
+  src = src:gsub('^%./', '')
+
+  local rel = src:match('^lua/(.+)$') or src:match('[/\\]lua[/\\](.+)$')
+  local module = (rel or src):gsub('%.lua$', ''):gsub('/init$', ''):gsub('[\\/]', '.')
+  return module
+end
+
+--- @param tbl table
+--- @param func function
+--- @return string?
+local function find_func_name(tbl, func)
+  for k, v in pairs(tbl) do
+    if v == func and type(k) == 'string' then
+      return k
+    end
+  end
+end
+
+--- @param func function?
 --- @param lvl integer
---- @return {name:string, bufnr: integer}
-local function get_context(lvl)
+--- @return string?
+local function get_cur_func_name_from_self(func, lvl)
+  if not func then
+    return
+  end
+
+  local self_tbl = getvarvalue('self', lvl)
+  if type(self_tbl) ~= 'table' then
+    return
+  end
+
+  local name = find_func_name(self_tbl, func)
+  if name then
+    return name
+  end
+
+  local mt = getmetatable(self_tbl)
+  local idx = mt and mt.__index
+  if type(idx) ~= 'table' then
+    return
+  end
+
+  local name1 = find_func_name(idx, func)
+  if name1 then
+    return name1
+  end
+end
+
+--- @param func function?
+--- @param module string?
+--- @return string?
+local function get_cur_func_name_from_loaded(func, module)
+  if not func then
+    return
+  end
+  local tbl = package.loaded[module]
+  if type(tbl) == 'table' then
+    return find_func_name(tbl, func)
+  end
+end
+
+local func_names_cache = {} --- @type table<function, string>
+
+--- @param info debuglib.DebugInfo
+--- @param lvl integer
+--- @param module string?
+--- @return string
+local function get_cur_func_name(info, lvl, module)
   lvl = lvl + 1
 
-  local name = getvarvalue('__FUNC__', lvl)
-  if not name then
-    local name0 = debug.getinfo(lvl, 'n').name or ''
-    name = name0:gsub('(.*)%d+$', '%1')
+  local func = info.func
+
+  if func_names_cache[func] then
+    return func_names_cache[func]
   end
+
+  local name = getvarvalue('__FUNC__', lvl) --[[@as string?]]
+    or info.name
+    or get_cur_func_name_from_self(func, lvl)
+    or get_cur_func_name_from_loaded(func, module)
+    or (info.what == 'main') and 'main'
+    or ('<anonymous@%d>'):format(info.linedefined or 0)
+
+  func_names_cache[func] = name
+
+  return name
+end
+
+--- @param lvl integer
+--- @return {module: string?, name:string, bufnr: integer}
+local function get_context(lvl)
+  lvl = lvl + 1
+  local info = debug.getinfo(lvl, 'nSf') or {} --- @type any
+  local module = get_cur_module(info)
+  local func = get_cur_func_name(info, lvl, module)
+
+  module = module:gsub('^gitsigns%.', '')
+
+  func = func:gsub('(.*)%d+$', '%1')
 
   local bufnr = getvarvalue('bufnr', lvl)
     or getvarvalue('_bufnr', lvl)
     or getvarvalue('cbuf', lvl)
     or getvarvalue('buf', lvl)
 
-  return { name = name, bufnr = bufnr }
+  return { module = module, name = func, bufnr = bufnr }
 end
 
 local function tostring(obj)
   return type(obj) == 'string' and obj or vim.inspect(obj)
 end
 
--- If called in a callback then make sure the callback defines a __FUNC__
--- variable which can be used to identify the name of the function.
+--- If called in a callback then make sure the callback defines a __FUNC__
+--- variable which can be used to identify the name of the function.
 --- @param kind string
 --- @param lvl integer
 --- @param ... any
@@ -96,7 +193,7 @@ local function cprint(kind, lvl, ...)
   local msg = table.concat(msgs, ' ')
   local ctx = get_context(lvl)
   local time = (uv.hrtime() - start_time) / 1e6
-  local ctx1 = ctx.name
+  local ctx1 = ctx.module and ctx.module .. '.' .. ctx.name or ctx.name
   if ctx.bufnr then
     ctx1 = string.format('%s(%s)', ctx1, ctx.bufnr)
   end

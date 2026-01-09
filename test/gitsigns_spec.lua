@@ -39,11 +39,11 @@ local function wait_for_attach(bufnr)
     end, bufnr)
   end)
   match_debug_messages({
-    ('attach(1): attach complete'):format(bufnr or api.nvim_get_current_buf()),
+    ('attach.attach(1): attach complete'):format(bufnr or api.nvim_get_current_buf()),
   })
 end
 
-local revparse_pat = ('run_job: git .* rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD'):gsub(
+local revparse_pat = ('system.system: git .* rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD'):gsub(
   '%-',
   '%%-'
 )
@@ -110,14 +110,14 @@ describe('gitsigns (with screen)', function()
     edit(test_file)
 
     match_dag({
-      'attach(1): Attaching (trigger=BufReadPost)',
-      p('run_job: git .* config user.name'),
+      'attach.attach(1): Attaching (trigger=BufReadPost)',
+      p('system.system: git .* config user.name'),
       p(revparse_pat),
       p(
-        'run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
+        'system.system: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
           .. vim.pesc(test_file)
       ),
-      'attach(1): Watching git dir',
+      p('attach%.attach%(1%): Watching git dir .*'),
     })
 
     check({
@@ -139,10 +139,10 @@ describe('gitsigns (with screen)', function()
     edit(tmpfile)
 
     match_debug_messages({
-      'attach(1): Attaching (trigger=BufReadPost)',
+      'attach.attach(1): Attaching (trigger=BufReadPost)',
       np(revparse_pat),
-      n('new: Not in git repo'),
-      n('attach(1): Empty git obj'),
+      np('Not in git repo'),
+      np('Empty git obj'),
     })
     command('Gitsigns clear_debug')
 
@@ -150,10 +150,10 @@ describe('gitsigns (with screen)', function()
     command('write')
 
     match_debug_messages({
-      n('attach(1): Attaching (trigger=BufWritePost)'),
+      n('attach.attach(1): Attaching (trigger=BufWritePost)'),
       np(revparse_pat),
-      n('new: Not in git repo'),
-      n('attach(1): Empty git obj'),
+      n('git.new: Not in git repo'),
+      n('attach.attach(1): Empty git obj'),
     })
   end)
 
@@ -185,11 +185,11 @@ describe('gitsigns (with screen)', function()
       edit(scratch .. '/.git/index')
 
       match_debug_messages({
-        'attach(1): Attaching (trigger=BufReadPost)',
-        n('run_job: git --version'),
+        'attach.attach(1): Attaching (trigger=BufReadPost)',
+        n('system.system: git --version'),
         p(revparse_pat),
-        n('new: Not in git repo'),
-        n('attach(1): Empty git obj'),
+        n('git.new: Not in git repo'),
+        n('attach.attach(1): Empty git obj'),
       })
     end)
 
@@ -202,11 +202,11 @@ describe('gitsigns (with screen)', function()
       edit(ignored_file)
 
       match_debug_messages({
-        'attach(1): Attaching (trigger=BufReadPost)',
+        'attach.attach(1): Attaching (trigger=BufReadPost)',
         np(revparse_pat),
-        np('run_job: git .* config user.name'),
-        np('run_job: git .* ls%-files .*/dummy_ignored.txt'),
-        n('attach(1): Cannot resolve file in repo'),
+        np('system.system: git .* config user.name'),
+        np('system.system: git .* ls%-files .*/dummy_ignored.txt'),
+        n('attach.attach(1): Cannot resolve file in repo'),
       })
 
       check({ status = { head = 'main' } })
@@ -216,14 +216,14 @@ describe('gitsigns (with screen)', function()
       edit(newfile)
 
       match_debug_messages({
-        'attach(1): Attaching (trigger=BufNewFile)',
+        'attach.attach(1): Attaching (trigger=BufNewFile)',
         np(revparse_pat),
-        np('run_job: git .* config user.name'),
+        np('system.system: git .* config user.name'),
         np(
-          'run_job: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
+          'system.system: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
             .. vim.pesc(newfile)
         ),
-        'attach(1): Cannot resolve file in repo',
+        'attach.attach(1): Cannot resolve file in repo',
       })
 
       check({ status = { head = 'main' } })
@@ -233,8 +233,8 @@ describe('gitsigns (with screen)', function()
       edit(scratch .. '/does/not/exist')
 
       match_debug_messages({
-        'attach(1): Attaching (trigger=BufNewFile)',
-        n('attach(1): Not a path'),
+        'attach.attach(1): Attaching (trigger=BufNewFile)',
+        n('attach.attach(1): Not a path'),
       })
 
       helpers.pcall_err(get_buf_var, 0, 'gitsigns_head')
@@ -244,8 +244,8 @@ describe('gitsigns (with screen)', function()
     it('can run copen', function()
       command('copen')
       match_debug_messages({
-        'attach(2): Attaching (trigger=BufReadPost)',
-        n('attach(2): Non-normal buffer'),
+        'attach.attach(2): Attaching (trigger=BufReadPost)',
+        n('attach.attach(2): Non-normal buffer'),
       })
     end)
 
@@ -518,12 +518,14 @@ describe('gitsigns (with screen)', function()
 
       edit(test_file)
       match_debug_messages({
-        'attach(1): Attaching (trigger=BufReadPost)',
+        'attach.attach(1): Attaching (trigger=BufReadPost)',
         np(revparse_pat),
-        np('run_job: git .* rev%-parse %-%-short HEAD'),
-        np('run_job: git .* config user.name'),
-        np('run_job: git .* %-%-git%-dir .* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*'),
-        n('attach(1): User on_attach() returned false'),
+        np('system.system: git .* rev%-parse %-%-short HEAD'),
+        np('system.system: git .* config user.name'),
+        np(
+          'system.system: git .* %-%-git%-dir .* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*'
+        ),
+        n('attach.attach(1): User on_attach() returned false'),
       })
     end)
   end)
@@ -631,23 +633,23 @@ describe('gitsigns (with screen)', function()
         setup_gitsigns(config)
         edit(newfile)
         match_debug_messages({
-          'attach(1): Attaching (trigger=BufNewFile)',
+          'attach.attach(1): Attaching (trigger=BufNewFile)',
           np(revparse_pat),
-          np('run_job: git .* config user.name'),
-          np('run_job: git .* ls%-files .*'),
-          n('attach(1): Cannot resolve file in repo'),
+          np('system.system: git .* config user.name'),
+          np('system.system: git .* ls%-files .*'),
+          n('attach.attach(1): Cannot resolve file in repo'),
         })
         command('write')
 
         local messages = {
-          'attach(1): Attaching (trigger=BufWritePost)',
+          'attach.attach(1): Attaching (trigger=BufWritePost)',
           np(revparse_pat),
-          np('run_job: git .* ls%-files .*'),
-          n('attach(1): Watching git dir'),
+          np('system.system: git .* ls%-files .*'),
+          np('attach%.attach%(1%): Watching git dir .*'),
         }
 
         if not internal_diff then
-          table.insert(messages, np('run_job: git .* diff .* /.* /.*'))
+          table.insert(messages, np('system.system: git .* diff .* /.* /.*'))
         end
 
         match_debug_messages(messages)
@@ -853,10 +855,10 @@ describe('gitsigns (with screen)', function()
     end
 
     match_debug_messages({
-      'attach_autocmd(2): Attaching is disabled',
-      n('attach_autocmd(3): Attaching is disabled'),
-      n('attach_autocmd(4): Attaching is disabled'),
-      n('attach_autocmd(5): Attaching is disabled'),
+      'gitsigns.attach_autocmd(2): Attaching is disabled',
+      n('gitsigns.attach_autocmd(3): Attaching is disabled'),
+      n('gitsigns.attach_autocmd(4): Attaching is disabled'),
+      n('gitsigns.attach_autocmd(5): Attaching is disabled'),
     })
   end)
 
@@ -901,10 +903,12 @@ describe('gitsigns (with screen)', function()
 
     edit(uni_filename)
 
-    screen:expect({ grid = [[
+    screen:expect({
+      grid = [[
       ^Lorem ipsum         |
       {6:~                   }|
-    ]] })
+    ]],
+    })
 
     feed('x')
 
@@ -1038,7 +1042,7 @@ describe('gitsigns attach', function()
     edit(('fugitive://%s/.git//'):format(scratch))
     command('Gitsigns attach')
     match_debug_messages({
-      'attach(1): Empty git obj',
+      'attach.attach(1): Empty git obj',
     })
   end)
 
@@ -1085,7 +1089,7 @@ describe('gitsigns attach', function()
 
     match_debug_messages({
       p("get_info: '.*' is outside worktree '.*'"),
-      'attach(1): Empty git obj',
+      'attach.attach(1): Empty git obj',
     })
   end)
 end)

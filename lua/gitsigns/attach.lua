@@ -67,7 +67,6 @@ end
 --- @param _ 'reload'
 --- @param bufnr integer
 local function on_reload(_, bufnr)
-  local __FUNC__ = 'on_reload'
   assert(cache[bufnr]):invalidate()
   dprint('Reload')
   manager.update_sync_debounced(bufnr)
@@ -360,8 +359,8 @@ M.attach = throttle_async({ hash = 1 }, function(cbuf, ctx, aucmd)
 
   cache[cbuf] = Cache.new(cbuf, file, git_obj)
 
-  if config.watch_gitdir.enable then
-    dprintf('Watching git dir')
+  if git_obj.repo:has_watcher() then
+    dprintf('Watching git dir %s', git_obj.repo.gitdir)
 
     --- Throttle to:
     --- - ensure handler is only triggered once per git operation.
