@@ -194,7 +194,8 @@ local function reblame(opts, blame, win, revision, parent)
   vim.cmd.quit()
   api.nvim_set_current_win(win)
 
-  local did_attach = require('gitsigns.actions.diffthis').show(nil, sha)
+  local bufnr = api.nvim_win_get_buf(win)
+  local did_attach = require('gitsigns.actions.diffthis').show(bufnr, sha)
   if not did_attach then
     return
   end
