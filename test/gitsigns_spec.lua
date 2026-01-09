@@ -1092,4 +1092,54 @@ describe('gitsigns attach', function()
       'attach.attach(1): Empty git obj',
     })
   end)
+
+  it('can show revision buffers without fast event errors', function()
+    -- This test exercises the code path that was causing E5560 errors when
+    -- reblaming in blame mode. The error occurred when buffer options were set
+    -- while in a fast event context (from process on_exit callback).
+    -- While this test may not always reproduce the timing-dependent error,
+    -- it validates that the show() function works correctly and that buffer
+    -- options are properly set after async.schedule() is called.
+    setup_test_repo()
+    setup_gitsigns(config)
+
+    -- Create multiple commits to test with
+    write_to_file(test_file, { 'line1', 'line2', 'line3' })
+    git('add', test_file)
+    git('commit', '-m', 'commit 2')
+
+    write_to_file(test_file, { 'line1', 'modified', 'line3' })
+    git('add', test_file)
+    git('commit', '-m', 'commit 3')
+
+    edit(test_file)
+    wait_for_attach()
+
+    -- Get the second commit SHA
+    local commit_sha = vim.trim(system({ 'git', '-C', scratch, 'rev-parse', 'HEAD~1' }))
+
+    -- This simulates what happens during reblame: showing a specific commit
+    -- The fix ensures we don't get E5560 error here
+    command('Gitsigns show ' .. commit_sha)
+
+    -- Wait for the buffer to attach
+    wait_for_attach()
+
+    -- Verify the buffer was created and has correct name pattern
+    local bufname = exec_lua(function()
+      return vim.api.nvim_buf_get_name(0)
+    end)
+
+    -- Verify it's a gitsigns buffer for the commit
+    eq(true, bufname:match('gitsigns://') ~= nil)
+    eq(true, bufname:match(commit_sha) ~= nil)
+
+    -- Verify buffer options were set correctly (this would fail if we hit the fast event error)
+    eq('nowrite', exec_lua(function()
+      return vim.bo.buftype
+    end))
+    eq(false, exec_lua(function()
+      return vim.bo.modifiable
+    end))
+  end)
 end)
