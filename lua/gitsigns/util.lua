@@ -440,7 +440,13 @@ function M.cygpath(path, mode)
 
   async.schedule()
 
-  return assert(vim.split(stdout, '\n')[1])
+  local result = vim.split(stdout, '\n')[1]
+  -- Strip trailing newline/carriage return that may be present in cygpath output on MSYS2
+  if result then
+    result = result:match('^(.-)[\r\n]*$')
+  end
+
+  return assert(result)
 end
 
 --- Flattens a nested table structure into a flat array of strings. Only
