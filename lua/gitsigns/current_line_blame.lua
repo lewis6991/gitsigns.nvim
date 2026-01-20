@@ -58,7 +58,27 @@ end
 --- @return integer
 local function line_len(bufnr, lnum)
   local line = assert(api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, true)[1])
-  return api.nvim_strwidth(line)
+  local len = api.nvim_strwidth(line)
+
+  -- Add width of inline virtual text (e.g., inlay hints)
+  local extmarks = api.nvim_buf_get_extmarks(
+    bufnr,
+    -1,
+    { lnum - 1, 0 },
+    { lnum - 1, -1 },
+    { details = true }
+  )
+
+  for _, extmark in ipairs(extmarks) do
+    local details = extmark[4]
+    if details and details.virt_text and details.virt_text_pos == 'inline' then
+      for _, vt in ipairs(details.virt_text) do
+        len = len + api.nvim_strwidth(vt[1])
+      end
+    end
+  end
+
+  return len
 end
 
 --- @param fmt string
