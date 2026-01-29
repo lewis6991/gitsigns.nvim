@@ -125,6 +125,33 @@ function M.patch_lines(hunk, fileformat)
   return lines
 end
 
+--- @param text string[]
+--- @param hunk Gitsigns.Hunk.Hunk
+--- @param reverse? boolean
+--- @return string[]
+function M.apply_to_text(text, hunk, reverse)
+  local removed = reverse and hunk.added or hunk.removed
+  local added = reverse and hunk.removed or hunk.added
+
+  local start = removed.start
+  if start == 0 then
+    start = 1
+  end
+
+  local new = {} --- @type string[]
+  if start > 1 then
+    vim.list_extend(new, vim.list_slice(text, 1, start - 1))
+  end
+  if added.count > 0 then
+    vim.list_extend(new, added.lines)
+  end
+  local tail_start = start + removed.count
+  if tail_start <= #text then
+    vim.list_extend(new, vim.list_slice(text, tail_start, #text))
+  end
+  return new
+end
+
 local function tointeger(x)
   return tonumber(x) --[[@as integer]]
 end
