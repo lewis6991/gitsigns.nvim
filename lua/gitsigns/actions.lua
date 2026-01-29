@@ -273,10 +273,15 @@ function M.stage_hunk(range, opts, callback)
         message.error(err)
         return
       end
+
+      if bcache.compare_text then
+        bcache.compare_text = Hunks.apply_to_text(bcache.compare_text, hunk, invert)
+      end
+
       table.insert(bcache.staged_diffs, hunk)
     end)
 
-    bcache:invalidate(true)
+    bcache:invalidate()
     update(bufnr)
   end)
 end
@@ -438,11 +443,14 @@ function M.stage_buffer(callback)
       end
 
       for _, hunk in ipairs(hunks) do
+        if bcache.compare_text then
+          bcache.compare_text = Hunks.apply_to_text(bcache.compare_text, hunk)
+        end
         table.insert(bcache.staged_diffs, hunk)
       end
     end)
 
-    bcache:invalidate(true)
+    bcache:invalidate()
     update(bufnr)
   end)
 end
