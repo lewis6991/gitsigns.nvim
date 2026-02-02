@@ -37,7 +37,7 @@ local function findword(x, word)
   return string.find(x, '%f[%w_]' .. word .. '%f[^%w_]') ~= nil
 end
 
---- @param opts? Gitsigns.NavOpts
+--- @param opts? Partial<Gitsigns.NavOpts>
 --- @return Gitsigns.NavOpts
 local function process_nav_opts(opts)
   opts = opts or {}
@@ -68,7 +68,7 @@ local function process_nav_opts(opts)
     opts.target = 'unstaged'
   end
 
-  return opts
+  return opts --[[@as Gitsigns.NavOpts]]
 end
 
 --- @async

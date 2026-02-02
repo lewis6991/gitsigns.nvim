@@ -98,7 +98,7 @@ function SystemObj:is_closing()
   return handle == nil or handle:is_closing() or false
 end
 
---- @param output? fun(err: string?, data: string?)|false
+--- @param output? fun(err: string?, data: string?)|boolean
 --- @param text? boolean
 --- @return uv.uv_stream_t? pipe
 --- @return fun(err: string?, data: string?)? handler
