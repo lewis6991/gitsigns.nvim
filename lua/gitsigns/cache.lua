@@ -77,6 +77,8 @@ function M.new(bufnr, file, git_obj)
   }, { __index = CacheEntry })
 end
 
+--- @param duration integer
+--- @param cb fun()
 local sleep = async.wrap(2, function(duration, cb)
   vim.defer_fn(cb, duration)
 end)

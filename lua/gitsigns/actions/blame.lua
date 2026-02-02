@@ -345,7 +345,7 @@ local function update_right_extmarks(blm_bufnr, blm_win, entries, min_time, max_
   local extmarks = api.nvim_buf_get_extmarks(blm_bufnr, ns, 0, -1, { details = true })
 
   for _, ext in ipairs(extmarks) do
-    local id, row, col, details = ext[1], ext[2], ext[3], ext[4]
+    local id, _row, _col, details = ext[1], ext[2], ext[3], assert(ext[4])
     if details.virt_text_win_col then
       api.nvim_buf_del_extmark(blm_bufnr, ns, id)
     end
