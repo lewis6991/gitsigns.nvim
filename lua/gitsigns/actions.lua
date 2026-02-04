@@ -896,7 +896,9 @@ CP.show_commit = complete_heads
 ---   - `"attached"`: All attached buffers.
 ---   - `"all"`: All modified files for each git
 ---     directory of all attached buffers in addition
----     to the current working directory.
+---     to the current working directory. When
+---     `attach_to_untracked` is enabled, untracked
+---     files are also included.
 --- @param opts Gitsigns.SetqflistOpts? Additional options.
 --- @param callback? fun(err?: string)
 function M.setqflist(target, opts, callback)

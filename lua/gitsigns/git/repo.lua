@@ -105,12 +105,17 @@ end
 
 --- @async
 --- @param base string?
+--- @param include_untracked? boolean
 --- @return string[]
-function M:files_changed(base)
+function M:files_changed(base, include_untracked)
   if base and base ~= ':0' then
     local results = self:command({ 'diff', '--name-status', base })
     for i, result in ipairs(results) do
       results[i] = vim.split(result:gsub('\t', ' '), ' ', { plain = true })[2]
+    end
+    if include_untracked then
+      local untracked = self:command({ 'ls-files', '--others', '--exclude-standard' })
+      vim.list_extend(results, untracked)
     end
     return results
   end
@@ -119,7 +124,8 @@ function M:files_changed(base)
 
   local ret = {} --- @type string[]
   for _, line in ipairs(results) do
-    if line:sub(1, 2):match('^.M') then
+    local status = line:sub(1, 2)
+    if status:match('^.M') or (include_untracked and status == '??') then
       ret[#ret + 1] = line:sub(4, -1)
     end
   end

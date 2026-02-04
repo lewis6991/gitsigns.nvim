@@ -74,7 +74,7 @@ local function buildqflist(target)
     end
 
     for _, r in pairs(repos) do
-      for _, f in ipairs(r:files_changed(config.base)) do
+      for _, f in ipairs(r:files_changed(config.base, config.attach_to_untracked)) do
         local f_abs = r.toplevel .. '/' .. f
         local stat = uv.fs_stat(f_abs)
         if stat and stat.type == 'file' then
