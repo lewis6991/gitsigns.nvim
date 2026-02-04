@@ -160,7 +160,9 @@ setqflist({target}, {opts}, {callback})                 *gitsigns.setqflist()*
                      • `"attached"`: All attached buffers.
                      • `"all"`: All modified files for each git
                        directory of all attached buffers in addition
-                       to the current working directory.
+                       to the current working directory. When
+                       `attach_to_untracked` is enabled, untracked
+                       files are also included.
         {opts}     (`Gitsigns.SetqflistOpts?`): Additional options.
                    • {use_location_list}: (`boolean?`)
                      Populate the location list instead of the quickfix list.
