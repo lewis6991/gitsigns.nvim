@@ -575,15 +575,6 @@ function M.linespec_for_hunk(hunk, fileformat)
       }
       hls[#hls + 1] = { { spec.sym .. l, { mark } } }
     end
-    if config.diff_opts.internal then
-      if
-        spec.lines == removed and hunk.removed.no_nl_at_eof
-        or spec.lines == added and hunk.added.no_nl_at_eof
-      then
-        local mark = { start_row = 0, end_row = 1, hl_group = 'GitSignsNoEOLPreview' }
-        hls[#hls + 1] = { { spec.sym .. '\\ No newline at end of file', { mark } } }
-      end
-    end
   end
 
   if config.diff_opts.internal then
@@ -610,6 +601,17 @@ function M.linespec_for_hunk(hunk, fileformat)
         start_col = region[3],
         end_col = region[4],
       }
+    end
+
+    local no_nl_at_eof ---@type integer?
+    if hunk.removed.no_nl_at_eof and not hunk.added.no_nl_at_eof then
+      no_nl_at_eof = hunk.removed.count + 1
+    elseif not hunk.removed.no_nl_at_eof and hunk.added.no_nl_at_eof then
+      no_nl_at_eof = hunk.removed.count + hunk.added.count + 1
+    end
+    if no_nl_at_eof then
+      local mark = { start_row = 0, end_row = 1, hl_group = 'GitSignsNoEOLPreview' }
+      table.insert(hls, no_nl_at_eof, { { '\\ No newline at end of file', { mark } } })
     end
   end
 
