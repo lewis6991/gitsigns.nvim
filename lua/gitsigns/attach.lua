@@ -236,15 +236,34 @@ local function repo_update_handler(bufnr)
 
   local was_tracked = git_obj.object_name ~= nil
   local old_relpath = git_obj.relpath
+  local old_object_name = git_obj.object_name
+  local old_mode_bits = git_obj.mode_bits
 
-  bcache:invalidate(true)
   git_obj:refresh()
+
+  local new_object_name = git_obj.object_name
+  local new_mode_bits = git_obj.mode_bits
+
   if not bcache:schedule() then
     dprint('buffer invalid (1)')
     return
   end
 
-  if config.watch_gitdir.follow_files and was_tracked and not git_obj.object_name then
+  local head_oid = git_obj.repo.head_oid
+
+  if
+    old_object_name ~= new_object_name
+    or old_mode_bits ~= new_mode_bits
+    -- Invalidate when the repo HEAD moves (checkout, pull/rebase, etc). The
+    -- file object can stay the same while the comparison base changes.
+    or bcache.head_oid ~= head_oid
+  then
+    bcache:invalidate(true)
+  end
+
+  bcache.head_oid = head_oid
+
+  if config.watch_gitdir.follow_files and was_tracked and not new_object_name then
     -- File was tracked but is no longer tracked. Must of been removed or
     -- moved. Check if it was moved and switch to it.
     handle_moved(bufnr, old_relpath)

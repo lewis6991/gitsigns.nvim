@@ -20,6 +20,7 @@ local M = {
 --- @field compare_text?      string[]
 --- @field hunks?             Gitsigns.Hunk.Hunk[]
 --- @field force_next_update? boolean
+--- @field head_oid?          string
 ---
 --- An update is required for the buffer next time it comes into view
 --- @field update_on_view?    boolean
@@ -74,6 +75,9 @@ function M.new(bufnr, file, git_obj)
     file = file,
     git_obj = git_obj,
     staged_diffs = {},
+    -- Snapshot HEAD OID so per-buffer invalidation can detect repo HEAD moves.
+    -- `git_obj.repo.head_oid` is shared and may change between updates.
+    head_oid = git_obj.repo.head_oid,
   }, { __index = CacheEntry })
 end
 
