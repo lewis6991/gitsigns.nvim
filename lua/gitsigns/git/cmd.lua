@@ -32,6 +32,13 @@ local function git_command(args, spec)
     spec.text = true
   end
 
+  -- Force English messages for git output parsing.
+  -- Git translations can cause our stderr pattern matching to fail.
+  spec.env = vim.tbl_extend('force', spec.env or {}, {
+    LC_ALL = 'C',
+    LANGUAGE = 'C',
+  })
+
   --- @type vim.SystemCompleted
   local obj = asystem(cmd, spec)
   async.schedule()
