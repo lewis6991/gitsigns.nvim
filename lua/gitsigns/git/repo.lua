@@ -3,6 +3,7 @@ local git_command = require('gitsigns.git.cmd')
 local config = require('gitsigns.config').config
 local log = require('gitsigns.debug.log')
 local util = require('gitsigns.util')
+local Path = util.Path
 local errors = require('gitsigns.git.errors')
 local Watcher = require('gitsigns.git.repo.watcher')
 
@@ -22,35 +23,85 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 --- Needed for to determine "You" in current line blame.
 --- @field username string
 --- @field private _watcher? Gitsigns.Repo.Watcher
+--- @field head_oid? string
+--- @field head_ref? string
+--- @field commondir string
 local M = {}
 
 --- @param gitdir string
 --- @return boolean
 local function is_rebasing(gitdir)
-  return util.Path.exists(util.Path.join(gitdir, 'rebase-merge'))
-    or util.Path.exists(util.Path.join(gitdir, 'rebase-apply'))
+  return Path.exists(Path.join(gitdir, 'rebase-merge'))
+    or Path.exists(Path.join(gitdir, 'rebase-apply'))
+end
+
+--- @param value string?
+--- @return string?
+local function trim(value)
+  if not value then
+    -- Preserve nil to signal "no value".
+    return
+  end
+  -- Normalize line endings/whitespace from ref files.
+  local trimmed = vim.trim(value)
+  -- Treat whitespace-only lines as absent.
+  return trimmed ~= '' and trimmed or nil
+end
+
+--- @param path string
+--- @return string?
+local function read_first_line(path)
+  local f = io.open(path, 'r')
+  if not f then
+    return
+  end
+  local line = f:read('*l')
+  f:close()
+  return trim(line)
+end
+
+--- @param path string
+local function wait_for_unlock(path)
+  -- Git updates refs by taking `<ref>.lock` and then renaming into place.
+  -- Wait briefly so we don't read transient state when reacting to fs events.
+  --
+  -- TODO(lewis6991): should this be async?
+  vim.wait(1000, function()
+    return not Path.exists(path .. '.lock')
+  end, 10, true)
+end
+
+--- Wait for `<path>.lock` to clear then read the first line of a file.
+--- @param path string
+--- @return string?
+local function read_first_line_wait(path)
+  wait_for_unlock(path)
+  return read_first_line(path)
+end
+
+--- @param gitdir string
+--- @return string?
+local function read_head(gitdir)
+  return read_first_line_wait(Path.join(gitdir, 'HEAD'))
+end
+
+--- @param head string?
+--- @return string?
+local function parse_head_ref(head)
+  return head and head:match('^ref:%s*(.+)$') or nil
 end
 
 --- Return the abbreviated ref for HEAD (or short SHA if detached).
 --- Equivalent to `git rev-parse --abbrev-ref HEAD`
 --- @param gitdir string Must be an absolute path to the .git directory
+--- @param head? string
 --- @return string abbrev_head
-local function abbrev_head(gitdir)
-  local head_path = util.Path.join(gitdir, 'HEAD')
-
-  -- TODO(lewis6991): should this be async?
-  vim.wait(1000, function()
-    return not util.Path.exists(head_path .. '.lock')
-  end, 10, true)
-
-  local f = assert(io.open(head_path, 'r'))
-  local head = f:read('*l')
-  f:close()
-
+local function get_abbrev_head(gitdir, head)
+  head = head or assert(read_head(gitdir))
   -- HEAD content is either:
   --   "ref: refs/heads/<branch>"
   --   "<commitsha>" (detached HEAD)
-  local refpath = head:match('^ref:%s*(.+)$')
+  local refpath = parse_head_ref(head)
   if refpath then
     -- Extract last path component (branch name)
     return refpath:match('([^/]+)$') or refpath
@@ -66,6 +117,164 @@ local function abbrev_head(gitdir)
   end
   return short_sha
 end
+
+--- @param gitdir string
+--- @return string
+local function get_commondir(gitdir)
+  -- In linked worktrees, `gitdir` points at `.git/worktrees/<name>` while most
+  -- refs live under the main `.git` directory (the "commondir").
+  local commondir = read_first_line(Path.join(gitdir, 'commondir'))
+  if not commondir then
+    return gitdir
+  end
+  local abs = Path.join(gitdir, commondir)
+  return uv.fs_realpath(abs) or abs
+end
+
+--- @param commondir string
+--- @param refname string
+--- @return string?
+local function read_packed_ref(commondir, refname)
+  local packed_refs_path = Path.join(commondir, 'packed-refs')
+  wait_for_unlock(packed_refs_path)
+  -- `packed-refs` is a flat map from refname to OID (with optional peeled
+  -- entries). Read it linearly as this is only used on debounced fs events.
+  local f = io.open(packed_refs_path, 'r')
+  if not f then
+    return
+  end
+  for line in f:lines() do
+    --- @cast line string
+    if line:sub(1, 1) ~= '#' and line:sub(1, 1) ~= '^' then
+      local oid, name = line:match('^(%x+)%s+(.+)$')
+      if name == refname then
+        f:close()
+        return oid
+      end
+    end
+  end
+  f:close()
+end
+
+--- @param gitdir string
+--- @param commondir? string
+--- @param refname string
+--- @return string?
+local function resolve_ref(gitdir, commondir, refname)
+  -- Resolve a refname to an OID by following symbolic refs and checking:
+  -- - worktree-local loose refs in `gitdir/`
+  -- - shared loose refs in `commondir/`
+  -- - `commondir/packed-refs`
+  local seen = {} --- @type table<string, true>
+  local current = refname
+
+  while current and current ~= '' do
+    if seen[current] then
+      log.dprintf('cycle detected in symbolic refs: %s', vim.inspect(vim.tbl_keys(seen)))
+      return
+    end
+    seen[current] = true
+
+    local line = read_first_line_wait(Path.join(gitdir, current))
+
+    if not line and commondir and commondir ~= gitdir then
+      line = read_first_line_wait(Path.join(commondir, current))
+    end
+
+    if not line then
+      log.dprintf('Ref %s not found as loose ref; checking packed-refs', current)
+      break
+    elseif line:match('^%x+$') then
+      return line
+    end
+
+    local symref = line:match('^ref:%s*(.+)$')
+    if symref then
+      current = symref
+    else
+      log.dprintf('Ref %s has invalid contents (%s); checking packed-refs', current, line)
+      break
+    end
+  end
+
+  if commondir and current then
+    -- Some refs are only stored in packed-refs.
+    local packed = read_packed_ref(commondir, current)
+    if packed and packed:match('^%x+$') then
+      return packed
+    end
+  end
+end
+
+--- Manual implementation of `git rev-parse HEAD`.
+--- @param gitdir string
+--- @param commondir string
+--- @return string? oid
+--- @return string? err
+local function get_head_oid0(gitdir, commondir)
+  -- `.git/HEAD` can remain unchanged while its target ref moves (e.g. `git pull`
+  -- updating the checked-out branch). Resolve `HEAD` through loose refs and
+  -- packed-refs so we can detect branch moves without spawning `git`.
+  local head = read_head(gitdir)
+  if not head then
+    -- Unable to read HEAD.
+    return nil, 'unable to read HEAD file'
+  end
+
+  if head:match('^%x+$') then
+    -- Detached HEAD contains an OID directly.
+    return head
+  end
+
+  local ref = parse_head_ref(head)
+  if not ref then
+    -- Unrecognized HEAD format.
+    return nil, ('unrecognized HEAD contents: %s'):format(head)
+  end
+
+  local oid = resolve_ref(gitdir, commondir, ref)
+  if oid then
+    -- Resolved via loose refs or packed-refs.
+    return oid
+  end
+
+  -- Reftable stores refs in a different backend (no loose/packed refs).
+  if Path.exists(Path.join(commondir, 'reftable')) then
+    return nil, 'reftable'
+  end
+
+  -- Reftable cannot be parsed via loose refs/packed-refs. Keep a synchronous
+  -- fallback for correctness (rare setup). Some other backends or transient
+  -- states can also cause resolution to fail, so keep this as a general
+  -- fallback.
+  return nil, ('unable to resolve %s via loose refs/packed-refs'):format(ref)
+end
+
+--- Manual implementation of `git rev-parse HEAD` with command fallback.
+--- @param gitdir string
+--- @param commondir string
+--- @return string? oid
+local function get_head_oid(gitdir, commondir)
+  local oid0, err = get_head_oid0(gitdir, commondir)
+  if oid0 then
+    return oid0
+  end
+
+  log.dprintf('Falling back to `git rev-parse HEAD`: %s', err)
+
+  local stdout, stderr, code = async
+    .run(git_command, { '--git-dir', gitdir, 'rev-parse', 'HEAD' }, { ignore_error = true })
+    :wait()
+
+  local oid = stdout[1]
+
+  if code ~= 0 or not oid or not oid:match('^%x+$') then
+    log.dprintf('Fallback `git rev-parse HEAD` failed: code=%s oid=%s stderr=%s', code, oid, stderr)
+    return
+  end
+  return oid
+end
+
 --- Registers a callback to be invoked on update events.
 ---
 --- The provided callback function `cb` will be stored and called when an update
@@ -170,11 +379,38 @@ function M._new(info)
   --- @type Gitsigns.Repo
   local self = setmetatable(info, { __index = M })
   self.username = self:command({ 'config', 'user.name' }, { ignore_error = true })[1]
+
+  self.commondir = get_commondir(self.gitdir)
+
   if config.watch_gitdir.enable then
-    self._watcher = Watcher.new(self.gitdir)
-    self._watcher:on_head_update(function()
-      self.abbrev_head = abbrev_head(self.gitdir)
-      log.dprintf('HEAD changed, updating abbrev_head to %s', self.abbrev_head)
+    local head = read_head(self.gitdir)
+    self.head_ref = parse_head_ref(head)
+    self.head_oid = get_head_oid(self.gitdir, self.commondir)
+    self._watcher = Watcher.new(self.gitdir, self.commondir)
+    self._watcher:set_head_ref(self.head_ref)
+    self._watcher:on_update(function()
+      -- Recompute on every debounced tick. The checked-out branch can move
+      -- without `HEAD` changing (e.g. `refs/heads/main` update).
+      local head2 = read_head(self.gitdir)
+      if not head2 then
+        return
+      end
+
+      self.head_oid = get_head_oid(self.gitdir, self.commondir)
+      -- Set abbrev_head to empty string if head_oid is unavailable (.e.g repo
+      -- with no commits). This is consistent with `git rev-parse --abrev-ref
+      -- HEAD` which returns "HEAD" in this case.
+      local abbrev_head = self.head_oid and get_abbrev_head(self.gitdir, head2) or ''
+      if self.abbrev_head ~= abbrev_head then
+        self.abbrev_head = abbrev_head
+        log.dprintf('HEAD changed, updating abbrev_head to %s', self.abbrev_head)
+      end
+
+      local head_ref = parse_head_ref(head2)
+      if self.head_ref ~= head_ref then
+        self.head_ref = head_ref
+        self._watcher:set_head_ref(self.head_ref)
+      end
     end)
   end
 

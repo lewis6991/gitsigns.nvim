@@ -156,7 +156,13 @@ describe('gitdir_watcher', function()
 
       local gitdir = repo.gitdir
       local watcher = repo._watcher
-      local handle = watcher.handle
+      local handles = {} --- @type uv.uv_fs_event_t[]
+      -- `watcher.handles` is a map from watched dir -> handle. Copy into a
+      -- list so we can assert every handle is closed after GC.
+      for _, handle in pairs(watcher.handles) do
+        handles[#handles + 1] = handle
+      end
+      assert(#handles > 0)
 
       local function get_upvalue(fn, key)
         for i = 1, 50 do
@@ -182,17 +188,25 @@ describe('gitdir_watcher', function()
       vim.wait(2000, function()
         collectgarbage('collect')
 
-        return weak[1] == nil
-          and weak[2] == nil
-          and repo_cache[gitdir] == nil
-          and handle:is_closing()
+        local handles_closed = true
+        for _, handle in ipairs(handles) do
+          handles_closed = handles_closed and handle:is_closing()
+        end
+
+        return weak[1] == nil and weak[2] == nil and repo_cache[gitdir] == nil and handles_closed
       end, 20, false)
 
       return {
         repo_gced = weak[1] == nil,
         watcher_gced = weak[2] == nil,
         cache_cleared = repo_cache[gitdir] == nil,
-        handle_closed = handle:is_closing(),
+        handle_closed = (function()
+          local closed = true
+          for _, handle in ipairs(handles) do
+            closed = closed and handle:is_closing()
+          end
+          return closed
+        end)(),
       }
     end, helpers.scratch)
 

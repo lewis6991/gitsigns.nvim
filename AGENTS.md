@@ -14,11 +14,13 @@
 - `make doc` / `make doc-check`: regenerate help from `lua/gitsigns/config.lua` and fail if docs drift.
 - `make format-check` or `make format`: lint or autoformat Lua sources.
 - `make emmylua-check`: run optional static analysis after fetching the analyzer.
+- If you hit `EMFILE` (too many open files) in the sandbox, run commands with a higher fd limit, e.g. `ulimit -n 1024; make test ...` (this does not persist across separate commands).
 
 ## Coding Style & Naming Conventions
 - Lua code must have emmylua/LuaCATS type annotations
 - 2-space indentation, 100-character columns, single quotes for strings.
 - Run `make format` and `make emmylua-check` after changing any code
+- When creating simple util functions. Use Neovim's `:help` command to see if anything already exists.
 
 ## Testing Guidelines
 - Every bug fix must include a spec that reproduces the regression and asserts the desired buffer state, co-located with related modules (for example, `hunk_spec.lua` for hunk logic).
