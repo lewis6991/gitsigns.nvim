@@ -5,7 +5,8 @@
   },
   "diagnostics" : {
     "disable" : [
-      "unnecessary-if"
+      "unnecessary-if",
+      "invert-if"
     ],
     "enables": [
       "iter-variable-reassign",

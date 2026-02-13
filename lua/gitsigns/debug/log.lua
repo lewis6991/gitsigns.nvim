@@ -42,7 +42,7 @@ local function getvarvalue(name, lvl)
   end
 
   -- try upvalues
-  local func = debug.getinfo(lvl).func
+  local func = assert(debug.getinfo(lvl)).func
   i = 1
   while true do
     local n, v = debug.getupvalue(func, i)
