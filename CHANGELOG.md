@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.1.0](https://github.com/lewis6991/gitsigns.nvim/compare/v2.0.0...v2.1.0) (2026-02-13)
+
+
+### Features
+
+* **setqflist:** include untracked files when attach_to_untracked is enabled ([1ce96a4](https://github.com/lewis6991/gitsigns.nvim/commit/1ce96a464fdbc24208e24c117e2021794259005d)), closes [#829](https://github.com/lewis6991/gitsigns.nvim/issues/829)
+
+
+### Bug Fixes
+
+* calculate line length correct with inlay hints ([abf82a6](https://github.com/lewis6991/gitsigns.nvim/commit/abf82a65f185bd54adc0679f74b7d6e1ada690c9))
+* **git:** force C locale for git parsing ([f7cc685](https://github.com/lewis6991/gitsigns.nvim/commit/f7cc6850517b8db59a41314b83bb7994eae33cdd))
+* **repo:** update head_oid when checked-out branch moves ([f222c40](https://github.com/lewis6991/gitsigns.nvim/commit/f222c40ec3a31ddc97b0b8c4b0bd28b841fd698b))
+* typing ([5dbe0f4](https://github.com/lewis6991/gitsigns.nvim/commit/5dbe0f4706ab513138f4c289d2a78ca87438b73e))
+* **word_diff:** "No newline at eof" should show once for single hunk ([3121727](https://github.com/lewis6991/gitsigns.nvim/commit/31217271a7314c343606acb4072a94a039a19fb5))
+
+
+### Performance Improvements
+
+* apply stage ops directly ([2f71334](https://github.com/lewis6991/gitsigns.nvim/commit/2f71334514ed3bb491380f10076587c810f42d0f))
+
 ## [2.0.0](https://github.com/lewis6991/gitsigns.nvim/compare/v1.0.2...v2.0.0) (2026-01-09)
 
 
