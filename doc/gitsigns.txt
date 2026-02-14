@@ -365,16 +365,27 @@ select_hunk({opts})                                   *gitsigns.select_hunk()*
                  Operate on/select all contiguous hunks. Only useful if
                  'diff_opts' contains `linematch`. Defaults to `true`.
 
-preview_hunk_inline({callback})               *gitsigns.preview_hunk_inline()*
+preview_hunk_inline({opts}, {callback})       *gitsigns.preview_hunk_inline()*
     Preview the hunk at the cursor position inline in the buffer.
 
     Parameters: ~
+        {opts}     (`Gitsigns.HunkOpts?`): Additional options.
+                   • {greedy}: (`boolean?`)
+                     Operate on/select all contiguous hunks. Only useful if
+                     'diff_opts' contains `linematch`. Defaults to `true`.
         {callback} (`(fun(err: string?))?`)
 
-preview_hunk()                                       *gitsigns.preview_hunk()*
+preview_hunk({opts}, {callback})                     *gitsigns.preview_hunk()*
     Preview the hunk at the cursor position in a floating
     window. If the preview is already open, calling this
     will cause the window to get focus.
+
+    Parameters: ~
+        {opts}     (`Gitsigns.HunkOpts?`): Additional options.
+                   • {greedy}: (`boolean?`)
+                     Operate on/select all contiguous hunks. Only useful if
+                     'diff_opts' contains `linematch`. Defaults to `true`.
+        {callback} (`(fun(err: string?))?`)
 
 prev_hunk({opts}, {callback})                           *gitsigns.prev_hunk()*
     DEPRECATED: use |gitsigns.nav_hunk()|
