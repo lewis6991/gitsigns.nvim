@@ -166,9 +166,9 @@ function M.nav_hunk(direction, opts)
     -- Close the popup in case one is open which will cause it to focus the
     -- popup
     Popup.close('hunk')
-    Preview.preview_hunk()
+    Preview.preview_hunk(opts.greedy)
   elseif Preview.has_preview_inline(bufnr) then
-    Preview.preview_hunk_inline()
+    Preview.preview_hunk_inline(opts.greedy)
   end
 
   if index and opts.navigation_message then
