@@ -16,20 +16,24 @@ local ns_inline = api.nvim_create_namespace('gitsigns_preview_inline')
 --- @param greedy? boolean
 --- @return Gitsigns.Hunk.Hunk? hunk
 --- @return boolean? staged
+--- @return integer? index
+--- @return integer? count
 local function get_hunk_with_staged(bufnr, greedy)
   local bcache = cache[bufnr]
   if not bcache then
     return
   end
 
-  local hunk = bcache:get_hunk(nil, greedy, false)
+  local hunks = bcache:get_hunks(greedy, false) or {}
+  local hunk, index = bcache:get_cursor_hunk(hunks)
   if hunk then
-    return hunk, false
+    return hunk, false, index, #hunks
   end
 
-  hunk = bcache:get_hunk(nil, greedy, true)
+  local hunks_staged = bcache:get_hunks(greedy, true) or {}
+  hunk, index = bcache:get_cursor_hunk(hunks_staged)
   if hunk then
-    return hunk, true
+    return hunk, true, index, #hunks_staged
   end
 end
 
