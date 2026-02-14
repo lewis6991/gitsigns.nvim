@@ -550,10 +550,13 @@ function M.preview_hunk()
 end
 
 --- Preview the hunk at the cursor position inline in the buffer.
+---
+--- @param opts Gitsigns.HunkOpts? Additional options.
 --- @param callback? fun(err?: string)
-function M.preview_hunk_inline(callback)
+function M.preview_hunk_inline(opts, callback)
+  opts = opts or {}
   async_run(callback, function()
-    require('gitsigns.actions.preview').preview_hunk_inline()
+    require('gitsigns.actions.preview').preview_hunk_inline(opts.greedy ~= false)
   end)
 end
 

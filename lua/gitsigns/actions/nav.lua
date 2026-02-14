@@ -168,7 +168,7 @@ function M.nav_hunk(direction, opts)
     Popup.close('hunk')
     Preview.preview_hunk()
   elseif Preview.has_preview_inline(bufnr) then
-    Preview.preview_hunk_inline()
+    Preview.preview_hunk_inline(opts.greedy)
   end
 
   if index and opts.navigation_message then

@@ -232,11 +232,12 @@ end)
 
 --- Preview the hunk at the cursor position inline in the buffer.
 --- @async
+--- @param greedy? boolean
 --- @return integer? winid
-function M.preview_hunk_inline()
+function M.preview_hunk_inline(greedy)
   local bufnr = current_buf()
 
-  local hunk, staged = get_hunk_with_staged(bufnr, true)
+  local hunk, staged = get_hunk_with_staged(bufnr, greedy)
 
   if not hunk then
     return
