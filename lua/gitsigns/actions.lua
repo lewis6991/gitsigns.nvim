@@ -545,8 +545,14 @@ end
 --- Preview the hunk at the cursor position in a floating
 --- window. If the preview is already open, calling this
 --- will cause the window to get focus.
-function M.preview_hunk()
-  require('gitsigns.actions.preview').preview_hunk()
+---
+--- @param opts Gitsigns.HunkOpts? Additional options.
+--- @param callback? fun(err?: string)
+function M.preview_hunk(opts, callback)
+  opts = opts or {}
+  async_run(callback, function()
+    require('gitsigns.actions.preview').preview_hunk(opts.greedy ~= false)
+  end)
 end
 
 --- Preview the hunk at the cursor position inline in the buffer.

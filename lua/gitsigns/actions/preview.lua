@@ -2,6 +2,7 @@ local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local popup = require('gitsigns.popup')
 local Hunks = require('gitsigns.hunks')
+local Util = require('gitsigns.util')
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
@@ -194,45 +195,35 @@ local function show_deleted_in_float(bufnr, nsd, hunk, staged)
   return pwinid
 end
 
-local function noautocmd(f)
-  return function()
-    local ei = vim.o.eventignore
-    vim.o.eventignore = 'all'
-    f()
-    vim.o.eventignore = ei
-  end
-end
-
 --- Preview the hunk at the cursor position in a floating
 --- window. If the preview is already open, calling this
 --- will cause the window to get focus.
-M.preview_hunk = noautocmd(function()
-  -- Wrap in noautocmd so vim-repeat continues to work
-
-  if popup.focus_open('hunk') then
-    return
-  end
-
+--- @async
+--- @param greedy? boolean
+function M.preview_hunk(greedy)
   local bufnr = current_buf()
-  local bcache = cache[bufnr]
-  if not bcache then
-    return
-  end
 
-  local hunk, index = bcache:get_cursor_hunk()
+  local hunk, _, index, count = get_hunk_with_staged(bufnr, greedy)
 
   if not hunk then
     return
   end
 
-  --- @type Gitsigns.LineSpec[]
-  local preview_linespec = {
-    { { ('Hunk %d of %d'):format(index, #bcache.hunks), 'Title' } },
-  }
-  vim.list_extend(preview_linespec, Hunks.linespec_for_hunk(hunk, vim.bo[bufnr].fileformat))
+  -- Wrap UI operations in noautocmd so vim-repeat continues to work
+  Util.noautocmd({ 'all' }, function()
+    if popup.focus_open('hunk') then
+      return
+    end
 
-  popup.create(preview_linespec, config.preview_config, 'hunk')
-end)
+    --- @type Gitsigns.LineSpec[]
+    local preview_linespec = {
+      { { ('Hunk %d of %d'):format(index, count), 'Title' } },
+    }
+    vim.list_extend(preview_linespec, Hunks.linespec_for_hunk(hunk, vim.bo[bufnr].fileformat))
+
+    popup.create(preview_linespec, config.preview_config, 'hunk')
+  end)
+end
 
 --- Preview the hunk at the cursor position inline in the buffer.
 --- @async
