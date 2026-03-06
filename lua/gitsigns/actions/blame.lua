@@ -198,6 +198,12 @@ local function reblame(opts, blame, win, revision, parent)
   if not did_attach then
     return
   end
+
+  local src_buf = api.nvim_win_get_buf(win)
+  local line_count = api.nvim_buf_line_count(src_buf)
+  local new_lnum = math.min(lnum, line_count)
+  api.nvim_win_set_cursor(win, { new_lnum, 0 })
+
   async.schedule()
   M.blame(opts)
 end
