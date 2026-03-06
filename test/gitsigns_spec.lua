@@ -703,6 +703,34 @@ describe('gitsigns (with screen)', function()
         })
       end)
 
+      it('can manually attach untracked files (#1026)', function()
+        config.attach_to_untracked = false
+        setup_gitsigns(config)
+
+        edit(newfile)
+        feed('iline<esc>')
+        command('write')
+
+        check({
+          status = { head = 'main' },
+          signs = {},
+        })
+
+        command('Gitsigns attach')
+
+        check({
+          status = { head = 'main', added = 1, changed = 0, removed = 0 },
+          signs = { untracked = 1 },
+        })
+
+        command('Gitsigns stage_buffer')
+
+        check({
+          status = { head = 'main', added = 0, changed = 0, removed = 0 },
+          signs = {},
+        })
+      end)
+
       it('tracks files in new repos', function()
         setup_gitsigns(config)
         system({ 'touch', newfile })
