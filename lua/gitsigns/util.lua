@@ -60,6 +60,18 @@ function M.file_lines(path)
   return vim.split(contents, '\n')
 end
 
+--- Convert a Lua string to a value accepted by VimL APIs.
+--- @param line string
+--- @return string
+function M.lua2viml_str(line)
+  -- VimL String values cannot safely carry embedded NUL bytes. Replace them
+  -- with a readable sentinel before crossing the vim.fn.* boundary.
+  if line:find('\0', 1, true) then
+    return (line:gsub('%z', '<NUL>'))
+  end
+  return line
+end
+
 M.path_sep = package.config:sub(1, 1)
 
 --- @param ... integer
