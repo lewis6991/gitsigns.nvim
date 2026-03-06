@@ -173,6 +173,39 @@ describe('actions', function()
       helpers.api.nvim_buf_set_lines(0, start, dend, false, lines)
     end
 
+    --- @param range [integer, integer]
+    local function stage_hunk(range)
+      exec_lua(function(range0)
+        local done, err = false, nil --- @type boolean, string?
+        require('gitsigns').stage_hunk(range0, nil, function(e)
+          done, err = true, e
+        end)
+        assert(
+          vim.wait(1000, function()
+            return done
+          end),
+          'timed out waiting for stage_hunk'
+        )
+        assert(not err, err)
+      end, range)
+    end
+
+    local function reset_buffer_index()
+      exec_lua(function()
+        local done, err = false, nil --- @type boolean, string?
+        require('gitsigns').reset_buffer_index(function(e)
+          done, err = true, e
+        end)
+        assert(
+          vim.wait(1000, function()
+            return done
+          end),
+          'timed out waiting for reset_buffer_index'
+        )
+        assert(not err, err)
+      end)
+    end
+
     describe('can stage add hunks', function()
       before_each(function()
         set_lines(2, 2, { 'c1', 'c2', 'c3', 'c4' })
@@ -180,12 +213,12 @@ describe('actions', function()
       end)
 
       it('contained in range', function()
-        command([[1,7 Gitsigns stage_hunk]])
+        stage_hunk({ 1, 7 })
         expect_hunks({})
       end)
 
       it('containing range', function()
-        command([[4,5 Gitsigns stage_hunk]])
+        stage_hunk({ 4, 5 })
         expect_hunks({
           '@@ -2 +3,1 @@',
           '@@ -4 +6,1 @@',
@@ -193,18 +226,18 @@ describe('actions', function()
       end)
 
       it('from top range', function()
-        command([[1,4 Gitsigns stage_hunk]])
+        stage_hunk({ 1, 4 })
         expect_hunks({ '@@ -4 +5,2 @@' })
       end)
 
       it('from bottom range', function()
-        command([[4,7 Gitsigns stage_hunk]])
+        stage_hunk({ 4, 7 })
         expect_hunks({ '@@ -2 +3,1 @@' })
 
-        command([[Gitsigns reset_buffer_index]])
+        reset_buffer_index()
         expect_hunks({ '@@ -2 +3,4 @@' })
 
-        command([[4,10 Gitsigns stage_hunk]])
+        stage_hunk({ 4, 10 })
         expect_hunks({ '@@ -2 +3,1 @@' })
       end)
     end)
@@ -216,23 +249,23 @@ describe('actions', function()
       end)
 
       it('from top range containing mod', function()
-        command([[2,3 Gitsigns stage_hunk]])
+        stage_hunk({ 2, 3 })
         expect_hunks({ '@@ -4,1 +4,4 @@' })
       end)
 
       it('from top range containing mod-add', function()
-        command([[2,5 Gitsigns stage_hunk]])
+        stage_hunk({ 2, 5 })
         expect_hunks({ '@@ -5 +6,2 @@' })
       end)
 
       it('from bottom range containing add', function()
-        command([[6,8 Gitsigns stage_hunk]])
+        stage_hunk({ 6, 8 })
         expect_hunks({ '@@ -3,2 +3,3 @@' })
       end)
 
       it('containing range containing add', function()
         command('write')
-        command([[5,6 Gitsigns stage_hunk]])
+        stage_hunk({ 5, 6 })
         expect_hunks({
           '@@ -3,2 +3,2 @@',
           '@@ -6 +7,1 @@',
@@ -250,26 +283,26 @@ describe('actions', function()
       it('from top range', function()
         expect_hunks({ '@@ -3,5 +3,3 @@' })
 
-        command([[2,3 Gitsigns stage_hunk]])
+        stage_hunk({ 2, 3 })
         expect_hunks({ '@@ -4,4 +4,2 @@' })
 
-        command([[2,3 Gitsigns reset_buffer_index]])
+        reset_buffer_index()
         expect_hunks({ '@@ -3,5 +3,3 @@' })
 
-        command([[2,4 Gitsigns stage_hunk]])
+        stage_hunk({ 2, 4 })
         expect_hunks({ '@@ -5,3 +5,1 @@' })
       end)
 
       it('from bottom range', function()
         expect_hunks({ '@@ -3,5 +3,3 @@' })
 
-        command([[4,6 Gitsigns stage_hunk]])
+        stage_hunk({ 4, 6 })
         expect_hunks({ '@@ -3,1 +3,1 @@' })
 
-        command([[2,3 Gitsigns reset_buffer_index]])
+        reset_buffer_index()
         expect_hunks({ '@@ -3,5 +3,3 @@' })
 
-        command([[5,6 Gitsigns stage_hunk]])
+        stage_hunk({ 5, 6 })
         expect_hunks({ '@@ -3,2 +3,2 @@' })
       end)
     end)
@@ -278,7 +311,7 @@ describe('actions', function()
       set_lines(2, 5, {})
       expect_hunks({ '@@ -3,3 +2 @@' })
 
-      command([[2 Gitsigns stage_hunk]])
+      stage_hunk({ 2, 2 })
       expect_hunks({})
     end)
   end)
