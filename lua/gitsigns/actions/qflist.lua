@@ -24,11 +24,8 @@ local function hunks_to_qflist(buf_or_filename, hunks, qflist)
       hunk.added.start,
       hunk.added.count ~= 1 and ',' .. tostring(hunk.added.count) or ''
     )
-    local text = ('%-7s (%s): %s'):format(
-      kind,
-      header,
-      hunk.added.lines[1] or hunk.removed.lines[1]
-    )
+    local line = hunk.added.lines[1] or hunk.removed.lines[1] or ''
+    local text = ('%-7s (%s): %s'):format(kind, header, util.lua2viml_str(line))
     qflist[#qflist + 1] = {
       bufnr = type(buf_or_filename) == 'number' and buf_or_filename or nil,
       filename = type(buf_or_filename) == 'string' and buf_or_filename or nil,
