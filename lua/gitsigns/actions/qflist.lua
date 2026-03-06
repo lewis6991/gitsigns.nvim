@@ -71,20 +71,25 @@ local function buildqflist(target)
     end
 
     for _, r in pairs(repos) do
-      for _, f in ipairs(r:files_changed(config.base, config.attach_to_untracked)) do
-        local f_abs = r.toplevel .. '/' .. f
-        local stat = uv.fs_stat(f_abs)
-        if stat and stat.type == 'file' then
-          ---@type string
-          local obj
-          if config.base and config.base ~= ':0' then
-            obj = config.base .. ':' .. f
-          else
-            obj = ':0:' .. f
+      local changed_files = r:files_changed(config.base, config.attach_to_untracked)
+      local diff_attrs = r:check_attr('diff', changed_files)
+
+      for _, f in ipairs(changed_files) do
+        if diff_attrs[f] ~= 'unset' then
+          local f_abs = r.toplevel .. '/' .. f
+          local stat = uv.fs_stat(f_abs)
+          if stat and stat.type == 'file' then
+            ---@type string
+            local obj
+            if config.base and config.base ~= ':0' then
+              obj = config.base .. ':' .. f
+            else
+              obj = ':0:' .. f
+            end
+            local a = r:get_show_text(obj)
+            local hunks = run_diff(a, util.file_lines(f_abs))
+            hunks_to_qflist(f_abs, hunks, qflist)
           end
-          local a = r:get_show_text(obj)
-          local hunks = run_diff(a, util.file_lines(f_abs))
-          hunks_to_qflist(f_abs, hunks, qflist)
         end
       end
     end

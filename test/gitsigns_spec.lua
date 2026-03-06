@@ -212,6 +212,26 @@ describe('gitsigns (with screen)', function()
       check({ status = { head = 'main' } })
     end)
 
+    it('does not attach to nodiff files', function()
+      write_to_file(scratch .. '/.gitattributes', { '*.bar -diff' })
+
+      local nodiff_file = scratch .. '/dummy.bar'
+      write_to_file(nodiff_file, { 'dummy' })
+
+      git('add', scratch .. '/.gitattributes', nodiff_file)
+      git('commit', '-m', 'add nodiff file')
+
+      edit(nodiff_file)
+
+      match_debug_messages({
+        'attach.attach(1): Attaching (trigger=BufReadPost)',
+        np(revparse_pat),
+        np('attach%.attach%(1%): File has %-diff attribute'),
+      })
+
+      check({ status = { head = 'main' }, signs = {} })
+    end)
+
     it("doesn't attach to non-existent files", function()
       edit(newfile)
 
@@ -525,6 +545,7 @@ describe('gitsigns (with screen)', function()
         np(
           'system.system: git .* %-%-git%-dir .* %-%-stage %-%-others %-%-exclude%-standard %-%-eol.*'
         ),
+        np('system.system: git .* check%-attr diff %-%-stdin'),
         n('attach.attach(1): User on_attach() returned false'),
       })
     end)
