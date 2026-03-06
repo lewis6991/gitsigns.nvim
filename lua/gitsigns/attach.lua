@@ -359,7 +359,11 @@ M.attach = throttle_async({ hash = 1 }, function(cbuf, ctx, aucmd)
     return
   end
 
-  if not config.attach_to_untracked and git_obj.object_name == nil then
+  local is_untracked = git_obj.object_name == nil
+
+  -- Manual attaches (`:Gitsigns attach`) should still be allowed for
+  -- untracked buffers.
+  if aucmd and not config.attach_to_untracked and is_untracked then
     dprint('File is untracked')
     return
   end
