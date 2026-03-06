@@ -341,6 +341,36 @@ function M:files_changed(base, include_untracked)
   return ret
 end
 
+--- @async
+--- @param attr string
+--- @param files string[]
+--- @return table<string,'set'|'unset'|'unspecified'|string>
+function M:check_attr(attr, files)
+  local ret = {} --- @type table<string,'set'|'unset'|'unspecified'|string>
+
+  if #files == 0 then
+    return ret
+  end
+
+  for _, f in ipairs(files) do
+    ret[f] = 'unspecified'
+  end
+
+  local output = self:command({ 'check-attr', attr, '--stdin' }, { stdin = files })
+  local sep = ': ' .. attr .. ': '
+
+  for _, line in ipairs(output) do
+    local parts = vim.split(line, sep, { plain = true })
+    local file = parts[1]
+    if file and #parts >= 2 then
+      local value = table.concat(parts, sep, 2)
+      ret[file] = value
+    end
+  end
+
+  return ret
+end
+
 --- @param encoding string
 --- @return boolean
 local function iconv_supported(encoding)

@@ -364,6 +364,13 @@ M.attach = throttle_async({ hash = 1 }, function(cbuf, ctx, aucmd)
     return
   end
 
+  local relpath = git_obj.relpath --[[@as string]]
+  local diff_attr = git_obj.repo:check_attr('diff', { relpath })[relpath]
+  if diff_attr == 'unset' then
+    dprint('File has -diff attribute')
+    return
+  end
+
   -- On windows os.tmpname() crashes in callback threads so initialise this
   -- variable on the main thread.
   async.schedule()
