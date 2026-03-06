@@ -544,7 +544,9 @@ function M.blame(opts)
     pattern = tostring(blm_win),
     group = group,
     callback = function()
-      api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+      if api.nvim_buf_is_valid(bufnr) then
+        api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+      end
       if api.nvim_win_is_valid(win) then
         cur_wlo.foldenable, cur_wlo.scrollbind, cur_wlo.wrap = unpack(cur_orig_wlo)
       end
