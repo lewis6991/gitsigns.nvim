@@ -469,8 +469,18 @@ function M.get(cwd, gitdir, toplevel)
       return nil, err
     end
 
-    repo_cache[info.gitdir] = repo_cache[info.gitdir] or M._new(info)
-    return repo_cache[info.gitdir]
+    local repo = repo_cache[info.gitdir]
+    if repo then
+      -- Keep cached repo metadata in sync with git's current state.
+      -- Without this, branch/rebase transitions can leave abbrev_head stale
+      -- until a watcher callback runs.
+      repo.abbrev_head = info.abbrev_head
+      repo.detached = info.detached
+    else
+      repo = M._new(info)
+      repo_cache[info.gitdir] = repo
+    end
+    return repo
   end)
 end
 
