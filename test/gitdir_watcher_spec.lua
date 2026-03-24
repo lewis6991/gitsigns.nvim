@@ -110,6 +110,32 @@ describe('gitdir_watcher', function()
     eq({ [1] = test_file }, get_bufs())
   end)
 
+  it('can follow moved files with spaces', function()
+    helpers.git_init_scratch()
+
+    local test_file1 = helpers.scratch .. '/old name.txt'
+    local test_file2 = helpers.scratch .. '/new name.txt'
+
+    helpers.write_to_file(test_file1, { 'test' })
+    git('add', test_file1)
+    git('commit', '-m', 'init commit')
+
+    setup_gitsigns(test_config)
+    edit(test_file1)
+
+    helpers.expectf(function()
+      return helpers.exec_lua(function()
+        return vim.b.gitsigns_status_dict.gitdir ~= nil
+      end)
+    end)
+
+    git('mv', test_file1, test_file2)
+
+    helpers.expectf(function()
+      eq({ [1] = test_file2 }, get_bufs())
+    end)
+  end)
+
   it('can debounce and throttle updates per buffer', function()
     helpers.git_init_scratch()
 

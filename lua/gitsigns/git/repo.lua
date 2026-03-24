@@ -835,6 +835,32 @@ function M:hash_object(path, lines)
   return assert(res)
 end
 
+--- @param line string?
+--- @return string? status
+--- @return string? path
+--- @return string? path2
+local function parse_name_status_line(line)
+  if not line then
+    return
+  end
+
+  local parts = vim.split(line, '\t', { plain = true })
+  if #parts < 2 then
+    return
+  end
+
+  local status = parts[1]
+  if not status then
+    return
+  end
+
+  if vim.startswith(status, 'R') or vim.startswith(status, 'C') then
+    return status, parts[2], parts[3]
+  end
+
+  return status, parts[2]
+end
+
 --- @async
 --- @param revision string
 --- @param path string
@@ -850,11 +876,8 @@ function M:log_rename_status(revision, path)
     '--',
     path,
   })
-  local line = out[#out]
-  if not line then
-    return
-  end
-  return vim.split(line, '%s+')[2]
+  local _, old_path = parse_name_status_line(out[#out])
+  return old_path
 end
 
 --- @async
@@ -872,16 +895,12 @@ function M:diff_rename_status(revision, invert)
   })
   local ret = {} --- @type table<string,string>
   for _, l in ipairs(out) do
-    local parts = vim.split(l, '%s+')
-    if #parts == 3 then
-      --- @cast parts [string, string, string]
-      local stat, orig_file, new_file = parts[1], parts[2], parts[3]
-      if vim.startswith(stat, 'R') then
-        if invert then
-          ret[new_file] = orig_file
-        else
-          ret[orig_file] = new_file
-        end
+    local stat, orig_file, new_file = parse_name_status_line(l)
+    if stat and vim.startswith(stat, 'R') and orig_file and new_file then
+      if invert then
+        ret[new_file] = orig_file
+      else
+        ret[orig_file] = new_file
       end
     end
   end
