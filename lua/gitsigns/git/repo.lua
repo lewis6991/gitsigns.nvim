@@ -104,8 +104,7 @@ local function get_abbrev_head(gitdir, head)
   --   "<commitsha>" (detached HEAD)
   local refpath = parse_head_ref(head)
   if refpath then
-    -- Extract last path component (branch name)
-    return refpath:match('([^/]+)$') or refpath
+    return refpath:match('^refs/heads/(.+)$') or refpath
   end
 
   assert(head:find('^[%x]+$'), 'Invalid HEAD content: ' .. head)
