@@ -4,6 +4,9 @@ local helpers = require('test.gs_helpers')
 local clear = helpers.clear
 local eq = helpers.eq
 local exec_lua = helpers.exec_lua
+local git = helpers.git
+local scratch = helpers.scratch
+local write_to_file = helpers.write_to_file
 
 helpers.env()
 
@@ -65,5 +68,32 @@ describe('git', function()
     end)
 
     eq({ 'a_enter', 'a_exit', 'b_enter', 'b_exit' }, result.events)
+  end)
+
+  it('log_rename_status handles spaced filenames', function()
+    helpers.git_init_scratch()
+
+    local old_name = scratch .. '/old name.txt'
+    local new_name = scratch .. '/new name.txt'
+
+    write_to_file(old_name, { 'test' })
+    git('add', old_name)
+    git('commit', '-m', 'init commit')
+    git('mv', old_name, new_name)
+    git('commit', '-m', 'rename file')
+
+    local old_relpath = exec_lua(function(repo_dir)
+      local async = require('gitsigns.async')
+      local Repo = require('gitsigns.git.repo')
+
+      local repo = assert(async.run(Repo.get, repo_dir):wait(5000))
+      return async
+        .run(function()
+          return repo:log_rename_status('HEAD~1', 'new name.txt')
+        end)
+        :wait(5000)
+    end, scratch)
+
+    eq('old name.txt', old_relpath)
   end)
 end)
