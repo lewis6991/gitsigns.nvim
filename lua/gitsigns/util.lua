@@ -426,7 +426,7 @@ local has_cygpath --- @type boolean?
 
 --- @async
 --- @param path string
---- @param mode? 'unix'|'windows' (default: 'windows')
+--- @param mode? 'unix'|'windows'|'mixed' (default: 'windows')
 --- @return string
 function M.cygpath(path, mode)
   local async = require('gitsigns.async')
@@ -436,7 +436,9 @@ function M.cygpath(path, mode)
     has_cygpath = is_win and vim.fn.executable('cygpath') == 1
   end
 
-  if not has_cygpath or uv.fs_stat(path) then
+  -- skip fs_stat.
+  -- For comparison, normalization *required* even if path is accessible.
+  if not has_cygpath then
     return path
   end
 

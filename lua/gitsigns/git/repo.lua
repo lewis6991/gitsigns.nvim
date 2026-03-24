@@ -625,12 +625,14 @@ function M.get_info(dir, gitdir, worktree)
   end
   --- @cast stdout [string, string, string]
 
-  local toplevel_r = stdout[1]
-  local gitdir_r = stdout[2]
+  -- Normalize path for comparison
+  local toplevel_r = util.cygpath(stdout[1], 'mixed')
+  local gitdir_r = util.cygpath(stdout[2], 'mixed')
 
   -- On windows, git will emit paths with `/` but dir may contain `\` so need to
   -- normalize.
-  if dir and not vim.startswith(vim.fs.normalize(dir), toplevel_r) then
+  -- Normalize with util.cygpath (`/\` not enough if `C:\xxx` vs. `/c/xxx`)
+  if dir and not vim.startswith(util.cygpath(dir, 'mixed'), toplevel_r) then
     log.dprintf("'%s' is outside worktree '%s'", dir, toplevel_r)
     -- outside of worktree
     return
