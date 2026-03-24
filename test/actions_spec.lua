@@ -7,6 +7,7 @@ local edit = helpers.edit
 local check = helpers.check
 local exec_lua = helpers.exec_lua
 local fn = helpers.fn
+local api = helpers.api
 local system = fn.system
 local test_config = helpers.test_config
 local clear = helpers.clear
@@ -54,7 +55,7 @@ local delay = 10
 --- @param cmd string
 local function command(cmd)
   helpers.sleep(delay)
-  helpers.api.nvim_command(cmd)
+  api.nvim_command(cmd)
 
   -- Flaky tests, add a large delay between commands.
   -- Flakiness is due to actions being async and problems occur when an action
@@ -81,6 +82,45 @@ local function retry(f)
     delay = orig_delay
     error(err)
   end
+end
+
+--- @param start integer
+--- @param dend integer
+--- @param lines string[]
+local function set_lines(start, dend, lines)
+  api.nvim_buf_set_lines(0, start, dend, false, lines)
+end
+
+--- @param range [integer, integer]?
+local function stage_hunk(range)
+  exec_lua(function(range0)
+    local async = require('gitsigns.async')
+
+    if range0 == vim.NIL then
+      range0 = nil
+    end
+
+    async
+      .run(function()
+        local err = async.await(1, function(cb)
+          require('gitsigns').stage_hunk(range0, nil, cb)
+        end)
+        assert(not err, err)
+      end)
+      :wait(1000)
+  end, range == nil and vim.NIL or range)
+end
+
+local function reset_buffer_index()
+  exec_lua(function()
+    local async = require('gitsigns.async')
+    async
+      .run(function()
+        local err = async.await(1, require('gitsigns').reset_buffer_index)
+        assert(not err, err)
+      end)
+      :wait(1000)
+  end)
 end
 
 describe('actions', function()
@@ -158,6 +198,54 @@ describe('actions', function()
     })
   end)
 
+  it('preserves foldenable in diffthis windows after staging a hunk', function()
+    command('silent! %bwipe!')
+    setup_test_repo()
+    edit(test_file)
+
+    feed('jjjccEDIT<esc>')
+    check({
+      status = { head = 'main', added = 0, changed = 1, removed = 0 },
+      signs = { changed = 1 },
+    })
+
+    exec_lua(function()
+      local async = require('gitsigns.async')
+      async.run(require('gitsigns.actions.diffthis').diffthis, nil, {}):wait(1000)
+    end)
+
+    local rev_win --- @type integer?
+    expectf(function()
+      eq(2, #api.nvim_list_wins())
+      local current = api.nvim_get_current_win()
+      for _, win in ipairs(api.nvim_list_wins()) do
+        if win ~= current then
+          local buf = api.nvim_win_get_buf(win)
+          if api.nvim_buf_get_name(buf):find('^gitsigns://') then
+            rev_win = win
+            break
+          end
+        end
+      end
+      eq(true, type(rev_win) == 'number' and rev_win > 0)
+    end)
+    assert(rev_win)
+
+    api.nvim_set_option_value('foldenable', false, { scope = 'local', win = rev_win })
+
+    stage_hunk()
+
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    expectf(function()
+      eq(true, api.nvim_win_is_valid(rev_win))
+      eq(false, api.nvim_get_option_value('foldenable', { scope = 'local', win = rev_win }))
+    end)
+  end)
+
   describe('staging partial hunks', function()
     setup(function()
       clear()
@@ -168,44 +256,6 @@ describe('actions', function()
       helpers.git('reset', '--hard')
       edit(test_file)
     end)
-
-    local function set_lines(start, dend, lines)
-      helpers.api.nvim_buf_set_lines(0, start, dend, false, lines)
-    end
-
-    --- @param range [integer, integer]
-    local function stage_hunk(range)
-      exec_lua(function(range0)
-        local done, err = false, nil --- @type boolean, string?
-        require('gitsigns').stage_hunk(range0, nil, function(e)
-          done, err = true, e
-        end)
-        assert(
-          vim.wait(1000, function()
-            return done
-          end),
-          'timed out waiting for stage_hunk'
-        )
-        assert(not err, err)
-      end, range)
-    end
-
-    local function reset_buffer_index()
-      exec_lua(function()
-        local done, err = false, nil --- @type boolean, string?
-        require('gitsigns').reset_buffer_index(function(e)
-          done, err = true, e
-        end)
-        assert(
-          vim.wait(1000, function()
-            return done
-          end),
-          'timed out waiting for reset_buffer_index'
-        )
-        assert(not err, err)
-      end)
-    end
-
     describe('can stage add hunks', function()
       before_each(function()
         set_lines(2, 2, { 'c1', 'c2', 'c3', 'c4' })
@@ -317,7 +367,7 @@ describe('actions', function()
   end)
 
   local function check_cursor(pos)
-    eq(pos, helpers.api.nvim_win_get_cursor(0))
+    eq(pos, api.nvim_win_get_cursor(0))
   end
 
   it('can navigate hunks', function()
