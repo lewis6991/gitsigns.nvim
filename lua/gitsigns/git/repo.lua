@@ -22,6 +22,7 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 --- Username configured for the repo.
 --- Needed for to determine "You" in current line blame.
 --- @field username string
+--- @field private _lock Gitsigns.async.Semaphore
 --- @field private _watcher? Gitsigns.Repo.Watcher
 --- @field head_oid? string
 --- @field head_ref? string
@@ -288,6 +289,16 @@ function M:on_update(callback)
   return self._watcher:on_update(callback)
 end
 
+--- Run a function while holding the repo lock.
+--- This serializes git operations that mutate repo state such as the index.
+--- @async
+--- @generic R
+--- @param fn async fun(): R...
+--- @return R...
+function M:lock(fn)
+  return self._lock:with(fn)
+end
+
 --- Run git command the with the objects gitdir and toplevel
 --- @async
 --- @param args table<any,any>
@@ -408,6 +419,7 @@ local repo_cache = setmetatable({}, { __mode = 'v' })
 function M._new(info)
   --- @type Gitsigns.Repo
   local self = setmetatable(info, { __index = M })
+  self._lock = async.semaphore(1)
   self.username = self:command({ 'config', 'user.name' }, { ignore_error = true })[1]
 
   self.commondir = get_commondir(self.gitdir)

@@ -30,8 +30,6 @@ M.Repo = Repo
 ---
 --- @field repo Gitsigns.Repo
 --- @field has_conflicts? boolean
----
---- @field _lock Gitsigns.async.Semaphore
 local Obj = {}
 Obj.__index = Obj
 
@@ -48,15 +46,7 @@ end
 --- @async
 --- @param fn async fun()
 function Obj:lock(fn)
-  local timer = vim.defer_fn(function()
-    log.eprint('Lock was not released')
-    self._lock:release()
-  end, 2000)
-  self._lock:with(function()
-    timer:stop()
-    timer:close()
-    return fn()
-  end)
+  return self.repo:lock(fn)
 end
 
 --- @async
@@ -297,7 +287,6 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
   self.has_conflicts = info.has_conflicts
   self.i_crlf = info.i_crlf
   self.w_crlf = info.w_crlf
-  self._lock = async.semaphore(1)
 
   return self
 end
