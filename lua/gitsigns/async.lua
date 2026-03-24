@@ -28,7 +28,8 @@ local threads = setmetatable({}, { __mode = 'k' })
 
 --- @return Gitsigns.async.Task?
 local function running()
-  local task = threads[coroutine.running()]
+  --- @diagnostic disable-next-line: access-invisible
+  local task = threads[assert(coroutine.running())]
   if task and not (task:_completed() or task._closing) then
     return task
   end

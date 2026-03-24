@@ -107,7 +107,7 @@ else
     EMMYLUA_ARCH ?= x64
 endif
 
-EMMYLUA_REF := 0.20.0
+EMMYLUA_REF := 0.21.0
 EMMYLUA_OS ?= $(shell uname -s | tr '[:upper:]' '[:lower:]')
 
 EMMYLUA_RELEASE_URL_BASE := https://github.com/EmmyLuaLs/emmylua-analyzer-rust/releases/download/$(EMMYLUA_REF)
