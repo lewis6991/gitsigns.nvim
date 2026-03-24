@@ -85,31 +85,17 @@ function Obj:get_show_text(revision, relpath)
     return {}
   end
 
-  local object = revision and (revision .. ':' .. relpath) or self.object_name
-
-  if not object then
+  if not revision and not self.object_name then
     log.dprint('no revision or object_name')
     return { '' }
   end
 
-  local stdout, stderr = self.repo:get_show_text(object, self.encoding)
-
-  -- detect renames
-  if
-    revision
-    and stderr
-    and (
-      stderr:match(errors.e.path_does_not_exist)
-      or stderr:match(errors.e.path_exist_on_disk_but_not_in)
-    )
-  then
+  local stdout, stderr
+  if revision then
     --- @cast relpath -?
-    log.dprintf('%s not found in %s looking for renames', relpath, revision)
-    local old_path = self.repo:log_rename_status(revision, relpath)
-    if old_path then
-      log.dprintf('found rename %s -> %s', old_path, relpath)
-      stdout, stderr = self.repo:get_show_text(revision .. ':' .. old_path, self.encoding)
-    end
+    stdout, stderr = self.repo:get_show_text_at_revision(revision, relpath, self.encoding)
+  else
+    stdout, stderr = self.repo:get_show_text(assert(self.object_name), self.encoding)
   end
 
   if not self.i_crlf and self.w_crlf then

@@ -72,17 +72,22 @@ local function buildqflist(target)
 
     for _, r in pairs(repos) do
       local changed_files = r:files_changed(config.base, config.attach_to_untracked)
-      local diff_attrs = r:check_attr('diff', changed_files)
+      local changed_paths = {} --- @type string[]
+      for i, changed_file in ipairs(changed_files) do
+        changed_paths[i] = changed_file.path
+      end
+      local diff_attrs = r:check_attr('diff', changed_paths)
 
-      for _, f in ipairs(changed_files) do
+      for _, changed_file in ipairs(changed_files) do
+        local f = changed_file.path
         if diff_attrs[f] ~= 'unset' then
           local f_abs = r.toplevel .. '/' .. f
           local stat = uv.fs_stat(f_abs)
+          --- @type string
+          local obj
           if stat and stat.type == 'file' then
-            ---@type string
-            local obj
             if config.base and config.base ~= ':0' then
-              obj = config.base .. ':' .. f
+              obj = config.base .. ':' .. (changed_file.oldpath or f)
             else
               obj = ':0:' .. f
             end
