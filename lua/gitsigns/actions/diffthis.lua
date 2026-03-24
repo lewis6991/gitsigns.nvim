@@ -286,7 +286,7 @@ M.update = throttle_async({ hash = 1, schedule = true }, function(bufnr)
         if should_reload(b) then
           api.nvim_buf_call(b, function()
             vim.cmd.doautocmd('BufReadCmd')
-            vim.cmd.diffthis()
+            vim.cmd.diffupdate()
           end)
         end
       end
