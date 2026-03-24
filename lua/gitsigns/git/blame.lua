@@ -113,11 +113,13 @@ local function incremental_iter(readline, commits, result)
     elseif key then
       key = key:gsub('%-', '_') --- @type string
       if vim.endswith(key, '_time') then
+        --- @diagnostic disable-next-line: assign-type-mismatch
         commit[key] = asinteger(value)
       else
         commit[key] = value
       end
     else
+      --- @diagnostic disable-next-line: assign-type-mismatch
       commit[line] = true
       if line ~= 'boundary' then
         log.dprintf("Unknown tag: '%s'", line)

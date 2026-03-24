@@ -74,7 +74,7 @@
 --- @field watch_gitdir { enable: boolean, follow_files: boolean }
 --- @field max_file_length integer
 --- @field update_debounce integer
---- @field status_formatter fun(_: table<string,any>): string
+--- @field status_formatter fun(_: Gitsigns.StatusObj): string
 --- @field current_line_blame boolean
 --- @field current_line_blame_formatter string|Gitsigns.CurrentLineBlameFmtFun
 --- @field current_line_blame_formatter_nc string|Gitsigns.CurrentLineBlameFmtFun
@@ -895,7 +895,7 @@ local function validate(k, v, ty)
     --- @diagnostic disable-next-line: redundant-parameter,param-type-mismatch
     vim.validate(k, v, ty)
   else
-    vim.validate({ [k] = { v, ty } })
+    vim.validate({ [k] = { v, ty, false } })
   end
 end
 
