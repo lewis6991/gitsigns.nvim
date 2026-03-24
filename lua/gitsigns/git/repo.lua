@@ -326,27 +326,39 @@ end
 --- @async
 --- @param base string?
 --- @param include_untracked? boolean
---- @return string[]
+--- @return {path:string, oldpath?:string}[]
 function M:files_changed(base, include_untracked)
+  local ret = {} --- @type {path:string, oldpath?:string}[]
+
   if base and base ~= ':0' then
     local results = self:command({ 'diff', '--name-status', base })
-    for i, result in ipairs(results) do
-      results[i] = vim.split(result:gsub('\t', ' '), ' ', { plain = true })[2]
+    for _, result in ipairs(results) do
+      local parts = vim.split(result, '\t', { plain = true })
+      local status = parts[1]
+      local path = parts[#parts]
+      local renamed = status and (vim.startswith(status, 'R') or vim.startswith(status, 'C'))
+      if path then
+        ret[#ret + 1] = {
+          path = path,
+          oldpath = renamed and parts[2] or nil,
+        }
+      end
     end
     if include_untracked then
       local untracked = self:command({ 'ls-files', '--others', '--exclude-standard' })
-      vim.list_extend(results, untracked)
+      for _, path in ipairs(untracked) do
+        ret[#ret + 1] = { path = path }
+      end
     end
-    return results
+    return ret
   end
 
   local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
 
-  local ret = {} --- @type string[]
   for _, line in ipairs(results) do
     local status = line:sub(1, 2)
     if status:match('^.M') or (include_untracked and status == '??') then
-      ret[#ret + 1] = line:sub(4, -1)
+      ret[#ret + 1] = { path = line:sub(4, -1) }
     end
   end
   return ret
@@ -403,6 +415,35 @@ function M:get_show_text(object, encoding)
   if encoding and encoding ~= 'utf-8' and iconv_supported(encoding) then
     for i, l in ipairs(stdout) do
       stdout[i] = vim.iconv(l, encoding, 'utf-8')
+    end
+  end
+
+  return stdout, stderr
+end
+
+--- @async
+--- Get version of file at revision. If the path was renamed after `revision`,
+--- resolve the old path before reading the blob.
+--- @param revision string
+--- @param relpath string
+--- @param encoding? string
+--- @return string[] stdout, string? stderr
+function M:get_show_text_at_revision(revision, relpath, encoding)
+  local stdout, stderr = self:get_show_text(revision .. ':' .. relpath, encoding)
+
+  if
+    stderr
+    and (
+      stderr:match(errors.e.path_does_not_exist)
+      or stderr:match(errors.e.path_exist_on_disk_but_not_in)
+    )
+  then
+    log.dprintf('%s not found in %s looking for renames', relpath, revision)
+    local old_path = self:diff_rename_status(revision, true)[relpath]
+      or self:log_rename_status(revision, relpath)
+    if old_path then
+      log.dprintf('found rename %s -> %s', old_path, relpath)
+      stdout, stderr = self:get_show_text(revision .. ':' .. old_path, encoding)
     end
   end
 
