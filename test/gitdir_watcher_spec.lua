@@ -136,6 +136,24 @@ describe('gitdir_watcher', function()
     end)
   end)
 
+  it('preserves slash branch names on head updates', function()
+    setup_test_repo()
+    setup_gitsigns(test_config)
+    edit(test_file)
+
+    helpers.expectf(function()
+      return helpers.exec_lua(function()
+        return vim.b.gitsigns_status_dict.gitdir ~= nil
+      end)
+    end)
+
+    helpers.check({ status = { head = 'main', added = 0, changed = 0, removed = 0 } })
+
+    git('checkout', '-B', 'feature/foo')
+
+    helpers.check({ status = { head = 'feature/foo', added = 0, changed = 0, removed = 0 } })
+  end)
+
   it('can debounce and throttle updates per buffer', function()
     helpers.git_init_scratch()
 
