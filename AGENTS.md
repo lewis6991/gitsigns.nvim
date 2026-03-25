@@ -28,4 +28,5 @@
 
 ## Commit & Pull Request Guidelines
 - History follows a Conventional Commit style: `<type>(<scope>): <verb phrase>` (for instance, `fix(blame): close blame window on bufhidden`), so match that pattern and keep subjects under 72 characters.
+- Commit messages must have a detailed body explaining the problem and solution.
 - Ensure `make build`, the relevant `make test-*`, and `make doc-check` all pass locally.

@@ -426,7 +426,7 @@ local has_cygpath --- @type boolean?
 
 --- @async
 --- @param path string
---- @param mode? 'unix'|'windows' (default: 'windows')
+--- @param mode? 'unix'|'windows'|'mixed' (default: 'windows')
 --- @return string
 function M.cygpath(path, mode)
   local async = require('gitsigns.async')

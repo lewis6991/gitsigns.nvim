@@ -67,4 +67,49 @@ describe('blame', function()
     eq({ 3, 0 }, helpers.api.nvim_win_get_cursor(0))
     eq('gitsigns-blame', exec_lua('return vim.bo.filetype'))
   end)
+
+  it('uses a repo-relative path when running blame', function()
+    local args = exec_lua(function()
+      local blame = require('gitsigns.git.blame')
+
+      local captured_args
+      local obj = {
+        file = 'C:/msys64/home/User/.dotfiles/.config/nvim/lua/mappings.lua',
+        relpath = '.config/nvim/lua/mappings.lua',
+        object_name = ('a'):rep(40),
+        repo = {
+          abbrev_head = 'main',
+          toplevel = 'C:/msys64/home/User/.dotfiles',
+          command = function(_, argv, spec)
+            captured_args = vim.deepcopy(argv)
+            spec.stdout(
+              nil,
+              table.concat({
+                ('a'):rep(40) .. ' 1 1 1',
+                'author tester',
+                'author-mail <tester@example.com>',
+                'author-time 0',
+                'author-tz +0000',
+                'committer tester',
+                'committer-mail <tester@example.com>',
+                'committer-time 0',
+                'committer-tz +0000',
+                'summary init',
+                'filename .config/nvim/lua/mappings.lua',
+                '',
+              }, '\n')
+            )
+            return {}, nil, 0
+          end,
+        },
+      }
+
+      blame.run_blame(obj, { 'line' }, 1, nil, {})
+
+      return captured_args
+    end)
+
+    eq('--', args[#args - 1])
+    eq('.config/nvim/lua/mappings.lua', args[#args])
+  end)
 end)
