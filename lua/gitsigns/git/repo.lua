@@ -536,6 +536,24 @@ function M.get(cwd, gitdir, toplevel)
   end)
 end
 
+local has_win_cygpath = vim.fn.has('win32') == 1 and vim.fn.executable('cygpath') == 1
+
+--- Normalize repo discovery paths for comparisons and returned repo metadata.
+--- On Windows with MSYS/Cygwin Git, convert `/c/...` style paths to mixed
+--- Windows form before applying `vim.fs.normalize()`.
+--- @async
+--- @param path? string
+--- @return string?
+local function normalize_path(path)
+  if not path then
+    return
+  end
+  if has_win_cygpath then
+    path = util.cygpath(path, 'mixed')
+  end
+  return vim.fs.normalize(path)
+end
+
 --- @async
 --- @param gitdir string
 --- @param head_str string
@@ -625,19 +643,21 @@ function M.get_info(dir, gitdir, worktree)
   end
   --- @cast stdout [string, string, string]
 
-  local toplevel_r = stdout[1]
-  local gitdir_r = stdout[2]
+  local toplevel_r = assert(normalize_path(stdout[1]))
+  local gitdir_r = assert(normalize_path(stdout[2]))
+  dir = normalize_path(dir)
+  gitdir = normalize_path(gitdir)
 
   -- On windows, git will emit paths with `/` but dir may contain `\` so need to
   -- normalize.
-  if dir and not vim.startswith(vim.fs.normalize(dir), toplevel_r) then
+  if dir and not vim.startswith(dir, toplevel_r) then
     log.dprintf("'%s' is outside worktree '%s'", dir, toplevel_r)
     -- outside of worktree
     return
   end
 
   if not has_abs_gd then
-    gitdir_r = assert(uv.fs_realpath(gitdir_r))
+    gitdir_r = assert(normalize_path(uv.fs_realpath(gitdir_r)))
   end
 
   if gitdir and not worktree and gitdir ~= gitdir_r then
@@ -648,7 +668,7 @@ function M.get_info(dir, gitdir, worktree)
     toplevel = toplevel_r,
     gitdir = gitdir_r,
     abbrev_head = process_abbrev_head(gitdir_r, stdout[3], toplevel_r),
-    detached = toplevel_r and gitdir_r ~= toplevel_r .. '/.git',
+    detached = gitdir_r ~= assert(normalize_path(Path.join(toplevel_r, '.git'))),
   }
 end
 

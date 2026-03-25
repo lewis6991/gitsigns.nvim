@@ -53,6 +53,34 @@ jobs:
       - name: Run Test
         run: make test
 
+  windows_smoke:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git
+            mingw-w64-ucrt-x86_64-neovim
+
+      - name: Show Versions
+        run: |
+          git --version
+          nvim --version | head -n 1
+
+      - name: Run Windows Smoke Tests
+        run: nvim --headless -u test/windows/init.lua -l test/windows/run.lua
+
   format:
     runs-on: ubuntu-latest
     steps:
