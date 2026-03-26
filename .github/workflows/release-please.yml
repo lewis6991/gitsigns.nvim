@@ -69,8 +69,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: release-please--branches--main
-          # Fetch the last 2 commits instead of just 1. (Fetching just 1 commit would overwrite the whole history)
-          fetch-depth: 2
+          fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
       - uses: leafo/gh-actions-lua@v10
@@ -79,14 +78,21 @@ jobs:
 
       - uses: leafo/gh-actions-luarocks@v4
 
+      - name: Rebase PR on main
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+          git fetch origin main
+          git rebase origin/main
+
       - name: Update doc
         run: make doc
 
       - name: Update PR
         run: |
-          git config user.name github-actions[bot]
-          git config user.email github-actions[bot]@users.noreply.github.com
           git diff
           git add doc
-          git commit --amend --no-edit
-          git push --force
+          if ! git diff --cached --quiet; then
+            git commit --amend --no-edit
+          fi
+          git push --force-with-lease
