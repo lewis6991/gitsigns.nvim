@@ -50,23 +50,30 @@ function M.statuscolumn(bufnr, lnum)
 
   local res = {} --- @type string[]
   local res_len = 0
-  for _, signs in pairs({ signs_normal, signs_staged }) do
-    local marks = api.nvim_buf_get_extmarks(bufnr, signs.ns, { lnum - 1, 0 }, { lnum - 1, -1 }, {})
-    for _, mark in pairs(marks) do
-      local id = mark[1]
-      local s = signs.signs[id]
-      if s then
-        vim.list_extend(res, { '%#' .. s[2] .. '#', s[1], '%*' })
-        --- @diagnostic disable-next-line: missing-parameter
-        res_len = res_len + vim.str_utfindex(s[1])
+  for _, signs in ipairs({ signs_normal, signs_staged }) do
+    local buf_signs = signs.signs[bufnr]
+    if buf_signs and next(buf_signs) then
+      local marks = api.nvim_buf_get_extmarks(
+        bufnr,
+        signs.ns,
+        { lnum - 1, 0 },
+        { lnum - 1, -1 },
+        {}
+      )
+      for _, mark in ipairs(marks) do
+        local id = mark[1]
+        local s = buf_signs[id]
+        if s then
+          vim.list_extend(res, { '%#' .. s[2] .. '#', s[1], '%*' })
+          --- @diagnostic disable-next-line: missing-parameter
+          res_len = res_len + vim.str_utfindex(s[1])
+        end
       end
     end
   end
-
   local pad = math.max(0, 2 - res_len)
   return table.concat(res) .. string.rep(' ', pad)
 end
-
 --- @param bufnr integer
 --- @param signs Gitsigns.Signs
 --- @param hunks? Gitsigns.Hunk.Hunk[]
