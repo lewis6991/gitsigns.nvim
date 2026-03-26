@@ -198,6 +198,57 @@ describe('actions', function()
     })
   end)
 
+  it('does not emit duplicate GitSignsUpdate events for stage_hunk', function()
+    setup_test_repo()
+    edit(test_file)
+
+    feed('jjjccEDIT<esc>')
+    check({
+      status = { head = 'main', added = 0, changed = 1, removed = 0 },
+      signs = { changed = 1 },
+    })
+
+    exec_lua(function()
+      _G.test_gitsigns_update_events = {}
+
+      vim.api.nvim_create_autocmd('User', {
+        group = vim.api.nvim_create_augroup('GitsignsUpdateTest', { clear = true }),
+        pattern = 'GitSignsUpdate',
+        callback = function(args)
+          local bufnr = args.data and args.data.buffer
+          if bufnr ~= vim.api.nvim_get_current_buf() then
+            return
+          end
+
+          local status = vim.b[bufnr].gitsigns_status_dict
+          _G.test_gitsigns_update_events[#_G.test_gitsigns_update_events + 1] = {
+            added = status and status.added,
+            changed = status and status.changed,
+            removed = status and status.removed,
+            head = status and status.head,
+          }
+        end,
+      })
+    end)
+
+    command('Gitsigns stage_hunk')
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    helpers.sleep(500)
+
+    eq({
+      {
+        added = 0,
+        changed = 0,
+        removed = 0,
+        head = 'main',
+      },
+    }, exec_lua('return _G.test_gitsigns_update_events'))
+  end)
+
   it('preserves foldenable in diffthis windows after staging a hunk', function()
     command('silent! %bwipe!')
     setup_test_repo()
