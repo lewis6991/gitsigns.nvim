@@ -20,7 +20,7 @@ end
 --- @field config table<Gitsigns.SignType,Gitsigns.SignConfig>
 --- @field staged boolean
 --- @field ns integer
---- @field signs table<integer,[string,string?]?>
+--- @field signs table<integer,table<integer,[string,string?]?>?>
 --- @field private _hl_cache table<Gitsigns.SignType,table<string,string>>
 local M = {}
 
@@ -66,13 +66,17 @@ end
 --- @param start_lnum? integer
 --- @param end_lnum? integer
 function M:remove(bufnr, start_lnum, end_lnum)
+  local buf_signs = self.signs[bufnr]
   if start_lnum then
     api.nvim_buf_clear_namespace(bufnr, self.ns, start_lnum - 1, end_lnum or start_lnum)
-    for i = start_lnum - 1, (end_lnum or start_lnum) - 1 do
-      self.signs[i] = nil
+    if not buf_signs then
+      return
+    end
+    for i = start_lnum, end_lnum or start_lnum do
+      buf_signs[i] = nil
     end
   else
-    self.signs = {}
+    self.signs[bufnr] = nil
     api.nvim_buf_clear_namespace(bufnr, self.ns, 0, -1)
   end
 end
@@ -90,6 +94,9 @@ function M:add(bufnr, signs, filter)
     -- Don't place signs if it won't show anything
     return
   end
+
+  local buf_signs = self.signs[bufnr] or {}
+  self.signs[bufnr] = buf_signs
 
   for _, sign in ipairs(signs) do
     if (not filter or filter(sign.lnum)) and not self:contains(bufnr, sign.lnum) then
@@ -115,7 +122,7 @@ function M:add(bufnr, signs, filter)
 
       if ok then
         --- @cast id_or_err integer
-        self.signs[id_or_err] = { text, sign_hl_group }
+        buf_signs[id_or_err] = { text, sign_hl_group }
       elseif config.debug_mode then
         vim.schedule(function()
           error(table.concat({
