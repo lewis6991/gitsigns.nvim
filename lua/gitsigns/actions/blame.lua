@@ -323,8 +323,7 @@ local function diff(bufnr, blm_win, blame)
   local lnum = api.nvim_win_get_cursor(blm_win)[1]
   local info = assert(blame[lnum])
 
-  vim.cmd.tabnew()
-  api.nvim_set_current_buf(bufnr)
+  vim.cmd('tab sbuffer ' .. bufnr)
   require('gitsigns.actions.diffthis').show(bufnr, info.commit.sha, info.filename)
   if info.previous_sha then
     require('gitsigns.actions').diffthis(info.previous_sha)
