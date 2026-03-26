@@ -18,14 +18,17 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
       - uses: actions/checkout@v4
         if: ${{ steps.release.outputs.release_created }}
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
       - name: tag stable versions
         if: ${{ steps.release.outputs.release_created }}
         run: |
           git config user.name github-actions[bot]
           git config user.email github-actions[bot]@users.noreply.github.com
-          git remote add gh-token "https://${{ secrets.GITHUB_TOKEN }}@github.com/google-github-actions/release-please-action.git"
           git tag -f -a release -m "Last Stable Release"
           git push origin release -f
 
@@ -57,6 +60,7 @@ jobs:
           ref: release-please--branches--main
           # Fetch the last 2 commits instead of just 1. (Fetching just 1 commit would overwrite the whole history)
           fetch-depth: 2
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
       - uses: leafo/gh-actions-lua@v10
         with:
@@ -71,9 +75,7 @@ jobs:
         run: |
           git config user.name github-actions[bot]
           git config user.email github-actions[bot]@users.noreply.github.com
-          git remote add gh-token "https://${{ secrets.GITHUB_TOKEN }}@github.com/google-github-actions/release-please-action.git"
           git diff
           git add doc
           git commit --amend --no-edit
           git push --force
-
