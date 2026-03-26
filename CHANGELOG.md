@@ -1,5 +1,42 @@
 # Changelog
 
+## [2.1.0](https://github.com/lewis6991/gitsigns.nvim/compare/v2.0.0...v2.1.0) (2026-03-26)
+
+
+### Features
+
+* **setqflist:** include untracked files when attach_to_untracked is enabled ([1ce96a4](https://github.com/lewis6991/gitsigns.nvim/commit/1ce96a464fdbc24208e24c117e2021794259005d)), closes [#829](https://github.com/lewis6991/gitsigns.nvim/issues/829)
+
+
+### Bug Fixes
+
+* **attach:** allow manual attach for untracked files ([8c7a4e2](https://github.com/lewis6991/gitsigns.nvim/commit/8c7a4e2f25bb15fa0ec4ea25fc4dd78425bdbd8c))
+* **blame:** guard WinClosed namespace cleanup ([#1469](https://github.com/lewis6991/gitsigns.nvim/issues/1469)) ([7c4faa3](https://github.com/lewis6991/gitsigns.nvim/commit/7c4faa3540d0781a28588cafbd4dd187a28ac6e3))
+* **blame:** keep cursor line on reblame ([6d72ba8](https://github.com/lewis6991/gitsigns.nvim/commit/6d72ba88c40f4c55c01f8a0558aa532cee108486)), closes [#1237](https://github.com/lewis6991/gitsigns.nvim/issues/1237)
+* **blame:** reuse buffer when opening diff tab ([13588ac](https://github.com/lewis6991/gitsigns.nvim/commit/13588ac50446b12542c922430610eaa330c4e425)), closes [#1490](https://github.com/lewis6991/gitsigns.nvim/issues/1490)
+* calculate line length correct with inlay hints ([abf82a6](https://github.com/lewis6991/gitsigns.nvim/commit/abf82a65f185bd54adc0679f74b7d6e1ada690c9))
+* **diff:** respect -diff attributes in attach and setqflist ([c21acb9](https://github.com/lewis6991/gitsigns.nvim/commit/c21acb929a29027e6edb123b931cdd290c675c09)), closes [#1402](https://github.com/lewis6991/gitsigns.nvim/issues/1402)
+* **diffthis:** preserve fold state when staging hunks ([e4d4ec8](https://github.com/lewis6991/gitsigns.nvim/commit/e4d4ec84dc320ea3d018c22aa733a71ef5af6eb0))
+* **git:** force C locale for git parsing ([f7cc685](https://github.com/lewis6991/gitsigns.nvim/commit/f7cc6850517b8db59a41314b83bb7994eae33cdd))
+* **git:** parse renamed files with spaces ([253962a](https://github.com/lewis6991/gitsigns.nvim/commit/253962a57e0935d5efb964a46b9a16337fb28296))
+* **git:** refresh cached repo head metadata ([d95879a](https://github.com/lewis6991/gitsigns.nvim/commit/d95879a259bf2c88217494869adc7c9114607a0b))
+* **git:** serialize repo operations per repo ([060b26c](https://github.com/lewis6991/gitsigns.nvim/commit/060b26c3fda4ce9b572159c0062813bfd73700f5))
+* **luarocks:** bump scm rockspec revision ([d4fdf44](https://github.com/lewis6991/gitsigns.nvim/commit/d4fdf44942ada76a0aedbb64c7b333685309c34e)), closes [#1468](https://github.com/lewis6991/gitsigns.nvim/issues/1468)
+* **qflist:** keep renamed paths with base diffs ([d9a3de6](https://github.com/lewis6991/gitsigns.nvim/commit/d9a3de6428110b18f647dfecbc07ba3588b3de58))
+* **qflist:** sanitize NUL bytes before VimL conversion ([97c6856](https://github.com/lewis6991/gitsigns.nvim/commit/97c6856ae0fde762363e4a85d0c99b33ca67a52e))
+* **repo:** update head_oid when checked-out branch moves ([f222c40](https://github.com/lewis6991/gitsigns.nvim/commit/f222c40ec3a31ddc97b0b8c4b0bd28b841fd698b))
+* **statuscolumn:** scope sign cache per buffer ([eaf73f8](https://github.com/lewis6991/gitsigns.nvim/commit/eaf73f89531362aae5b9b5934c276740cec7a068)), closes [#1491](https://github.com/lewis6991/gitsigns.nvim/issues/1491)
+* **status:** suppress redundant GitSignsUpdate events ([b8034e2](https://github.com/lewis6991/gitsigns.nvim/commit/b8034e2e3f079ffc25b1c456f35b21b64d062cc3)), closes [#1467](https://github.com/lewis6991/gitsigns.nvim/issues/1467)
+* typing ([5dbe0f4](https://github.com/lewis6991/gitsigns.nvim/commit/5dbe0f4706ab513138f4c289d2a78ca87438b73e))
+* **watcher:** preserve slash branch names ([0a80125](https://github.com/lewis6991/gitsigns.nvim/commit/0a80125bace82d82847d40bc2c38a22d62c6dc2d))
+* **windows:** normalize repo path comparisons ([5310a7f](https://github.com/lewis6991/gitsigns.nvim/commit/5310a7f3a97b6de629269f8935691627a076ae4b))
+* **word_diff:** "No newline at eof" should show once for single hunk ([3121727](https://github.com/lewis6991/gitsigns.nvim/commit/31217271a7314c343606acb4072a94a039a19fb5))
+
+
+### Performance Improvements
+
+* apply stage ops directly ([2f71334](https://github.com/lewis6991/gitsigns.nvim/commit/2f71334514ed3bb491380f10076587c810f42d0f))
+
 ## [2.0.0](https://github.com/lewis6991/gitsigns.nvim/compare/v1.0.2...v2.0.0) (2026-01-09)
 
 
