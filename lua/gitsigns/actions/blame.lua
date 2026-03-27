@@ -458,6 +458,7 @@ function M.blame(opts)
   end, {
     desc = 'Reblame at commit',
     buffer = blm_bufnr,
+    nowait = true,
   })
 
   pmap('n', 'd', function()
@@ -465,6 +466,7 @@ function M.blame(opts)
   end, {
     desc = 'Diff (tab)',
     buffer = blm_bufnr,
+    nowait = true,
   })
 
   pmap('n', 'R', function()
@@ -472,6 +474,7 @@ function M.blame(opts)
   end, {
     desc = 'Reblame at commit parent',
     buffer = blm_bufnr,
+    nowait = true,
   })
 
   pmap('n', 's', function()
@@ -479,6 +482,7 @@ function M.blame(opts)
   end, {
     desc = 'Show commit in a vertical split',
     buffer = blm_bufnr,
+    nowait = true,
   })
 
   pmap('n', 'S', function()
@@ -486,6 +490,7 @@ function M.blame(opts)
   end, {
     desc = 'Show commit in a new tab',
     buffer = blm_bufnr,
+    nowait = true,
   })
 
   menu('GitsignsBlame', {
