@@ -199,6 +199,15 @@ local function noautocmd(f)
   end
 end
 
+local function withautocmd(f)
+  return function()
+    local ei = vim.o.eventignore
+    vim.o.eventignore = ''
+    f()
+    vim.o.eventignore = ei
+  end
+end
+
 --- Preview the hunk at the cursor position in a floating
 --- window. If the preview is already open, calling this
 --- will cause the window to get focus.
@@ -221,13 +230,18 @@ M.preview_hunk = noautocmd(function()
     return
   end
 
+  local filetype = vim.bo[bufnr].filetype
+
   --- @type Gitsigns.LineSpec[]
   local preview_linespec = {
     { { ('Hunk %d of %d'):format(index, #bcache.hunks), 'Title' } },
   }
   vim.list_extend(preview_linespec, Hunks.linespec_for_hunk(hunk, vim.bo[bufnr].fileformat))
 
-  popup.create(preview_linespec, config.preview_config, 'hunk')
+  local _, pbufnr = popup.create(preview_linespec, config.preview_config, 'hunk')
+  withautocmd(function()
+    vim.bo[pbufnr].filetype = filetype
+  end)()
 end)
 
 --- Preview the hunk at the cursor position inline in the buffer.
