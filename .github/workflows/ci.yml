@@ -13,10 +13,23 @@ concurrency:
 
 jobs:
   commit_lint:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      # Check commit messages
-      - uses: webiny/action-conventional-commits@v1.3.0
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install gitlint
+        run: make gitlint
+
+      - name: Lint PR commits
+        run: make commitlint RANGE='${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}'
 
   test:
     runs-on: ubuntu-latest

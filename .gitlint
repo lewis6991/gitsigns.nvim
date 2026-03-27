@@ -1,0 +1,11 @@
+[general]
+ignore=author-valid-email,body-is-missing,body-min-length
+
+[title-match-regex]
+regex=^(?:Revert ".+"|(?:build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(?:\([^)]+\))?(?:!)?: .+)$
+
+[title-max-length]
+line-length=72
+
+[body-max-line-length]
+line-length=72

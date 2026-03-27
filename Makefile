@@ -98,6 +98,37 @@ format: $(STYLUA)
 	$(STYLUA) $(LUA_FILES)
 
 ################################################################################
+# Gitlint
+################################################################################
+
+GITLINT_REF := 0.19.1
+GITLINT_DIR := deps/gitlint-$(GITLINT_REF)
+GITLINT_BIN := $(GITLINT_DIR)/bin/gitlint
+GITLINT_PIP_CACHE := $(PWD)/deps/.pip-cache
+COMMIT ?= HEAD
+RANGE ?=
+
+.PHONY: gitlint
+gitlint: $(GITLINT_BIN)
+
+$(GITLINT_BIN):
+	mkdir -p $(GITLINT_PIP_CACHE)
+	python3 -m venv $(GITLINT_DIR)
+	PIP_CACHE_DIR=$(GITLINT_PIP_CACHE) $(GITLINT_DIR)/bin/pip install gitlint==$(GITLINT_REF)
+
+.PHONY: commitlint
+commitlint: $(GITLINT_BIN)
+	@if [ -n "$(RANGE)" ]; then \
+		$(GITLINT_BIN) --commits "$(RANGE)"; \
+	else \
+		$(GITLINT_BIN) --commit "$(COMMIT)"; \
+	fi
+
+.PHONY: commitlint-hook
+commitlint-hook: $(GITLINT_BIN)
+	$(GITLINT_BIN) install-hook
+
+################################################################################
 # Emmylua
 ################################################################################
 
@@ -165,4 +196,3 @@ doc: $(NVIM_TEST) $(NVIM_TEST_RUNTIME) $(EMMYLUADOC_BIN)
 .PHONY: doc-check
 doc-check: doc
 	git diff --exit-code -- doc
-
