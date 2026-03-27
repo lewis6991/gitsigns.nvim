@@ -10,11 +10,10 @@
 ## Build, Test, and Development Commands
 - `make build`: run Stylua over `lua/` + `test/`, then regenerate help files before committing.
 - `make test [FILTER=pattern]`: execute the functional suite via nvim-test with the default Neovim runner.
-- `make test-010`, `make test-011`, `make test-nightly`: confirm compatibility with multiple Neovim versions.
 - `make doc` / `make doc-check`: regenerate help from `lua/gitsigns/config.lua` and fail if docs drift.
 - `make format-check` or `make format`: lint or autoformat Lua sources.
 - `make emmylua-check`: run optional static analysis after fetching the analyzer.
-- If you hit `EMFILE` (too many open files) in the sandbox, run commands with a higher fd limit, e.g. `ulimit -n 1024; make test ...` (this does not persist across separate commands).
+- Read `etc/testing.md` for the test matrix, test-selection guidance, and troubleshooting notes.
 
 ## Coding Style & Naming Conventions
 - Lua code must have emmylua/LuaCATS type annotations
@@ -23,10 +22,8 @@
 - When creating simple util functions. Use Neovim's `:help` command to see if anything already exists.
 
 ## Testing Guidelines
-- Add or update tests for risky, non-obvious, or broad changes; small localized fixes can skip dedicated regression coverage when existing tests are enough.
-- Keep tests deterministic by guarding optional Git features and running the version matrix (`make test-010 && make test-nightly`) when Neovim internals are touched.
+- Add or update tests for risky, non-obvious, or broad changes; see `etc/testing.md` for details.
 
 ## Commit & Pull Request Guidelines
-- History follows a Conventional Commit style: `<type>(<scope>): <verb phrase>` (for instance, `fix(blame): close blame window on bufhidden`), so match that pattern and keep subjects under 72 characters.
-- Commit messages must have a detailed body explaining the problem and solution.
+- Read `etc/commit-message.md` before creating or amending commits.
 - Ensure `make build`, the relevant `make test-*`, and `make doc-check` all pass locally.
