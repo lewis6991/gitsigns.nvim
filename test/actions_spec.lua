@@ -306,6 +306,10 @@ describe('actions', function()
     before_each(function()
       helpers.git('reset', '--hard')
       edit(test_file)
+      check({
+        status = { head = 'main', added = 0, changed = 0, removed = 0 },
+        signs = {},
+      })
     end)
     describe('can stage add hunks', function()
       before_each(function()
