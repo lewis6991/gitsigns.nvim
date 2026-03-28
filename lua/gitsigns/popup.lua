@@ -51,24 +51,33 @@ local function expand_height(winid, nlines, border)
 end
 
 --- @class (exact) Gitsigns.HlMark
---- @field hl_group string
+--- @field hl_group Gitsigns.HlName|Gitsigns.HlStack
 --- @field start_row integer
 --- @field start_col? integer
 --- @field end_row? integer
 --- @field end_col? integer
+--- @field priority? integer
 --- @field url? string
+
+--- @alias Gitsigns.VirtTextChunk [string, Gitsigns.HlName|Gitsigns.HlStack]
 
 --- Each element represents a multi-line segment
 --- @alias Gitsigns.LineSpec [string, string|Gitsigns.HlMark[], string?][]
 
+--- @param ret Gitsigns.HlMark[]
 --- @param hlmarks Gitsigns.HlMark[]
 --- @param row_offset integer
-local function offset_hlmarks(hlmarks, row_offset)
+local function extend_hlmarks(ret, hlmarks, row_offset)
   for _, h in ipairs(hlmarks) do
-    h.start_row = h.start_row + row_offset
-    if h.end_row then
-      h.end_row = h.end_row + row_offset
-    end
+    ret[#ret + 1] = {
+      url = h.url,
+      hl_group = h.hl_group,
+      start_row = h.start_row + row_offset,
+      start_col = h.start_col,
+      end_row = h.end_row and h.end_row + row_offset or nil,
+      end_col = h.end_col,
+      priority = h.priority,
+    }
   end
 end
 
@@ -103,8 +112,7 @@ local function partition_linesspec(fmt)
           end_col = end_col,
         }
       else -- hl is Gitsigns.HlMark[]
-        offset_hlmarks(hls, row)
-        vim.list_extend(ret, hls)
+        extend_hlmarks(ret, hls, row)
       end
 
       row = end_row
@@ -148,6 +156,7 @@ local function update_buf(bufnr, lines_spec)
   vim.bo[bufnr].modifiable = true
   api.nvim_buf_set_lines(bufnr, 0, -1, true, lines)
   vim.bo[bufnr].modifiable = false
+  api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
 
   for _, hl in ipairs(highlights) do
     local ok, err = pcall(api.nvim_buf_set_extmark, bufnr, ns, hl.start_row, hl.start_col or 0, {
@@ -156,6 +165,7 @@ local function update_buf(bufnr, lines_spec)
       end_row = hl.end_row,
       end_col = hl.end_col,
       hl_eol = true,
+      priority = hl.priority,
     })
     if not ok then
       error(vim.inspect(hl) .. '\n' .. err)
