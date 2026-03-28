@@ -1,5 +1,6 @@
 local async = require('gitsigns.async')
 local log = require('gitsigns.debug.log')
+local DeletedPreview = require('gitsigns.deleted_preview')
 local util = require('gitsigns.util')
 local run_diff = require('gitsigns.diff')
 local Hunks = require('gitsigns.hunks')
@@ -278,77 +279,6 @@ local function apply_word_diff(bufnr, row)
   end
 end
 
-local ns_rm = api.nvim_create_namespace('gitsigns_removed')
-
-local VIRT_LINE_LEN = 300
-
---- @param bufnr integer
-local function clear_deleted(bufnr)
-  local marks = api.nvim_buf_get_extmarks(bufnr, ns_rm, 0, -1, {})
-  for _, mark in ipairs(marks) do
-    api.nvim_buf_del_extmark(bufnr, ns_rm, mark[1])
-  end
-end
-
---- @param bufnr integer
---- @param nsd integer
---- @param hunk Gitsigns.Hunk.Hunk
-local function show_deleted(bufnr, nsd, hunk)
-  local virt_lines = {} --- @type [string, string][][]
-
-  for i, line in ipairs(hunk.removed.lines) do
-    local vline = {} --- @type [string, string][]
-    local last_ecol = 1
-
-    if config.word_diff then
-      local regions = require('gitsigns.diff_int').run_word_diff(
-        { hunk.removed.lines[i] },
-        { hunk.added.lines[i] }
-      )
-
-      for _, region in ipairs(regions) do
-        local rline, scol, ecol = region[1], region[3], region[4]
-        if rline > 1 then
-          break
-        end
-        vline[#vline + 1] = { line:sub(last_ecol, scol - 1), 'GitSignsDeleteVirtLn' }
-        vline[#vline + 1] = { line:sub(scol, ecol - 1), 'GitSignsDeleteVirtLnInline' }
-        last_ecol = ecol
-      end
-    end
-
-    if #line > 0 then
-      vline[#vline + 1] = { line:sub(last_ecol, -1), 'GitSignsDeleteVirtLn' }
-    end
-
-    -- Add extra padding so the entire line is highlighted
-    local padding = string.rep(' ', VIRT_LINE_LEN - #line)
-    vline[#vline + 1] = { padding, 'GitSignsDeleteVirtLn' }
-
-    virt_lines[i] = vline
-  end
-
-  local topdelete = hunk.added.start == 0 and hunk.type == 'delete'
-
-  local row = topdelete and 0 or hunk.added.start - 1
-  api.nvim_buf_set_extmark(bufnr, nsd, row, -1, {
-    virt_lines = virt_lines,
-    -- TODO(lewis6991): Note virt_lines_above doesn't work on row 0 neovim/neovim#16166
-    virt_lines_above = hunk.type ~= 'delete' or topdelete,
-  })
-end
-
---- @param bufnr integer
---- @param hunks? Gitsigns.Hunk.Hunk[]
-local function update_show_deleted(bufnr, hunks)
-  clear_deleted(bufnr)
-  if config.show_deleted then
-    for _, hunk in ipairs(hunks or {}) do
-      show_deleted(bufnr, ns_rm, hunk)
-    end
-  end
-end
-
 --- @param bufnr integer
 --- @return boolean
 local function buf_in_view(bufnr)
@@ -447,21 +377,23 @@ M.update = throttle_async({ hash = 1, schedule = true }, function(bufnr)
 
     -- Note the decoration provider may have invalidated bcache.hunks at this
     -- point
-    if
-      bcache.force_next_update
-      or Hunks.compare_heads(bcache.hunks, old_hunks)
-      or Hunks.compare_heads(bcache.hunks_staged, old_hunks_staged)
-    then
+    local hunks_changed = bcache.force_next_update or Hunks.compare_heads(bcache.hunks, old_hunks)
+    local hunks_staged_changed = Hunks.compare_heads(bcache.hunks_staged, old_hunks_staged)
+
+    if hunks_changed or hunks_staged_changed then
       -- Apply signs to the window. Other signs will be added by the decoration
       -- provider as they are drawn.
       apply_win_signs(bufnr, vim.fn.line('w0'), vim.fn.line('w$'), true)
 
-      update_show_deleted(bufnr, bcache.hunks)
       bcache.force_next_update = false
 
       local summary = Hunks.get_summary(bcache.hunks)
       summary.head = git_obj.repo.abbrev_head
       Status.update(bufnr, summary)
+    end
+
+    if hunks_changed then
+      DeletedPreview.prepare(bufnr)
     end
   end)
 end)
@@ -478,6 +410,8 @@ end)
 --- @param bufnr integer
 --- @param keep_signs? boolean
 function M.detach(bufnr, keep_signs)
+  DeletedPreview.detach(bufnr)
+
   if not keep_signs then
     -- Remove all signs
     signs_normal:remove(bufnr)
@@ -494,37 +428,46 @@ function M.reset_signs()
   signs_staged:reset()
 end
 
+--- @param winid integer
 --- @param bufnr integer
 --- @param topline integer
 --- @param botline_guess integer
---- @return false?
-local function on_win(bufnr, topline, botline_guess)
+--- @return boolean
+local function on_win(winid, bufnr, topline, botline_guess)
   local bcache = cache[bufnr]
   if not bcache or not bcache.hunks then
+    DeletedPreview.clear_win(winid)
     return false
   end
   local botline = math.min(botline_guess, api.nvim_buf_line_count(bufnr))
 
   apply_win_signs(bufnr, topline + 1, botline + 1)
 
-  if not (config.word_diff and config.diff_opts.internal) then
-    return false
+  local wants_on_line = false
+  if config.word_diff and config.diff_opts.internal then
+    wants_on_line = true
   end
+
+  DeletedPreview.on_win(winid, bufnr, topline, botline)
+
+  return wants_on_line or false
 end
 
 function M.setup()
   -- Calling this before any await calls will stop nvim's intro messages being
   -- displayed
   api.nvim_set_decoration_provider(ns, {
-    on_win = function(_, _winid, bufnr, topline, botline)
-      return on_win(bufnr, topline, botline)
+    on_win = function(_, winid, bufnr, topline, botline)
+      return on_win(winid, bufnr, topline, botline)
     end,
     on_line = function(_, _winid, bufnr, row)
-      apply_word_diff(bufnr, row)
+      if config.word_diff and config.diff_opts.internal then
+        apply_word_diff(bufnr, row)
+      end
     end,
   })
 
-  Config.subscribe({ 'signcolumn', 'numhl', 'linehl', 'show_deleted' }, function()
+  Config.subscribe({ 'signcolumn', 'numhl', 'linehl', 'show_deleted', 'word_diff' }, function()
     -- Remove all signs
     M.reset_signs()
 
@@ -545,6 +488,17 @@ function M.setup()
       end
       bcache:invalidate(true)
       M.update_sync_debounced(buf)
+    end,
+  })
+
+  api.nvim_create_autocmd('WinClosed', {
+    group = 'gitsigns',
+    callback = function(args)
+      local winid = tonumber(args.match)
+      if winid then
+        --- @cast winid integer
+        DeletedPreview.clear_win(winid)
+      end
     end,
   })
 
