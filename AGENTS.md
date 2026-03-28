@@ -23,6 +23,7 @@
 
 ## Testing Guidelines
 - Add or update tests for risky, non-obvious, or broad changes; see `etc/testing.md` for details.
+- Do not run multiple `make test` invocations in parallel against the same checkout. The functional tests share `scratch/` state via `test/gs_helpers.lua`, so parallel runs can interfere unless each run gets an isolated workspace/scratch path.
 
 ## Commit & Pull Request Guidelines
 - Read `etc/commit-message.md` before creating or amending commits.

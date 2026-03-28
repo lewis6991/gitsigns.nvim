@@ -598,7 +598,7 @@ function M.linespec_for_hunk(hunk, fileformat)
       local mark = {
         start_row = 0,
         hl_group = spec.hl,
-        end_row = 1, -- Highlight whole line
+        end_row = 1,
       }
       hls[#hls + 1] = { { spec.sym .. l, { mark } } }
     end
@@ -630,7 +630,7 @@ function M.linespec_for_hunk(hunk, fileformat)
       }
     end
 
-    local no_nl_at_eof ---@type integer?
+    local no_nl_at_eof --- @type integer?
     if hunk.removed.no_nl_at_eof and not hunk.added.no_nl_at_eof then
       no_nl_at_eof = hunk.removed.count + 1
     elseif not hunk.removed.no_nl_at_eof and hunk.added.no_nl_at_eof then

@@ -196,9 +196,17 @@ vim.list_extend(M.hls, {
   },
 
   {
-    GitSignsDeleteVirtLnInLine = {
+    GitSignsDeleteVirtLnInline = {
       'GitSignsDeleteLnInline',
       desc = 'Used for word diff regions in lines shown by inline `preview_hunk_inline()` or `show_deleted()`.',
+    },
+  },
+
+  {
+    GitSignsDeleteVirtLnInLine = {
+      'GitSignsDeleteVirtLnInline',
+      desc = 'Compatibility alias for `GitSignsDeleteVirtLnInline`.',
+      hidden = true,
     },
   },
 
