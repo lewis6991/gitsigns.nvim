@@ -208,6 +208,13 @@ vim.list_extend(M.hls, {
       desc = 'Used for line numbers in inline hunks previews.',
     },
   },
+
+  {
+    GitSignsColorTemp = {
+      'Normal',
+      desc = 'Heatmap color: fg = hot (newer changes), bg = cold (older changes)',
+    },
+  },
 })
 
 ---@param name string
@@ -319,7 +326,6 @@ end
 
 do --- temperature highlight
   local temp_colors = {} --- @type table<integer,string>
-  local normal_bg --- @type [integer,integer,integer]?
 
   --- @param min integer
   --- @param max integer
@@ -332,20 +338,14 @@ do --- temperature highlight
 
     local denom = math.max(max, t) - min
     local normalized_t = denom ~= 0 and (t - min) / denom or 0
-    local raw_temp_color = Color.temp(normalized_t)
 
-    if normal_bg == nil then
-      local normal_hl = api.nvim_get_hl(0, { name = 'Normal' })
-      if normal_hl.bg then
-        normal_bg = Color.int_to_rgb(normal_hl.bg)
-      elseif vim.o.background == 'light' then
-        normal_bg = { 255, 255, 255 } -- white
-      else
-        normal_bg = { 0, 0, 0 } -- black
-      end
-    end
+    -- Smoothstep easing for a more natural distribution across the temp range
+    local t_eased = normalized_t * normalized_t * (3 - 2 * normalized_t)
 
-    local color = Color.rgb_to_int(Color.blend(raw_temp_color, normal_bg, alpha))
+    local temp_hl = api.nvim_get_hl(0, { name = 'GitSignsColorTemp', link = false })
+    local hot_color = Color.int_to_rgb(temp_hl.fg)
+    local cold_color = Color.int_to_rgb(temp_hl.bg)
+    local color = Color.rgb_to_int(Color.gradient({ cold_color, hot_color }, t_eased))
 
     if temp_colors[color] then
       return temp_colors[color]
