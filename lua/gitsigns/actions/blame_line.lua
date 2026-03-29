@@ -1,4 +1,6 @@
+local async = require('gitsigns.async')
 local Hunks = require('gitsigns.hunks')
+local HunkPreview = require('gitsigns.hunk_preview')
 local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local log = require('gitsigns.debug.log')
@@ -11,19 +13,20 @@ local api = vim.api
 --- @async
 --- @param repo Gitsigns.Repo
 --- @param info Gitsigns.BlameInfoPublic
---- @return Gitsigns.Hunk.Hunk hunk
---- @return integer hunk_index
---- @return integer num_hunks
---- @return integer? guess_offset If the hunk was not found at the exact line,
----                               return the offset from the original line to the
----                               hunk start.
+--- @return {hunk:Gitsigns.Hunk.Hunk,hunk_index:integer,num_hunks:integer,guess_offset?:integer,removed:string[],added:string[]}
 local function get_blame_hunk(repo, info)
-  local a = repo:get_show_text(info.previous_sha .. ':' .. info.previous_filename)
-  local b = repo:get_show_text(info.sha .. ':' .. info.filename)
-  local hunks = run_diff(a, b, false)
+  local removed = repo:get_show_text(info.previous_sha .. ':' .. info.previous_filename)
+  local added = repo:get_show_text(info.sha .. ':' .. info.filename)
+  local hunks = run_diff(removed, added, false)
   local hunk, i = Hunks.find_hunk(info.orig_lnum, hunks)
   if hunk and i then
-    return hunk, i, #hunks
+    return {
+      hunk = hunk,
+      hunk_index = i,
+      num_hunks = #hunks,
+      removed = removed,
+      added = added,
+    }
   end
 
   -- git-blame output is not always correct (see #1332)
@@ -43,7 +46,14 @@ local function get_blame_hunk(repo, info)
   end
 
   hunk = assert(hunks[i])
-  return hunk, i, #hunks, hunk.added.start - info.orig_lnum
+  return {
+    hunk = hunk,
+    hunk_index = i,
+    num_hunks = #hunks,
+    guess_offset = hunk.added.start - info.orig_lnum,
+    removed = removed,
+    added = added,
+  }
 end
 
 --- @async
@@ -56,56 +66,74 @@ local function create_commit_msg_body_linespec(repo, sha)
   return { { body, 'NormalFloat' } }
 end
 
+--- @param result Gitsigns.BlameInfoPublic
+--- @return boolean
+local function is_committed(result)
+  return result.sha and tonumber('0x' .. result.sha) ~= 0
+end
+
+--- @param preview {hunk:Gitsigns.Hunk.Hunk,hunk_index:integer,num_hunks:integer,guess_offset?:integer,removed:string[],added:string[]}
+--- @return Gitsigns.LineSpec
+local function create_blame_hunk_title(preview)
+  local title = {
+    { ('Hunk %d of %d'):format(preview.hunk_index, preview.num_hunks), 'Title' },
+    { ' ' .. preview.hunk.head, 'LineNr' },
+  }
+
+  if preview.guess_offset then
+    title[#title + 1] = {
+      (' (guessed: %s%d offset from original line)'):format(
+        preview.guess_offset >= 0 and '+' or '',
+        preview.guess_offset
+      ),
+      'WarningMsg',
+    }
+  end
+
+  return title
+end
+
 --- @async
+--- @param bufnr integer
 --- @param info Gitsigns.BlameInfoPublic
 --- @param repo Gitsigns.Repo
---- @param fileformat string
 --- @return Gitsigns.LineSpec[]
-local function create_blame_hunk_linespec(repo, info, fileformat)
+local function create_blame_hunk_linespec(bufnr, repo, info)
   if not (info.previous_sha and info.previous_filename) then
     return { { { 'File added in commit', 'Title' } } }
   end
 
   --- @type Gitsigns.LineSpec[]
   local ret = {}
-  local hunk, hunk_no, num_hunks, guess_offset = get_blame_hunk(repo, info)
+  local preview = get_blame_hunk(repo, info)
+  ret[#ret + 1] = create_blame_hunk_title(preview)
 
-  local hunk_title = {
-    { ('Hunk %d of %d'):format(hunk_no, num_hunks), 'Title' },
-    { ' ' .. hunk.head, 'LineNr' },
-  }
-
-  if guess_offset then
-    hunk_title[#hunk_title + 1] = {
-      (' (guessed: %s%d offset from original line)'):format(
-        guess_offset >= 0 and '+' or '',
-        guess_offset
-      ),
-      'WarningMsg',
-    }
+  if vim.in_fast_event() then
+    -- Popup preview assembly can be triggered from fast events, but source
+    -- preparation may wait and touch scratch buffers before capture.
+    --- @diagnostic disable-next-line: await-in-sync
+    async.schedule()
   end
 
-  ret[#ret + 1] = hunk_title
-  vim.list_extend(ret, Hunks.linespec_for_hunk(hunk, fileformat))
+  vim.list_extend(
+    ret,
+    HunkPreview.prepare_linespec_for_hunk(
+      bufnr,
+      preview.hunk,
+      preview.removed,
+      preview.added,
+      preview.hunk.added
+    )
+  )
   return ret
 end
 
 --- @async
---- @param full boolean? Whether to show the full commit message and hunk
 --- @param result Gitsigns.BlameInfoPublic
 --- @param repo Gitsigns.Repo
---- @param fileformat string
 --- @param with_gh boolean
---- @return Gitsigns.LineSpec[]
-local function create_blame_linespec(full, result, repo, fileformat, with_gh)
-  local is_committed = result.sha and tonumber('0x' .. result.sha) ~= 0
-
-  if not is_committed then
-    return {
-      { { result.author, 'Label' } },
-    }
-  end
-
+--- @return Gitsigns.LineSpec
+local function create_blame_title_linespec(result, repo, with_gh)
   local gh --- @module 'gitsigns.gh'?
   if config.gh and with_gh then
     gh = require('gitsigns.gh')
@@ -129,17 +157,20 @@ local function create_blame_linespec(full, result, repo, fileformat, with_gh)
     { ':', 'NormalFloat' },
   })
 
-  --- @type Gitsigns.LineSpec[]
-  local ret = { title }
+  return title
+end
 
-  if not full then
-    ret[#ret + 1] = { { result.summary, 'NormalFloat' } }
-    return ret
-  end
+--- @async
+--- @param bufnr integer
+--- @param result Gitsigns.BlameInfoPublic
+--- @param repo Gitsigns.Repo
+--- @return Gitsigns.LineSpec[]
+local function build_full_blame_body(bufnr, result, repo)
+  local ret = {
+    create_commit_msg_body_linespec(repo, result.sha),
+  } --- @type Gitsigns.LineSpec[]
 
-  ret[#ret + 1] = create_commit_msg_body_linespec(repo, result.sha)
-  vim.list_extend(ret, create_blame_hunk_linespec(repo, result, fileformat))
-
+  vim.list_extend(ret, create_blame_hunk_linespec(bufnr, repo, result))
   return ret
 end
 
@@ -169,7 +200,6 @@ return function(opts)
     return
   end
 
-  local fileformat = vim.bo[bufnr].fileformat
   local lnum = api.nvim_win_get_cursor(0)[1]
   local popup_winid, popup_bufnr
   ---@async
@@ -188,9 +218,19 @@ return function(opts)
   end
 
   local result = util.convert_blame_info(assert(info))
+  if not is_committed(result) then
+    if is_stale() then
+      return
+    end
+    popup.create({ { { result.author, 'Label' } } }, config.preview_config, 'blame')
+    return
+  end
 
-  local blame_linespec =
-    create_blame_linespec(opts.full, result, bcache.git_obj.repo, fileformat, false)
+  local repo = bcache.git_obj.repo
+  local body = opts.full and build_full_blame_body(bufnr, result, repo)
+    or { { { result.summary, 'NormalFloat' } } }
+  local blame_linespec = { create_blame_title_linespec(result, repo, false) }
+  vim.list_extend(blame_linespec, body)
 
   if is_stale() then
     return
@@ -198,7 +238,12 @@ return function(opts)
 
   popup_winid, popup_bufnr = popup.create(blame_linespec, config.preview_config, 'blame')
 
-  blame_linespec = create_blame_linespec(opts.full, result, bcache.git_obj.repo, fileformat, true)
+  if not config.gh then
+    return
+  end
+
+  blame_linespec = { create_blame_title_linespec(result, repo, true) }
+  vim.list_extend(blame_linespec, body)
 
   if is_stale() then
     return

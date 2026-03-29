@@ -1344,8 +1344,8 @@ GitSignsDeleteVirtLn
     Used for deleted lines shown by inline `preview_hunk_inline()` or `show_deleted()`.
 
     Fallbacks: `GitGutterDeleteLine`, `SignifyLineDelete`, `DiffDelete`
-                                                        *hl-GitSignsDeleteVirtLnInLine*
-GitSignsDeleteVirtLnInLine
+                                                        *hl-GitSignsDeleteVirtLnInline*
+GitSignsDeleteVirtLnInline
     Used for word diff regions in lines shown by inline `preview_hunk_inline()` or `show_deleted()`.
 
     Fallbacks: `GitSignsDeleteLnInline`

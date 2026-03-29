@@ -559,8 +559,9 @@ end
 
 --- Preview the hunk at the cursor position inline in the buffer.
 --- @param callback? fun(err?: string)
+--- @return Gitsigns.async.Task
 function M.preview_hunk_inline(callback)
-  async_run(callback, function()
+  return async_run(callback, function()
     require('gitsigns.actions.preview').preview_hunk_inline()
   end)
 end

@@ -126,7 +126,7 @@ end
 
 --- @param path string
 function M.edit(path)
-  helpers.api.nvim_command('edit ' .. path)
+  helpers.api.nvim_command('edit! ' .. path)
 end
 
 --- @param path string
