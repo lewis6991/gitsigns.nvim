@@ -34,9 +34,10 @@ function Watcher.new(gitdir, commondir)
   self.notify_callbacks_debounced = debounce_trailing(200, Watcher.notify_callbacks)
 
   local weak_self = util.weak_ref(self)
+  local handles = self.handles
 
   self._gc = util.gc_proxy(function()
-    for _, handle in pairs(self.handles) do
+    for _, handle in pairs(handles) do
       handle:stop()
       handle:close()
     end

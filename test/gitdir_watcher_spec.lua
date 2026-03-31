@@ -213,6 +213,44 @@ describe('gitdir_watcher', function()
     helpers.check({ signs = {} }, b2)
   end)
 
+  it('gc proxy closes over handles without retaining watcher', function()
+    setup_test_repo()
+    helpers.setup_path()
+
+    local result = helpers.exec_lua(function(scratch)
+      local async = require('gitsigns.async')
+      local Repo = require('gitsigns.git.repo')
+
+      local repo, err = async.run(Repo.get, scratch):wait(5000)
+      assert(repo, err)
+
+      local watcher = repo._watcher
+      local gc = assert(getmetatable(watcher._gc).__gc)
+      local captured = {
+        handles = false,
+        watcher = false,
+      }
+
+      for i = 1, 20 do
+        local name, value = debug.getupvalue(gc, i)
+        if not name then
+          break
+        end
+        if value == watcher.handles then
+          captured.handles = true
+        end
+        if value == watcher then
+          captured.watcher = true
+        end
+      end
+
+      return captured
+    end, helpers.scratch)
+
+    eq(true, result.handles)
+    eq(false, result.watcher)
+  end)
+
   it('garbage collects repo and watcher', function()
     setup_test_repo()
     helpers.setup_path()
