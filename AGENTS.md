@@ -26,6 +26,7 @@
 
 ## Commit & Pull Request Guidelines
 - Read `etc/commit-message.md` before creating or amending commits.
+- Read `etc/pull-request.md` before pushing a branch or opening a PR.
 - Ensure `make build`, the relevant `make test-*`, and `make doc-check` all pass locally.
 - Treat failed required local checks as blocking unless the user
   explicitly approves proceeding with known failures.

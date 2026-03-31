@@ -6,8 +6,8 @@ Read this file before broad test changes, CI debugging, or test-heavy work.
 
 - `make test [FILTER=pattern]`: run the functional suite with the default
   Neovim target.
-- `make test-010`, `make test-011`, `make test-nightly`: run the suite against
-  the supported Neovim versions.
+- `make test-010`, `make test-011`, `make test-012`, `make test-nightly`: run
+  the suite against the supported Neovim versions.
 - `make build`: format Lua sources and regenerate docs before committing.
 - `make doc` / `make doc-check`: regenerate help docs and fail on drift.
 - `make emmylua-check`: run the optional static analysis pass.
