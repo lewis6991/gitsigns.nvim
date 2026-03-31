@@ -25,6 +25,12 @@ local function git_command(args, spec)
     '--literal-pathspecs',
     '-c',
     'gc.auto=0', -- Disable auto-packing which emits messages to stderr
+    '-c',
+    'core.quotepath=off',
+    '-c',
+    'color.ui=false',
+    '-c',
+    'color.diff=false',
   }
   vim.list_extend(cmd, args)
 
