@@ -62,6 +62,7 @@ describe('debounce', function()
       local messages = exec_lua(function()
         return vim.api.nvim_exec2('messages', { output = true }).output
       end) ---@type string
+      messages = messages:gsub('\\', '/')
       assert(messages:match('debounce_spec.lua:%d+: GS_DEBOUNCE_TEST_STACK'), messages)
       assert(messages:match('stack traceback'), messages)
       assert(messages:match('lua/gitsigns/debounce.lua'), messages)

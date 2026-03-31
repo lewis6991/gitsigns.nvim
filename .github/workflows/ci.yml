@@ -32,21 +32,41 @@ jobs:
         run: make commitlint RANGE='${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}'
 
   test:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
 
     strategy:
-
       # Nightly can often fail as it is a moving target so disable fail-fast so
-      # we can always see if the over versions pass or not.
+      # we can always see if the other versions pass or not.
       fail-fast: false
 
       matrix:
-        neovim_branch:
-          - 'v0.10.4'
-          - 'v0.11.7'
-          - 'v0.12.0'
-          - 'nightly'
+        include:
+          - name: test linux (v0.10.4)
+            os: ubuntu-latest
+            neovim_branch: 'v0.10.4'
+            setup: linux
+          - name: test linux (v0.11.7)
+            os: ubuntu-latest
+            neovim_branch: 'v0.11.7'
+            setup: linux
+          - name: test linux (v0.12.0)
+            os: ubuntu-latest
+            neovim_branch: 'v0.12.0'
+            setup: linux
+          - name: test linux (nightly)
+            os: ubuntu-latest
+            neovim_branch: 'nightly'
+            setup: linux
+          - name: test windows (v0.12.0)
+            os: windows-latest
+            neovim_branch: 'v0.12.0'
+            setup: windows
+          - name: test windows (nightly)
+            os: windows-latest
+            neovim_branch: 'nightly'
+            setup: windows
 
     env:
       NVIM_TEST_VERSION: ${{ matrix.neovim_branch }}
@@ -55,45 +75,87 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: lewis6991/gh-actions-lua@master
+      - if: matrix.setup == 'linux'
+        uses: lewis6991/gh-actions-lua@master
         with:
           luaVersion: "5.1.5"
 
-      - uses: leafo/gh-actions-luarocks@v4
-
-      - name: Download nvim-test
-        run: make nvim-test
-
-      - name: Run Test
-        run: make test
-
-  windows_smoke:
-    runs-on: windows-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        shell: msys2 {0}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - if: matrix.setup == 'linux'
+        uses: leafo/gh-actions-luarocks@v4
 
       - name: Setup MSYS2
+        if: matrix.setup == 'windows'
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
           update: true
           install: >-
             git
+            make
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-lua-luarocks
+            mingw-w64-ucrt-x86_64-luajit
             mingw-w64-ucrt-x86_64-neovim
 
-      - name: Show Versions
+      - name: Configure LuaRocks for LuaJIT
+        if: matrix.setup == 'windows'
+        shell: msys2 {0}
         run: |
-          git --version
-          nvim --version | head -n 1
+          luarocks --lua-version=5.1 config variables.LUA /ucrt64/bin/luajit.exe
+          luarocks --lua-version=5.1 config variables.LUA_BINDIR /ucrt64/bin
+          luarocks --lua-version=5.1 config variables.LUA_INCDIR /ucrt64/include/luajit-2.1
+          luarocks --lua-version=5.1 config variables.LUA_LIBDIR /ucrt64/lib
+          luarocks --lua-version=5.1 config variables.LUALIB libluajit-5.1.dll.a
 
-      - name: Run Windows Smoke Tests
-        run: nvim --headless -u test/windows/init.lua -l test/windows/run.lua
+      - name: Set XDG_DATA_HOME
+        if: matrix.setup == 'linux'
+        shell: bash
+        run: echo "XDG_DATA_HOME=$GITHUB_WORKSPACE/.data" >> "$GITHUB_ENV"
+
+      - name: Set XDG_DATA_HOME
+        if: matrix.setup == 'windows'
+        shell: msys2 {0}
+        run: |
+          printf 'XDG_DATA_HOME=%s/.data\n' "$(cygpath --unix "$GITHUB_WORKSPACE")" >> "$(cygpath --unix "$GITHUB_ENV")"
+
+      - name: Set nvim-test cache epoch
+        id: nvim_test_cache
+        shell: bash
+        run: |
+          if [ "${{ matrix.neovim_branch }}" = "nightly" ]; then
+            echo "epoch=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          else
+            echo "epoch=stable" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cache nvim-test
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps/nvim-test
+            .data/nvim-test
+          key: nvim-test-${{ runner.os }}-${{ matrix.neovim_branch }}-${{ steps.nvim_test_cache.outputs.epoch }}-${{ hashFiles('Makefile') }}
+          restore-keys: |
+            nvim-test-${{ runner.os }}-${{ matrix.neovim_branch }}-
+            nvim-test-${{ runner.os }}-
+
+      - name: Download nvim-test
+        if: matrix.setup == 'linux'
+        run: make nvim-test
+
+      - name: Download nvim-test
+        if: matrix.setup == 'windows'
+        shell: msys2 {0}
+        run: make nvim-test
+
+      - name: Run Test
+        if: matrix.setup == 'linux'
+        run: make test
+
+      - name: Run Test
+        if: matrix.setup == 'windows'
+        shell: msys2 {0}
+        run: make test
 
   format:
     runs-on: ubuntu-latest

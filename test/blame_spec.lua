@@ -5,20 +5,22 @@ local feed = helpers.feed
 local test_file = helpers.test_file
 local edit = helpers.edit
 local exec_lua = helpers.exec_lua
-local fn = helpers.fn
-local system = fn.system
 local test_config = helpers.test_config
 local clear = helpers.clear
 local setup_test_repo = helpers.setup_test_repo
 local eq = helpers.eq
 local check = helpers.check
+local expectf = helpers.expectf
+local git = helpers.git
+local scratch = helpers.scratch
+local write_to_file = helpers.write_to_file
 
 helpers.env()
 
 describe('blame', function()
   before_each(function()
     clear()
-    helpers.api.nvim_command('cd ' .. system({ 'dirname', os.tmpname() }))
+    helpers.chdir_tmp()
     setup_gitsigns(test_config)
   end)
 
@@ -111,5 +113,53 @@ describe('blame', function()
 
     eq('--', args[#args - 1])
     eq('.config/nvim/lua/mappings.lua', args[#args])
+  end)
+
+  it('blames a tracked file in a nested path', function()
+    helpers.git_init_scratch()
+
+    local relpath = '.config/nvim/lua/mappings.lua'
+    local file = scratch .. '/' .. relpath
+
+    write_to_file(file, { 'hello', 'world' })
+    git('add', file)
+    git('commit', '-m', 'add nested mappings')
+
+    edit(file)
+
+    expectf(function()
+      return exec_lua(function()
+        return vim.b.gitsigns_status_dict.gitdir ~= nil
+      end)
+    end)
+
+    local result = exec_lua(function(file0)
+      local async = require('gitsigns.async')
+      return async
+        .run(function()
+          local Git = require('gitsigns.git')
+          local encoding = vim.bo.fileencoding
+          if encoding == '' then
+            encoding = 'utf-8'
+          end
+
+          local obj = assert(Git.Obj.new(file0, nil, encoding))
+          local blame_entries = obj:run_blame(nil, 1, nil, {})
+          local blame_info = blame_entries and blame_entries[1]
+
+          return {
+            relpath = obj.relpath,
+            file = obj.file,
+            filename = blame_info and blame_info.filename or '',
+            sha = blame_info and blame_info.commit and blame_info.commit.sha or '',
+          }
+        end)
+        :wait(5000)
+    end, file)
+
+    eq(relpath, result.relpath)
+    eq(false, result.file == result.relpath)
+    eq(relpath, result.filename)
+    eq(false, result.sha == '')
   end)
 end)
