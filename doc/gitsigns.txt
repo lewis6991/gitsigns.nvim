@@ -580,23 +580,23 @@ toggle_signs({value})                                *gitsigns.toggle_signs()*
     Returns: ~
         (`boolean`): Current value of |gitsigns-config-signcolumn|
 
-attach({bufnr}, {ctx}, {trigger}, {callback})                   *gitsigns.attach()*
+attach({opts}, {callback})                                 *gitsigns.attach()*
     Attach Gitsigns to the buffer.
 
     Attributes: ~
         {async}
 
     Parameters: ~
-        {bufnr}    (`integer`): Buffer number
-        {ctx}      (`Gitsigns.GitContext?`): • {file}: (`string`)
-                     Path to the file represented by the buffer.
-                   • {toplevel}: (`string?`)
-                     Path to the top-level of the parent git repository.
-                   • {gitdir}: (`string?`)
-                     Path to the git directory of the parent git repository.
-                   • {base}: (`string?`)
-                     Git revision to compare against.
-        {trigger}  (`string?`)
+        {opts}     (`Gitsigns.AttachOpts?`): Attach options.
+                   • {bufnr}: (`integer?`)
+                     Buffer number. Defaults to current buffer.
+                   • {ctx}: (`Gitsigns.GitContext?`)
+                     Git context for git-object buffers.
+                     See |gitsigns-type-gitcontext|.
+                   • {trigger}: (`string?`)
+                     Attach source used for logging and manual-attach checks.
+                   • {force}: (`boolean?`)
+                     Bypass auto-attach filters for this attach attempt.
         {callback} (`(fun(err: string?))?`)
 
 detach({bufnr})                                            *gitsigns.detach()*
@@ -608,6 +608,20 @@ detach({bufnr})                                            *gitsigns.detach()*
 
 detach_all()                                           *gitsigns.detach_all()*
     Detach Gitsigns from all buffers it is attached to.
+
+
+==============================================================================
+TYPES                                                       *gitsigns-types*
+
+Gitsigns.GitContext                                 *gitsigns-type-gitcontext*
+
+    Fields: ~
+        {file}     (`string`): Path to the file represented by the buffer.
+        {toplevel} (`string?`): Path to the top-level of the parent git
+                                repository.
+        {gitdir}   (`string?`): Path to the git directory of the parent git
+                                repository.
+        {base}     (`string?`): Git revision to compare against.
 
 
 ==============================================================================

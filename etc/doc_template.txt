@@ -51,6 +51,11 @@ an optional {callback} argument.
 {{FUNCTIONS}}
 
 ==============================================================================
+TYPES                                                       *gitsigns-types*
+
+{{TYPES}}
+
+==============================================================================
 CONFIGURATION                                                *gitsigns-config*
 
 This section describes the configuration fields which can be passed to

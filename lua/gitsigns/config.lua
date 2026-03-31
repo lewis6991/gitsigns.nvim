@@ -1,3 +1,5 @@
+local validate = require('gitsigns.util').validate
+
 --- @class (exact) Gitsigns.SchemaElem
 --- @field type type|type[]|fun(x:any): boolean
 --- @field type_help? string
@@ -889,20 +891,6 @@ function M.subscribe(k, cb)
   for _, v in ipairs(k) do
     subscribers[v] = subscribers[v] or {}
     table.insert(subscribers[v], cb)
-  end
-end
-
-local nvim011 = vim.fn.has('nvim-0.11') == 1
-
---- @param k string
---- @param v any
---- @param ty type|fun(v:any):boolean
-local function validate(k, v, ty)
-  if nvim011 then
-    --- @diagnostic disable-next-line: redundant-parameter,param-type-mismatch
-    vim.validate(k, v, ty)
-  else
-    vim.validate({ [k] = { v, ty, false } })
   end
 end
 
