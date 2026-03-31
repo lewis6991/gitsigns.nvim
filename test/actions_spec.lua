@@ -231,6 +231,18 @@ describe('actions', function()
     end
   end)
 
+  it('completes attach command arguments', function()
+    local complete = function(arglead, line)
+      return exec_lua(function(arglead0, line0)
+        return require('gitsigns.cli').complete(arglead0, line0)
+      end, arglead, line)
+    end
+
+    eq({}, complete('', 'Gitsigns attach '))
+    eq({ '--force' }, complete('--f', 'Gitsigns attach --f'))
+    eq({}, complete('tr', 'Gitsigns attach tr'))
+  end)
+
   it('does not emit duplicate GitSignsUpdate events for stage_hunk', function()
     setup_test_repo()
     edit(test_file)

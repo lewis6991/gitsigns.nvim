@@ -92,7 +92,7 @@ end
 --- @generic T
 --- @param opts gitsigns.debounce.throttle_async.Opts
 --- @param fn async fun(...: T...) Function to throttle
---- @return async fun(...:T ...) # Throttled function.
+--- @return async fun(...: T...) # Throttled function.
 function M.throttle_async(opts, fn)
   local scheduled = {} --- @type table<any,boolean>
   local running = {} --- @type table<any,boolean>

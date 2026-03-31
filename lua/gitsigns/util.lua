@@ -1,12 +1,27 @@
 local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 local is_win = vim.fn.has('win32') == 1
+local nvim011 = vim.fn.has('nvim-0.11') == 1
 
 --- @class Gitsigns.Util.Path
 local Path = {}
 
 --- @class Gitsigns.Util
 local M = {}
+
+--- Compatibility wrapper for the old and new vim.validate() signatures.
+--- @param name string
+--- @param value any
+--- @param validator type|type[]|fun(v:any): boolean
+--- @param optional? boolean
+function M.validate(name, value, validator, optional)
+  if nvim011 then
+    --- @diagnostic disable-next-line: redundant-parameter,param-type-mismatch
+    vim.validate(name, value, validator, optional)
+  else
+    vim.validate({ [name] = { value, validator, optional or false } })
+  end
+end
 
 --- @param path? string
 --- @return boolean

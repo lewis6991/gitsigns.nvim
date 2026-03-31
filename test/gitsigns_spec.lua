@@ -240,6 +240,119 @@ describe('gitsigns (with screen)', function()
       check({ status = { head = 'main' }, signs = {} })
     end)
 
+    it('requires --force to manually attach to nodiff files from the command line', function()
+      write_to_file(scratch .. '/.gitattributes', { '*.bar -diff' })
+
+      local nodiff_file = scratch .. '/dummy.bar'
+      write_to_file(nodiff_file, { 'dummy' })
+
+      git('add', scratch .. '/.gitattributes', nodiff_file)
+      git('commit', '-m', 'add nodiff file')
+
+      edit(nodiff_file)
+
+      match_debug_messages({
+        'attach.attach(1): Attaching (trigger=BufReadPost)',
+        np(revparse_pat),
+        np('attach%.attach%(1%): File has %-diff attribute'),
+      })
+
+      command('Gitsigns attach')
+
+      match_debug_messages({
+        'attach.attach(1): Attaching (trigger=BufReadPost)',
+        np(revparse_pat),
+        np('attach%.attach%(1%): File has %-diff attribute'),
+        'attach.attach(1): Attaching (trigger=command)',
+        np(revparse_pat),
+        np('attach%.attach%(1%): File has %-diff attribute'),
+      })
+
+      check({ status = { head = 'main' }, signs = {} })
+
+      command('Gitsigns attach --force')
+
+      wait_for_attach()
+      check({ status = { head = 'main', added = 0, changed = 0, removed = 0 }, signs = {} })
+    end)
+
+    it('can manually attach to nodiff files via attach({ force = true })', function()
+      write_to_file(scratch .. '/.gitattributes', { '*.bar -diff' })
+
+      local nodiff_file = scratch .. '/dummy.bar'
+      write_to_file(nodiff_file, { 'dummy' })
+
+      git('add', scratch .. '/.gitattributes', nodiff_file)
+      git('commit', '-m', 'add nodiff file')
+
+      edit(nodiff_file)
+
+      match_debug_messages({
+        'attach.attach(1): Attaching (trigger=BufReadPost)',
+        np(revparse_pat),
+        np('attach%.attach%(1%): File has %-diff attribute'),
+      })
+
+      exec_lua([[require('gitsigns').attach({ force = true })]])
+
+      wait_for_attach()
+      check({ status = { head = 'main', added = 0, changed = 0, removed = 0 }, signs = {} })
+    end)
+
+    it('can manually attach to nodiff files with force and a custom trigger', function()
+      write_to_file(scratch .. '/.gitattributes', { '*.bar -diff' })
+
+      local nodiff_file = scratch .. '/dummy.bar'
+      write_to_file(nodiff_file, { 'dummy' })
+
+      git('add', scratch .. '/.gitattributes', nodiff_file)
+      git('commit', '-m', 'add nodiff file')
+
+      edit(nodiff_file)
+
+      match_debug_messages({
+        'attach.attach(1): Attaching (trigger=BufReadPost)',
+        np(revparse_pat),
+        np('attach%.attach%(1%): File has %-diff attribute'),
+      })
+
+      exec_lua([=[
+        require('gitsigns').attach({
+          bufnr = vim.api.nvim_get_current_buf(),
+          trigger = 'test',
+          force = true,
+        })
+      ]=])
+
+      wait_for_attach()
+      check({ status = { head = 'main', added = 0, changed = 0, removed = 0 }, signs = {} })
+    end)
+
+    it('can manually attach to nodiff files with an explicit bufnr in opts', function()
+      write_to_file(scratch .. '/.gitattributes', { '*.bar -diff' })
+
+      local nodiff_file = scratch .. '/dummy.bar'
+      write_to_file(nodiff_file, { 'dummy' })
+
+      git('add', scratch .. '/.gitattributes', nodiff_file)
+      git('commit', '-m', 'add nodiff file')
+
+      edit(nodiff_file)
+
+      match_debug_messages({
+        'attach.attach(1): Attaching (trigger=BufReadPost)',
+        np(revparse_pat),
+        np('attach%.attach%(1%): File has %-diff attribute'),
+      })
+
+      exec_lua(
+        [[require('gitsigns').attach({ bufnr = vim.api.nvim_get_current_buf(), force = true })]]
+      )
+
+      wait_for_attach()
+      check({ status = { head = 'main', added = 0, changed = 0, removed = 0 }, signs = {} })
+    end)
+
     it("doesn't attach to non-existent files", function()
       edit(newfile)
 
@@ -729,7 +842,7 @@ describe('gitsigns (with screen)', function()
         })
       end)
 
-      it('can manually attach untracked files (#1026)', function()
+      it('can manually attach untracked files with --force (#1026)', function()
         config.attach_to_untracked = false
         setup_gitsigns(config)
 
@@ -742,7 +855,7 @@ describe('gitsigns (with screen)', function()
           signs = {},
         })
 
-        command('Gitsigns attach')
+        command('Gitsigns attach --force')
 
         check({
           status = { head = 'main', added = 1, changed = 0, removed = 0 },
@@ -1104,7 +1217,13 @@ describe('gitsigns attach', function()
   local function attach_with_context(bufnr, ctx)
     exec_lua(function(bufnr0, ctx0)
       local async = require('gitsigns.async')
-      async.run(require('gitsigns.attach').attach, bufnr0, ctx0, 'test'):wait(5000)
+      async
+        .run(require('gitsigns.attach').attach, {
+          bufnr = bufnr0,
+          ctx = ctx0,
+          trigger = 'test',
+        })
+        :wait(5000)
     end, bufnr, ctx)
     wait_for_attach(bufnr)
   end

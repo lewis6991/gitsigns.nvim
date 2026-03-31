@@ -5,7 +5,14 @@ local inspect = vim.inspect
 local list_extend = vim.list_extend
 local startswith = vim.startswith
 
-local config = require('lua.gitsigns.config')
+local root = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h')
+package.path = table.concat({
+  root .. '/lua/?.lua',
+  root .. '/lua/?/init.lua',
+  package.path,
+}, ';')
+
+local config = require('gitsigns.config')
 
 local INDENT = 4
 local INDENT_STR = string.rep(' ', INDENT)
@@ -39,6 +46,7 @@ local function get_ordered_schema_keys()
 end
 
 --- @alias EmmyDocLoc { file: string, line: integer }
+--- @alias EmmyDocTag { tag_name: string, content: string }
 --- @alias EmmyDocParam { name: string, typ: string, desc: string? }
 --- @alias EmmyDocReturn { name: string?, typ: string, desc: string? }
 --- @alias EmmyDocModule { name: string, members: EmmyDocFn[] }
@@ -65,7 +73,9 @@ end
 --- @field type 'class'
 --- @field name string
 --- @field bases string[]?
+--- @field tag_content EmmyDocTag[]?
 --- @field members EmmyDocTypeMember[]
+--- @field description string?
 
 --- @class EmmyDocTypeAlias
 --- @field type 'alias'
@@ -73,6 +83,9 @@ end
 --- @field members EmmyDocTypeMember[]
 
 --- @alias EmmyDocType EmmyDocTypeClass | EmmyDocTypeAlias
+
+--- @class EmmyDocTypeAttrs
+--- @field inlinedoc boolean
 
 --- @class EmmyDocJson
 --- @field modules EmmyDocModule[]
@@ -84,6 +97,19 @@ local function load_emmy_doc()
   local raw = vim.fn.readfile(path)
   local json = table.concat(raw, '\n')
   return vim.json.decode(json, { luanil = { object = true, array = true } })
+end
+
+--- @param ty EmmyDocTypeClass
+--- @param tag string
+--- @return boolean
+local function has_type_tag(ty, tag)
+  for _, tag_content in ipairs(ty.tag_content or {}) do
+    if tag_content.tag_name == tag then
+      return true
+    end
+  end
+
+  return false
 end
 
 --- @param dep_info boolean|{new_field: string, message: string, hard: boolean}
@@ -519,7 +545,7 @@ local function wrap_help_lines(lines, max_width)
 end
 
 --- @param ty EmmyDocTypeClass
---- @param classes table<string, EmmyDocTypeClass>
+--- @param classes table<string, EmmyDocTypeClass?>
 --- @param fields_seen? table<string,true>
 --- @return EmmyDocTypeField[]
 local function get_fields(ty, classes, fields_seen)
@@ -542,26 +568,90 @@ local function get_fields(ty, classes, fields_seen)
   return ret
 end
 
---- @param name? string
---- @param classes table<string, EmmyDocTypeClass>
+--- @param ty string
+--- @return string
+local function strip_optional(ty)
+  return (ty:gsub('%?$', ''))
+end
+
+--- @param name string
+--- @return string
+local function get_type_tag(name)
+  local short = name:gsub('^.-%.', ''):gsub('[^%w]', ''):lower()
+  return 'gitsigns-type-' .. short
+end
+
+--- @param name string
+--- @param classes table<string, EmmyDocTypeClass?>
+--- @param class_attrs table<string, EmmyDocTypeAttrs?>
+--- @param depth? integer
+--- @param types_seen? table<string, true>
 --- @return string[]?
-local function build_type_field_docs(name, classes)
+local function build_type_field_docs(name, classes, class_attrs, depth, types_seen)
+  name = strip_optional(name)
+
   local t = classes[name]
   if not t then
     return
   end
 
+  depth = depth or 0
+  types_seen = types_seen or {}
+  if types_seen[name] then
+    return
+  end
+  types_seen[name] = true
+
   local lines = {} --- @type string[]
+  local inlinedoc = class_attrs[name] and class_attrs[name].inlinedoc
+  local bullet_prefix = string.rep('  ', depth) .. '• '
+  local desc_prefix = string.rep('  ', depth + 1)
 
   for _, m in ipairs(get_fields(t, classes)) do
     if m.typ then
-      lines[#lines + 1] = string.format('• {%s}: (`%s`)', m.name, m.typ:gsub('`', ''))
-      if m.description and m.description ~= '' then
-        lines[#lines + 1] = '  ' .. m.description
+      lines[#lines + 1] = ('%s{%s}: (`%s`)'):format(bullet_prefix, m.name, m.typ:gsub('`', ''))
+
+      if inlinedoc then
+        local desc = m.description and vim.split(m.description, '\n') or {}
+        for _, d in ipairs(trim_lines(markdown_to_vimdoc(desc))) do
+          lines[#lines + 1] = desc_prefix .. d
+        end
+
+        local field_type = strip_optional(m.typ)
+        if field_type and class_attrs[field_type] and class_attrs[field_type].inlinedoc then
+          local nested =
+            build_type_field_docs(field_type, classes, class_attrs, depth + 1, types_seen)
+          if nested then
+            list_extend(lines, nested)
+          end
+        elseif field_type and classes[field_type] then
+          lines[#lines + 1] = desc_prefix .. ('See |%s|.'):format(get_type_tag(field_type))
+        end
+      elseif m.description and m.description ~= '' then
+        lines[#lines + 1] = desc_prefix .. m.description
       end
     end
   end
 
+  if not inlinedoc then
+    types_seen[name] = nil
+    return lines
+  end
+
+  for i = #lines, 1, -1 do
+    if lines[i] ~= '' then
+      break
+    else
+      table.remove(lines, i)
+    end
+  end
+
+  if #lines == 0 then
+    types_seen[name] = nil
+    return
+  end
+
+  types_seen[name] = nil
   return lines
 end
 
@@ -664,17 +754,109 @@ local function render_block(header, desc, params, returns, deprecated)
   return res
 end
 
---- @param classes table<string, EmmyDocTypeClass>
---- @param class_name string
---- @return EmmyDocFn[]
-local function get_class_functions(classes, class_name)
-  local t = classes[class_name]
-  if not t or t.type ~= 'class' then
-    return {}
+--- @param header string
+--- @param desc string[]
+--- @param fields [string, string, string[]][]
+--- @return string[]
+local function render_type_block(header, desc, fields)
+  local body = {}
+
+  if #desc > 0 then
+    list_extend(
+      body,
+      indent_lines(markdown_to_vimdoc(desc), { dedent = false, tilde_block = true })
+    )
   end
 
+  if #fields > 0 then
+    if #body > 0 and body[#body] ~= '' then
+      body[#body + 1] = ''
+    end
+
+    local fields_block = { 'Fields: ~' }
+    local name_pad = 0
+    for _, v in ipairs(fields) do
+      if #v[1] > name_pad then
+        name_pad = #v[1]
+      end
+    end
+
+    for _, v in ipairs(fields) do
+      list_extend(fields_block, render_param_or_return(v[1], v[2], v[3], name_pad))
+    end
+    list_extend(body, indent_lines(fields_block, { dedent = false }))
+  end
+
+  local res = { header }
+  list_extend(res, wrap_help_lines(body, 80))
+
+  return res
+end
+
+--- @return table<string, EmmyDocTypeClass?>
+--- @return table<string, EmmyDocTypeAttrs?>
+local function load_classes()
+  local doc = load_emmy_doc()
+  local classes = {} --- @type table<string, EmmyDocTypeClass?>
+  local class_attrs = {} --- @type table<string, EmmyDocTypeAttrs?>
+  for _, t in ipairs(doc.types or {}) do
+    if t.type == 'class' then
+      classes[t.name] = t
+      class_attrs[t.name] = { inlinedoc = has_type_tag(t, 'inlinedoc') }
+    end
+  end
+  return classes, class_attrs
+end
+
+--- @param type_name string
+--- @param classes table<string, EmmyDocTypeClass?>
+--- @param out table<string, true>
+--- @param order string[]
+--- @param seen table<string, true>
+local function collect_inline_doc_types(type_name, classes, class_attrs, out, order, seen)
+  type_name = strip_optional(type_name)
+  seen[type_name] = true
+
+  local class = classes[type_name]
+  if not class then
+    return
+  end
+
+  for _, field in ipairs(get_fields(class, classes)) do
+    local field_ty = strip_optional(field.typ)
+    if field_ty and classes[field_ty] then
+      if class_attrs[field_ty] and class_attrs[field_ty].inlinedoc then
+        collect_inline_doc_types(field_ty, classes, class_attrs, out, order, seen)
+      else
+        if not out[field_ty] then
+          out[field_ty] = true
+          order[#order + 1] = field_ty
+        end
+        collect_inline_doc_types(field_ty, classes, class_attrs, out, order, seen)
+      end
+    end
+  end
+end
+
+--- @param ty EmmyDocTypeClass
+--- @param classes table<string, EmmyDocTypeClass?>
+--- @return [string, string, string[]][]
+local function get_type_doc_fields(ty, classes)
+  local fields = {} --- @type [string, string, string[]][]
+  for _, m in ipairs(get_fields(ty, classes)) do
+    if m.type == 'field' and m.typ then
+      local desc = m.description and vim.split(m.description, '\n') or {}
+      fields[#fields + 1] = { m.name, m.typ, desc }
+    end
+  end
+  return fields
+end
+
+--- @param class EmmyDocTypeClass
+--- @return EmmyDocFn[]
+local function get_class_functions(class)
   local res = {} --- @type EmmyDocFn[]
-  for _, member in ipairs(t.members) do
+  for _, member in ipairs(class.members) do
     if member.type == 'fn' and not startswith(member.name, '_') then
       res[#res + 1] = member
     end
@@ -687,22 +869,16 @@ local function get_class_functions(classes, class_name)
   return res
 end
 
---- @param ty? string
---- @return string?
-local function strip_optional(ty)
-  if not ty then
-    return
-  end
-  return (ty:gsub('%?$', ''))
-end
-
---- @param classes table<string, EmmyDocTypeClass>
+--- @param classes table<string, EmmyDocTypeClass?>
+--- @param class_attrs table<string, EmmyDocTypeAttrs?>
 --- @param member EmmyDocFn
 --- @return string[]
-local function render_fn_block(classes, member)
+local function render_fn_block(classes, class_attrs, member)
   local args = {} --- @type string[]
   for _, p in ipairs(member.params) do
-    args[#args + 1] = ('{%s}'):format(p.name)
+    if p.name ~= '...' then
+      args[#args + 1] = ('{%s}'):format(p.name)
+    end
   end
 
   local deprecated --- @type string?
@@ -722,12 +898,16 @@ local function render_fn_block(classes, member)
 
   local params = {} --- @type [string, string, string[]][]
   for _, p in ipairs(member.params) do
-    local d = p.desc and vim.split(p.desc, '\n') or {}
-    local type_field_docs = build_type_field_docs(strip_optional(p.typ), classes)
-    if type_field_docs then
-      list_extend(d, type_field_docs)
+    if p.name ~= '...' then
+      local d = p.desc and vim.split(p.desc, '\n') or {}
+      if p.typ then
+        local type_field_docs = build_type_field_docs(strip_optional(p.typ), classes, class_attrs)
+        if type_field_docs then
+          list_extend(d, type_field_docs)
+        end
+      end
+      params[#params + 1] = { p.name, p.typ, d }
     end
-    params[#params + 1] = { p.name, p.typ, d }
   end
 
   local returns = {} --- @type [string?, string, string[]?][]
@@ -746,23 +926,55 @@ local function render_fn_block(classes, member)
 end
 
 --- @return string
-local function gen_functions_doc()
-  local doc = load_emmy_doc()
-  local classes = {} --- @type table<string, EmmyDocTypeClass>
-  for _, t in ipairs(doc.types or {}) do
-    if t.type == 'class' then
-      classes[t.name] = t
+local function gen_types_doc()
+  local classes, class_attrs = load_classes()
+  local doc_types = {} --- @type table<string, true>
+  local doc_type_order = {} --- @type string[]
+
+  for _, class in pairs(classes) do
+    for _, member in ipairs(get_class_functions(class)) do
+      for _, p in ipairs(member.params) do
+        if p.typ then
+          local typ = strip_optional(p.typ)
+          if typ and class_attrs[typ] and class_attrs[typ].inlinedoc then
+            collect_inline_doc_types(typ, classes, class_attrs, doc_types, doc_type_order, {})
+          end
+        else
+          -- print('Warning: parameter without type in ' .. class.name .. '.' .. member.name.. '()'.. (p.name and (' parameter ' .. p.name) or ''))
+        end
+      end
+      for _, ret in ipairs(member.returns) do
+        local typ = strip_optional(ret.typ)
+        if typ and class_attrs[typ] and class_attrs[typ].inlinedoc then
+          collect_inline_doc_types(typ, classes, class_attrs, doc_types, doc_type_order, {})
+        end
+      end
     end
   end
 
   local out = {} --- @type string[]
+  for _, type_name in ipairs(doc_type_order) do
+    local t = assert(classes[type_name])
+    local desc = t.description and vim.split(t.description, '\n') or {}
+    local fields = get_type_doc_fields(t, classes)
+    local header = ('%-40s%38s'):format(type_name, '*' .. get_type_tag(type_name) .. '*')
+    list_extend(out, render_type_block(header, desc, fields))
+    out[#out + 1] = ''
+  end
+
+  return table.concat(out, '\n')
+end
+
+--- @return string
+local function gen_functions_doc()
+  local classes, class_attrs = load_classes()
+
+  local out = {} --- @type string[]
 
   for _, class_name in ipairs({ 'gitsigns.main', 'gitsigns.actions' }) do
-    for _, member in ipairs(get_class_functions(classes, class_name)) do
-      local b = render_fn_block(classes, member)
-      for _, line in ipairs(b) do
-        out[#out + 1] = line:match('^ *$') and '' or line
-      end
+    local class = assert(classes[class_name], 'Class not found')
+    for _, member in ipairs(get_class_functions(class)) do
+      list_extend(out, render_fn_block(classes, class_attrs, member))
       out[#out + 1] = ''
     end
   end
@@ -772,7 +984,7 @@ end
 --- @return string
 local function gen_highlights_doc()
   local res = {} --- @type string[]
-  local highlights = require('lua.gitsigns.highlight')
+  local highlights = require('gitsigns.highlight')
 
   local name_max = 0
   for _, hl in ipairs(highlights.hls) do
@@ -841,6 +1053,7 @@ local function get_marker_text(marker)
     VERSION = 'v2.1.0', -- x-release-please-version
     CONFIG = gen_config_doc,
     FUNCTIONS = gen_functions_doc,
+    TYPES = gen_types_doc,
     HIGHLIGHTS = gen_highlights_doc,
     SETUP = get_setup_from_readme,
   })[marker] or error('Unknown marker: ' .. marker)
