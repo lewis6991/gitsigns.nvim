@@ -1,6 +1,7 @@
 # Pull Request Guidelines
 
 - Create a topic branch before opening a PR. Do not open PRs from `main`.
+- Ensure the local topic branch tracks its remote branch.
 - Keep unrelated local files and unrelated edits out of the PR.
 - Run `make build`, `make doc-check`, and the relevant `make test-*`
   targets before opening the PR.
