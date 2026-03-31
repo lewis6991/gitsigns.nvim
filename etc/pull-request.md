@@ -8,7 +8,8 @@
 - Use `gh pr create --base main --fill` to open the PR.
 - Use the commit subject as the default PR title unless a repo-specific
   title would be clearer.
-- In the PR body, describe the change and the problem it aims to solve.
+- In the PR body, describe the problem and the solution.
+- Do not include testing sections or command lists in the PR body.
 
 ## Example
 
