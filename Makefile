@@ -20,7 +20,7 @@ build: doc format
 ################################################################################
 
 export NVIM_RUNNER_VERSION := v0.11.0
-export NVIM_TEST_VERSION ?= v0.11.0
+export NVIM_TEST_VERSION ?= v0.11.7
 
 NVIM_TEST := deps/nvim-test
 
@@ -47,19 +47,23 @@ test: $(NVIM_TEST)
 	-@stty sane
 
 .PHONY: test-all
-test-all: test-095 test-010 test-nightly
+test-all: test-010 test-011 test-012 test-nightly
 
 .PHONY: test-010
 test-010:
-	$(MAKE) $(MAKEFLAGS) test NVIM_TEST_VERSION=v0.10.4
+	$(MAKE) test NVIM_TEST_VERSION=v0.10.4
 
 .PHONY: test-011
 test-011:
-	$(MAKE) $(MAKEFLAGS) test NVIM_TEST_VERSION=v0.11.0
+	$(MAKE) test NVIM_TEST_VERSION=v0.11.7
+
+.PHONY: test-012
+test-012:
+	$(MAKE) test NVIM_TEST_VERSION=v0.12.0
 
 .PHONY: test-nightly
 test-nightly:
-	$(MAKE) $(MAKEFLAGS) test NVIM_TEST_VERSION=nightly
+	$(MAKE) test NVIM_TEST_VERSION=nightly
 
 NVIM := $(XDG_DATA_HOME)/nvim-test/nvim-runner-$(NVIM_RUNNER_VERSION)/bin/nvim
 
