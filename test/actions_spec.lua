@@ -198,6 +198,30 @@ describe('actions', function()
     })
   end)
 
+  it('show_commit does not include ansi color codes', function()
+    setup_test_repo()
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    local lines = exec_lua(function()
+      local async = require('gitsigns.async')
+      local commit_buf = async
+        .run(function()
+          return require('gitsigns.actions.show_commit')('main', 'edit')
+        end)
+        :wait(1000)
+
+      return vim.api.nvim_buf_get_lines(commit_buf, 0, -1, false)
+    end)
+
+    for _, line in ipairs(lines) do
+      assert(not line:find('\27', 1, true), ('unexpected ANSI escape in line: %q'):format(line))
+    end
+  end)
+
   it('does not emit duplicate GitSignsUpdate events for stage_hunk', function()
     setup_test_repo()
     edit(test_file)

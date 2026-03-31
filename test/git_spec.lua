@@ -96,4 +96,31 @@ describe('git', function()
 
     eq('old name.txt', old_relpath)
   end)
+
+  it('log_rename_status handles unicode filenames', function()
+    helpers.git_init_scratch()
+
+    local old_name = scratch .. '/föobær.txt'
+    local new_name = scratch .. '/bår.txt'
+
+    write_to_file(old_name, { 'test' })
+    git('add', old_name)
+    git('commit', '-m', 'init commit')
+    git('mv', old_name, new_name)
+    git('commit', '-m', 'rename file')
+
+    local old_relpath = exec_lua(function(repo_dir)
+      local async = require('gitsigns.async')
+      local Repo = require('gitsigns.git.repo')
+
+      local repo = assert(async.run(Repo.get, repo_dir):wait(5000))
+      return async
+        .run(function()
+          return repo:log_rename_status('HEAD~1', 'bår.txt')
+        end)
+        :wait(5000)
+    end, scratch)
+
+    eq('föobær.txt', old_relpath)
+  end)
 end)

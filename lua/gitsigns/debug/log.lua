@@ -280,9 +280,12 @@ local function build_msg(m, verbose)
   -- Scrub some messages
   if not verbose and ctx == 'run_job' then
     ctx = 'git'
-    msg = msg
-      :gsub(vim.pesc('--no-pager --no-optional-locks --literal-pathspecs -c gc.auto=0 '), '')
-      :gsub(vim.pesc('-c core.quotepath=off'), '')
+    msg = msg:gsub(
+      vim.pesc(
+        '--no-pager --no-optional-locks --literal-pathspecs -c gc.auto=0 -c core.quotepath=off -c color.ui=false -c color.diff=false '
+      ),
+      ''
+    )
 
     local cwd = vim.uv.cwd()
     if cwd then
