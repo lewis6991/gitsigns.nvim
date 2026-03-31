@@ -9,6 +9,101 @@ local matches = helpers.matches
 local eq = helpers.eq
 local buf_get_var = helpers.api.nvim_buf_get_var
 local system = helpers.fn.system
+local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+
+--- @return boolean
+local function is_win()
+  return M.fn.has('win32') == 1
+end
+
+--- @return boolean
+local function has_cygpath()
+  return is_win() and M.fn.executable('cygpath') == 1
+end
+
+--- @param path string
+local function local_stat(path)
+  return uv.fs_stat(path)
+end
+
+--- @param path string
+--- @param mode? 'unix'|'windows'|'mixed'
+--- @return string
+local function local_cygpath(path, mode)
+  return vim.trim(M.fn.system({ 'cygpath', '--absolute', '--' .. (mode or 'mixed'), path }))
+end
+
+--- @return string
+local function local_tmpdir()
+  return assert(uv.os_tmpdir() or '/tmp')
+end
+
+--- @param timeout integer
+local function drain_session_gc(timeout)
+  if not is_win() or not M.get_session() then
+    return
+  end
+
+  M.exec_lua(function(timeout0)
+    collectgarbage('collect')
+    collectgarbage('collect')
+    vim.wait(timeout0, function()
+      collectgarbage('collect')
+      return false
+    end, 10)
+  end, timeout)
+end
+
+--- @param path string
+local function local_delete_once(path)
+  local stat = local_stat(path)
+  if not stat then
+    return
+  end
+
+  if stat.type == 'directory' then
+    local handle = uv.fs_scandir(path)
+    if handle then
+      while true do
+        local name = uv.fs_scandir_next(handle)
+        if not name then
+          break
+        end
+        local_delete_once(path .. '/' .. name)
+      end
+    end
+    assert(uv.fs_rmdir(path))
+  else
+    assert(uv.fs_unlink(path))
+  end
+end
+
+--- @param err string
+--- @return boolean
+local function is_retryable_delete_error(err)
+  return err:find('EBUSY', 1, true) ~= nil
+    or err:find('EPERM', 1, true) ~= nil
+    or err:find('ENOTEMPTY', 1, true) ~= nil
+end
+
+--- @param path string
+local function local_delete(path)
+  local retries = is_win() and 100 or 1
+
+  for attempt = 1, retries do
+    local ok, err = pcall(local_delete_once, path)
+    if ok then
+      return
+    end
+
+    if attempt == retries or not is_retryable_delete_error(err) then
+      error(err, 0)
+    end
+
+    drain_session_gc(50)
+    M.sleep(50)
+  end
+end
 
 M.scratch = os.getenv('PJ_ROOT') .. '/scratch'
 M.test_file = M.scratch .. '/dummy.txt'
@@ -61,16 +156,128 @@ local test_file_text = {
 --- Run a git command
 --- @param ... string
 function M.git(...)
-  system({ 'git', '-C', M.scratch, ... })
+  local args = { ... } --- @type string[]
+  local scratch0 = assert(M.normalize_path(M.scratch))
+
+  for i, arg in ipairs(args) do
+    local normalized = M.normalize_path(arg)
+    if normalized and vim.startswith(normalized, scratch0 .. '/') then
+      args[i] = normalized:sub(#scratch0 + 2)
+    end
+  end
+
+  system(vim.list_extend({ 'git', '-C', M.scratch }, args))
 end
 
 function M.cleanup()
-  system({ 'rm', '-rf', M.scratch })
+  if M.get_session() then
+    if M.fn.isdirectory(M.scratch) == 0 and M.fn.filereadable(M.scratch) == 0 then
+      return
+    end
+
+    M.exec_lua(function(root, tmpdir0)
+      pcall(function()
+        require('gitsigns').detach_all()
+      end)
+      pcall(vim.cmd, 'silent! noautocmd enew!')
+      pcall(vim.cmd, 'silent! cd ' .. vim.fn.fnameescape(tmpdir0))
+
+      for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+        local name = vim.api.nvim_buf_get_name(buf)
+        if name ~= '' and name:find(root, 1, true) then
+          pcall(vim.api.nvim_buf_delete, buf, { force = true })
+        end
+      end
+    end, M.scratch, local_tmpdir())
+
+    if is_win() then
+      drain_session_gc(100)
+    end
+
+    if not is_win() and M.fn.delete(M.scratch, 'rf') == 0 then
+      return
+    end
+  end
+
+  if not local_stat(M.scratch) then
+    return
+  end
+
+  local_delete(M.scratch)
+end
+
+--- @param path string
+function M.mkdir(path)
+  if M.fn.isdirectory(path) == 1 then
+    return
+  end
+
+  eq(1, M.fn.mkdir(path, 'p'), ('failed to create %s'):format(path))
+end
+
+--- @param src string
+--- @param dst string
+function M.move(src, dst)
+  eq(0, M.fn.rename(src, dst), ('failed to move %s to %s'):format(src, dst))
+end
+
+--- @param path string
+function M.touch(path)
+  local parent = vim.fs.dirname(path)
+  if parent then
+    M.mkdir(parent)
+  end
+
+  local f = assert(io.open(path, 'ab'))
+  f:close()
+end
+
+--- @param path string?
+--- @return string?
+function M.normalize_path(path)
+  if not path or path == '' then
+    return path
+  end
+
+  if has_cygpath() and path:match('^/[A-Za-z]/') then
+    path = local_cygpath(path, 'mixed')
+  end
+
+  if is_win() then
+    path = path:gsub('\\', '/')
+  end
+
+  return vim.fs.normalize(path)
+end
+
+--- @param expected string?
+--- @param actual string?
+--- @param msg? string
+function M.eq_path(expected, actual, msg)
+  eq(M.normalize_path(expected), M.normalize_path(actual), msg)
+end
+
+--- @param path string
+--- @return string
+function M.path_pattern(path)
+  local normalized = assert(M.normalize_path(path))
+
+  local is_abs = normalized:match('^%a:/') ~= nil or normalized:match('^/') ~= nil
+  local stripped = normalized:gsub('^%a:/', ''):gsub('^/[A-Za-z]/', ''):gsub('^/+', '')
+
+  local parts = vim.split(stripped, '/', { plain = true, trimempty = true })
+  local pattern = table.concat(vim.tbl_map(vim.pesc, parts), '[\\/]')
+
+  if is_abs then
+    return '.*[\\/]?' .. pattern
+  end
+
+  return pattern
 end
 
 function M.git_init_scratch()
   M.cleanup()
-  system({ 'mkdir', M.scratch })
+  M.mkdir(M.scratch)
   M.git('init', '-b', 'main')
 
   -- Always force color to test settings don't interfere with gitsigns systems
@@ -99,7 +306,6 @@ end
 function M.setup_test_repo(opts)
   local text = opts and opts.test_file_text or test_file_text
   M.git_init_scratch()
-  system({ 'touch', M.test_file })
   M.write_to_file(M.test_file, text)
   if not (opts and opts.no_add) then
     M.git('add', M.test_file)
@@ -126,18 +332,46 @@ end
 
 --- @param path string
 function M.edit(path)
-  helpers.api.nvim_command('edit ' .. path)
+  helpers.api.nvim_command('edit ' .. M.fn.fnameescape(path))
 end
 
 --- @param path string
 --- @param text string[]
-function M.write_to_file(path, text)
+--- @param opts? {newline?: string, trailing_newline?: boolean}
+function M.write_to_file(path, text, opts)
+  opts = opts or {}
+
+  local parent = vim.fs.dirname(path)
+  if parent then
+    M.mkdir(parent)
+  end
+
+  local newline = opts.newline or '\n'
+  local trailing_newline = opts.trailing_newline
+  if trailing_newline == nil then
+    trailing_newline = #text > 0
+  end
+
   local f = assert(io.open(path, 'wb'))
-  for _, l in ipairs(text) do
+  for i, l in ipairs(text) do
+    if i > 1 then
+      f:write(newline)
+    end
     f:write(l)
-    f:write('\n')
+  end
+  if trailing_newline then
+    f:write(newline)
   end
   f:close()
+end
+
+--- @return string
+function M.tempname()
+  return M.fn.tempname()
+end
+
+function M.chdir_tmp()
+  M.api.nvim_command('cd ' .. M.fn.fnameescape(local_tmpdir()))
 end
 
 --- @param line string

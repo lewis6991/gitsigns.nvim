@@ -8,10 +8,10 @@ local clear = helpers.clear
 local command = api.nvim_command
 local edit = helpers.edit
 local eq = helpers.eq
+local eq_path = helpers.eq_path
 local exec_lua = helpers.exec_lua
 local expectf = helpers.expectf
 local feed = helpers.feed
-local fn = helpers.fn
 local get_buf_var = api.nvim_buf_get_var
 local git = helpers.git
 local insert = helpers.insert
@@ -20,14 +20,15 @@ local match_debug_messages = helpers.match_debug_messages
 local match_lines = helpers.match_lines
 local n, p, np = helpers.n, helpers.p, helpers.np
 local newfile = helpers.newfile
+local path_pattern = helpers.path_pattern
 local scratch = helpers.scratch
 local setup_gitsigns = helpers.setup_gitsigns
 local setup_test_repo = helpers.setup_test_repo
 local split = vim.split
-local system = fn.system
 local test_config = helpers.test_config
 local test_file = helpers.test_file
 local write_to_file = helpers.write_to_file
+local fn = helpers.fn
 
 helpers.env()
 
@@ -47,6 +48,7 @@ local revparse_pat = ('system.system: git .* rev-parse --show-toplevel --absolut
   '%-',
   '%%-'
 )
+local attach_open_pat = 'attach%.attach%(1%): Attaching %(trigger=Buf%u%l+%u%l+%)'
 
 describe('gitsigns (with screen)', function()
   local screen --- @type test.screen
@@ -86,7 +88,7 @@ describe('gitsigns (with screen)', function()
     screen:set_default_attr_ids(default_attrs)
 
     config = vim.deepcopy(test_config)
-    command('cd ' .. system({ 'dirname', os.tmpname() }))
+    helpers.chdir_tmp()
   end)
 
   after_each(function()
@@ -115,7 +117,7 @@ describe('gitsigns (with screen)', function()
       p(revparse_pat),
       p(
         'system.system: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
-          .. vim.pesc(test_file)
+          .. path_pattern(test_file)
       ),
       p('attach%.attach%(1%): Watching git dir .*'),
     })
@@ -135,11 +137,11 @@ describe('gitsigns (with screen)', function()
 
   it('can open files not in a git repo', function()
     setup_gitsigns(config)
-    local tmpfile = os.tmpname()
+    local tmpfile = helpers.tempname()
     edit(tmpfile)
 
     match_debug_messages({
-      'attach.attach(1): Attaching (trigger=BufReadPost)',
+      p(attach_open_pat),
       np(revparse_pat),
       np('Not in git repo'),
       np('Empty git obj'),
@@ -198,14 +200,14 @@ describe('gitsigns (with screen)', function()
 
       local ignored_file = scratch .. '/dummy_ignored.txt'
 
-      system({ 'touch', ignored_file })
+      helpers.touch(ignored_file)
       edit(ignored_file)
 
       match_debug_messages({
         'attach.attach(1): Attaching (trigger=BufReadPost)',
         np(revparse_pat),
         np('system.system: git .* config user.name'),
-        np('system.system: git .* ls%-files .*/dummy_ignored.txt'),
+        np('system.system: git .* ls%-files ' .. path_pattern(ignored_file)),
         n('attach.attach(1): Cannot resolve file in repo'),
       })
 
@@ -241,7 +243,7 @@ describe('gitsigns (with screen)', function()
         np('system.system: git .* config user.name'),
         np(
           'system.system: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
-            .. vim.pesc(newfile)
+            .. path_pattern(newfile)
         ),
         'attach.attach(1): Cannot resolve file in repo',
       })
@@ -301,9 +303,11 @@ describe('gitsigns (with screen)', function()
 
       git('config', 'core.autocrlf', autocrlf)
       if file_ending == 'dos' then
-        system("printf 'This\r\nis\r\na\r\nwindows\r\nfile\r\n' > " .. newfile)
+        write_to_file(newfile, { 'This', 'is', 'a', 'windows', 'file' }, {
+          newline = '\r\n',
+        })
       else
-        system("printf 'This\nis\na\nwindows\nfile\n' > " .. newfile)
+        write_to_file(newfile, { 'This', 'is', 'a', 'windows', 'file' })
       end
 
       git('add', newfile)
@@ -653,13 +657,23 @@ describe('gitsigns (with screen)', function()
       it('attaches to newly created files', function()
         setup_gitsigns(config)
         edit(newfile)
-        match_debug_messages({
+        local messages = {
           'attach.attach(1): Attaching (trigger=BufNewFile)',
           np(revparse_pat),
           np('system.system: git .* config user.name'),
           np('system.system: git .* ls%-files .*'),
           n('attach.attach(1): Cannot resolve file in repo'),
-        })
+        }
+
+        if fn.has('win32') == 1 then
+          table.insert(
+            messages,
+            5,
+            p(vim.pesc('system.system: cygpath --absolute --unix ') .. path_pattern(newfile))
+          )
+        end
+
+        match_debug_messages(messages)
         command('write')
 
         local messages = {
@@ -670,7 +684,10 @@ describe('gitsigns (with screen)', function()
         }
 
         if not internal_diff then
-          table.insert(messages, np('system.system: git .* diff .* /.* /.*'))
+          table.insert(
+            messages,
+            np(vim.pesc('system.system: git ') .. '.* diff .* .*[\\/].* .*[\\/].*')
+          )
         end
 
         match_debug_messages(messages)
@@ -733,7 +750,7 @@ describe('gitsigns (with screen)', function()
 
       it('tracks files in new repos', function()
         setup_gitsigns(config)
-        system({ 'touch', newfile })
+        helpers.touch(newfile)
         edit(newfile)
 
         feed('iEDIT<esc>')
@@ -880,11 +897,15 @@ describe('gitsigns (with screen)', function()
     helpers.exc_exec('vimgrep ben ' .. scratch .. '/*')
 
     if fn.has('nvim-0.12') > 0 then
+      local qf_path = scratch .. '/dummy.txt'
+      if fn.has('win32') == 1 then
+        qf_path = qf_path:gsub('/', '\\')
+      end
       screen:expect({
         messages = {
           {
             kind = '',
-            content = { { scratch .. '/dummy.txt' } },
+            content = { { qf_path } },
           },
           {
             kind = 'quickfix',
@@ -1086,12 +1107,22 @@ describe('gitsigns attach', function()
   before_each(function()
     clear()
     config = vim.deepcopy(test_config)
-    command('cd ' .. system({ 'dirname', os.tmpname() }))
+    helpers.chdir_tmp()
   end)
 
   after_each(function()
     cleanup()
   end)
+
+  --- @param bufnr integer
+  --- @param ctx Gitsigns.GitContext
+  local function attach_with_context(bufnr, ctx)
+    exec_lua(function(bufnr0, ctx0)
+      local async = require('gitsigns.async')
+      async.run(require('gitsigns.attach').attach, bufnr0, ctx0, 'test'):wait(5000)
+    end, bufnr, ctx)
+    wait_for_attach(bufnr)
+  end
 
   it('handle #888', function()
     setup_test_repo()
@@ -1105,8 +1136,8 @@ describe('gitsigns attach', function()
     git('commit', '-m', 'add cargo')
 
     -- move file and stage move
-    system({ 'mkdir', subdir })
-    system({ 'mv', path1, path2 })
+    helpers.mkdir(subdir)
+    helpers.move(path1, path2)
     git('add', path1, path2)
 
     config.base = 'HEAD'
@@ -1131,10 +1162,71 @@ describe('gitsigns attach', function()
     })
   end)
 
+  it('attaches to a tracked file in a subdirectory', function()
+    helpers.git_init_scratch()
+
+    local relpath = 'sub/test.txt'
+    local file = scratch .. '/' .. relpath
+
+    write_to_file(file, { 'hello', 'world' })
+    git('add', file)
+    git('commit', '-m', 'add nested file')
+
+    setup_gitsigns(config)
+    edit(file)
+    wait_for_attach()
+
+    local result = exec_lua(function(bufnr)
+      local cache = assert(require('gitsigns.cache').cache[bufnr])
+      return {
+        relpath = cache.git_obj.relpath,
+        object_name = cache.git_obj.object_name or '',
+        toplevel = cache.git_obj.repo.toplevel,
+      }
+    end, api.nvim_get_current_buf())
+
+    eq(relpath, result.relpath)
+    eq(false, result.object_name == '')
+    eq_path(scratch, result.toplevel)
+  end)
+
+  it('attaches with a relative file path in the git context', function()
+    helpers.git_init_scratch()
+
+    local relpath = 'sub/relative.txt'
+    local file = scratch .. '/' .. relpath
+
+    write_to_file(file, { 'hello', 'world' })
+    git('add', file)
+    git('commit', '-m', 'add relative file')
+
+    config.auto_attach = false
+    setup_gitsigns(config)
+    edit(file)
+
+    attach_with_context(api.nvim_get_current_buf(), {
+      file = relpath,
+      gitdir = scratch .. '/.git',
+      toplevel = scratch,
+    })
+
+    local result = exec_lua(function(bufnr)
+      local cache = assert(require('gitsigns.cache').cache[bufnr])
+      return {
+        relpath = cache.git_obj.relpath,
+        object_name = cache.git_obj.object_name or '',
+        file = cache.git_obj.file,
+      }
+    end, api.nvim_get_current_buf())
+
+    eq(relpath, result.relpath)
+    eq(false, result.object_name == '')
+    eq_path(file, result.file)
+  end)
+
   it('can run diffthis/show when cwd is a subdir of a git repo (#1277)', function()
     helpers.git_init_scratch()
     local file = scratch .. '/sub/test'
-    system({ 'mkdir', vim.fs.dirname(file) })
     write_to_file(file, { 'hello' })
     git('add', file)
     git('commit', '-m', 'commit 1')
@@ -1148,16 +1240,16 @@ describe('gitsigns attach', function()
     command('Gitsigns show')
     wait_for_attach()
 
-    eq('gitsigns://' .. scratch .. '/.git//:0:sub/test', api.nvim_buf_get_name(0))
-
     local gfile, toplevel, gitdir, abbrev_head = exec_lua(function()
       local git_obj = assert(require('gitsigns.cache').cache[1]).git_obj
       return git_obj.file, git_obj.repo.toplevel, git_obj.repo.gitdir, git_obj.repo.abbrev_head
     end)
 
-    eq(file, gfile)
-    eq(scratch, toplevel)
-    eq(scratch .. '/.git', gitdir)
+    eq(('gitsigns://%s//:0:sub/test'):format(gitdir), api.nvim_buf_get_name(0))
+
+    eq_path(file, gfile)
+    eq_path(scratch, toplevel)
+    eq_path(scratch .. '/.git', gitdir)
     eq('main', abbrev_head)
   end)
 

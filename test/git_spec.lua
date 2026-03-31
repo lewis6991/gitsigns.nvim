@@ -6,6 +6,7 @@ local eq = helpers.eq
 local exec_lua = helpers.exec_lua
 local git = helpers.git
 local scratch = helpers.scratch
+local setup_test_repo = helpers.setup_test_repo
 local write_to_file = helpers.write_to_file
 
 helpers.env()
@@ -122,5 +123,39 @@ describe('git', function()
     end, scratch)
 
     eq('föobær.txt', old_relpath)
+  end)
+
+  it('util.cygpath preserves native paths and converts unix paths', function()
+    setup_test_repo()
+
+    local supported = exec_lua(function()
+      return vim.fn.has('win32') == 1 and vim.fn.executable('cygpath') == 1
+    end)
+    if not supported then
+      return
+    end
+
+    local result = exec_lua(function(root)
+      local async = require('gitsigns.async')
+      local util = require('gitsigns.util')
+
+      local unix_root = vim.trim(vim.fn.system({ 'cygpath', '--absolute', '--unix', root }))
+      local mixed_root = vim.trim(vim.fn.system({ 'cygpath', '--absolute', '--mixed', root }))
+      local windows_root =
+        vim.trim(vim.fn.system({ 'cygpath', '--absolute', '--windows', unix_root }))
+
+      return {
+        native_mixed = async.run(util.cygpath, root, 'mixed'):wait(5000),
+        unix_mixed = async.run(util.cygpath, unix_root, 'mixed'):wait(5000),
+        unix_windows = async.run(util.cygpath, unix_root, 'windows'):wait(5000),
+        expected_native = root,
+        expected_mixed = mixed_root,
+        expected_windows = windows_root,
+      }
+    end, scratch)
+
+    eq(result.expected_native, result.native_mixed)
+    eq(result.expected_mixed, result.unix_mixed)
+    eq(result.expected_windows, result.unix_windows)
   end)
 end)

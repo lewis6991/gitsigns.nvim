@@ -9,16 +9,16 @@ local git = helpers.git
 local scratch = helpers.scratch
 local setup_gitsigns = helpers.setup_gitsigns
 local setup_test_repo = helpers.setup_test_repo
-local system = helpers.fn.system
 local test_config = helpers.test_config
 local test_file = helpers.test_file
+local eq_path = helpers.eq_path
 
 helpers.env()
 
 describe('qflist', function()
   before_each(function()
     clear()
-    command('cd ' .. system({ 'dirname', os.tmpname() }))
+    helpers.chdir_tmp()
   end)
 
   after_each(function()
@@ -55,7 +55,7 @@ describe('qflist', function()
       end) --- @type vim.quickfix.entry[], string[], string[]
 
       eq(1, #items)
-      eq(renamed, names[1])
+      eq_path(renamed, names[1])
       eq(true, texts[1]:match('^Changed') ~= nil)
     end)
   end)

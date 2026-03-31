@@ -6,14 +6,15 @@ local test_file = helpers.test_file
 local edit = helpers.edit
 local check = helpers.check
 local exec_lua = helpers.exec_lua
-local fn = helpers.fn
 local api = helpers.api
-local system = fn.system
 local test_config = helpers.test_config
 local clear = helpers.clear
 local setup_test_repo = helpers.setup_test_repo
 local eq = helpers.eq
 local expectf = helpers.expectf
+local git = helpers.git
+local scratch = helpers.scratch
+local write_to_file = helpers.write_to_file
 
 helpers.env()
 
@@ -133,7 +134,7 @@ describe('actions', function()
 
   before_each(function()
     clear()
-    command('cd ' .. system({ 'dirname', os.tmpname() }))
+    helpers.chdir_tmp()
     setup_gitsigns(test_config)
   end)
 
@@ -516,7 +517,9 @@ describe('actions', function()
     setup_test_repo()
     local newfile = helpers.newfile
     exec_lua([[vim.g.editorconfig = false]])
-    system("printf 'This is a file with no nl at eof' > " .. newfile)
+    helpers.write_to_file(newfile, { 'This is a file with no nl at eof' }, {
+      trailing_newline = false,
+    })
     helpers.git('add', newfile)
     helpers.git('commit', '-m', 'commit on main')
 
@@ -526,5 +529,44 @@ describe('actions', function()
     check({ status = { head = 'main', added = 0, changed = 1, removed = 0 } })
     command('Gitsigns stage_hunk')
     check({ status = { head = 'main', added = 0, changed = 0, removed = 0 } })
+  end)
+
+  it('stages tracked changes after attach in a nested path', function()
+    helpers.git_init_scratch()
+
+    local relpath = 'sub/stage.txt'
+    local file = scratch .. '/' .. relpath
+
+    write_to_file(file, { 'hello', 'world' })
+    git('add', file)
+    git('commit', '-m', 'add nested file')
+
+    edit(file)
+
+    expectf(function()
+      return exec_lua(function()
+        return vim.b.gitsigns_status_dict.gitdir ~= nil
+      end)
+    end)
+
+    set_lines(0, 1, { 'changed' })
+
+    expectf(function()
+      local hunks = exec_lua(function(bufnr)
+        local cache = assert(require('gitsigns.cache').cache[bufnr])
+        return cache.hunks and #cache.hunks or 0
+      end, api.nvim_get_current_buf())
+
+      return hunks > 0
+    end)
+
+    stage_hunk()
+
+    expectf(function()
+      eq(
+        relpath,
+        vim.trim(helpers.fn.system({ 'git', '-C', scratch, 'diff', '--cached', '--name-only' }))
+      )
+    end)
   end)
 end)

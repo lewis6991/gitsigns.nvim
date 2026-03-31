@@ -29,9 +29,8 @@ end
 --- @param path string
 --- @return boolean
 function Path.is_abs(path)
-  -- Check if the path is absolute on Windows
-  if is_win and M.cygpath(path):match('^%a:[/\\]') then
-    return true
+  if is_win then
+    return path:match('^%a:[/\\]') ~= nil or vim.startswith(path, '/') or vim.startswith(path, '\\')
   end
 
   -- Check if the path is absolute on Unix-like systems

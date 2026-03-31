@@ -4,9 +4,12 @@ Read this file before broad test changes, CI debugging, or test-heavy work.
 
 ## Main Commands
 
-- `make test [FILTER=pattern]`: run the functional suite with the default
-  Neovim target.
-- `make test-010`, `make test-011`, `make test-012`, `make test-nightly`: run
+- In the sandbox, always raise the file descriptor limit before functional
+  tests: `ulimit -n 1024; make test ...`
+- `ulimit -n 1024; make test [FILTER=pattern]`: run the functional suite with
+  the default Neovim target.
+- `ulimit -n 1024; make test-010`, `ulimit -n 1024; make test-011`,
+  `ulimit -n 1024; make test-012`, `ulimit -n 1024; make test-nightly`: run
   the suite against the supported Neovim versions.
 - `make build`: format Lua sources and regenerate docs before committing.
 - `make doc` / `make doc-check`: regenerate help docs and fail on drift.
@@ -20,8 +23,3 @@ Read this file before broad test changes, CI debugging, or test-heavy work.
 - When Neovim internals are touched, run the version matrix and at least check
   `make test-010 && make test-nightly`.
 - Keep tests deterministic by guarding optional Git features.
-
-## Troubleshooting
-
-- If you hit `EMFILE` in the sandbox, rerun the command with a higher file
-  descriptor limit, such as `ulimit -n 1024; make test ...`.
