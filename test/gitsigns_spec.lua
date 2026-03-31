@@ -838,12 +838,7 @@ describe('gitsigns (with screen)', function()
           signs = { changed = 1, added = 4 },
         })
 
-        -- Minor delay to avoid the test being flaky
-        helpers.sleep(50)
-
-        exec_lua(function()
-          require('gitsigns.actions').stage_hunk()
-        end)
+        helpers.stage_hunk()
 
         check({
           status = { head = 'HEAD(rebasing)', added = 0, changed = 0, removed = 0 },

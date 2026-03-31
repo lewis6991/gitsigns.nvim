@@ -291,6 +291,8 @@ function M.git_init_scratch()
   M.git('config', 'color.pager', 'true')
   M.git('config', 'color.decorate', 'always')
   M.git('config', 'color.showbranch', 'always')
+  M.git('config', 'core.autocrlf', 'false')
+  M.git('config', 'core.eol', 'lf')
 
   M.git('config', 'merge.conflictStyle', 'merge')
 
@@ -328,6 +330,26 @@ function M.expectf(cond, interval)
     interval = interval * 2
   end
   cond()
+end
+
+--- @param range [integer, integer]?
+function M.stage_hunk(range)
+  M.exec_lua(function(range0)
+    local async = require('gitsigns.async')
+
+    if range0 == vim.NIL then
+      range0 = nil
+    end
+
+    async
+      .run(function()
+        local err = async.await(1, function(cb)
+          require('gitsigns').stage_hunk(range0, nil, cb)
+        end)
+        assert(not err, err)
+      end)
+      :wait(5000)
+  end, range == nil and vim.NIL or range)
 end
 
 --- @param path string
