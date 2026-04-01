@@ -345,6 +345,7 @@ M.attach = throttle_async({ hash = 1 }, function(cbuf, ctx, aucmd)
 
   async.schedule()
   if not api.nvim_buf_is_valid(cbuf) then
+    git_obj:close()
     return
   end
 
@@ -356,6 +357,7 @@ M.attach = throttle_async({ hash = 1 }, function(cbuf, ctx, aucmd)
 
   if not git_obj.relpath then
     dprint('Cannot resolve file in repo')
+    git_obj:close()
     return
   end
 
@@ -365,6 +367,7 @@ M.attach = throttle_async({ hash = 1 }, function(cbuf, ctx, aucmd)
   -- untracked buffers.
   if aucmd and not config.attach_to_untracked and is_untracked then
     dprint('File is untracked')
+    git_obj:close()
     return
   end
 
@@ -372,6 +375,7 @@ M.attach = throttle_async({ hash = 1 }, function(cbuf, ctx, aucmd)
   local diff_attr = git_obj.repo:check_attr('diff', { relpath })[relpath]
   if diff_attr == 'unset' then
     dprint('File has -diff attribute')
+    git_obj:close()
     return
   end
 
@@ -379,15 +383,23 @@ M.attach = throttle_async({ hash = 1 }, function(cbuf, ctx, aucmd)
   -- variable on the main thread.
   async.schedule()
   if not api.nvim_buf_is_valid(cbuf) then
+    git_obj:close()
     return
   end
 
   if config.on_attach and config.on_attach(cbuf) == false then
     dprint('User on_attach() returned false')
+    git_obj:close()
     return
   end
 
   cache[cbuf] = Cache.new(cbuf, file, git_obj)
+
+  if not api.nvim_buf_is_loaded(cbuf) then
+    dprint('Un-loaded buffer')
+    Cache.destroy(cbuf)
+    return
+  end
 
   if git_obj.repo:has_watcher() then
     dprintf('Watching git dir %s', git_obj.repo.gitdir)
@@ -403,11 +415,6 @@ M.attach = throttle_async({ hash = 1 }, function(cbuf, ctx, aucmd)
     cache[cbuf].deregister_watcher = git_obj.repo:on_update(function()
       async.run(throttled_repo_update_handler):raise_on_error()
     end)
-  end
-
-  if not api.nvim_buf_is_loaded(cbuf) then
-    dprint('Un-loaded buffer')
-    return
   end
 
   -- Make sure to attach before the first update (which is async) so we pick up

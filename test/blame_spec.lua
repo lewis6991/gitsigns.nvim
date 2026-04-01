@@ -146,6 +146,7 @@ describe('blame', function()
           local obj = assert(Git.Obj.new(file0, nil, encoding))
           local blame_entries = obj:run_blame(nil, 1, nil, {})
           local blame_info = blame_entries and blame_entries[1]
+          obj:close()
 
           return {
             relpath = obj.relpath,

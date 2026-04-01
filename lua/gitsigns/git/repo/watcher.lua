@@ -17,9 +17,20 @@ end
 --- @field private commondir string
 --- @field private handles table<string, uv.uv_fs_event_t> Map from watched dir -> handle
 --- @field private head_ref_dir? string
+--- @field private _closed? true
 --- @field private _gc userdata? Used for garbage collection
 local Watcher = {}
 Watcher.__index = Watcher
+
+--- @param handle uv.uv_fs_event_t
+local function close_handle(handle)
+  if handle:is_closing() then
+    return
+  end
+
+  handle:stop()
+  handle:close()
+end
 
 --- @param gitdir string
 --- @param commondir? string
@@ -38,8 +49,7 @@ function Watcher.new(gitdir, commondir)
 
   self._gc = util.gc_proxy(function()
     for _, handle in pairs(handles) do
-      handle:stop()
-      handle:close()
+      close_handle(handle)
     end
   end)
 
@@ -57,11 +67,26 @@ function Watcher.new(gitdir, commondir)
   return self
 end
 
+function Watcher:close()
+  if self._closed then
+    return
+  end
+
+  self._closed = true
+  self.update_callbacks = {}
+  self.head_ref_dir = nil
+
+  for dir, handle in pairs(self.handles) do
+    close_handle(handle)
+    self.handles[dir] = nil
+  end
+end
+
 --- @private
 --- @param dir string
 --- @param weak_self {ref:Gitsigns.Repo.Watcher}
 function Watcher:_watch_dir(dir, weak_self)
-  if self.handles[dir] or not Path.is_dir(dir) then
+  if self._closed or self.handles[dir] or not Path.is_dir(dir) then
     return
   end
 
@@ -80,8 +105,7 @@ function Watcher:_unwatch_dir(dir)
     return
   end
 
-  handle:stop()
-  handle:close()
+  close_handle(handle)
   self.handles[dir] = nil
 end
 
@@ -130,7 +154,7 @@ end
 --- @param weak_self {ref:Gitsigns.Repo.Watcher}
 function Watcher.notify_callbacks(weak_self)
   local self = weak_self.ref
-  if not self then
+  if not self or self._closed then
     return -- garbage collected
   end
 
@@ -156,6 +180,11 @@ function Watcher.handler(weak_self)
     local self = weak_self.ref
     if not self then
       log.dprint('watcher was garbage collected')
+      return
+    end
+
+    if self._closed then
+      log.dprint('watcher was closed')
       return
     end
 

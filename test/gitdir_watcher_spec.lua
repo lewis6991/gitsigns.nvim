@@ -19,6 +19,12 @@ local git = helpers.git
 
 helpers.env()
 
+local watcher_test_config = vim.tbl_deep_extend('force', vim.deepcopy(test_config), {
+  watch_gitdir = {
+    enable = true,
+  },
+})
+
 local function get_bufs()
   local bufs = {} --- @type table<integer,string>
   for _, b in ipairs(helpers.api.nvim_list_bufs()) do
@@ -48,7 +54,7 @@ describe('gitdir_watcher', function()
 
   it('can follow moved files', function()
     setup_test_repo()
-    setup_gitsigns(test_config)
+    setup_gitsigns(watcher_test_config)
     command('Gitsigns clear_debug')
     edit(test_file)
 
@@ -146,7 +152,7 @@ describe('gitdir_watcher', function()
     git('add', test_file1)
     git('commit', '-m', 'init commit')
 
-    setup_gitsigns(test_config)
+    setup_gitsigns(watcher_test_config)
     edit(test_file1)
 
     helpers.expectf(function()
@@ -164,7 +170,7 @@ describe('gitdir_watcher', function()
 
   it('preserves slash branch names on head updates', function()
     setup_test_repo()
-    setup_gitsigns(test_config)
+    setup_gitsigns(watcher_test_config)
     edit(test_file)
 
     helpers.expectf(function()
@@ -192,7 +198,7 @@ describe('gitdir_watcher', function()
     git('add', f1, f2)
     git('commit', '-m', 'init commit')
 
-    setup_gitsigns(test_config)
+    setup_gitsigns(watcher_test_config)
 
     command('edit ' .. f1)
     helpers.feed('Aa<esc>')
@@ -213,6 +219,68 @@ describe('gitdir_watcher', function()
     helpers.check({ signs = {} }, b2)
   end)
 
+  it('closes and recreates watchers when buffers detach and reattach', function()
+    setup_test_repo()
+    setup_gitsigns(watcher_test_config)
+    edit(test_file)
+
+    helpers.expectf(function()
+      return helpers.exec_lua(function()
+        local bcache = require('gitsigns.cache').cache[vim.api.nvim_get_current_buf()]
+        return bcache ~= nil and bcache.git_obj.repo._watcher ~= nil
+      end)
+    end)
+
+    local handle_count = helpers.exec_lua(function()
+      local bcache = require('gitsigns.cache').cache[vim.api.nvim_get_current_buf()]
+      local repo = assert(bcache).git_obj.repo
+
+      _G.gitsigns_test_repo = repo
+      _G.gitsigns_test_watcher_handles = {}
+
+      for _, handle in pairs(assert(repo._watcher).handles) do
+        _G.gitsigns_test_watcher_handles[#_G.gitsigns_test_watcher_handles + 1] = handle
+      end
+
+      return #_G.gitsigns_test_watcher_handles
+    end)
+
+    eq(true, handle_count > 0)
+
+    command('Gitsigns detach')
+
+    helpers.expectf(function()
+      return helpers.exec_lua(function()
+        if _G.gitsigns_test_repo._watcher ~= nil then
+          return false
+        end
+
+        for _, handle in ipairs(_G.gitsigns_test_watcher_handles) do
+          if not handle:is_closing() then
+            return false
+          end
+        end
+
+        return true
+      end)
+    end)
+
+    command('Gitsigns attach')
+
+    helpers.expectf(function()
+      return helpers.exec_lua(function()
+        local bcache = require('gitsigns.cache').cache[vim.api.nvim_get_current_buf()]
+        return bcache ~= nil and bcache.git_obj.repo._watcher ~= nil
+      end)
+    end)
+
+    helpers.exec_lua(function()
+      _G.gitsigns_test_repo = nil
+      _G.gitsigns_test_watcher_handles = nil
+      collectgarbage('collect')
+    end)
+  end)
+
   it('gc proxy closes over handles without retaining watcher', function()
     setup_test_repo()
     helpers.setup_path()
@@ -223,6 +291,7 @@ describe('gitdir_watcher', function()
 
       local repo, err = async.run(Repo.get, scratch):wait(5000)
       assert(repo, err)
+      repo:on_update(function() end)
 
       local watcher = repo._watcher
       local gc = assert(getmetatable(watcher._gc).__gc)
@@ -244,6 +313,8 @@ describe('gitdir_watcher', function()
         end
       end
 
+      repo:unref()
+
       return captured
     end, helpers.scratch)
 
@@ -261,6 +332,7 @@ describe('gitdir_watcher', function()
 
       local repo, err = async.run(Repo.get, scratch):wait(5000)
       assert(repo, err)
+      repo:on_update(function() end)
 
       local gitdir = repo.gitdir
       local watcher = repo._watcher

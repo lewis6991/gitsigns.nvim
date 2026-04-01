@@ -88,11 +88,13 @@ describe('git', function()
       local Repo = require('gitsigns.git.repo')
 
       local repo = assert(async.run(Repo.get, repo_dir):wait(5000))
-      return async
+      local ret = async
         .run(function()
           return repo:log_rename_status('HEAD~1', 'new name.txt')
         end)
         :wait(5000)
+      repo:unref()
+      return ret
     end, scratch)
 
     eq('old name.txt', old_relpath)
@@ -115,11 +117,13 @@ describe('git', function()
       local Repo = require('gitsigns.git.repo')
 
       local repo = assert(async.run(Repo.get, repo_dir):wait(5000))
-      return async
+      local ret = async
         .run(function()
           return repo:log_rename_status('HEAD~1', 'bår.txt')
         end)
         :wait(5000)
+      repo:unref()
+      return ret
     end, scratch)
 
     eq('föobær.txt', old_relpath)
