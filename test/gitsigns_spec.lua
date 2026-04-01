@@ -97,7 +97,7 @@ describe('gitsigns (with screen)', function()
   end)
 
   it('can run basic setup', function()
-    setup_gitsigns()
+    setup_gitsigns(config)
     check({ status = {}, signs = {} })
   end)
 
@@ -106,8 +106,7 @@ describe('gitsigns (with screen)', function()
     local nvim_ver = exec_lua('return vim.version().minor')
     screen:try_resize(20, 6)
     setup_test_repo({ no_add = true })
-    -- Don't set this too low, or else the test will lock up
-    config.watch_gitdir = { interval = 100 }
+    config.watch_gitdir.enable = true
     setup_gitsigns(config)
     edit(test_file)
 
@@ -680,7 +679,6 @@ describe('gitsigns (with screen)', function()
           'attach.attach(1): Attaching (trigger=BufWritePost)',
           np(revparse_pat),
           np('system.system: git .* ls%-files .*'),
-          np('attach%.attach%(1%): Watching git dir .*'),
         }
 
         if not internal_diff then
@@ -749,6 +747,7 @@ describe('gitsigns (with screen)', function()
       end)
 
       it('tracks files in new repos', function()
+        config.watch_gitdir.enable = true
         setup_gitsigns(config)
         helpers.touch(newfile)
         edit(newfile)

@@ -24,10 +24,14 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 --- @field username string
 --- @field private _lock Gitsigns.async.Semaphore
 --- @field private _watcher? Gitsigns.Repo.Watcher
+--- @field private _refs integer
 --- @field head_oid? string
 --- @field head_ref? string
 --- @field commondir string
 local M = {}
+
+--- @type table<string,Gitsigns.Repo?>
+local repo_cache = setmetatable({}, { __mode = 'v' })
 
 --- @param gitdir string
 --- @return boolean
@@ -275,6 +279,32 @@ local function get_head_oid(gitdir, commondir)
   return oid
 end
 
+--- @private
+function M:_close()
+  repo_cache[self.gitdir] = nil
+  if self._watcher then
+    self._watcher:close()
+    self._watcher = nil
+  end
+end
+
+function M:ref()
+  self._refs = self._refs + 1
+  return self
+end
+
+function M:unref()
+  if self._refs == 0 then
+    return
+  end
+
+  self._refs = self._refs - 1
+
+  if self._refs == 0 then
+    self:_close()
+  end
+end
+
 --- Registers a callback to be invoked on update events.
 ---
 --- The provided callback function `cb` will be stored and called when an update
@@ -449,9 +479,6 @@ function M:get_show_text_at_revision(revision, relpath, encoding)
   return stdout, stderr
 end
 
---- @type table<string,Gitsigns.Repo?>
-local repo_cache = setmetatable({}, { __mode = 'v' })
-
 --- @async
 --- @private
 --- @param info Gitsigns.RepoInfo
@@ -460,6 +487,7 @@ function M._new(info)
   --- @type Gitsigns.Repo
   local self = setmetatable(info, { __index = M })
   self._lock = async.semaphore(1)
+  self._refs = 0
   self.username = self:command({ 'config', 'user.name' }, { ignore_error = true })[1]
 
   self.commondir = get_commondir(self.gitdir)
@@ -532,6 +560,7 @@ function M.get(cwd, gitdir, toplevel)
       repo = M._new(info)
       repo_cache[info.gitdir] = repo
     end
+    repo:ref()
     return repo
   end)
 end
@@ -674,9 +703,9 @@ end
 
 --- @class (exact) Gitsigns.Repo.LsTree.Result
 --- @field relpath string
---- @field mode_bits? string
---- @field object_name? string
---- @field object_type? 'blob'|'tree'|'commit'
+--- @field mode_bits string
+--- @field object_name string
+--- @field object_type 'blob'|'tree'|'commit'
 
 --- @async
 --- @param path string
@@ -715,8 +744,8 @@ function M:ls_tree(path, revision)
 
   return {
     relpath = relpath,
-    mode_bits = mode_bits,
-    object_name = object_name,
+    mode_bits = assert(mode_bits),
+    object_name = assert(object_name),
     object_type = object_type,
   }
 end
@@ -815,12 +844,7 @@ function M:file_info(file, revision)
       }
     end
   else
-    local info, err = self:ls_files(file)
-    if err then
-      return nil, err
-    end
-
-    return info
+    return self:ls_files(file)
   end
 end
 

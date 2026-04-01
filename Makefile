@@ -44,7 +44,7 @@ test: nvim-test
 		--verbose \
 		--filter="$(FILTER)"
 
-	-@stty sane
+	-@[ -t 0 ] && stty sane || true
 
 .PHONY: test-all
 test-all: test-010 test-011 test-012 test-nightly

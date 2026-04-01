@@ -16,7 +16,7 @@ helpers.env()
 describe('word diff', function()
   before_each(function()
     clear()
-    setup_gitsigns()
+    setup_gitsigns(vim.deepcopy(test_config))
   end)
 
   it('treats whitespace padding as a single region', function()

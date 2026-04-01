@@ -112,6 +112,10 @@ M.newfile = M.scratch .. '/newfile.txt'
 M.test_config = {
   debug_mode = true,
   _test_mode = true,
+  watch_gitdir = {
+    enable = false,
+    follow_files = true,
+  },
   signs = {
     add = { text = '+' },
     delete = { text = '_' },

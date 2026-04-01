@@ -65,9 +65,9 @@ local function buildqflist(target)
       end
     end
 
-    local repo = git.Repo.get((assert(uv.cwd())))
-    if repo and not repos[repo.gitdir] then
-      repos[repo.gitdir] = repo
+    local cwd_repo = git.Repo.get((assert(uv.cwd())))
+    if cwd_repo and not repos[cwd_repo.gitdir] then
+      repos[cwd_repo.gitdir] = cwd_repo
     end
 
     for _, r in pairs(repos) do
@@ -97,6 +97,10 @@ local function buildqflist(target)
           end
         end
       end
+    end
+
+    if cwd_repo then
+      cwd_repo:unref()
     end
   end
   return qflist

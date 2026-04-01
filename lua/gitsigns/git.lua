@@ -30,6 +30,9 @@ M.Repo = Repo
 ---
 --- @field repo Gitsigns.Repo
 --- @field has_conflicts? boolean
+---
+--- @field private _closed boolean
+--- @field private _gc userdata
 local Obj = {}
 Obj.__index = Obj
 
@@ -68,6 +71,16 @@ function Obj:refresh()
   self.has_conflicts = info.has_conflicts
   self.i_crlf = info.i_crlf
   self.w_crlf = info.w_crlf
+end
+
+function Obj:close()
+  if self._closed then
+    return
+  end
+
+  self._closed = true
+  self.repo:unref()
+  self.repo = nil
 end
 
 function Obj:from_tree()
@@ -239,6 +252,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
     -- then resolution will succeed, but we still don't want to
     -- attach if `file` is inside the gitdir.
     log.dprint('In gitdir')
+    repo:unref()
     return
   end
 
@@ -254,6 +268,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
   end
 
   if not info then
+    repo:unref()
     return
   end
 
@@ -263,6 +278,10 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
 
   local self = setmetatable({}, Obj)
   self.repo = repo
+  self._closed = false
+  self._gc = util.gc_proxy(function()
+    self:close()
+  end)
   self.file = util.cygpath(file, 'unix')
   self.revision = revision
   self.encoding = encoding

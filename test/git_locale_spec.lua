@@ -43,9 +43,7 @@ describe('git locale', function()
       vim.env.LANGUAGE = nil
     end)
 
-    local config = vim.deepcopy(helpers.test_config)
-    config.watch_gitdir = { interval = 100 }
-    helpers.setup_gitsigns(config)
+    helpers.setup_gitsigns(vim.deepcopy(helpers.test_config))
 
     helpers.edit(helpers.test_file)
 
