@@ -42,7 +42,10 @@ describe('hunksigns', function()
   before_each(function()
     exec_lua(function(path)
       package.path = path
-      require('gitsigns').setup({ _new_sign_calc = true })
+      require('gitsigns').setup({
+        _new_sign_calc = true,
+        _threaded_diff = false,
+      })
     end, package.path)
   end)
 
@@ -110,5 +113,16 @@ describe('hunksigns', function()
       { 'delete', 2, 1 },
       { 'change', 3, 1 },
     }, r)
+  end)
+
+  it('does not mark no_nl_at_eof for non-eof hunks', function()
+    local hunk = exec_lua(function()
+      local diff = require('gitsigns.diff_int')
+      local hunks = diff.run_diff({ 'a1', 'a2', 'a3' }, { 'x1', 'x2', 'a3' }, false)
+      return hunks[1]
+    end)
+
+    eq(nil, hunk.removed.no_nl_at_eof)
+    eq(nil, hunk.added.no_nl_at_eof)
   end)
 end)
