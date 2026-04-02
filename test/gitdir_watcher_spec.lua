@@ -15,10 +15,14 @@ local n, p, np = helpers.n, helpers.p, helpers.np
 local normalize_path = helpers.normalize_path
 local path_pattern = helpers.path_pattern
 local setup_gitsigns = helpers.setup_gitsigns
-local test_file = helpers.test_file
 local git = helpers.git
+local test_file --- @type string
 
 helpers.env()
+
+local function refresh_paths()
+  test_file = helpers.test_file
+end
 
 local watcher_test_config = vim.tbl_deep_extend('force', vim.deepcopy(test_config), {
   watch_gitdir = {
@@ -110,6 +114,7 @@ end
 describe('gitdir_watcher', function()
   before_each(function()
     clear()
+    refresh_paths()
     helpers.chdir_tmp()
   end)
 

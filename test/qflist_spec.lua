@@ -6,18 +6,24 @@ local command = helpers.api.nvim_command
 local eq = helpers.eq
 local exec_lua = helpers.exec_lua
 local git = helpers.git
-local scratch = helpers.scratch
 local setup_gitsigns = helpers.setup_gitsigns
 local setup_test_repo = helpers.setup_test_repo
 local test_config = helpers.test_config
-local test_file = helpers.test_file
 local eq_path = helpers.eq_path
+local scratch --- @type string
+local test_file --- @type string
 
 helpers.env()
+
+local function refresh_paths()
+  scratch = helpers.scratch
+  test_file = helpers.test_file
+end
 
 describe('qflist', function()
   before_each(function()
     clear()
+    refresh_paths()
     helpers.chdir_tmp()
   end)
 

@@ -5,15 +5,20 @@ local clear = helpers.clear
 local eq = helpers.eq
 local exec_lua = helpers.exec_lua
 local git = helpers.git
-local scratch = helpers.scratch
 local setup_test_repo = helpers.setup_test_repo
 local write_to_file = helpers.write_to_file
+local scratch --- @type string
 
 helpers.env()
+
+local function refresh_paths()
+  scratch = helpers.scratch
+end
 
 describe('git', function()
   before_each(function()
     clear()
+    refresh_paths()
     helpers.setup_path()
   end)
 

@@ -2,7 +2,6 @@ local helpers = require('test.gs_helpers')
 
 local setup_gitsigns = helpers.setup_gitsigns
 local feed = helpers.feed
-local test_file = helpers.test_file
 local edit = helpers.edit
 local exec_lua = helpers.exec_lua
 local test_config = helpers.test_config
@@ -12,14 +11,21 @@ local eq = helpers.eq
 local check = helpers.check
 local expectf = helpers.expectf
 local git = helpers.git
-local scratch = helpers.scratch
 local write_to_file = helpers.write_to_file
+local scratch --- @type string
+local test_file --- @type string
 
 helpers.env()
+
+local function refresh_paths()
+  scratch = helpers.scratch
+  test_file = helpers.test_file
+end
 
 describe('blame', function()
   before_each(function()
     clear()
+    refresh_paths()
     helpers.chdir_tmp()
     setup_gitsigns(test_config)
   end)

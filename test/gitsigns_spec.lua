@@ -19,18 +19,24 @@ local match_dag = helpers.match_dag
 local match_debug_messages = helpers.match_debug_messages
 local match_lines = helpers.match_lines
 local n, p, np = helpers.n, helpers.p, helpers.np
-local newfile = helpers.newfile
 local path_pattern = helpers.path_pattern
-local scratch = helpers.scratch
 local setup_gitsigns = helpers.setup_gitsigns
 local setup_test_repo = helpers.setup_test_repo
 local split = vim.split
 local test_config = helpers.test_config
-local test_file = helpers.test_file
 local write_to_file = helpers.write_to_file
 local fn = helpers.fn
+local newfile --- @type string
+local scratch --- @type string
+local test_file --- @type string
 
 helpers.env()
+
+local function refresh_paths()
+  newfile = helpers.newfile
+  scratch = helpers.scratch
+  test_file = helpers.test_file
+end
 
 ---@param bufnr? integer
 local function wait_for_attach(bufnr)
@@ -56,6 +62,7 @@ describe('gitsigns (with screen)', function()
 
   before_each(function()
     clear()
+    refresh_paths()
     screen = Screen.new(20, 17)
     screen:attach({ ext_messages = true })
 
@@ -1097,6 +1104,7 @@ describe('gitsigns attach', function()
 
   before_each(function()
     clear()
+    refresh_paths()
     config = vim.deepcopy(test_config)
     helpers.chdir_tmp()
   end)
