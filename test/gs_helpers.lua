@@ -9,6 +9,7 @@ local matches = helpers.matches
 local eq = helpers.eq
 local buf_get_var = helpers.api.nvim_buf_get_var
 local system = helpers.fn.system
+local nvim_test_clear = helpers.clear
 local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 --- @return boolean
@@ -24,6 +25,12 @@ end
 --- @param path string
 local function local_stat(path)
   return uv.fs_stat(path)
+end
+
+--- @param path string
+--- @return boolean
+local function local_exists(path)
+  return local_stat(path) ~= nil
 end
 
 --- @param path string
@@ -105,9 +112,33 @@ local function local_delete(path)
   end
 end
 
-M.scratch = os.getenv('PJ_ROOT') .. '/scratch'
-M.test_file = M.scratch .. '/dummy.txt'
-M.newfile = M.scratch .. '/newfile.txt'
+local scratch_root = os.getenv('PJ_ROOT') .. '/scratch'
+local scratch_session = scratch_root
+  .. '/session-'
+  .. tostring(uv.os_getpid and uv.os_getpid() or 0)
+  .. '-'
+  .. tostring(uv.hrtime())
+local scratch_seq = 0
+local empty_repo_seed = scratch_session .. '/seed-empty'
+local default_repo_seed = scratch_session .. '/seed-default'
+
+--- @param path string
+local function set_scratch(path)
+  M.scratch = path
+  M.test_file = path .. '/dummy.txt'
+  M.newfile = path .. '/newfile.txt'
+end
+
+local function next_scratch()
+  scratch_seq = scratch_seq + 1
+  return scratch_session .. ('/test-%04d'):format(scratch_seq)
+end
+
+local function reset_scratch()
+  set_scratch(next_scratch())
+end
+
+reset_scratch()
 
 M.test_config = {
   debug_mode = true,
@@ -174,6 +205,116 @@ function M.git(...)
   system(vim.list_extend({ 'git', '-C', M.scratch }, args))
 end
 
+--- @param cmd string[]
+--- @param errmsg string
+local function system_ok(cmd, errmsg)
+  local output = system(cmd)
+  eq(0, exec_lua('return vim.v.shell_error'), ('%s\n%s'):format(errmsg, output))
+end
+
+--- @param path string
+--- @param ... string
+local function git_in(path, ...)
+  system_ok(
+    vim.list_extend({ 'git', '-C', path }, { ... }),
+    ('git command failed in %s'):format(path)
+  )
+end
+
+local function configure_git_repo(path)
+  -- Always force color to test settings don't interfere with gitsigns system
+  -- commands (addresses #23).
+  git_in(path, 'config', 'color.branch', 'always')
+  git_in(path, 'config', 'color.ui', 'always')
+  git_in(path, 'config', 'color.diff', 'always')
+  git_in(path, 'config', 'color.interactive', 'always')
+  git_in(path, 'config', 'color.status', 'always')
+  git_in(path, 'config', 'color.grep', 'always')
+  git_in(path, 'config', 'color.pager', 'true')
+  git_in(path, 'config', 'color.decorate', 'always')
+  git_in(path, 'config', 'color.showbranch', 'always')
+  git_in(path, 'config', 'core.autocrlf', 'false')
+  git_in(path, 'config', 'core.eol', 'lf')
+
+  git_in(path, 'config', 'merge.conflictStyle', 'merge')
+
+  git_in(path, 'config', 'user.email', 'tester@com.com')
+  git_in(path, 'config', 'user.name', 'tester')
+
+  git_in(path, 'config', 'init.defaultBranch', 'main')
+end
+
+--- @param path string
+local function init_git_repo(path)
+  if local_exists(path) then
+    local_delete(path)
+  end
+
+  M.mkdir(path)
+  git_in(path, 'init', '-b', 'main')
+  configure_git_repo(path)
+end
+
+--- @param src string
+--- @param dst string
+local function local_copy_dir_fallback(src, dst)
+  local stat = assert(local_stat(src), ('failed to stat %s'):format(src))
+  if stat.type == 'directory' then
+    M.mkdir(dst)
+
+    local handle = uv.fs_scandir(src)
+    if not handle then
+      return
+    end
+
+    while true do
+      local name = uv.fs_scandir_next(handle)
+      if not name then
+        break
+      end
+      local_copy_dir_fallback(src .. '/' .. name, dst .. '/' .. name)
+    end
+    return
+  end
+
+  assert(uv.fs_copyfile(src, dst))
+end
+
+--- @param src string
+--- @param dst string
+local function copy_dir(src, dst)
+  local parent = vim.fs.dirname(dst)
+  if parent then
+    M.mkdir(parent)
+  end
+
+  if is_win() then
+    local_copy_dir_fallback(src, dst)
+    return
+  end
+
+  system_ok({ 'cp', '-R', src, dst }, ('failed to copy %s to %s'):format(src, dst))
+end
+
+--- @return string
+local function ensure_empty_repo_seed()
+  if not local_exists(empty_repo_seed) then
+    init_git_repo(empty_repo_seed)
+  end
+  return empty_repo_seed
+end
+
+--- @return string
+local function ensure_default_repo_seed()
+  if not local_exists(default_repo_seed) then
+    copy_dir(ensure_empty_repo_seed(), default_repo_seed)
+    M.write_to_file(default_repo_seed .. '/dummy.txt', test_file_text)
+    git_in(default_repo_seed, 'add', 'dummy.txt')
+    git_in(default_repo_seed, 'commit', '-m', 'init commit')
+  end
+  return default_repo_seed
+end
+
 function M.cleanup()
   if M.get_session() then
     if M.fn.isdirectory(M.scratch) == 0 and M.fn.filereadable(M.scratch) == 0 then
@@ -204,11 +345,19 @@ function M.cleanup()
     end
   end
 
-  if not local_stat(M.scratch) then
+  if not local_exists(M.scratch) then
     return
   end
 
   local_delete(M.scratch)
+end
+
+--- Starts a new global Nvim session and allocates an isolated scratch repo.
+--- @param init_lua_path? string
+function M.clear(init_lua_path)
+  M.cleanup()
+  nvim_test_clear(init_lua_path)
+  reset_scratch()
 end
 
 --- @param path string
@@ -282,29 +431,7 @@ end
 
 function M.git_init_scratch()
   M.cleanup()
-  M.mkdir(M.scratch)
-  M.git('init', '-b', 'main')
-
-  -- Always force color to test settings don't interfere with gitsigns systems
-  -- commands (addresses #23)
-  M.git('config', 'color.branch', 'always')
-  M.git('config', 'color.ui', 'always')
-  M.git('config', 'color.diff', 'always')
-  M.git('config', 'color.interactive', 'always')
-  M.git('config', 'color.status', 'always')
-  M.git('config', 'color.grep', 'always')
-  M.git('config', 'color.pager', 'true')
-  M.git('config', 'color.decorate', 'always')
-  M.git('config', 'color.showbranch', 'always')
-  M.git('config', 'core.autocrlf', 'false')
-  M.git('config', 'core.eol', 'lf')
-
-  M.git('config', 'merge.conflictStyle', 'merge')
-
-  M.git('config', 'user.email', 'tester@com.com')
-  M.git('config', 'user.name', 'tester')
-
-  M.git('config', 'init.defaultBranch', 'main')
+  copy_dir(ensure_empty_repo_seed(), M.scratch)
 end
 
 --- Setup a basic git repository in directory `helpers.scratch` with a single file
@@ -312,6 +439,12 @@ end
 --- @param opts? {test_file_text?: string[], no_add?: boolean}
 function M.setup_test_repo(opts)
   local text = opts and opts.test_file_text or test_file_text
+  if not (opts and opts.no_add) and vim.deep_equal(text, test_file_text) then
+    M.cleanup()
+    copy_dir(ensure_default_repo_seed(), M.scratch)
+    return
+  end
+
   M.git_init_scratch()
   M.write_to_file(M.test_file, text)
   if not (opts and opts.no_add) then

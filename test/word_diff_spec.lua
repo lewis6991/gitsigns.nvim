@@ -6,16 +6,21 @@ local setup_test_repo = helpers.setup_test_repo
 local setup_gitsigns = helpers.setup_gitsigns
 local test_config = helpers.test_config
 local edit = helpers.edit
-local test_file = helpers.test_file
 local clear = helpers.clear
 local cleanup = helpers.cleanup
 local expectf = helpers.expectf
+local test_file --- @type string
 
 helpers.env()
+
+local function refresh_paths()
+  test_file = helpers.test_file
+end
 
 describe('word diff', function()
   before_each(function()
     clear()
+    refresh_paths()
     setup_gitsigns(vim.deepcopy(test_config))
   end)
 
@@ -62,6 +67,7 @@ end)
 describe('inline preview', function()
   before_each(function()
     clear()
+    refresh_paths()
   end)
 
   after_each(function()

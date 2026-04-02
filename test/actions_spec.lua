@@ -2,7 +2,6 @@ local helpers = require('test.gs_helpers')
 
 local setup_gitsigns = helpers.setup_gitsigns
 local feed = helpers.feed
-local test_file = helpers.test_file
 local edit = helpers.edit
 local check = helpers.check
 local exec_lua = helpers.exec_lua
@@ -13,10 +12,16 @@ local setup_test_repo = helpers.setup_test_repo
 local eq = helpers.eq
 local expectf = helpers.expectf
 local git = helpers.git
-local scratch = helpers.scratch
 local write_to_file = helpers.write_to_file
+local scratch --- @type string
+local test_file --- @type string
 
 helpers.env()
+
+local function refresh_paths()
+  scratch = helpers.scratch
+  test_file = helpers.test_file
+end
 
 --- @param exp_hunks string[]
 local function expect_hunks(exp_hunks)
@@ -134,6 +139,7 @@ describe('actions', function()
 
   before_each(function()
     clear()
+    refresh_paths()
     helpers.chdir_tmp()
     setup_gitsigns(test_config)
   end)
@@ -337,8 +343,7 @@ describe('actions', function()
   end)
 
   describe('staging partial hunks', function()
-    setup(function()
-      clear()
+    before_each(function()
       setup_test_repo({ test_file_text = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H' } })
     end)
 
