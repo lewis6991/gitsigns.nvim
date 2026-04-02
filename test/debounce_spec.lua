@@ -8,9 +8,33 @@ local exec_lua = helpers.exec_lua
 helpers.env()
 
 describe('debounce', function()
+  local initialized = false
+
   before_each(function()
+    if initialized then
+      return
+    end
+
     clear()
     helpers.setup_path()
+    initialized = true
+  end)
+
+  after_each(function()
+    exec_lua(function()
+      local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+
+      if _G._debounce_orig_new_timer then
+        uv.new_timer = _G._debounce_orig_new_timer
+        _G._debounce_orig_new_timer = nil
+      end
+
+      _G._debounce_close_called = nil
+      _G._debounce_hash_calls = nil
+      _G._debounce_hash_fn_calls = nil
+      _G._debounce_hash_fn_value = nil
+      package.loaded['gitsigns.debounce'] = nil
+    end)
   end)
 
   it('closes the timer even if the function errors', function()
@@ -20,6 +44,7 @@ describe('debounce', function()
       _G._debounce_close_called = 0
 
       local orig_new_timer = uv.new_timer
+      _G._debounce_orig_new_timer = orig_new_timer
 
       uv.new_timer = function(...)
         local t = assert(orig_new_timer(...))

@@ -268,16 +268,16 @@ describe('actions', function()
       signs = {},
     })
 
-    helpers.sleep(500)
-
-    eq({
-      {
-        added = 0,
-        changed = 0,
-        removed = 0,
-        head = 'main',
-      },
-    }, exec_lua('return _G.test_gitsigns_update_events'))
+    expectf(function()
+      eq({
+        {
+          added = 0,
+          changed = 0,
+          removed = 0,
+          head = 'main',
+        },
+      }, exec_lua('return _G.test_gitsigns_update_events'))
+    end, 10)
   end)
 
   it('can undo staged add hunks', function()
