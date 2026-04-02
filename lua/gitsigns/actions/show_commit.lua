@@ -54,7 +54,7 @@ local function goto_action(base, bufnr, commit_buf, ref_list, ref_list_ptr)
   local header, ref = curline:match('^([a-z]+) (%x+)')
   if (header == 'tree' or header == 'parent') and ref then
     local ref_stack_ptr1 = ref_list_ptr + 1
-    ref_list[ref_stack_ptr1] = base
+    ref_list[ref_stack_ptr1] = ref
     for i = ref_stack_ptr1 + 1, #ref_list do
       ref_list[i] = nil
     end
@@ -92,7 +92,12 @@ function M.show_commit(base, open, bufnr, ref_list, ref_list_ptr)
   open = open or 'vsplit'
   bufnr = bufnr or api.nvim_get_current_buf()
   ref_list = ref_list or {}
-  ref_list_ptr = ref_list_ptr or #ref_list
+  if #ref_list == 0 then
+    ref_list[1] = base
+    ref_list_ptr = 1
+  else
+    ref_list_ptr = ref_list_ptr or #ref_list
+  end
   local bcache = cache[bufnr]
   if not bcache then
     return
@@ -137,16 +142,18 @@ function M.show_commit(base, open, bufnr, ref_list, ref_list_ptr)
     end, { buffer = commit_buf, silent = true })
 
     vim.keymap.set('n', '<C-o>', function()
-      local ref = ref_list[ref_list_ptr]
+      local prev_ptr = ref_list_ptr - 1
+      local ref = ref_list[prev_ptr]
       if ref then
-        Async.run(M.show_commit, ref, 'edit', bufnr, ref_list, ref_list_ptr - 1):raise_on_error()
+        Async.run(M.show_commit, ref, 'edit', bufnr, ref_list, prev_ptr):raise_on_error()
       end
     end, { buffer = commit_buf, silent = true })
 
     vim.keymap.set('n', '<C-i>', function()
-      local ref = ref_list[ref_list_ptr + 2]
+      local next_ptr = ref_list_ptr + 1
+      local ref = ref_list[next_ptr]
       if ref then
-        Async.run(M.show_commit, ref, 'edit', bufnr, ref_list, ref_list_ptr + 1):raise_on_error()
+        Async.run(M.show_commit, ref, 'edit', bufnr, ref_list, next_ptr):raise_on_error()
       end
     end, { buffer = commit_buf, silent = true })
   end
