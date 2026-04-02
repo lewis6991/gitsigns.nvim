@@ -465,7 +465,7 @@ function M.expectf(cond, interval)
     end
     duration = duration + interval
     helpers.sleep(interval)
-    interval = interval * 2
+    interval = math.min(interval * 2, 50)
   end
   cond()
 end
