@@ -54,7 +54,9 @@ local function buildqflist(target)
     hunks_to_qflist(bufnr, bcache.hunks, qflist)
   elseif target == 'attached' then
     for bufnr, bcache in pairs(cache) do
-      hunks_to_qflist(bufnr, assert(bcache.hunks), qflist)
+      if bcache.hunks then
+        hunks_to_qflist(bufnr, bcache.hunks, qflist)
+      end
     end
   elseif target == 'all' then
     local repos = {} --- @type table<string,Gitsigns.Repo>
