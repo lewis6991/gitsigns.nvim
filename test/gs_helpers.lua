@@ -112,6 +112,7 @@ M.newfile = M.scratch .. '/newfile.txt'
 M.test_config = {
   debug_mode = true,
   _test_mode = true,
+  _allow_fs_poll_fallback = os.getenv('GITSIGNS_TEST_ALLOW_FS_POLL_FALLBACK') ~= '0',
   watch_gitdir = {
     enable = false,
     follow_files = true,

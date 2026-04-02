@@ -74,6 +74,7 @@ jobs:
 
     env:
       NVIM_TEST_VERSION: ${{ matrix.neovim_branch }}
+      GITSIGNS_TEST_ALLOW_FS_POLL_FALLBACK: '0'
 
     steps:
       - name: Checkout
