@@ -59,4 +59,33 @@ describe('qflist', function()
       eq(true, texts[1]:match('^Changed') ~= nil)
     end)
   end)
+
+  it('includes deleted tracked files in setqflist all', function()
+    setup_test_repo()
+    command('cd ' .. scratch)
+    setup_gitsigns(test_config)
+
+    git('rm', test_file)
+
+    exec_lua(function()
+      require('gitsigns.actions').setqflist('all', { open = false })
+    end)
+
+    helpers.expectf(function()
+      local items, names, texts = exec_lua(function()
+        local items0 = vim.fn.getqflist()
+        local names0 = {} --- @type string[]
+        local texts0 = {} --- @type string[]
+        for i, item in ipairs(items0) do
+          names0[i] = item.filename or vim.api.nvim_buf_get_name(item.bufnr)
+          texts0[i] = item.text
+        end
+        return items0, names0, texts0
+      end) --- @type vim.quickfix.entry[], string[], string[]
+
+      eq(1, #items)
+      eq_path(test_file, names[1])
+      eq(true, texts[1]:match('^Removed') ~= nil)
+    end)
+  end)
 end)

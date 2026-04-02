@@ -355,9 +355,9 @@ end
 --- @async
 --- @param base string?
 --- @param include_untracked? boolean
---- @return {path:string, oldpath?:string}[]
+--- @return {path:string, oldpath?:string, deleted?:boolean}[]
 function M:files_changed(base, include_untracked)
-  local ret = {} --- @type {path:string, oldpath?:string}[]
+  local ret = {} --- @type {path:string, oldpath?:string, deleted?:boolean}[]
 
   if base and base ~= ':0' then
     local results = self:command({ 'diff', '--name-status', base })
@@ -370,6 +370,7 @@ function M:files_changed(base, include_untracked)
         ret[#ret + 1] = {
           path = path,
           oldpath = renamed and parts[2] or nil,
+          deleted = status and vim.startswith(status, 'D') or nil,
         }
       end
     end
@@ -386,8 +387,9 @@ function M:files_changed(base, include_untracked)
 
   for _, line in ipairs(results) do
     local status = line:sub(1, 2)
-    if status:match('^.M') or (include_untracked and status == '??') then
-      ret[#ret + 1] = { path = line:sub(4, -1) }
+    local deleted = status:sub(1, 1) == 'D' or status:sub(2, 2) == 'D'
+    if status:match('^.M') or deleted or (include_untracked and status == '??') then
+      ret[#ret + 1] = { path = line:sub(4, -1), deleted = deleted or nil }
     end
   end
   return ret
