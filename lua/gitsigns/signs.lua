@@ -121,7 +121,6 @@ function M:add(bufnr, signs, filter)
       })
 
       if ok then
-        --- @cast id_or_err integer
         buf_signs[id_or_err] = { text, sign_hl_group }
       elseif config.debug_mode then
         vim.schedule(function()

@@ -51,16 +51,14 @@ end
 local function build_lno_str(win, lnum, width)
   local has_col, statuscol =
     pcall(api.nvim_get_option_value, 'statuscolumn', { win = win, scope = 'local' })
-  if has_col and statuscol and statuscol ~= '' then
-    --- @cast statuscol string
+  if has_col and type(statuscol) == 'string' and statuscol ~= '' then
     local ok, data = pcall(api.nvim_eval_statusline, statuscol, {
       winid = win,
       use_statuscol_lnum = lnum,
       highlights = true,
     })
     if ok then
-      local data_str = data.str --[[@as string]]
-      return data_str, data.highlights
+      return data.str, data.highlights
     end
   end
   return string.format('%' .. width .. 'd', lnum)

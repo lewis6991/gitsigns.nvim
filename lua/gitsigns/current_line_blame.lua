@@ -107,10 +107,8 @@ local function get_blame_virt_text(bcache, blame_info)
   if type(clb_formatter) == 'function' then
     local ok, res = pcall(clb_formatter, git_obj.repo.username, blame_info)
     if ok then
-      --- @cast res -string
       return res
     end
-    --- @cast res string
 
     local nc_sfx = use_nc and '_nc' or ''
     error_once(
