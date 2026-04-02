@@ -48,7 +48,7 @@ describe('git', function()
         .run(function()
           obj_a:lock(function()
             _G._git_lock_events[#_G._git_lock_events + 1] = 'a_enter'
-            sleep(2500)
+            sleep(200)
             _G._git_lock_events[#_G._git_lock_events + 1] = 'a_exit'
           end)
         end)
@@ -64,7 +64,7 @@ describe('git', function()
         end)
         :raise_on_error()
 
-      vim.wait(4000, function()
+      vim.wait(1000, function()
         return #_G._git_lock_events == 4
       end, 10, true)
 

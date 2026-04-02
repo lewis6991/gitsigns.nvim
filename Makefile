@@ -183,6 +183,7 @@ $(NVIM_TEST_RUNTIME): $(NVIM_TEST)
 emmylua-check: $(EMMYLUA_BIN) $(NVIM_TEST_RUNTIME)
 	VIMRUNTIME=$(NVIM_TEST_RUNTIME) \
 		$(EMMYLUA_BIN) . \
+		--ignore 'scratch/**/*' \
 		--ignore 'test/**/*' \
 		--ignore gen_help.lua
 

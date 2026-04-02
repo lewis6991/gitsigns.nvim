@@ -114,7 +114,6 @@ jobs:
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-lua-luarocks
             mingw-w64-ucrt-x86_64-luajit
-            mingw-w64-ucrt-x86_64-neovim
 
       - name: Configure LuaRocks for LuaJIT
         if: matrix.setup == 'windows-msys2'
@@ -214,8 +213,10 @@ jobs:
         id: cache-emmylua
         uses: actions/cache@v4
         with:
-          path: deps/emmylua_analyzer-rust-*
-          key: emmylua-${{ hashFiles('Makefile') }}
+          path: |
+            deps/emmylua-*
+            deps/emmylua_check-*
+          key: emmylua-check-${{ runner.os }}-${{ hashFiles('Makefile') }}
 
       - name: Install EmmyLua
         if: steps.cache-emmylua.outputs.cache-hit != 'true'
@@ -238,6 +239,14 @@ jobs:
 
       - name: Download nvim-test
         run: make nvim-test
+
+      - name: Cache EmmyLua
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps/emmylua-*
+            deps/emmylua_doc-*
+          key: emmylua-doc-${{ runner.os }}-${{ hashFiles('Makefile') }}
 
       - name: Doc Check
         run: make doc-check
