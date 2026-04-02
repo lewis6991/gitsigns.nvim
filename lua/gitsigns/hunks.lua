@@ -372,7 +372,6 @@ function M.create_patch(relpath, hunks, mode_bits, invert)
       results[#results + 1] = '\\ No newline at end of file'
     end
 
-    process_hunk.removed.start = start + offset
     offset = offset + (now_count - pre_count)
   end
 

@@ -274,6 +274,20 @@ describe('actions', function()
     }, exec_lua('return _G.test_gitsigns_update_events'))
   end)
 
+  it('can undo staged add hunks', function()
+    setup_test_repo()
+    edit(test_file)
+
+    set_lines(1, 1, { 'added-1', 'added-2' })
+    expect_hunks({ '@@ -1 +2,2 @@' })
+
+    api.nvim_win_set_cursor(0, { 2, 0 })
+    command('Gitsigns stage_hunk')
+
+    command('Gitsigns undo_stage_hunk')
+    expect_hunks({ '@@ -1 +2,2 @@' })
+  end)
+
   it('preserves foldenable in diffthis windows after staging a hunk', function()
     command('silent! %bwipe!')
     setup_test_repo()
