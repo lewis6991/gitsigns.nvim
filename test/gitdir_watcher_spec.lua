@@ -200,6 +200,36 @@ describe('gitdir_watcher', function()
     eq_bufs({ [1] = test_file })
   end)
 
+  it('does not delete alternate buffers when following moved files', function()
+    setup_test_repo()
+    setup_gitsigns(watcher_test_config)
+    edit(test_file)
+    local tracked_buf = helpers.api.nvim_get_current_buf()
+
+    helpers.expectf(function()
+      return helpers.exec_lua(function()
+        return vim.b.gitsigns_status_dict ~= nil
+      end)
+    end)
+
+    local alt_file = helpers.scratch .. '/alt.txt'
+    helpers.write_to_file(alt_file, { 'alt buffer' })
+    edit(alt_file)
+    local alt_buf = helpers.api.nvim_get_current_buf()
+
+    command('buffer ' .. tracked_buf)
+
+    local test_file2 = test_file .. '2'
+    git('mv', test_file, test_file2)
+
+    helpers.expectf(function()
+      eq_bufs({
+        [tracked_buf] = test_file2,
+        [alt_buf] = alt_file,
+      })
+    end)
+  end)
+
   it('can follow moved files with spaces', function()
     helpers.git_init_scratch()
 

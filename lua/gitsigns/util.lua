@@ -137,21 +137,34 @@ function M.buf_lines(bufnr)
   return buftext
 end
 
---- @param buf integer
-local function delete_alt(buf)
-  local alt = vim.api.nvim_buf_call(buf, function()
-    return vim.fn.bufnr('#')
-  end)
-  if alt ~= buf and alt ~= -1 then
-    pcall(vim.api.nvim_buf_delete, alt, { force = true })
+--- @param bufnr integer
+--- @param old_name string
+local function delete_old_name_buffer(bufnr, old_name)
+  if old_name == '' then
+    return
   end
+
+  local stale_buf --- @type integer?
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    if buf ~= bufnr and vim.api.nvim_buf_get_name(buf) == old_name then
+      stale_buf = buf
+      break
+    end
+  end
+
+  if not stale_buf or vim.bo[stale_buf].buflisted then
+    return
+  end
+
+  pcall(vim.api.nvim_buf_delete, stale_buf, { force = true })
 end
 
 --- @param bufnr integer
 --- @param name string
 function M.buf_rename(bufnr, name)
+  local old_name = vim.api.nvim_buf_get_name(bufnr)
   vim.api.nvim_buf_set_name(bufnr, name)
-  delete_alt(bufnr)
+  delete_old_name_buffer(bufnr, old_name)
 end
 
 --- @param events string[]
