@@ -92,6 +92,7 @@
 --- @field _git_version string
 --- @field _verbose boolean
 --- @field _test_mode boolean
+--- @field _allow_fs_poll_fallback boolean
 --- @field _new_sign_calc boolean
 --- @field _update_lock boolean
 --- @field _commit_maps boolean
@@ -787,6 +788,12 @@ M.schema = {
     description = 'Enable test mode',
     type = 'boolean',
     default = false,
+  },
+
+  _allow_fs_poll_fallback = {
+    description = 'Allow watch_gitdir to fall back to fs_poll',
+    type = 'boolean',
+    default = true,
   },
 
   word_diff = {

@@ -1,5 +1,6 @@
 export XDG_DATA_HOME ?= $(HOME)/.data
 export PJ_ROOT=$(PWD)
+export NVIM_LOG_FILE ?= $(PJ_ROOT)/.nvimlog
 
 ifeq ($(shell uname -s),Darwin)
     UNAME ?= MACOS
