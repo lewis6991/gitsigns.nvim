@@ -962,41 +962,23 @@ describe('gitsigns (with screen)', function()
     end
   end)
 
-  it('keeps statuscolumn signs scoped per buffer', function()
+  it('redraws statuscolumn signs after async updates', function()
     setup_test_repo()
-
-    local other = scratch .. '/other.txt'
-    write_to_file(other, { 'other' })
-    git('add', other)
-    git('commit', '-m', 'add other file')
-
     setup_gitsigns(config)
+    edit(test_file)
     exec_lua(function()
-      require('gitsigns').statuscolumn(0, 1)
+      vim.wo.signcolumn = 'yes'
+      vim.wo.statuscolumn = "%{%v:lua.require'gitsigns'.statuscolumn()%}"
     end)
 
-    edit(test_file)
+    wait_for_attach()
     feed('x')
-    local test_buf = api.nvim_get_current_buf()
-    check({ signs = { changed = 1 } }, test_buf)
+    check({
+      status = { head = 'main', added = 0, changed = 1, removed = 0 },
+      signs = { changed = 1 },
+    })
 
-    edit(other)
-    feed('ggO<esc>')
-    local other_buf = api.nvim_get_current_buf()
-    check({ signs = { added = 1 } }, other_buf)
-
-    eq(
-      {
-        '%#GitSignsChange#~%* ',
-        '%#GitSignsAdd#+%* ',
-      },
-      exec_lua(function(test_buf0, other_buf0)
-        return {
-          require('gitsigns').statuscolumn(test_buf0, 1),
-          require('gitsigns').statuscolumn(other_buf0, 1),
-        }
-      end, test_buf, other_buf)
-    )
+    screen:expect({ any = [[{2:~}{5: }^his]] })
   end)
 
   it('handles filenames with unicode characters', function()

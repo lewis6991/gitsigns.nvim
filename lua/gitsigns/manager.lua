@@ -40,8 +40,11 @@ end
 --- @param lnum? integer
 --- @return string
 function M.statuscolumn(bufnr, lnum)
-  bufnr = bufnr or 0
+  if bufnr == nil or bufnr == 0 then
+    bufnr = api.nvim_get_current_buf()
+  end
   lnum = lnum or vim.v.lnum
+  statuscolumn_active = true
 
   if not config._statuscolumn then
     config.signcolumn = false
@@ -74,6 +77,7 @@ function M.statuscolumn(bufnr, lnum)
   local pad = math.max(0, 2 - res_len)
   return table.concat(res) .. string.rep(' ', pad)
 end
+
 --- @param bufnr integer
 --- @param signs Gitsigns.Signs
 --- @param hunks? Gitsigns.Hunk.Hunk[]
