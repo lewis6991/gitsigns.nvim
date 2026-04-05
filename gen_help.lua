@@ -7,10 +7,14 @@ local startswith = vim.startswith
 
 local root = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h')
 package.path = table.concat({
+  root .. '/?.lua',
   root .. '/lua/?.lua',
   root .. '/lua/?/init.lua',
   package.path,
 }, ';')
+
+local emydoc = require('gen_emydoc') --- @type GenEmmyDoc
+local strip_optional = emydoc.strip_optional
 
 local config = require('gitsigns.config')
 
@@ -45,59 +49,8 @@ local function get_ordered_schema_keys()
   return keys
 end
 
---- @alias EmmyDocLoc { file: string, line: integer }
---- @alias EmmyDocTag { tag_name: string, content: string }
---- @alias EmmyDocParam { name: string, typ: string, desc: string? }
---- @alias EmmyDocReturn { name: string?, typ: string, desc: string? }
---- @alias EmmyDocModule { name: string, members: EmmyDocFn[] }
-
---- @class EmmyDocFn
---- @field type 'fn'
---- @field name string
---- @field description string?
---- @field deprecated boolean
---- @field deprecation_reason string?
---- @field loc EmmyDocLoc
---- @field params EmmyDocParam[]
---- @field returns EmmyDocReturn[]
-
---- @class EmmyDocTypeField
---- @field type 'field'
---- @field name string
---- @field description string?
---- @field typ string
-
---- @alias EmmyDocTypeMember EmmyDocTypeField | EmmyDocFn
-
---- @class EmmyDocTypeClass
---- @field type 'class'
---- @field name string
---- @field bases string[]?
---- @field tag_content EmmyDocTag[]?
---- @field members EmmyDocTypeMember[]
---- @field description string?
-
---- @class EmmyDocTypeAlias
---- @field type 'alias'
---- @field name string
---- @field members EmmyDocTypeMember[]
-
---- @alias EmmyDocType EmmyDocTypeClass | EmmyDocTypeAlias
-
 --- @class EmmyDocTypeAttrs
 --- @field inlinedoc boolean
-
---- @class EmmyDocJson
---- @field modules EmmyDocModule[]
---- @field types EmmyDocType[]?
-
---- @return EmmyDocJson
-local function load_emmy_doc()
-  local path = 'emydoc/doc.json'
-  local raw = vim.fn.readfile(path)
-  local json = table.concat(raw, '\n')
-  return vim.json.decode(json, { luanil = { object = true, array = true } })
-end
 
 --- @param ty EmmyDocTypeClass
 --- @param tag string
@@ -568,12 +521,6 @@ local function get_fields(ty, classes, fields_seen)
   return ret
 end
 
---- @param ty string
---- @return string
-local function strip_optional(ty)
-  return (ty:gsub('%?$', ''))
-end
-
 --- @param name string
 --- @return string
 local function get_type_tag(name)
@@ -796,7 +743,7 @@ end
 --- @return table<string, EmmyDocTypeClass?>
 --- @return table<string, EmmyDocTypeAttrs?>
 local function load_classes()
-  local doc = load_emmy_doc()
+  local doc = emydoc.load()
   local classes = {} --- @type table<string, EmmyDocTypeClass?>
   local class_attrs = {} --- @type table<string, EmmyDocTypeAttrs?>
   for _, t in ipairs(doc.types or {}) do

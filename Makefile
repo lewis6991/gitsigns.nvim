@@ -193,12 +193,14 @@ emmylua-check: $(EMMYLUA_BIN) $(NVIM_TEST_RUNTIME)
 
 .PHONY: doc
 
-doc: $(NVIM_TEST) $(NVIM_TEST_RUNTIME) $(EMMYLUADOC_BIN)
+doc: $(NVIM_TEST) $(NVIM_TEST_RUNTIME) $(EMMYLUADOC_BIN) $(STYLUA)
 	VIMRUNTIME=$(NVIM_TEST_RUNTIME) \
 		$(EMMYLUADOC_BIN) lua --output emydoc --output-format json
 	$(NVIM) -l ./gen_help.lua
-	@echo Updated help
+	$(NVIM) -l ./gen_completion.lua
+	$(STYLUA) lua/gitsigns/cli/completion/generated.lua
+	@echo Updated help and completion metadata
 
 .PHONY: doc-check
 doc-check: doc
-	git diff --exit-code -- doc
+	git diff --exit-code -- doc lua/gitsigns/cli/completion/generated.lua
