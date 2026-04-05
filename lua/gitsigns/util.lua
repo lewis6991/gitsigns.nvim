@@ -376,6 +376,9 @@ function M.convert_blame_info(x)
   --- @type Gitsigns.BlameInfoPublic
   local ret = vim.tbl_extend('error', x, x.commit)
   ret.commit = nil
+  if ret.previous_sha and ret.previous_filename then
+    ret.previous = ret.previous_sha .. ' ' .. ret.previous_filename
+  end
   return ret
 end
 

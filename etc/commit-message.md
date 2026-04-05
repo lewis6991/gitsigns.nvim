@@ -6,6 +6,8 @@ Read this file before creating or amending commits in this repo.
 - Keep the subject under 72 characters.
 - Include a detailed body that explains the problem and solution.
 - Wrap body and footer lines at 72 characters.
+- When a commit resolves a specific issue, add a footer like
+  `Resolves #1525`.
 - Run `make commitlint COMMIT=HEAD` to lint your latest commit locally.
 - Run `make commitlint RANGE=origin/main..HEAD` to lint a commit range.
 - Run `make commitlint-hook` to install a local `commit-msg` hook.
