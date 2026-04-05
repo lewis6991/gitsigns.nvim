@@ -633,7 +633,19 @@ function M.get_info(dir, gitdir, worktree)
 
   -- Explicitly fallback to env vars for better debug
   gitdir = gitdir or vim.env.GIT_DIR
-  worktree = worktree or vim.env.GIT_WORK_TREE or vim.fs.dirname(gitdir)
+  worktree = worktree or vim.env.GIT_WORK_TREE
+  if gitdir and not worktree then
+    -- Redirected `.git` files (for example submodules) store the real working
+    -- tree in `core.worktree`.
+    local core_worktree = trim(git_command({ '--git-dir', gitdir, 'config', 'core.worktree' }, {
+      ignore_error = true,
+    })[1])
+    if core_worktree then
+      worktree = Path.is_abs(core_worktree) and core_worktree or Path.join(gitdir, core_worktree)
+    else
+      worktree = vim.fs.dirname(gitdir)
+    end
+  end
 
   -- gitdir and worktree must be provided together from `man git`:
   -- > Specifying the location of the ".git" directory using this option (or GIT_DIR environment
@@ -681,6 +693,12 @@ function M.get_info(dir, gitdir, worktree)
 
   -- On windows, git will emit paths with `/` but dir may contain `\` so need to
   -- normalize.
+  if gitdir and dir and vim.startswith(dir, gitdir_r) then
+    -- Allow repository resolution for files inside an explicit gitdir (for
+    -- example COMMIT_EDITMSG in submodules with redirected `.git` files).
+    dir = nil
+  end
+
   if dir and not vim.startswith(dir, toplevel_r) then
     log.dprintf("'%s' is outside worktree '%s'", dir, toplevel_r)
     -- outside of worktree
@@ -785,8 +803,15 @@ function M:ls_files(file)
 
   -- ignore_error for the cases when we run:
   --    git ls-files --others exists/nonexist
-  if code > 0 and (not stderr or not stderr:match(errors.e.path_does_not_exist)) then
-    return nil, stderr or tostring(code)
+  if code > 0 then
+    -- A path outside the worktree is not attachable, but it should not surface
+    -- as an error (for example COMMIT_EDITMSG in redirected `.git` layouts).
+    if stderr and stderr:match(errors.e.path_is_outside_worktree) then
+      return
+    end
+    if not stderr or not stderr:match(errors.e.path_does_not_exist) then
+      return nil, stderr or tostring(code)
+    end
   end
 
   local relpath_idx = has_eol and 2 or 1
