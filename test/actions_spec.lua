@@ -71,6 +71,12 @@ local function command(cmd)
   end
 end
 
+local function complete(arglead, line)
+  return exec_lua(function(arglead0, line0)
+    return require('gitsigns.cli').complete(arglead0, line0)
+  end, arglead, line)
+end
+
 local function retry(f)
   local orig_delay = delay
   local ok, err --- @type boolean, string?
@@ -231,16 +237,179 @@ describe('actions', function()
     end
   end)
 
-  it('completes attach command arguments', function()
-    local complete = function(arglead, line)
-      return exec_lua(function(arglead0, line0)
-        return require('gitsigns.cli').complete(arglead0, line0)
-      end, arglead, line)
-    end
-
-    eq({}, complete('', 'Gitsigns attach '))
+  it('completes action command arguments', function()
+    eq({ '--bufnr=', '--force', '--trigger=' }, complete('', 'Gitsigns attach '))
+    eq({ '--ignore_whitespace' }, complete('', 'Gitsigns blame '))
+    eq({ '--full', '--ignore_whitespace' }, complete('', 'Gitsigns blame_line '))
     eq({ '--force' }, complete('--f', 'Gitsigns attach --f'))
-    eq({}, complete('tr', 'Gitsigns attach tr'))
+    eq({ '--force=true', '--force=false' }, complete('--force=', 'Gitsigns attach --force='))
+    eq({ '--trigger=' }, complete('--t', 'Gitsigns attach --t'))
+    eq({ '--force' }, complete('--f', 'vertical Gitsigns attach --f'))
+
+    eq({ 'true', 'false', '--global' }, complete('', 'Gitsigns change_base main '))
+    eq(
+      { '--global=true', '--global=false' },
+      complete('--global=', 'Gitsigns change_base main --global=')
+    )
+    eq({ '--split=', '--vertical' }, complete('--', 'Gitsigns diffthis --'))
+    eq(
+      { '--vertical=true', '--vertical=false' },
+      complete('--vertical=', 'Gitsigns diffthis --vertical=')
+    )
+    eq({
+      '--split=aboveleft',
+      '--split=belowright',
+      '--split=topleft',
+      '--split=botright',
+    }, complete('--split=', 'Gitsigns diffthis --split='))
+    eq({ 'vsplit', 'tabnew' }, complete('', 'Gitsigns show_commit main '))
+    eq({ 'next' }, complete('n', 'Gitsigns nav_hunk n'))
+    eq(
+      { '--target=unstaged', '--target=staged', '--target=all' },
+      complete('--target=', 'Gitsigns next_hunk --target=')
+    )
+    eq({ '--full' }, complete('--f', 'Gitsigns blame_line --f'))
+    eq({ '--full=true', '--full=false' }, complete('--full=', 'Gitsigns blame_line --full='))
+    eq({ '--open' }, complete('--o', 'Gitsigns setqflist attached --o'))
+    eq(
+      { '--open=true', '--open=false' },
+      complete('--open=', 'Gitsigns setqflist attached --open=')
+    )
+    eq({}, complete('', 'Gitsigns stage_hunk '))
+    eq({}, complete('--g', 'Gitsigns reset_hunk --g'))
+    eq({ 'attached', 'all' }, complete('', 'Gitsigns setloclist 0 '))
+    eq({ 'true', 'false', 'nil' }, complete('', 'Gitsigns toggle_signs '))
+  end)
+
+  it('parses named flag assignments', function()
+    local result = exec_lua(function()
+      local parse_args = require('gitsigns.cli.argparse').parse_args
+      local _, named = parse_args('attach --force=true --trigger=git=hook --bufnr=5 key=va=lue')
+      local _, extra = parse_args('blame --extra_opts=--ignore-revs-file=.git-blame-ignore-revs')
+
+      return {
+        force = named.force,
+        trigger = named.trigger,
+        bufnr = named.bufnr,
+        key = named.key,
+        extra_opts = extra.extra_opts,
+      }
+    end)
+
+    eq('true', result.force)
+    eq('git=hook', result.trigger)
+    eq('5', result.bufnr)
+    eq('va=lue', result.key)
+    eq('--ignore-revs-file=.git-blame-ignore-revs', result.extra_opts)
+  end)
+
+  it('runs actions with named flags', function()
+    local result = exec_lua(function()
+      local actions = require('gitsigns.actions')
+      local cli = require('gitsigns.cli')
+
+      local saved = {
+        attach = actions.attach,
+        blame = actions.blame,
+        change_base = actions.change_base,
+        diffthis = actions.diffthis,
+        nav_hunk = actions.nav_hunk,
+        setqflist = actions.setqflist,
+      }
+
+      local ret = {}
+
+      actions.attach = function(opts)
+        ret.attach = {
+          bufnr = opts.bufnr,
+          force = opts.force,
+          trigger = opts.trigger,
+        }
+      end
+
+      actions.blame = function(opts)
+        ret.blame = {
+          ignore_whitespace = opts.ignore_whitespace,
+        }
+      end
+
+      actions.change_base = function(base, global)
+        ret.change_base = { base = base, global = global }
+      end
+
+      actions.diffthis = function(base, opts)
+        ret.diffthis = {
+          base = base,
+          split = opts.split,
+          vertical = opts.vertical,
+        }
+      end
+
+      actions.nav_hunk = function(direction, opts)
+        ret.nav_hunk = {
+          count = opts.count,
+          direction = direction,
+          preview = opts.preview,
+          target = opts.target,
+        }
+      end
+
+      actions.setqflist = function(target, opts)
+        ret.setqflist = {
+          nr = opts.nr,
+          open = opts.open,
+          target = target,
+        }
+      end
+
+      local ok, err = pcall(function()
+        cli.run({ args = 'attach --bufnr=5 --force=true --trigger=command', range = 0, smods = {} })
+        cli.run({ args = 'blame --ignore_whitespace=true', range = 0, smods = {} })
+        cli.run({ args = 'change_base HEAD~2 --global=true', range = 0, smods = {} })
+        cli.run({
+          args = 'diffthis HEAD~1 --vertical=true --split=aboveleft',
+          range = 0,
+          smods = {},
+        })
+        cli.run({ args = 'next_hunk --target=all --preview=false --count=2', range = 0, smods = {} })
+        cli.run({ args = 'setqflist attached --open=false --nr=4', range = 0, smods = {} })
+      end)
+
+      actions.attach = saved.attach
+      actions.blame = saved.blame
+      actions.change_base = saved.change_base
+      actions.diffthis = saved.diffthis
+      actions.nav_hunk = saved.nav_hunk
+      actions.setqflist = saved.setqflist
+
+      if not ok then
+        error(err)
+      end
+
+      return ret
+    end)
+
+    eq(5, result.attach.bufnr)
+    eq(true, result.attach.force)
+    eq('command', result.attach.trigger)
+
+    eq(true, result.blame.ignore_whitespace)
+
+    eq('HEAD~2', result.change_base.base)
+    eq(true, result.change_base.global)
+
+    eq('HEAD~1', result.diffthis.base)
+    eq(true, result.diffthis.vertical)
+    eq('aboveleft', result.diffthis.split)
+
+    eq(2, result.nav_hunk.count)
+    eq('next', result.nav_hunk.direction)
+    eq(false, result.nav_hunk.preview)
+    eq('all', result.nav_hunk.target)
+
+    eq('attached', result.setqflist.target)
+    eq(false, result.setqflist.open)
+    eq(4, result.setqflist.nr)
   end)
 
   it('does not emit duplicate GitSignsUpdate events for stage_hunk', function()

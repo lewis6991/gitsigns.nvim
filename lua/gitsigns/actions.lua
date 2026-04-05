@@ -23,10 +23,16 @@ local M = {}
 
 --- @class Gitsigns.CmdArgs
 --- @field vertical? boolean
---- @field split? boolean
+--- @field split? 'aboveleft'|'belowright'|'topleft'|'botright'
 --- @field global? boolean
 --- @field trigger? string
 --- @field force? boolean
+--- @field bufnr? integer
+--- @field direction? ('first'|'last'|'next'|'prev')
+--- @field revision? string
+--- @field open? boolean|('vsplit'|'tabnew')
+--- @field target? (0|integer|'attached'|'all'|'unstaged'|'staged')
+--- @field nr? (0|integer)
 --- @field [integer] any
 
 --- @class Gitsigns.CmdParams : vim.api.keyset.create_user_command.command_args
@@ -53,8 +59,10 @@ local M = {}
 --- @type table<string,fun(args: Gitsigns.CmdArgs, params: Gitsigns.CmdParams)>
 local C = {}
 
---- Completion functions for the respective actions in C
-local CP = {}
+--- @class Gitsigns.CmdMeta
+--- @field generated_completion? boolean
+
+local C_meta = {} --- @type table<string, Gitsigns.CmdMeta>
 
 --- @generic T
 --- @param callback? fun(err?: string)
@@ -72,22 +80,6 @@ local function async_run(callback, func, ...)
   end
 
   return task
-end
-
---- @param arglead string
---- @return string[]
-local function complete_heads(arglead)
-  --- @type string[]
-  local all =
-    vim.fn.systemlist({ 'git', 'rev-parse', '--symbolic', '--branches', '--tags', '--remotes' })
-  return vim.tbl_filter(
-    --- @param x string
-    --- @return boolean
-    function(x)
-      return vim.startswith(x, arglead)
-    end,
-    all
-  )
 end
 
 --- Detach Gitsigns from all buffers it is attached to.
@@ -159,15 +151,8 @@ function C.attach(args)
   M.attach({
     trigger = args.trigger or 'command',
     force = args.force,
-    bufnr = tointeger(args[1]),
+    bufnr = tointeger(args[1]) or args.bufnr,
   })
-end
-
-function CP.attach(arglead)
-  if arglead ~= '' and vim.startswith('--force', arglead) then
-    return { '--force' }
-  end
-  return {}
 end
 
 --- Toggle [[gitsigns-config-signbooleancolumn]]
@@ -353,6 +338,7 @@ M.stage_hunk = mk_repeatable(M.stage_hunk)
 C.stage_hunk = function(_, params)
   M.stage_hunk(get_range(params))
 end
+C_meta.stage_hunk = { generated_completion = false }
 
 --- @param bufnr integer
 --- @param hunk Gitsigns.Hunk.Hunk
@@ -414,6 +400,7 @@ M.reset_hunk = mk_repeatable(M.reset_hunk)
 function C.reset_hunk(_, params)
   M.reset_hunk(get_range(params))
 end
+C_meta.reset_hunk = { generated_completion = false }
 
 --- Reset the lines of all hunks in the buffer.
 function M.reset_buffer()
@@ -557,7 +544,7 @@ end
 --- Attributes:
 --- - {async}
 ---
---- @param direction 'first'|'last'|'next'|'prev'
+--- @param direction ('first'|'last'|'next'|'prev')
 --- @param opts Gitsigns.NavOpts? Configuration options.
 --- @param callback? fun(err?: string)
 function M.nav_hunk(direction, opts, callback)
@@ -569,7 +556,7 @@ end
 
 function C.nav_hunk(args, _)
   --- @diagnostic disable-next-line: param-type-mismatch
-  M.nav_hunk(args[1], args)
+  M.nav_hunk(args[1] or args.direction, args)
 end
 
 --- @deprecated use [[gitsigns.nav_hunk()]]
@@ -581,6 +568,8 @@ end
 ---
 --- Attributes:
 --- - {async}
+--- @param opts Gitsigns.NavOpts? Configuration options.
+--- @param callback? fun(err?: string)
 function M.next_hunk(opts, callback)
   async_run(callback, function()
     require('gitsigns.actions.nav').nav_hunk('next', opts)
@@ -601,6 +590,8 @@ end
 ---
 --- Attributes:
 --- - {async}
+--- @param opts Gitsigns.NavOpts? Configuration options.
+--- @param callback? fun(err?: string)
 function M.prev_hunk(opts, callback)
   async_run(callback, function()
     require('gitsigns.actions.nav').nav_hunk('prev', opts)
@@ -735,6 +726,11 @@ function M.blame(opts, callback)
   async_run(callback, require('gitsigns.actions.blame').blame, opts)
 end
 
+C.blame = function(args, _)
+  --- @diagnostic disable-next-line: param-type-mismatch
+  M.blame(args)
+end
+
 --- @async
 --- @param bcache Gitsigns.CacheEntry
 --- @param base string?
@@ -784,7 +780,7 @@ end
 --- For a more complete list of ways to specify bases, see
 --- [[gitsigns-revision]].
 ---
---- @param base string? The object/revision to diff against.
+--- @param base (string|'FILE')? The object/revision to diff against.
 --- @param global boolean? Change the base of all buffers.
 --- @param callback? fun(err?: string)
 function M.change_base(base, global, callback)
@@ -813,12 +809,11 @@ C.change_base = function(args, _)
   M.change_base(args[1], (args[2] or args.global))
 end
 
-CP.change_base = complete_heads
-
 --- Reset the base revision to diff against back to the
 --- index.
 ---
 --- Alias for `change_base(nil, {global})` .
+--- @param global boolean? Change the base of all buffers.
 M.reset_base = function(global)
   M.change_base(nil, global)
 end
@@ -850,7 +845,7 @@ end
 --- Attributes:
 --- - {async}
 ---
---- @param base string|nil Revision to diff against. Defaults to index.
+--- @param base (string|'FILE')? Revision to diff against. Defaults to index.
 --- @param opts Gitsigns.DiffthisOpts? Additional options.
 --- @param callback? fun(err?: string)
 function M.diffthis(base, opts, callback)
@@ -889,8 +884,6 @@ function C.diffthis(args, params)
   M.diffthis(args[1], opts)
 end
 
-CP.diffthis = complete_heads
-
 -- C.test = function(pos_args: {any}, named_args: {string:any}, params: api.UserCmdParams)
 --    print('POS ARGS:', vim.inspect(pos_args))
 --    print('NAMED ARGS:', vim.inspect(named_args))
@@ -920,7 +913,7 @@ CP.diffthis = complete_heads
 --- Attributes:
 --- - {async}
 ---
---- @param revision string?
+--- @param revision (string|'FILE')?
 --- @param callback? fun(err?: string)
 function M.show(revision, callback)
   async_run(callback, require('gitsigns.actions.diffthis').show, nil, revision)
@@ -934,12 +927,10 @@ function C.show(args)
   M.show(revision)
 end
 
-CP.show = complete_heads
-
 --- Show revision {base} commit in split or tab
 ---
---- @param revision? string? (default: 'HEAD')
---- @param open? 'vsplit'|'tabnew'
+--- @param revision string? (default: 'HEAD')
+--- @param open ('vsplit'|'tabnew')?
 --- @param callback? fun(err?: string)
 function M.show_commit(revision, open, callback)
   async_run(callback, require('gitsigns.actions.show_commit'), revision, open)
@@ -950,15 +941,13 @@ function C.show_commit(args)
   M.show_commit(revision, open)
 end
 
-CP.show_commit = complete_heads
-
 --- Populate the quickfix list with hunks. Automatically opens the
 --- quickfix window.
 ---
 --- Attributes:
 --- - {async}
 ---
---- @param target integer|'attached'|'all'? #
+--- @param target (0|integer|'attached'|'all')? #
 --- Specifies which files hunks are collected from.
 ---   Possible values.
 ---   - [integer]: The buffer with the matching buffer
@@ -989,9 +978,9 @@ end
 --- Attributes:
 --- - {async}
 ---
---- @param nr? integer Window number or the [[window-ID]].
+--- @param nr (0|integer)? Window number or the [[window-ID]].
 ---     `0` for the current window (default).
---- @param target integer|'attached'|'all'|nil See [[gitsigns.setqflist()]].
+--- @param target (integer|'attached'|'all')? See [[gitsigns.setqflist()]].
 function M.setloclist(nr, target)
   M.setqflist(target, {
     nr = nr,
@@ -1078,9 +1067,21 @@ function M._get_cmd_func(name)
 end
 
 --- @param name string
---- @return (fun(arglead: string): string[])?
+--- @return (fun(arglead: string, line: string): string[])?
 function M._get_cmp_func(name)
-  return CP[name]
+  if not M._supports_generated_cmp(name) then
+    return
+  end
+
+  return require('gitsigns.cli.completion').for_action(name)
+end
+
+--- @param name string
+--- @return boolean
+function M._supports_generated_cmp(name)
+  local cmd = C[name]
+  local meta = C_meta[name]
+  return cmd ~= nil and (meta == nil or meta.generated_completion ~= false)
 end
 
 return M

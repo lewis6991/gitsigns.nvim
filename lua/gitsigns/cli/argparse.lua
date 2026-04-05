@@ -4,6 +4,14 @@ local function is_char(x)
   return x:match('[^=\'"%s]') ~= nil
 end
 
+local function enter_value_state(x, idx)
+  local next_ch = x:sub(idx + 1, idx + 1)
+  if next_ch == "'" or next_ch == '"' then
+    return 'in_quote', next_ch, true
+  end
+  return 'in_value', '', false
+end
+
 -- Return positional arguments and named arguments
 --- @param x string
 --- @return string[], table<string,string|boolean>
@@ -39,19 +47,23 @@ function M.parse_args(x)
         state = 'in_ws'
       elseif ch == '=' then
         cur_val = ''
-        local next_ch = peek(i)
-        if next_ch == "'" or next_ch == '"' then
-          cur_quote = next_ch
+        local skip_quote
+        state, cur_quote, skip_quote = enter_value_state(x, i)
+        if skip_quote then
           i = i + 1
-          state = 'in_quote'
-        else
-          state = 'in_value'
         end
       end
     elseif state == 'in_flag' then
       if ch:match('%s') then
         named_args[cur_arg] = true
         state = 'in_ws'
+      elseif ch == '=' then
+        cur_val = ''
+        local skip_quote
+        state, cur_quote, skip_quote = enter_value_state(x, i)
+        if skip_quote then
+          i = i + 1
+        end
       else
         cur_arg = cur_arg .. ch
       end
@@ -67,7 +79,7 @@ function M.parse_args(x)
         end
       end
     elseif state == 'in_value' then
-      if is_char(ch) then
+      if not ch:match('%s') then
         cur_val = cur_val .. ch
       elseif ch:match('%s') then
         named_args[cur_arg] = cur_val
