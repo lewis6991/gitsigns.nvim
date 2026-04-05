@@ -238,6 +238,7 @@ describe('actions', function()
   end)
 
   it('completes action command arguments', function()
+    eq(true, vim.tbl_contains(complete('', 'vertical Gits '), 'attach'))
     eq({ '--bufnr=', '--force', '--trigger=' }, complete('', 'Gitsigns attach '))
     eq({ '--ignore_whitespace' }, complete('', 'Gitsigns blame '))
     eq({ '--full', '--ignore_whitespace' }, complete('', 'Gitsigns blame_line '))
@@ -245,6 +246,7 @@ describe('actions', function()
     eq({ '--force=true', '--force=false' }, complete('--force=', 'Gitsigns attach --force='))
     eq({ '--trigger=' }, complete('--t', 'Gitsigns attach --t'))
     eq({ '--force' }, complete('--f', 'vertical Gitsigns attach --f'))
+    eq({ '--force' }, complete('--f', 'vertical Gits attach --f'))
 
     eq({ 'true', 'false', '--global' }, complete('', 'Gitsigns change_base main '))
     eq(
@@ -285,7 +287,8 @@ describe('actions', function()
     local result = exec_lua(function()
       local parse_args = require('gitsigns.cli.argparse').parse_args
       local _, named = parse_args('attach --force=true --trigger=git=hook --bufnr=5 key=va=lue')
-      local _, extra = parse_args('blame --extra_opts=--ignore-revs-file=.git-blame-ignore-revs')
+      local _, extra =
+        parse_args('blame --extra_opts=--ignore-revs-file=.git-blame-ignore-revs --extra_opts=-M')
 
       return {
         force = named.force,
@@ -300,7 +303,7 @@ describe('actions', function()
     eq('git=hook', result.trigger)
     eq('5', result.bufnr)
     eq('va=lue', result.key)
-    eq('--ignore-revs-file=.git-blame-ignore-revs', result.extra_opts)
+    eq({ '--ignore-revs-file=.git-blame-ignore-revs', '-M' }, result.extra_opts)
   end)
 
   it('runs actions with named flags', function()
@@ -329,6 +332,7 @@ describe('actions', function()
 
       actions.blame = function(opts)
         ret.blame = {
+          extra_opts = opts.extra_opts,
           ignore_whitespace = opts.ignore_whitespace,
         }
       end
@@ -364,7 +368,11 @@ describe('actions', function()
 
       local ok, err = pcall(function()
         cli.run({ args = 'attach --bufnr=5 --force=true --trigger=command', range = 0, smods = {} })
-        cli.run({ args = 'blame --ignore_whitespace=true', range = 0, smods = {} })
+        cli.run({
+          args = 'blame --ignore_whitespace=true --extra_opts=-M --extra_opts=-C',
+          range = 0,
+          smods = {},
+        })
         cli.run({ args = 'change_base HEAD~2 --global=true', range = 0, smods = {} })
         cli.run({
           args = 'diffthis HEAD~1 --vertical=true --split=aboveleft',
@@ -394,6 +402,7 @@ describe('actions', function()
     eq('command', result.attach.trigger)
 
     eq(true, result.blame.ignore_whitespace)
+    eq({ '-M', '-C' }, result.blame.extra_opts)
 
     eq('HEAD~2', result.change_base.base)
     eq(true, result.change_base.global)

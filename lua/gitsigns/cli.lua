@@ -17,10 +17,12 @@ local sources = { actions, attach, Debug }
 ---    'nil'         -> nil
 ---    '100'         -> 100
 ---    'HEAD~300' -> 'HEAD~300'
---- @param a string|boolean
---- @return boolean|number|string?
+--- @param a any
+--- @return any
 local function parse_to_lua(a)
-  if tonumber(a) then
+  if type(a) == 'table' then
+    return vim.tbl_map(parse_to_lua, a)
+  elseif tonumber(a) then
     return tonumber(a)
   elseif a == 'false' or a == 'true' then
     return a == 'true'
@@ -34,10 +36,9 @@ local M = {}
 
 function M.complete(arglead, line)
   local ctx = cmdline.parse(line)
-  local n = #ctx.words
 
   local matches = {}
-  if n <= ctx.subcmd_idx then
+  if ctx.completing_subcmd then
     for _, m in ipairs(sources) do
       for func, _ in pairs(m) do
         if not func:match('^[a-z]') then
@@ -47,9 +48,9 @@ function M.complete(arglead, line)
         end
       end
     end
-  elseif n > ctx.subcmd_idx then
+  elseif ctx.subcmd ~= nil then
     -- Subcommand completion
-    local cmp_func = actions._get_cmp_func(assert(ctx.subcmd))
+    local cmp_func = actions._get_cmp_func(ctx.subcmd)
     if cmp_func then
       return cmp_func(arglead, line)
     end
