@@ -402,10 +402,17 @@ end
 
 --- @param lnum integer
 --- @param hunks Gitsigns.Hunk.Hunk[]?
+--- @param line_count? integer
 --- @return Gitsigns.Hunk.Hunk?, integer?
-function M.find_hunk(lnum, hunks)
+function M.find_hunk(lnum, hunks, line_count)
   for i, hunk in ipairs(hunks or {}) do
     if lnum == 1 and hunk.added.start == 0 and hunk.vend == 0 then
+      return hunk, i
+    end
+
+    -- A trailing delete hunk lives one line past EOF in hunk coordinates, but
+    -- the cursor can only sit on the last real line.
+    if line_count and lnum == line_count and hunk.added.start == line_count + 1 then
       return hunk, i
     end
 
@@ -419,8 +426,9 @@ end
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @param direction 'first'|'last'|'next'|'prev'
 --- @param wrap? boolean
+--- @param line_count? integer
 --- @return integer?
-function M.find_nearest_hunk(lnum, hunks, direction, wrap)
+function M.find_nearest_hunk(lnum, hunks, direction, wrap, line_count)
   if #hunks == 0 then
     return
   elseif direction == 'first' then
@@ -428,6 +436,13 @@ function M.find_nearest_hunk(lnum, hunks, direction, wrap)
   elseif direction == 'last' then
     return #hunks
   elseif direction == 'next' then
+    if line_count and lnum == line_count then
+      local last_hunk = hunks[#hunks]
+      -- Treat EOF as "on" a trailing delete hunk so next_hunk can advance.
+      if last_hunk.added.start == line_count + 1 then
+        lnum = lnum + 1
+      end
+    end
     if assert(hunks[1]).added.start > lnum then
       return 1
     end

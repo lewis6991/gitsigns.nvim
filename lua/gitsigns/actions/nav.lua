@@ -4,6 +4,7 @@ local cache = require('gitsigns.cache').cache
 local Popup = require('gitsigns.popup')
 
 local api = vim.api
+local min, max = math.min, math.max
 
 --- @class Gitsigns.NavOpts
 --- Whether to loop around file or not. Defaults
@@ -120,12 +121,13 @@ function M.nav_hunk(direction, opts)
   end
 
   local line = api.nvim_win_get_cursor(0)[1] --[[@as integer]]
+  local buf_line_count = api.nvim_buf_line_count(bufnr)
   local index --- @type integer?
 
   local forwards = direction == 'next' or direction == 'last'
 
   for _ = 1, opts.count do
-    index = Hunks.find_nearest_hunk(line, hunks, direction, opts.wrap)
+    index = Hunks.find_nearest_hunk(line, hunks, direction, opts.wrap, buf_line_count)
 
     if not index then
       if opts.navigation_message then
@@ -138,13 +140,12 @@ function M.nav_hunk(direction, opts)
     end
     local hunk = assert(hunks[index])
     line = forwards and hunk.added.start or hunk.vend
+    -- Project topdelete/EOF-delete hunk coordinates back onto valid cursor rows.
+    line = max(min(line, buf_line_count), 1)
   end
 
   -- Check if preview popup is open before moving the cursor
   local should_preview = opts.preview or Popup.is_open('hunk') ~= nil
-
-  -- Handle topdelete
-  line = math.max(line, 1)
 
   vim.cmd([[ normal! m' ]]) -- add current cursor position to the jump list
 
