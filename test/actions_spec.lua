@@ -724,6 +724,76 @@ describe('actions', function()
     check_cursor({ 4, 0 })
   end)
 
+  it('can navigate EOF delete hunks', function()
+    setup_test_repo()
+    edit(test_file)
+
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    local line_count = exec_lua(function()
+      local Hunks = require('gitsigns.hunks')
+      local bufnr = vim.api.nvim_get_current_buf()
+      local cache = assert(require('gitsigns.cache').cache[bufnr])
+      local line_count0 = vim.api.nvim_buf_line_count(bufnr)
+
+      cache.hunks = {
+        Hunks.create_hunk(4, 1, 4, 1),
+        Hunks.create_hunk(line_count0, 1, line_count0 + 1, 0),
+      }
+
+      return line_count0
+    end)
+
+    feed('gg')
+    command('Gitsigns next_hunk')
+    check_cursor({ 4, 0 })
+
+    command('Gitsigns next_hunk')
+    check_cursor({ line_count, 0 })
+
+    eq(
+      true,
+      exec_lua(function()
+        local bufnr = vim.api.nvim_get_current_buf()
+        local bcache = assert(require('gitsigns.cache').cache[bufnr])
+        local hunk, index = bcache:get_cursor_hunk()
+
+        return hunk ~= nil
+          and index == 2
+          and hunk.type == 'delete'
+          and hunk.added.start == vim.api.nvim_buf_line_count(bufnr) + 1
+      end)
+    )
+
+    eq(
+      'Hunk 2 of 2',
+      exec_lua(function()
+        require('gitsigns').preview_hunk()
+
+        local popup = require('gitsigns.popup')
+        local win = assert(popup.is_open('hunk'))
+        local title =
+          assert(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, 1, false)[1])
+
+        popup.close('hunk')
+
+        return title
+      end)
+    )
+
+    command('Gitsigns next_hunk') -- Wrap
+    check_cursor({ 4, 0 })
+
+    command('set nowrapscan')
+    api.nvim_win_set_cursor(0, { 4, 0 })
+
+    command('Gitsigns next_hunk --count=2')
+    check_cursor({ line_count, 0 })
+  end)
+
   it('can stage hunks with no NL at EOF', function()
     setup_test_repo()
     local newfile = helpers.newfile

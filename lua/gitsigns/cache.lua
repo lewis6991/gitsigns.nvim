@@ -294,7 +294,7 @@ function CacheEntry:get_cursor_hunk(hunks)
 
   local lnum = api.nvim_win_get_cursor(0)[1]
   local Hunks = require('gitsigns.hunks')
-  return Hunks.find_hunk(lnum, hunks)
+  return Hunks.find_hunk(lnum, hunks, api.nvim_buf_line_count(self.bufnr))
 end
 
 --- @async
