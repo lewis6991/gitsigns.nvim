@@ -48,6 +48,66 @@ local function enable_lua_treesitter_on_filetype()
   end)
 end
 
+local function open_blame_panel()
+  exec_lua(function()
+    local async = require('gitsigns.async')
+    async.run(require('gitsigns.actions.blame').blame):raise_on_error()
+  end)
+
+  eq(
+    true,
+    exec_lua(function()
+      return vim.wait(10000, function()
+        return vim.bo.filetype == 'gitsigns-blame'
+      end)
+    end)
+  )
+end
+
+local function get_blame_panel_state()
+  return exec_lua(function()
+    local bufnr = vim.api.nvim_get_current_buf()
+    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+    local ns = assert(vim.api.nvim_get_namespaces().gitsigns_blame_win)
+    local marks = vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, { details = true })
+    local row_hls = {} --- @type table<integer, string[]>
+
+    for _, mark in ipairs(marks) do
+      local row = mark[2] + 1
+      local details = assert(mark[4])
+      if details.virt_text_win_col == nil and type(details.hl_group) == 'string' then
+        row_hls[row] = row_hls[row] or {}
+        row_hls[row][#row_hls[row] + 1] = details.hl_group
+      end
+    end
+
+    return {
+      date = os.date('%Y-%m-%d'),
+      lines = lines,
+      row_hls = row_hls,
+      year = os.date('%Y'),
+    }
+  end)
+end
+
+local function has_hl(row_hls, row, name)
+  for _, hl in ipairs(row_hls[row] or {}) do
+    if hl == name then
+      return true
+    end
+  end
+  return false
+end
+
+local function has_hl_match(row_hls, row, pattern)
+  for _, hl in ipairs(row_hls[row] or {}) do
+    if hl:match(pattern) then
+      return true
+    end
+  end
+  return false
+end
+
 describe('blame', function()
   before_each(function()
     clear()
@@ -101,6 +161,119 @@ describe('blame', function()
 
     eq({ 3, 0 }, helpers.api.nvim_win_get_cursor(0))
     eq('gitsigns-blame', exec_lua('return vim.bo.filetype'))
+  end)
+
+  it('renders the default side-panel layout', function()
+    setup_gitsigns(test_config)
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    open_blame_panel()
+
+    local result = get_blame_panel_state()
+    local date_pat = result.date:gsub('%-', '%%-')
+
+    assert(result.lines[1]:match('^┍ %x%x%x%x%x%x%x%x tester ' .. date_pat .. '$'))
+    eq('┕ init commit', result.lines[2])
+    eq(true, has_hl_match(result.row_hls, 1, '^GitSignsBlameColor%.'))
+    eq(true, has_hl(result.row_hls, 2, 'Comment'))
+  end)
+
+  it('supports string side-panel formatters', function()
+    local config = vim.deepcopy(test_config)
+    config.blame_formatter = '<author_time:%Y> <abbrev_sha> <summary>'
+    setup_gitsigns(config)
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    open_blame_panel()
+
+    local result = get_blame_panel_state()
+
+    assert(result.lines[1]:match('^┍ ' .. result.year .. ' %x%x%x%x%x%x%x%x init commit$'))
+    eq('┕', result.lines[2])
+    eq(true, has_hl_match(result.row_hls, 1, '^GitSignsBlameColor%.'))
+    eq(false, has_hl(result.row_hls, 2, 'Comment'))
+  end)
+
+  it('supports function side-panel formatters with highlights', function()
+    setup_gitsigns(test_config)
+    exec_lua(function()
+      require('gitsigns.config').config.blame_formatter = function(_name, info, context)
+        return {
+          { info.abbrev_sha, context.hash_hl_group },
+          { ' ' },
+          { info.author, 'ErrorMsg' },
+          { ' ' },
+          { os.date('%Y', info.author_time), 'WarningMsg' },
+        },
+          false
+      end
+    end)
+
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    open_blame_panel()
+
+    local result = get_blame_panel_state()
+
+    assert(result.lines[1]:match('^┍ %x%x%x%x%x%x%x%x tester ' .. result.year .. '$'))
+    eq('┕', result.lines[2])
+    eq(true, has_hl_match(result.row_hls, 1, '^GitSignsBlameColor%.'))
+    eq(true, has_hl(result.row_hls, 1, 'ErrorMsg'))
+    eq(true, has_hl(result.row_hls, 1, 'WarningMsg'))
+    eq(false, has_hl(result.row_hls, 2, 'Comment'))
+  end)
+
+  it('falls back when function side-panel formatters return strings', function()
+    setup_gitsigns(test_config)
+    exec_lua(function()
+      require('gitsigns.config').config.blame_formatter = function()
+        return 'not chunks'
+      end
+    end)
+
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    open_blame_panel()
+
+    local result = get_blame_panel_state()
+    local date_pat = result.date:gsub('%-', '%%-')
+
+    assert(result.lines[1]:match('^┍ %x%x%x%x%x%x%x%x tester ' .. date_pat .. '$'))
+    eq('┕ init commit', result.lines[2])
+    eq(true, has_hl_match(result.row_hls, 1, '^GitSignsBlameColor%.'))
+    eq(true, has_hl(result.row_hls, 2, 'Comment'))
   end)
 
   it('uses a repo-relative path when running blame', function()

@@ -1,4 +1,5 @@
 local async = require('gitsigns.async')
+local BlameFormatter = require('gitsigns.blame_formatter')
 local debounce = require('gitsigns.debounce')
 local util = require('gitsigns.util')
 
@@ -23,18 +24,7 @@ local function reset(bufnr)
   vim.b[bufnr].gitsigns_blame_line_dict = nil
 end
 
---- @param fmt string
---- @param name string
---- @param info Gitsigns.BlameInfoPublic
---- @return string
-local function expand_blame_format(fmt, name, info)
-  if info.author == name then
-    info.author = 'You'
-  end
-  return util.expand_format(fmt, info)
-end
-
---- @param virt_text [string, string][]
+--- @param virt_text Gitsigns.BlameFmtChunk[]
 --- @return string
 local function flatten_virt_text(virt_text)
   local res = {} ---@type string[]
@@ -81,48 +71,45 @@ local function line_len(bufnr, lnum)
   return len
 end
 
---- @param fmt string
---- @return Gitsigns.CurrentLineBlameFmtFun
-local function default_formatter(fmt)
-  return function(username, blame_info)
-    return {
-      {
-        expand_blame_format(fmt, username, blame_info),
-        'GitSignsCurrentLineBlame',
-      },
-    }
-  end
-end
-
 ---@param bcache Gitsigns.CacheEntry
 ---@param blame_info Gitsigns.BlameInfoPublic
----@return [string, string][]
+---@return Gitsigns.BlameFmtChunk[]
 local function get_blame_virt_text(bcache, blame_info)
   local git_obj = bcache.git_obj
   local use_nc = blame_info.author == 'Not Committed Yet'
+  local config_key = use_nc and 'current_line_blame_formatter_nc' or 'current_line_blame_formatter'
+  local fallback_formatter = use_nc and schema.current_line_blame_formatter_nc.default
+    or schema.current_line_blame_formatter.default
 
   local clb_formatter = use_nc and config.current_line_blame_formatter_nc
     or config.current_line_blame_formatter
 
   if type(clb_formatter) == 'function' then
-    local ok, res = pcall(clb_formatter, git_obj.repo.username, blame_info)
-    if ok then
-      return res
-    end
+    local ok, result = pcall(clb_formatter, git_obj.repo.username, blame_info)
+    if not ok then
+      error_once('Failed running config.%s, using default:\n   %s', config_key, result)
+      clb_formatter = fallback_formatter
+    else
+      local ok_chunks, chunks = pcall(BlameFormatter.sanitize_chunks, result)
+      if ok_chunks then
+        return chunks
+      end
 
-    local nc_sfx = use_nc and '_nc' or ''
-    error_once(
-      'Failed running config.current_line_blame_formatter%s, using default:\n   %s',
-      nc_sfx,
-      res
-    )
-    --- @type string
-    clb_formatter = schema.current_line_blame_formatter.default
+      error_once('Invalid return from config.%s, using default:\n   %s', config_key, chunks)
+      clb_formatter = fallback_formatter
+    end
   end
 
   --- @cast clb_formatter string EmmyLuaLs/emmylua-analyzer-rust#372
 
-  return default_formatter(clb_formatter)(git_obj.repo.username, blame_info)
+  return {
+    {
+      BlameFormatter.expand_string(clb_formatter, git_obj.repo.username, blame_info, {
+        self_author_text = 'You',
+      }),
+      'GitSignsCurrentLineBlame',
+    },
+  }
 end
 
 --- @param bcache Gitsigns.CacheEntry

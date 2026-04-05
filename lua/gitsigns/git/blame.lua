@@ -24,6 +24,7 @@ local util = require('gitsigns.util')
 --- @field num_hunks? integer
 --- @field hunk? string[]
 --- @field hunk_head? string
+--- @field previous? string
 
 --- @class Gitsigns.BlameInfo
 --- @field orig_lnum integer

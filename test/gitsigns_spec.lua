@@ -417,6 +417,26 @@ describe('gitsigns (with screen)', function()
       setup_gitsigns(config)
     end)
 
+    local function stub_notify_once()
+      exec_lua(function()
+        _G.__gitsigns_notify_once_orig = vim.notify_once
+        vim.notify_once = function() end
+      end)
+    end
+
+    local function restore_notify_once()
+      exec_lua(function()
+        if _G.__gitsigns_notify_once_orig then
+          vim.notify_once = _G.__gitsigns_notify_once_orig
+          _G.__gitsigns_notify_once_orig = nil
+        end
+      end)
+    end
+
+    after_each(function()
+      restore_notify_once()
+    end)
+
     local function blame_line_ui_test(autocrlf, file_ending)
       setup_test_repo()
       exec_lua([[vim.g.editorconfig = false]])
@@ -472,6 +492,33 @@ describe('gitsigns (with screen)', function()
 
     it('does handle unix', function()
       blame_line_ui_test('false', 'unix')
+    end)
+
+    it('falls back when function formatters return invalid virt_text', function()
+      -- nvim 0.10.4 can hang screen tests that render notify_once messages.
+      -- This spec only cares about falling back to the default formatter.
+      stub_notify_once()
+
+      exec_lua(function()
+        require('gitsigns.config').config.current_line_blame_formatter = function()
+          return 'not virt_text'
+        end
+      end)
+
+      setup_test_repo()
+      edit(test_file)
+      feed('gg')
+      check({ signs = {} })
+
+      eq(
+        true,
+        exec_lua(function()
+          return vim.wait(5000, function()
+            local line = vim.b.gitsigns_blame_line
+            return line ~= nil and line ~= 'not virt_text' and line:match('^ You, ') ~= nil
+          end)
+        end)
+      )
     end)
   end)
 
@@ -648,15 +695,30 @@ describe('gitsigns (with screen)', function()
     end)
   end)
 
-  --  TODO(lewis6991): All deprecated fields removed. Re-add when we have another deprecated field
-  -- describe('configuration', function()
-  --   it('handled deprecated fields', function()
-  --     pending()
-  --     -- config.current_line_blame_delay = 100
-  --     -- setup_gitsigns(config)
-  --     -- eq(100, exec_lua([[return package.loaded['gitsigns.config'].config.current_line_blame_opts.delay]]))
-  --   end)
-  -- end)
+  describe('configuration', function()
+    it('validates union-typed fields', function()
+      helpers.setup_path()
+
+      for _, case in ipairs({
+        { field = 'current_line_blame_formatter', value = 1 },
+        { field = 'current_line_blame_formatter_nc', value = 1 },
+        { field = 'blame_formatter', value = true },
+      }) do
+        local result = exec_lua(function(field, value)
+          local ok, err = pcall(require('gitsigns.config').build, {
+            [field] = value,
+          })
+          return {
+            ok = ok,
+            err = tostring(err),
+          }
+        end, case.field, case.value)
+
+        eq(false, result.ok)
+        eq(true, result.err:find(case.field, 1, true) ~= nil)
+      end
+    end)
+  end)
 
   describe('on_attach()', function()
     it('can prevent attaching to a buffer', function()

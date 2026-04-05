@@ -67,6 +67,7 @@ with most of the default settings:
         use_focus = true,
       },
       current_line_blame_formatter = '<author>, <author_time:%R> - <summary>',
+      blame_formatter = nil, -- Use default
       sign_priority = 6,
       update_debounce = 100,
       status_formatter = nil, -- Use default
@@ -1065,6 +1066,39 @@ current_line_blame_formatter_nc
     |gitsigns-config-current_line_blame| for lines that aren't committed.
 
     See |gitsigns-config-current_line_blame_formatter| for more information.
+
+blame_formatter                              *gitsigns-config-blame_formatter*
+    Type: `string|function`, Default: nil (use built-in layout)
+
+    String or function used to format commit header lines in the
+    `:Gitsigns blame` side panel.
+
+    When `nil`, the built-in blame side-panel layout is used.
+
+    When a string, accepts the same format specifiers as
+    |gitsigns-config-current_line_blame_formatter|. If the string contains
+    `<summary>`, the repeated summary line is suppressed.
+
+    When a function:
+      Parameters: ~
+        {name}       Git user name returned from `git config user.name`.
+        {blame_info} Table with the same keys as
+                     |gitsigns-config-current_line_blame_formatter|.
+        {context}    Table with:
+                       • `max_author_width`: integer
+                       • `hash_hl_group`: string
+
+      Return: ~
+        First return:
+          • a list of `[text, highlight]` chunks
+
+        Second return:
+          • `boolean?`
+
+        Returning `false` as the second value suppresses the repeated summary
+        line for subsequent lines in the same commit block.
+
+    The blame graph glyphs and heatmap remain renderer-controlled.
 
 trouble                                              *gitsigns-config-trouble*
     Type: `boolean`, Default: true if installed

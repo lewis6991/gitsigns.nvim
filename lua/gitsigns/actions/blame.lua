@@ -1,6 +1,9 @@
 local async = require('gitsigns.async')
+local BlameFormatter = require('gitsigns.blame_formatter')
 local cache = require('gitsigns.cache').cache
+local config = require('gitsigns.config').config
 local log = require('gitsigns.debug.log')
+local error_once = require('gitsigns.message').error_once
 local util = require('gitsigns.util')
 
 local get_temp_hl = require('gitsigns.highlight').get_temp_hl
@@ -95,83 +98,172 @@ local chars = {
 
 local M = {}
 
+--- @class (exact) Gitsigns.BlameLineFormat
+--- @field chunks Gitsigns.BlameFmtChunk[]
+--- @field summary boolean
+
+--- @param hash_hl string
+--- @param info Gitsigns.BlameInfoPublic
+--- @param max_author_len integer
+--- @return Gitsigns.BlameLineFormat
+local function default_side_panel(hash_hl, info, max_author_len)
+  return {
+    chunks = {
+      { info.abbrev_sha, hash_hl },
+      { ' ' },
+      { lalign(max_author_len, info.author) },
+      { ' ' },
+      { util.expand_format('<author_time>', info) },
+    },
+    summary = true,
+  }
+end
+
+--- @param username string
+--- @param hash_hl string
+--- @param info Gitsigns.BlameInfoPublic
+--- @param max_author_len integer
+--- @return Gitsigns.BlameLineFormat
+local function format_side_panel(username, hash_hl, info, max_author_len)
+  local blame_formatter = config.blame_formatter
+  if not blame_formatter then
+    return default_side_panel(hash_hl, info, max_author_len)
+  end
+
+  if type(blame_formatter) == 'string' then
+    local chunks, saw_summary = BlameFormatter.expand_chunks(blame_formatter, username, info, {
+      token_hls = {
+        abbrev_sha = hash_hl,
+      },
+    })
+    return { chunks = chunks, summary = not saw_summary }
+  end
+
+  local ok, result, show_summary = pcall(blame_formatter, username, info, {
+    max_author_width = max_author_len,
+    hash_hl_group = hash_hl,
+  })
+
+  local function fallback()
+    return default_side_panel(hash_hl, info, max_author_len)
+  end
+
+  if not ok then
+    error_once('Failed running config.blame_formatter, using default:\n   %s', result)
+    return fallback()
+  end
+
+  local ok_norm, chunks = pcall(BlameFormatter.sanitize_chunks, result)
+  if not ok_norm then
+    error_once('Invalid return from config.blame_formatter, using default:\n   %s', chunks)
+    return fallback()
+  end
+
+  if show_summary ~= nil and type(show_summary) ~= 'boolean' then
+    error_once(
+      'Invalid second return from config.blame_formatter, using default:\n   %s',
+      tostring(show_summary)
+    )
+    return fallback()
+  end
+
+  return { chunks = chunks, summary = show_summary ~= false }
+end
+
 --- @param blame Gitsigns.CacheEntry.Blame
 --- @param win integer
 --- @param main_win integer
 --- @param buf_sha? string
 --- @return table<integer,true> commit_lines
+--- @return table<integer,boolean> commit_summaries
 local function render(blame, win, main_win, buf_sha)
   local max_author_len = 0
   local entries = blame.entries
 
-  for _, b in pairs(entries) do
+  for _, b in ipairs(entries) do
     max_author_len = math.max(max_author_len, vim.fn.strdisplaywidth(b.commit.author))
   end
 
+  local main_buf = api.nvim_win_get_buf(main_win)
+  local main_cache = assert(cache[main_buf])
+  local username = main_cache.git_obj.repo.username or ''
+
   local lines = {} --- @type string[]
+  local highlights = {} --- @type table<integer, Gitsigns.BlameLineHighlight[]>
   local last_sha --- @type string?
   local cnt = 0
+  local show_summary = true
   local commit_lines = {} --- @type table<integer,true>
+  local commit_summaries = {} --- @type table<integer,boolean>
+  local win_width = 0
 
-  for i, b in pairs(entries) do
+  for i, b in ipairs(entries) do
     local commit = b.commit
     local sha = commit.abbrev_sha
     local next_sha = entries[i + 1] and entries[i + 1].commit.abbrev_sha or nil
+    local hash_hl = get_hash_color(sha)
+    local line_chunks --- @type Gitsigns.BlameFmtChunk[]
+
     if sha == last_sha then
       cnt = cnt + 1
-      local c = sha == next_sha and chars.mid or chars.last
-      lines[i] = cnt == 1 and ('%s %s'):format(c, commit.summary) or c
-      if commit_lines[i - 1] then
-        assert(lines[i - 1], 'Previous line should exist')
-        lines[i - 1] = chars.first .. lines[i - 1]:sub(#chars.single + 1)
+      local graph = sha == next_sha and chars.mid or chars.last
+      if cnt == 1 and show_summary then
+        line_chunks = {
+          { graph, hash_hl },
+          { ' ' },
+          { commit.summary, 'Comment' },
+        }
+      else
+        line_chunks = { { graph, hash_hl } }
       end
     else
       cnt = 0
       commit_lines[i] = true
-      lines[i] = ('%s %s %s %s'):format(
-        chars.single,
-        sha,
-        lalign(max_author_len, commit.author),
-        util.expand_format('<author_time>', commit)
-      )
+      local graph = sha == next_sha and chars.first or chars.single
+      local info = util.convert_blame_info(b)
+      local formatted = format_side_panel(username, hash_hl, info, max_author_len)
+      show_summary = formatted.summary
+      commit_summaries[i] = show_summary
+      line_chunks = { { graph, hash_hl } } --- @type Gitsigns.BlameFmtChunk[]
+      if #formatted.chunks > 0 then
+        line_chunks[#line_chunks + 1] = { ' ' }
+        vim.list_extend(line_chunks, formatted.chunks)
+      end
     end
+
+    local line, line_highlights, line_width = BlameFormatter.render_line(line_chunks)
+    lines[i] = line
+    highlights[i] = line_highlights
+    win_width = math.max(win_width, line_width)
     last_sha = sha
   end
 
-  local win_width = #lines[1]
   api.nvim_win_set_width(win, win_width + 1)
 
   local bufnr = api.nvim_win_get_buf(win)
-  local main_buf = api.nvim_win_get_buf(main_win)
 
   api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-  local min_time, max_time = assert(cache[main_buf]):get_blame_times()
+  local min_time, max_time = main_cache:get_blame_times()
 
   -- Apply highlights
-  for i, blame_info in ipairs(entries) do
-    local hash_hl = get_hash_color(blame_info.commit.abbrev_sha)
-
-    api.nvim_buf_set_extmark(bufnr, ns, i - 1, 0, {
-      end_col = commit_lines[i] and 12 or 1,
-      hl_group = hash_hl,
-    })
-
-    set_right_extmark(bufnr, i, win_width, min_time, max_time, blame_info.commit.author_time)
-
-    if not commit_lines[i] then
-      api.nvim_buf_set_extmark(bufnr, ns, i - 1, 2, {
-        end_row = i,
-        end_col = 0,
-        hl_group = 'Comment',
+  for i, line_highlights in ipairs(highlights) do
+    for _, hl in ipairs(line_highlights) do
+      api.nvim_buf_set_extmark(bufnr, ns, i - 1, hl.start_col, {
+        end_col = hl.end_col,
+        hl_group = hl.hl_group,
       })
     end
+  end
+
+  for i, blame_info in ipairs(entries) do
+    set_right_extmark(bufnr, i, win_width, min_time, max_time, blame_info.commit.author_time)
 
     if buf_sha == blame_info.commit.sha then
       hl_line(bufnr, ns, i, '@markup.italic')
     end
   end
 
-  return commit_lines
+  return commit_lines, commit_summaries
 end
 
 --- @async
@@ -281,7 +373,8 @@ end
 --- @param blm_win integer
 --- @param blame table<integer,Gitsigns.BlameInfo?>
 --- @param commit_lines table<integer,true>
-local function on_cursor_moved(bufnr, blm_win, blame, commit_lines)
+--- @param commit_summaries table<integer,boolean>
+local function on_cursor_moved(bufnr, blm_win, blame, commit_lines, commit_summaries)
   local blm_bufnr = api.nvim_get_current_buf()
   local lnum = api.nvim_win_get_cursor(blm_win)[1]
   local cur_sha = assert(blame[lnum]).commit.abbrev_sha
@@ -293,7 +386,7 @@ local function on_cursor_moved(bufnr, blm_win, blame, commit_lines)
     end
   end
 
-  if commit_lines[lnum] and commit_lines[lnum + 1] then
+  if commit_lines[lnum] and commit_lines[lnum + 1] and commit_summaries[lnum] ~= false then
     local blame_info = assert(blame[lnum])
     local hash_hl = get_hash_color(blame_info.commit.abbrev_sha)
     api.nvim_buf_set_extmark(blm_bufnr, ns_hl, lnum - 1, 0, {
@@ -403,7 +496,7 @@ function M.blame(opts)
   api.nvim_win_set_buf(blm_win, blm_bufnr)
   api.nvim_buf_set_name(blm_bufnr, (bcache:get_rev_bufname():gsub('^gitsigns:', 'gitsigns-blame:')))
 
-  local commit_lines = render(blame, blm_win, win, bcache.git_obj.revision)
+  local commit_lines, commit_summaries = render(blame, blm_win, win, bcache.git_obj.revision)
 
   local blm_bo = vim.bo[blm_bufnr]
   blm_bo.buftype = 'nofile'
@@ -525,7 +618,7 @@ function M.blame(opts)
     buffer = blm_bufnr,
     group = group,
     callback = function()
-      on_cursor_moved(bufnr, blm_win, blame.entries, commit_lines)
+      on_cursor_moved(bufnr, blm_win, blame.entries, commit_lines, commit_summaries)
     end,
   })
 
