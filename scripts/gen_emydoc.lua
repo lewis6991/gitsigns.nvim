@@ -1,5 +1,6 @@
 local script_info = debug.getinfo(1, 'S')
 --- @cast script_info -?
+local script_dir = vim.fn.fnamemodify(script_info.source:sub(2), ':p:h')
 
 --- @alias EmmyDocLoc { file: string, line: integer }
 --- @alias EmmyDocTag { tag_name: string, content: string }
@@ -51,7 +52,7 @@ local script_info = debug.getinfo(1, 'S')
 --- @field strip_optional fun(typ: string): string, boolean
 
 local M = {
-  root = vim.fn.fnamemodify(script_info.source:sub(2), ':p:h'),
+  root = vim.fn.fnamemodify(script_dir, ':h'),
 }
 
 --- @return EmmyDocJson
