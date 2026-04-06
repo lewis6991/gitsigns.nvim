@@ -352,6 +352,16 @@ function M.cleanup()
   local_delete(M.scratch)
 end
 
+function M.cleanup_scratch_root()
+  M.cleanup()
+
+  if not local_exists(scratch_root) then
+    return
+  end
+
+  local_delete(scratch_root)
+end
+
 --- Starts a new global Nvim session and allocates an isolated scratch repo.
 --- @param init_lua_path? string
 function M.clear(init_lua_path)

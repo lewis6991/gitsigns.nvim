@@ -41,6 +41,7 @@ FILTER ?= .*
 .PHONY: test
 test: nvim-test
 	$(NVIM_TEST)/bin/nvim-test test \
+		--helper=$(PWD)/test/preload.lua \
 		--lpath=$(PWD)/lua/?.lua \
 		--verbose \
 		--filter="$(FILTER)"
