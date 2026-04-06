@@ -12,6 +12,7 @@ local gs_helpers = require('test.gs_helpers')
 
 return function(busted, _helper, options)
   helpers.options = options
+  gs_helpers.pending = busted.pending
 
   busted.subscribe({ 'suite', 'start' }, function()
     gs_helpers.cleanup_scratch_root()

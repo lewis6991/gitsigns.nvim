@@ -53,50 +53,48 @@ describe('git', function()
       local async = require('gitsigns.async')
       local Obj = require('gitsigns.git').Obj
       local Repo = require('gitsigns.git.repo')
-      local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
-      local sleep = async.wrap(2, function(timeout, cb)
-        local timer = assert(uv.new_timer())
-        timer:start(timeout, 0, cb)
-        return timer
-      end)
-
-      _G._git_lock_events = {}
-
-      local repo = setmetatable({
-        _lock = async.semaphore(1),
-      }, { __index = Repo })
-
-      local obj_a = setmetatable({ repo = repo }, { __index = Obj })
-      local obj_b = setmetatable({ repo = repo }, { __index = Obj })
-
-      async
+      return async
         .run(function()
-          obj_a:lock(function()
-            _G._git_lock_events[#_G._git_lock_events + 1] = 'a_enter'
-            sleep(200)
-            _G._git_lock_events[#_G._git_lock_events + 1] = 'a_exit'
+          local entered = async.event()
+          local release = async.event()
+          local events = {} --- @type string[]
+
+          local repo = setmetatable({
+            _lock = async.semaphore(1),
+          }, { __index = Repo })
+
+          local obj_a = setmetatable({ repo = repo }, { __index = Obj })
+          local obj_b = setmetatable({ repo = repo }, { __index = Obj })
+
+          local task_a = async.run(function()
+            obj_a:lock(function()
+              events[#events + 1] = 'a_enter'
+              entered:set()
+              release:wait()
+              events[#events + 1] = 'a_exit'
+            end)
           end)
-        end)
-        :raise_on_error()
 
-      async
-        .run(function()
-          obj_b:lock(function()
-            _G._git_lock_events[#_G._git_lock_events + 1] = 'b_enter'
-            sleep(10)
-            _G._git_lock_events[#_G._git_lock_events + 1] = 'b_exit'
+          local task_b = async.run(function()
+            entered:wait()
+            obj_b:lock(function()
+              events[#events + 1] = 'b_enter'
+              events[#events + 1] = 'b_exit'
+            end)
           end)
+
+          entered:wait()
+          release:set()
+
+          async.await(task_a)
+          async.await(task_b)
+
+          return {
+            events = events,
+          }
         end)
-        :raise_on_error()
-
-      vim.wait(1000, function()
-        return #_G._git_lock_events == 4
-      end, 10, true)
-
-      return {
-        events = _G._git_lock_events,
-      }
+        :wait(5000)
     end)
 
     eq({ 'a_enter', 'a_exit', 'b_enter', 'b_exit' }, result.events)

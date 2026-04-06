@@ -1,17 +1,11 @@
 local helpers = require('test.gs_helpers')
 
 local clear = helpers.clear
+local contains_hl = helpers.contains_hl
 local eq = helpers.eq
 local exec_lua = helpers.exec_lua
 
 helpers.env()
-
-local function contains_hl(hl, group)
-  if type(hl) == 'table' then
-    return vim.tbl_contains(hl, group)
-  end
-  return hl == group
-end
 
 local function virt_hl_at_col(vline, col)
   local byte_col = 0
