@@ -480,6 +480,27 @@ function M.expectf(cond, interval)
   cond()
 end
 
+--- @return boolean
+function M.supports_source_hls()
+  return M.fn.has('nvim-0.12') == 1
+end
+
+function M.require_source_hls()
+  if not M.supports_source_hls() then
+    M.pending('requires Neovim 0.12+')
+  end
+end
+
+--- @param hl string|string[]?
+--- @param group string
+--- @return boolean
+function M.contains_hl(hl, group)
+  if type(hl) == 'table' then
+    return vim.tbl_contains(hl, group)
+  end
+  return hl == group
+end
+
 --- @param range [integer, integer]?
 function M.stage_hunk(range)
   M.exec_lua(function(range0)
@@ -500,9 +521,79 @@ function M.stage_hunk(range)
   end, range == nil and vim.NIL or range)
 end
 
+function M.reset_buffer_index()
+  M.exec_lua(function()
+    local async = require('gitsigns.async')
+    async
+      .run(function()
+        local err = async.await(1, require('gitsigns').reset_buffer_index)
+        assert(not err, err)
+      end)
+      :wait(5000)
+  end)
+end
+
 --- @param path string
 function M.edit(path)
   helpers.api.nvim_command('edit! ' .. M.fn.fnameescape(path))
+end
+
+--- Run a command and wait for the buffer's next GitSignsUpdate event.
+--- @param cmd string
+--- @param bufnr? integer
+function M.command_wait_gitsigns_update(cmd, bufnr)
+  M.exec_lua(function(cmd0, bufnr0)
+    local async = require('gitsigns.async')
+    local target_bufnr = bufnr0 == vim.NIL and vim.api.nvim_get_current_buf() or bufnr0
+
+    async
+      .run(function()
+        local event = async.event()
+        local group = vim.api.nvim_create_augroup('gitsigns_test_wait_update', { clear = true })
+        local autocmd --- @type integer
+
+        autocmd = vim.api.nvim_create_autocmd('User', {
+          group = group,
+          pattern = 'GitSignsUpdate',
+          callback = function(args)
+            if args.data and args.data.buffer == target_bufnr then
+              pcall(vim.api.nvim_del_autocmd, autocmd)
+              event:set()
+            end
+          end,
+        })
+
+        local ok, err = pcall(vim.cmd, cmd0)
+        if not ok then
+          pcall(vim.api.nvim_del_augroup_by_id, group)
+          error(err)
+        end
+
+        event:wait()
+        pcall(vim.api.nvim_del_augroup_by_id, group)
+      end)
+      :wait(5000)
+  end, cmd, bufnr == nil and vim.NIL or bufnr)
+end
+
+--- @param bufnr? integer
+function M.wait_for_attach(bufnr)
+  M.expectf(function()
+    return M.exec_lua(function(bufnr0)
+      if bufnr0 == vim.NIL then
+        bufnr0 = 0
+      end
+      local cache = require('gitsigns.cache').cache[bufnr0]
+      return cache ~= nil
+        and cache.git_obj ~= nil
+        and cache.hunks ~= nil
+        and vim.b[bufnr0].gitsigns_status_dict.gitdir ~= nil
+    end, bufnr == nil and vim.NIL or bufnr)
+  end)
+
+  M.match_debug_messages({
+    ('attach.attach(%d): attach complete'):format(bufnr or M.api.nvim_get_current_buf()),
+  })
 end
 
 --- @param path string
@@ -637,6 +728,26 @@ function M.setup_path()
   exec_lua(function(path)
     package.path = path
   end, package.path)
+end
+
+--- @param group_name? string
+function M.enable_lua_treesitter_on_filetype(group_name)
+  exec_lua(function(group_name0)
+    vim.api.nvim_create_autocmd('FileType', {
+      group = vim.api.nvim_create_augroup(group_name0, { clear = true }),
+      pattern = 'lua',
+      callback = function(args)
+        pcall(vim.treesitter.start, args.buf, 'lua')
+        local ok, parser = pcall(vim.treesitter.get_parser, args.buf, 'lua')
+        if ok and parser then
+          pcall(parser.parse, parser, true)
+        end
+      end,
+    })
+
+    vim.cmd('syntax on')
+    vim.bo.filetype = 'lua'
+  end, group_name or 'gitsigns_test_lua_treesitter')
 end
 
 --- @param config? table

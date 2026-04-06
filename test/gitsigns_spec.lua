@@ -6,6 +6,7 @@ local check = helpers.check
 local cleanup = helpers.cleanup
 local clear = helpers.clear
 local command = api.nvim_command
+local command_wait_gitsigns_update = helpers.command_wait_gitsigns_update
 local edit = helpers.edit
 local eq = helpers.eq
 local eq_path = helpers.eq_path
@@ -24,6 +25,7 @@ local setup_gitsigns = helpers.setup_gitsigns
 local setup_test_repo = helpers.setup_test_repo
 local split = vim.split
 local test_config = helpers.test_config
+local wait_for_attach = helpers.wait_for_attach
 local write_to_file = helpers.write_to_file
 local fn = helpers.fn
 local newfile --- @type string
@@ -36,18 +38,6 @@ local function refresh_paths()
   newfile = helpers.newfile
   scratch = helpers.scratch
   test_file = helpers.test_file
-end
-
----@param bufnr? integer
-local function wait_for_attach(bufnr)
-  expectf(function()
-    return exec_lua(function(bufnr0)
-      return vim.b[bufnr0 or 0].gitsigns_status_dict.gitdir ~= nil
-    end, bufnr)
-  end)
-  match_debug_messages({
-    ('attach.attach(1): attach complete'):format(bufnr or api.nvim_get_current_buf()),
-  })
 end
 
 local revparse_pat = ('system.system: git .* rev-parse --show-toplevel --absolute-git-dir --abbrev-ref HEAD'):gsub(
@@ -510,15 +500,10 @@ describe('gitsigns (with screen)', function()
       feed('gg')
       check({ signs = {} })
 
-      eq(
-        true,
-        exec_lua(function()
-          return vim.wait(5000, function()
-            local line = vim.b.gitsigns_blame_line
-            return line ~= nil and line ~= 'not virt_text' and line:match('^ You, ') ~= nil
-          end)
-        end)
-      )
+      expectf(function()
+        local line = exec_lua('return vim.b.gitsigns_blame_line')
+        return line ~= nil and line ~= 'not virt_text' and line:match('^ You, ') ~= nil
+      end)
     end)
   end)
 
@@ -1253,8 +1238,13 @@ describe('gitsigns (with screen)', function()
     f:write('a') -- Write without trailing newline
     f:close()
 
-    command('checktime')
-    helpers.sleep(50)
+    command_wait_gitsigns_update('checktime')
+    expectf(function()
+      local hunk = exec_lua(function()
+        return require('gitsigns').get_hunks()[1]
+      end)
+      return hunk and (hunk.added.no_nl_at_eof or hunk.removed.no_nl_at_eof)
+    end)
     feed('mhp')
     screen:expect({ any = [[\ No newline at end of file]] })
   end)
@@ -1309,8 +1299,15 @@ describe('gitsigns attach', function()
     config.base = 'HEAD'
     setup_gitsigns(config)
     edit(path1)
+    wait_for_attach()
     command('write')
-    helpers.sleep(100)
+    expectf(function()
+      return exec_lua(function()
+        local bufnr = vim.api.nvim_get_current_buf()
+        local cache = require('gitsigns.cache').cache[bufnr]
+        return cache ~= nil and cache.git_obj.file == vim.api.nvim_buf_get_name(bufnr)
+      end)
+    end)
   end)
 
   it('does not error on non-file fugitive buffers (#1277)', function()
@@ -1404,7 +1401,19 @@ describe('gitsigns attach', function()
     wait_for_attach()
 
     command('Gitsigns show')
-    wait_for_attach()
+
+    local show_bufnr --- @type integer?
+    expectf(function()
+      show_bufnr = exec_lua(function()
+        local bufnr = vim.api.nvim_get_current_buf()
+        if not vim.api.nvim_buf_get_name(bufnr):match('^gitsigns://') then
+          return
+        end
+        return bufnr
+      end)
+      return show_bufnr ~= nil
+    end)
+    wait_for_attach(show_bufnr)
 
     local gfile, toplevel, gitdir, abbrev_head = exec_lua(function()
       local git_obj = assert(require('gitsigns.cache').cache[1]).git_obj

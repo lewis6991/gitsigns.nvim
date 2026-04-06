@@ -1,27 +1,27 @@
 local helpers = require('test.gs_helpers')
 
-local setup_gitsigns = helpers.setup_gitsigns
-local feed = helpers.feed
-local edit = helpers.edit
-local check = helpers.check
-local exec_lua = helpers.exec_lua
 local api = helpers.api
-local test_config = helpers.test_config
+local check = helpers.check
 local clear = helpers.clear
-local setup_test_repo = helpers.setup_test_repo
+local command = api.nvim_command
+local command_wait_gitsigns_update = helpers.command_wait_gitsigns_update
+local edit = helpers.edit
 local eq = helpers.eq
+local exec_lua = helpers.exec_lua
+local feed = helpers.feed
 local expectf = helpers.expectf
 local git = helpers.git
+local reset_buffer_index = helpers.reset_buffer_index
+local setup_gitsigns = helpers.setup_gitsigns
+local setup_test_repo = helpers.setup_test_repo
+local stage_hunk = helpers.stage_hunk
+local test_config = helpers.test_config
+local wait_for_attach = helpers.wait_for_attach
 local write_to_file = helpers.write_to_file
 local scratch --- @type string
 local test_file --- @type string
 
 helpers.env()
-
-local function refresh_paths()
-  scratch = helpers.scratch
-  test_file = helpers.test_file
-end
 
 --- @param exp_hunks string[]
 local function expect_hunks(exp_hunks)
@@ -56,46 +56,10 @@ local function expect_hunks(exp_hunks)
   end)
 end
 
-local delay = 1
-
---- @param cmd string
-local function command(cmd)
-  api.nvim_command(cmd)
-
-  -- Flaky tests, add a large delay between commands.
-  -- Flakiness is due to actions being async and problems occur when an action
-  -- is run while another action or update is running.
-  -- Must wait for actions and updates to finish.
-  if delay > 0 then
-    helpers.sleep(delay)
-  end
-end
-
 local function complete(arglead, line)
   return exec_lua(function(arglead0, line0)
     return require('gitsigns.cli').complete(arglead0, line0)
   end, arglead, line)
-end
-
-local function retry(f)
-  local orig_delay = delay
-  local ok, err --- @type boolean, string?
-
-  for _ = 1, 20 do
-    --- @type boolean, string?
-    ok, err = pcall(f)
-    if ok then
-      delay = orig_delay
-      return
-    end
-    delay = math.ceil(delay * 1.6)
-    print('failed, retrying with delay', delay)
-  end
-
-  delay = orig_delay
-  if err then
-    error(err)
-  end
 end
 
 --- @param start integer
@@ -105,49 +69,11 @@ local function set_lines(start, dend, lines)
   api.nvim_buf_set_lines(0, start, dend, false, lines)
 end
 
---- @param range [integer, integer]?
-local function stage_hunk(range)
-  exec_lua(function(range0)
-    local async = require('gitsigns.async')
-
-    if range0 == vim.NIL then
-      range0 = nil
-    end
-
-    async
-      .run(function()
-        local err = async.await(1, function(cb)
-          require('gitsigns').stage_hunk(range0, nil, cb)
-        end)
-        assert(not err, err)
-      end)
-      :wait(1000)
-  end, range == nil and vim.NIL or range)
-end
-
-local function reset_buffer_index()
-  exec_lua(function()
-    local async = require('gitsigns.async')
-    async
-      .run(function()
-        local err = async.await(1, require('gitsigns').reset_buffer_index)
-        assert(not err, err)
-      end)
-      :wait(1000)
-  end)
-end
-
 describe('actions', function()
-  local orig_it = it
-  local function it(desc, f)
-    orig_it(desc, function()
-      retry(f)
-    end)
-  end
-
   before_each(function()
     clear()
-    refresh_paths()
+    scratch = helpers.scratch
+    test_file = helpers.test_file
     helpers.chdir_tmp()
     setup_gitsigns(test_config)
   end)
@@ -162,25 +88,25 @@ describe('actions', function()
       signs = { changed = 1 },
     })
 
-    command('Gitsigns stage_hunk')
+    command_wait_gitsigns_update('Gitsigns stage_hunk')
     check({
       status = { head = 'main', added = 0, changed = 0, removed = 0 },
       signs = {},
     })
 
-    command('Gitsigns undo_stage_hunk')
+    command_wait_gitsigns_update('Gitsigns undo_stage_hunk')
     check({
       status = { head = 'main', added = 0, changed = 1, removed = 0 },
       signs = { changed = 1 },
     })
 
-    command('Gitsigns stage_hunk')
+    command_wait_gitsigns_update('Gitsigns stage_hunk')
     check({
       status = { head = 'main', added = 0, changed = 0, removed = 0 },
       signs = {},
     })
 
-    command('Gitsigns stage_hunk')
+    command_wait_gitsigns_update('Gitsigns stage_hunk')
     check({
       status = { head = 'main', added = 0, changed = 1, removed = 0 },
       signs = { changed = 1 },
@@ -194,19 +120,19 @@ describe('actions', function()
       signs = { changed = 2 },
     })
 
-    command('Gitsigns stage_buffer')
+    command_wait_gitsigns_update('Gitsigns stage_buffer')
     check({
       status = { head = 'main', added = 0, changed = 0, removed = 0 },
       signs = {},
     })
 
-    command('Gitsigns reset_buffer_index')
+    command_wait_gitsigns_update('Gitsigns reset_buffer_index')
     check({
       status = { head = 'main', added = 0, changed = 2, removed = 0 },
       signs = { changed = 2 },
     })
 
-    command('Gitsigns reset_hunk')
+    command_wait_gitsigns_update('Gitsigns reset_hunk')
     check({
       status = { head = 'main', added = 0, changed = 1, removed = 0 },
       signs = { changed = 1 },
@@ -454,7 +380,7 @@ describe('actions', function()
       })
     end)
 
-    command('Gitsigns stage_hunk')
+    command_wait_gitsigns_update('Gitsigns stage_hunk')
     check({
       status = { head = 'main', added = 0, changed = 0, removed = 0 },
       signs = {},
@@ -480,9 +406,9 @@ describe('actions', function()
     expect_hunks({ '@@ -1 +2,2 @@' })
 
     api.nvim_win_set_cursor(0, { 2, 0 })
-    command('Gitsigns stage_hunk')
+    command_wait_gitsigns_update('Gitsigns stage_hunk')
 
-    command('Gitsigns undo_stage_hunk')
+    command_wait_gitsigns_update('Gitsigns undo_stage_hunk')
     expect_hunks({ '@@ -1 +2,2 @@' })
   end)
 
@@ -617,7 +543,7 @@ describe('actions', function()
     describe('can stage modified-remove hunks', function()
       before_each(function()
         set_lines(2, 7, { 'c1', 'c2', 'c3' })
-        command('write')
+        command_wait_gitsigns_update('write')
         expect_hunks({ '@@ -3,5 +3,3 @@' })
       end)
 
@@ -808,7 +734,7 @@ describe('actions', function()
     check({ status = { head = 'main', added = 0, changed = 0, removed = 0 } })
     feed('x')
     check({ status = { head = 'main', added = 0, changed = 1, removed = 0 } })
-    command('Gitsigns stage_hunk')
+    command_wait_gitsigns_update('Gitsigns stage_hunk')
     check({ status = { head = 'main', added = 0, changed = 0, removed = 0 } })
   end)
 
@@ -824,11 +750,7 @@ describe('actions', function()
 
     edit(file)
 
-    expectf(function()
-      return exec_lua(function()
-        return vim.b.gitsigns_status_dict.gitdir ~= nil
-      end)
-    end)
+    wait_for_attach()
 
     set_lines(0, 1, { 'changed' })
 

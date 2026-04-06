@@ -4,12 +4,9 @@ local clear = helpers.clear
 local eq = helpers.eq
 local exec_lua = helpers.exec_lua
 local setup_path = helpers.setup_path
+local supports_source_hls = helpers.supports_source_hls
 
 helpers.env()
-
-local function source_hls_supported()
-  return helpers.fn.has('nvim-0.12') == 1
-end
 
 describe('render capture', function()
   before_each(function()
@@ -45,7 +42,7 @@ describe('render capture', function()
 
     eq('abcdef', text)
 
-    if not source_hls_supported() then
+    if not supports_source_hls() then
       eq(0, #layers)
       eq({}, stack)
       return
@@ -89,7 +86,7 @@ describe('render capture', function()
       return line.layers, Capture.hl_stack_at(line, 2)
     end)
 
-    if not source_hls_supported() then
+    if not supports_source_hls() then
       eq(0, #layers)
       eq({}, stack)
       return
