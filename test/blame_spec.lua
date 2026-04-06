@@ -71,6 +71,7 @@ local function get_blame_panel_state()
     local ns = assert(vim.api.nvim_get_namespaces().gitsigns_blame_win)
     local marks = vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, { details = true })
     local row_hls = {} --- @type table<integer, string[]>
+    local line_widths = {} --- @type integer[]
 
     for _, mark in ipairs(marks) do
       local row = mark[2] + 1
@@ -81,10 +82,16 @@ local function get_blame_panel_state()
       end
     end
 
+    for i, line in ipairs(lines) do
+      line_widths[i] = vim.fn.strdisplaywidth(line)
+    end
+
     return {
       date = os.date('%Y-%m-%d'),
+      line_widths = line_widths,
       lines = lines,
       row_hls = row_hls,
+      win_width = vim.api.nvim_win_get_width(0),
       year = os.date('%Y'),
     }
   end)
@@ -208,6 +215,35 @@ describe('blame', function()
     eq('┕', result.lines[2])
     eq(true, has_hl_match(result.row_hls, 1, '^GitSignsBlameColor%.'))
     eq(false, has_hl(result.row_hls, 2, 'Comment'))
+  end)
+
+  it('does not let repeated summary lines widen the side panel', function()
+    setup_gitsigns(test_config)
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    local summary = table.concat({
+      'this is a deliberately long commit summary',
+      'that should not widen the blame side panel',
+    }, ' ')
+
+    helpers.write_to_file(test_file, { 'ONE', 'TWO' })
+    helpers.git('add', test_file)
+    helpers.git('commit', '-m', summary)
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    open_blame_panel()
+
+    local result = get_blame_panel_state()
+
+    eq(true, result.line_widths[2] > result.line_widths[1])
+    eq(result.line_widths[1] + 1, result.win_width)
   end)
 
   it('supports function side-panel formatters with highlights', function()

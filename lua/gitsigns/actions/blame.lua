@@ -203,11 +203,13 @@ local function render(blame, win, main_win, buf_sha)
     local next_sha = entries[i + 1] and entries[i + 1].commit.abbrev_sha or nil
     local hash_hl = get_hash_color(sha)
     local line_chunks --- @type Gitsigns.BlameFmtChunk[]
+    local summary_line = false
 
     if sha == last_sha then
       cnt = cnt + 1
       local graph = sha == next_sha and chars.mid or chars.last
       if cnt == 1 and show_summary then
+        summary_line = true
         line_chunks = {
           { graph, hash_hl },
           { ' ' },
@@ -234,7 +236,9 @@ local function render(blame, win, main_win, buf_sha)
     local line, line_highlights, line_width = BlameFormatter.render_line(line_chunks)
     lines[i] = line
     highlights[i] = line_highlights
-    win_width = math.max(win_width, line_width)
+    if not summary_line then
+      win_width = math.max(win_width, line_width)
+    end
     last_sha = sha
   end
 
