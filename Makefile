@@ -92,7 +92,7 @@ stylua: $(STYLUA)
 $(STYLUA): $(STYLUA_ZIP)
 	unzip $< -d $(dir $@)
 
-LUA_FILES := $(shell git ls-files lua test)
+LUA_FILES := $(shell git ls-files lua test scripts)
 
 .PHONY: format-check
 format-check: $(STYLUA)
@@ -185,7 +185,7 @@ emmylua-check: $(EMMYLUA_BIN) $(NVIM_TEST_RUNTIME)
 		$(EMMYLUA_BIN) . \
 		--ignore 'scratch/**/*' \
 		--ignore 'test/**/*' \
-		--ignore gen_help.lua
+		--ignore scripts/gen_help.lua
 
 ################################################################################
 # Docs
@@ -196,8 +196,8 @@ emmylua-check: $(EMMYLUA_BIN) $(NVIM_TEST_RUNTIME)
 doc: $(NVIM_TEST) $(NVIM_TEST_RUNTIME) $(EMMYLUADOC_BIN) $(STYLUA)
 	VIMRUNTIME=$(NVIM_TEST_RUNTIME) \
 		$(EMMYLUADOC_BIN) lua --output emydoc --output-format json
-	$(NVIM) -l ./gen_help.lua
-	$(NVIM) -l ./gen_completion.lua
+	$(NVIM) -l ./scripts/gen_help.lua
+	$(NVIM) -l ./scripts/gen_completion.lua
 	$(STYLUA) lua/gitsigns/cli/completion/generated.lua
 	@echo Updated help and completion metadata
 

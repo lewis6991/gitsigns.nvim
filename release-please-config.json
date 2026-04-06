@@ -6,7 +6,7 @@
   "packages": {
     ".": {
       "extra-files": [
-        "gen_help.lua"
+        "scripts/gen_help.lua"
       ]
     }
   }
