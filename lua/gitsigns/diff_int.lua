@@ -123,6 +123,18 @@ end
 
 local gaps_between_regions = 5
 
+--- @param line string
+--- @return string
+local function split_word_diff_line(line)
+  if line == '' then
+    return ''
+  end
+
+  -- Keep a trailing separator so vim.diff can anchor edits after the final
+  -- character instead of widening them into a change at EOF.
+  return table.concat(vim.split(line, ''), '\n') .. '\n'
+end
+
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @return Gitsigns.Hunk.Hunk[]
 local function denoise_hunks(hunks)
@@ -165,8 +177,8 @@ function M.run_word_diff(removed, added)
     local add = added[i] --- @cast add -?
 
     -- pair lines by position
-    local a = table.concat(vim.split(rmd, ''), '\n')
-    local b = table.concat(vim.split(add, ''), '\n')
+    local a = split_word_diff_line(rmd)
+    local b = split_word_diff_line(add)
 
     local hunks = {} --- @type Gitsigns.Hunk.Hunk[]
     for _, r in ipairs(run_diff(a, b, config.diff_opts)) do

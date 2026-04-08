@@ -136,6 +136,28 @@ describe('word diff', function()
     eq({ { 1, 'change', 9, 10 } }, rems)
     eq({ { 1, 'change', 9, 10 } }, adds)
   end)
+
+  it('anchors additions after the last character', function()
+    local rems, adds = exec_lua(function()
+      local diff = require('gitsigns.diff_int')
+      local removed = { 'foo)' }
+      local added = { 'foo)+' }
+      return diff.run_word_diff(removed, added)
+    end)
+    eq({ { 1, 'add', 5, 5 } }, rems)
+    eq({ { 1, 'add', 5, 6 } }, adds)
+  end)
+
+  it('anchors deletions at the last character', function()
+    local rems, adds = exec_lua(function()
+      local diff = require('gitsigns.diff_int')
+      local removed = { 'foo)' }
+      local added = { 'foo' }
+      return diff.run_word_diff(removed, added)
+    end)
+    eq({ { 1, 'delete', 4, 5 } }, rems)
+    eq({ { 1, 'delete', 4, 4 } }, adds)
+  end)
 end)
 
 describe('inline preview', function()
