@@ -1,5 +1,36 @@
 # Changelog
 
+## [2.2.0](https://github.com/lewis6991/gitsigns.nvim/compare/v2.1.0...v2.2.0) (2026-04-08)
+
+
+### Features
+
+* **blame:** add configurable side-panel formatting ([4e34ff2](https://github.com/lewis6991/gitsigns.nvim/commit/4e34ff26875b92167d47038bd83a11026d57dcd8)), closes [#1525](https://github.com/lewis6991/gitsigns.nvim/issues/1525)
+* **cli:** generate action completions from EmmyLua types ([04d1ee7](https://github.com/lewis6991/gitsigns.nvim/commit/04d1ee794266fe93f7a7ef064865cff625f50059))
+* **render:** inspect rendered buffers for hunk previews ([07ff073](https://github.com/lewis6991/gitsigns.nvim/commit/07ff073b84d3ef48f286529c36658a65d1a64707))
+
+
+### Bug Fixes
+
+* **actions:** repair show_commit history ([fca7a4b](https://github.com/lewis6991/gitsigns.nvim/commit/fca7a4b869ac88df835746235ed3137c5c7de168))
+* **attach:** add attach opts and force manual attaches ([4ed47e8](https://github.com/lewis6991/gitsigns.nvim/commit/4ed47e8c4c66c921dc1d6643977e0526e1f44396))
+* **blame:** ignore summary rows when sizing panel ([5433b29](https://github.com/lewis6991/gitsigns.nvim/commit/5433b291b015f2c37f909dacf0c5a92fdc389486))
+* **ci:** use release-please PR outputs for update-doc ([1dec70b](https://github.com/lewis6991/gitsigns.nvim/commit/1dec70b3fda9a534ed45f45663e20e7eaa5ff67d))
+* **cli:** support repeatable flags and abbreviations ([f2ce545](https://github.com/lewis6991/gitsigns.nvim/commit/f2ce545601fdeb755e91470b25a55705639586a4))
+* **diff:** avoid false EOF hunk markers ([9a64d19](https://github.com/lewis6991/gitsigns.nvim/commit/9a64d19cd4ab7f32c1bc73290e6c04c030ddf510))
+* **git:** handle redirected .git worktrees ([db486b4](https://github.com/lewis6991/gitsigns.nvim/commit/db486b42299b2e3f5831809617af21becf268a39)), closes [#1513](https://github.com/lewis6991/gitsigns.nvim/issues/1513)
+* **git:** normalize command output ([8a796a4](https://github.com/lewis6991/gitsigns.nvim/commit/8a796a440fde3eeed3f33aecce9dab863b2be218))
+* **hunks:** apply zero-count hunks at insert point ([21018b0](https://github.com/lewis6991/gitsigns.nvim/commit/21018b06ff174053383d94b3549c09d2dbca7fac))
+* **nav:** handle EOF delete hunks ([4bafeca](https://github.com/lewis6991/gitsigns.nvim/commit/4bafeca9bc9ce5b3b4b953ec8ca85ddeac25ed29)), closes [#1536](https://github.com/lewis6991/gitsigns.nvim/issues/1536)
+* **qflist:** include tracked deletions in all list ([e5c4b72](https://github.com/lewis6991/gitsigns.nvim/commit/e5c4b729df160e89b0979d7577a53394a55c6d07))
+* **qflist:** tolerate nil attached hunks ([720c6fc](https://github.com/lewis6991/gitsigns.nvim/commit/720c6fcb6a258836d82795176b8820508cf57cc2))
+* **stage:** keep add hunks undoable ([909f154](https://github.com/lewis6991/gitsigns.nvim/commit/909f154b4b14f2b17d02868a6a7972e66a28ba90))
+* **statuscolumn:** render signs in live statuscolumn ([944ef13](https://github.com/lewis6991/gitsigns.nvim/commit/944ef13cc8d8fe8b846c91f36041c8dfb85ca000))
+* **uv:** do rely on gc to cleanup handles ([c5480c0](https://github.com/lewis6991/gitsigns.nvim/commit/c5480c0d5dce743396bf674b6e5dafb0ff80c3f5))
+* **watcher:** fall back to fs_poll on fs_event failure ([1189caf](https://github.com/lewis6991/gitsigns.nvim/commit/1189cafb1b747f9c915e23e93886a2d7109ca17b))
+* **watcher:** preserve alternate buffers on rename ([733b0f6](https://github.com/lewis6991/gitsigns.nvim/commit/733b0f608dee36a6488d5aa2c6c25510469a17c8))
+* **word-diff:** anchor EOF edits ([8d82c24](https://github.com/lewis6991/gitsigns.nvim/commit/8d82c240f190fc33723d48c308ccc1ed8baad69d)), closes [#1508](https://github.com/lewis6991/gitsigns.nvim/issues/1508)
+
 ## [2.1.0](https://github.com/lewis6991/gitsigns.nvim/compare/v2.0.0...v2.1.0) (2026-03-26)
 
 
