@@ -14,6 +14,7 @@ local ns_removed = api.nvim_create_namespace('gitsigns_removed')
 local VIRT_LINE_LEN = 300
 local REMOVED_VIRT_LINE_HL = 'GitSignsDeleteVirtLn'
 local REMOVED_INLINE_HL = 'GitSignsDeleteVirtLnInLine'
+local VIRT_LINES_OVERFLOW = vim.fn.has('nvim-0.11') == 1 and 'scroll' or nil
 local win_ns = {} --- @type table<integer, {ns: integer, bufnr?: integer}>
 local states = {} --- @type table<integer, {hunks: Gitsigns.Hunk.Hunk[], lines: table<Gitsigns.Hunk.Hunk, Gitsigns.CapturedLine[]>, source_bufs: table<string, Gitsigns.HunkPreview.SourceBuf>, pending?: table<Gitsigns.Hunk.Hunk, true>, scheduled?: boolean}>
 
@@ -277,6 +278,7 @@ local function render_global_previews(bufnr, hunks, captured)
       priority = 1000,
       virt_lines = render_virt_lines(assert(captured[i]), hunk.removed.start),
       virt_lines_above = above,
+      virt_lines_overflow = VIRT_LINES_OVERFLOW,
     })
   end
 end
@@ -354,6 +356,7 @@ function M.place_inline_preview_lines(bufnr, ns, hunk, staged, opts)
     virt_lines = build_virt_lines(bufnr, hunk, staged, opts),
     virt_lines_above = above,
     virt_lines_leftcol = opts.leftcol == true,
+    virt_lines_overflow = VIRT_LINES_OVERFLOW,
   })
 end
 
@@ -489,6 +492,7 @@ function M.on_win(winid, bufnr, topline, botline)
       }),
       virt_lines_above = entry.above,
       virt_lines_leftcol = true,
+      virt_lines_overflow = VIRT_LINES_OVERFLOW,
     })
   end
 
