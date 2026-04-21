@@ -31,7 +31,7 @@ local function redraw_statuscol(bufnr, top, bot)
   if statuscolumn_active then
     api.nvim__redraw({
       buf = bufnr,
-      range = { top, bot },
+      range = (top and bot) and { top, bot } or nil,
       statuscolumn = true,
     })
   end
