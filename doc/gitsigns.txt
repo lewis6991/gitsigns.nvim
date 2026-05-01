@@ -1441,6 +1441,11 @@ GitSignsVirtLnum
     Used for line numbers in inline hunks previews.
 
     Fallbacks: `GitSignsDeleteVirtLn`
+                                                        *hl-GitSignsColorTemp*
+GitSignsColorTemp
+    Heatmap color: fg = hot (newer changes), bg = cold (older changes)
+
+    Fallbacks: `Normal`
 
 ==============================================================================
 COMMAND                                                      *gitsigns-command*

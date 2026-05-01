@@ -62,16 +62,4 @@ function M.blend(color1, color2, alpha)
   }
 end
 
-local temp_color_stops = {
-  { 0, 0, 255 }, -- Blue
-  { 255, 0, 0 }, -- Red
-  { 255, 255, 0 }, -- Yellow
-}
-
---- @param value number 0-1
---- @return [integer, integer, integer]
-function M.temp(value)
-  return M.gradient(temp_color_stops, value)
-end
-
 return M
