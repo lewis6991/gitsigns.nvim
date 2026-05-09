@@ -245,7 +245,15 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
     return
   end
 
-  if vim.startswith(vim.fn.fnamemodify(file, ':p'), vim.fn.fnamemodify(repo.gitdir, ':p')) then
+  local file_abs = vim.fn.fnamemodify(file, ':p')
+  local gitdir_abs = vim.fn.fnamemodify(repo.gitdir, ':p')
+  local toplevel_abs = vim.fn.fnamemodify(repo.toplevel, ':p')
+
+  local in_gitdir = vim.startswith(file_abs, gitdir_abs)
+  local in_toplevel = vim.startswith(file_abs, toplevel_abs)
+  local worktree_in_bare = vim.startswith(toplevel_abs, gitdir_abs)
+
+  if in_gitdir and not (worktree_in_bare and in_toplevel) then
     -- Normally this check would be caught (unintended) in the above
     -- block, as gitdir resolution will fail if `file` is inside a gitdir.
     -- If gitdir is explicitly passed (or set in the env with GIT_DIR)
