@@ -315,6 +315,38 @@ describe('git', function()
     eq_path(submodule_gitdir, result.info.gitdir)
   end)
 
+  for _, path in ipairs({ 'main', 'worktrees/main' }) do
+    it('stages changes in a worktree inside a bare repo at ' .. path .. ' (#1548)', function()
+      local source = scratch .. '/source'
+      local bare = scratch .. '/bare.git'
+      local linked = bare .. '/' .. path
+
+      init_repo(source)
+      write_to_file(source .. '/file.txt', { 'original' })
+      git_in(source, 'add', 'file.txt')
+      git_in(source, 'commit', '-m', 'initial commit')
+      system_ok({ 'git', 'clone', '--bare', source, bare }, 'failed to clone bare repo')
+      git_in(bare, 'config', 'core.fsmonitor', 'false')
+
+      -- worktrees/main is also where Git stores the linked worktree's metadata.
+      git_in(bare, 'worktree', 'add', linked, 'main')
+
+      helpers.setup_gitsigns(helpers.test_config)
+      helpers.edit(linked .. '/file.txt')
+      helpers.wait_for_attach()
+
+      helpers.api.nvim_buf_set_lines(0, 0, -1, false, { 'changed' })
+      helpers.check({ signs = { changed = 1 } })
+
+      helpers.stage_hunk({ 1, 1 })
+      eq('changed\n', fn.system({ 'git', '-C', linked, 'show', ':file.txt' }))
+
+      helpers.reset_buffer_index()
+      eq('original\n', fn.system({ 'git', '-C', linked, 'show', ':file.txt' }))
+      helpers.check({ signs = { changed = 1 } })
+    end)
+  end
+
   for _, relative in ipairs({ false, true }) do
     it(
       'attaches with only GIT_DIR (relative worktree links=' .. tostring(relative) .. ')',
