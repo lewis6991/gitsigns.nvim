@@ -264,6 +264,7 @@ function M.run_blame(obj, contents, lnum, revision, opts)
   local _, stderr = obj.repo:command(
     util.flatten({
       'blame',
+      '--no-textconv',
       '--incremental',
       contents and { '--contents', '-' },
       opts.ignore_whitespace and '-w' or nil,
