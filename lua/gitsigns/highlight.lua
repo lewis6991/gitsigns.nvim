@@ -309,14 +309,6 @@ function M.setup_highlights()
   end
 end
 
-function M.setup()
-  M.setup_highlights()
-  api.nvim_create_autocmd('ColorScheme', {
-    group = 'gitsigns',
-    callback = M.setup_highlights,
-  })
-end
-
 do --- temperature highlight
   local temp_colors = {} --- @type table<integer,string>
   local normal_bg --- @type [integer,integer,integer]?
@@ -357,6 +349,14 @@ do --- temperature highlight
     temp_colors[color] = hl_name
     return hl_name
   end
+end
+
+do -- Module-level activation
+  M.setup_highlights()
+  api.nvim_create_autocmd('ColorScheme', {
+    group = api.nvim_create_augroup('gitsigns.highlight', {}),
+    callback = M.setup_highlights,
+  })
 end
 
 return M

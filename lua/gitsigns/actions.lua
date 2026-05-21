@@ -1049,9 +1049,9 @@ end
 ---
 --- @param callback? fun(err?: string)
 function M.refresh(callback)
-  manager.reset_signs()
+  require('gitsigns.sign_renderer').reset()
   require('gitsigns.highlight').setup_highlights()
-  require('gitsigns.current_line_blame').setup()
+  require('gitsigns.current_line_blame').refresh()
   async_run(callback, function()
     for k, v in pairs(cache) do
       v:invalidate(true)

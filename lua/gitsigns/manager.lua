@@ -1,11 +1,8 @@
 local async = require('gitsigns.async')
 local log = require('gitsigns.debug.log')
-local DeletedPreview = require('gitsigns.deleted_preview')
 local util = require('gitsigns.util')
 local run_diff = require('gitsigns.diff')
 local Hunks = require('gitsigns.hunks')
-local Signs = require('gitsigns.signs')
-local Status = require('gitsigns.status')
 
 local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 local throttle_async = require('gitsigns.debounce').throttle_async
@@ -16,152 +13,82 @@ local config = Config.config
 
 local api = vim.api
 
-local signs_normal = Signs.new()
-local signs_staged = Signs.new(true)
-
 --- @class gitsigns.manager
 local M = {}
 
-local statuscolumn_active = false
+--- @class (exact) Gitsigns.ManagerUpdate
+--- @field bufnr                integer
+--- @field bcache               Gitsigns.CacheEntry
+--- @field hunks_changed        boolean
+--- @field hunks_staged_changed boolean
 
---- @param bufnr? integer
---- @param top? integer
---- @param bot? integer
-local function redraw_statuscol(bufnr, top, bot)
-  if statuscolumn_active then
-    api.nvim__redraw({
-      buf = bufnr,
-      range = (top and bot) and { top, bot } or nil,
-      statuscolumn = true,
-    })
-  end
+--- @class (exact) Gitsigns.ManagerLines
+--- @field bufnr     integer
+--- @field bcache    Gitsigns.CacheEntry
+--- @field first     integer
+--- @field last_orig integer
+--- @field last_new  integer
+
+--- @class (exact) Gitsigns.ManagerWin
+--- @field ns      integer
+--- @field winid   integer
+--- @field bufnr   integer
+--- @field topline integer
+--- @field botline integer
+--- @field bcache? Gitsigns.CacheEntry
+
+--- @class (exact) Gitsigns.ManagerLine
+--- @field ns      integer
+--- @field winid   integer
+--- @field bufnr   integer
+--- @field row     integer
+--- @field bcache? Gitsigns.CacheEntry
+
+--- @alias Gitsigns.ManagerUpdateCb fun(ctx: Gitsigns.ManagerUpdate)
+--- @alias Gitsigns.ManagerLinesCb fun(ctx: Gitsigns.ManagerLines)
+--- @alias Gitsigns.ManagerDetachCb fun(bufnr: integer, keep_signs?: boolean)
+--- Return true to request on_line callbacks for the window.
+--- @alias Gitsigns.ManagerWinCb fun(ctx: Gitsigns.ManagerWin): boolean?
+--- @alias Gitsigns.ManagerLineCb fun(ctx: Gitsigns.ManagerLine)
+
+--- @type Gitsigns.ManagerUpdateCb[]
+local update_callbacks = {}
+
+--- @type Gitsigns.ManagerLinesCb[]
+local lines_callbacks = {}
+
+--- @type Gitsigns.ManagerDetachCb[]
+local detach_callbacks = {}
+
+--- @type Gitsigns.ManagerWinCb[]
+local win_callbacks = {}
+
+--- @type Gitsigns.ManagerLineCb[]
+local line_callbacks = {}
+
+--- @param cb Gitsigns.ManagerUpdateCb
+function M.on_update(cb)
+  update_callbacks[#update_callbacks + 1] = cb
 end
 
---- @param bufnr? integer
---- @param lnum? integer
---- @return string
-function M.statuscolumn(bufnr, lnum)
-  if bufnr == nil or bufnr == 0 then
-    bufnr = api.nvim_get_current_buf()
-  end
-  lnum = lnum or vim.v.lnum
-  statuscolumn_active = true
-
-  if not config._statuscolumn then
-    config.signcolumn = false
-    config._statuscolumn = true
-  end
-
-  local res = {} --- @type string[]
-  local res_len = 0
-  for _, signs in ipairs({ signs_normal, signs_staged }) do
-    local buf_signs = signs.signs[bufnr]
-    if buf_signs and next(buf_signs) then
-      local marks = api.nvim_buf_get_extmarks(
-        bufnr,
-        signs.ns,
-        { lnum - 1, 0 },
-        { lnum - 1, -1 },
-        {}
-      )
-      for _, mark in ipairs(marks) do
-        local id = mark[1]
-        local s = buf_signs[id]
-        if s then
-          vim.list_extend(res, { '%#' .. s[2] .. '#', s[1], '%*' })
-          --- @diagnostic disable-next-line: missing-parameter
-          res_len = res_len + vim.str_utfindex(s[1])
-        end
-      end
-    end
-  end
-  local pad = math.max(0, 2 - res_len)
-  return table.concat(res) .. string.rep(' ', pad)
+--- @param cb Gitsigns.ManagerLinesCb
+function M.on_lines(cb)
+  lines_callbacks[#lines_callbacks + 1] = cb
 end
 
---- @param bufnr integer
---- @param signs Gitsigns.Signs
---- @param hunks? Gitsigns.Hunk.Hunk[]
---- @param top integer
---- @param bot integer
---- @param clear? boolean
---- @param untracked boolean
---- @param filter? fun(line: integer):boolean
-local function apply_win_signs0(bufnr, signs, hunks, top, bot, clear, untracked, filter)
-  if clear then
-    signs:remove(bufnr) -- Remove all signs
-  end
-
-  hunks = hunks or {}
-
-  for i, hunk in ipairs(hunks) do
-    --- @type Gitsigns.Hunk.Hunk?, Gitsigns.Hunk.Hunk?
-    local prev_hunk, next_hunk = hunks[i - 1], hunks[i + 1]
-
-    -- To stop the sign column width changing too much, if there are signs to be
-    -- added but none of them are visible in the window, then make sure to add at
-    -- least one sign. Only do this on the first call after an update when we all
-    -- the signs have been cleared.
-    if clear and i == 1 then
-      signs:add(
-        bufnr,
-        Hunks.calc_signs(prev_hunk, hunk, next_hunk, hunk.added.start, hunk.added.start, untracked),
-        filter
-      )
-    end
-
-    signs:add(bufnr, Hunks.calc_signs(prev_hunk, hunk, next_hunk, top, bot, untracked), filter)
-    if hunk.added.start > bot then
-      break
-    end
-  end
+--- @param cb Gitsigns.ManagerDetachCb
+function M.on_detach(cb)
+  detach_callbacks[#detach_callbacks + 1] = cb
 end
 
---- @param bufnr integer
---- @param top integer
---- @param bot integer
---- @param clear? boolean
-local function apply_win_signs(bufnr, top, bot, clear)
-  local bcache = assert(cache[bufnr])
-  local untracked = bcache.git_obj.object_name == nil
-  apply_win_signs0(bufnr, signs_normal, bcache.hunks, top, bot, clear, untracked)
-  if signs_staged then
-    apply_win_signs0(
-      bufnr,
-      signs_staged,
-      bcache.hunks_staged,
-      top,
-      bot,
-      clear,
-      false,
-      function(lnum)
-        return not signs_normal:contains(bufnr, lnum)
-      end
-    )
-  end
-  if clear then
-    redraw_statuscol(bufnr, top, bot)
-  end
+--- @param cb Gitsigns.ManagerWinCb
+function M.on_win(cb)
+  win_callbacks[#win_callbacks + 1] = cb
 end
 
---- @param blame table<integer,Gitsigns.BlameInfo?>?
---- @param first integer
---- @param last_orig integer
---- @param last_new integer
-local function on_lines_blame(blame, first, last_orig, last_new)
-  if not blame then
-    return
-  end
-
-  if last_new < last_orig then
-    util.list_remove(blame, last_new + 1, last_orig)
-  elseif last_new > last_orig then
-    util.list_insert(blame, last_orig + 1, last_new)
-  end
-
-  for i = first + 1, last_new do
-    blame[i] = nil
-  end
+--- @param cb Gitsigns.ManagerLineCb
+function M.on_line(cb)
+  line_callbacks[#line_callbacks + 1] = cb
 end
 
 --- @param buf integer
@@ -169,115 +96,29 @@ end
 --- @param last_orig integer
 --- @param last_new integer
 --- @return true?
-function M.on_lines(buf, first, last_orig, last_new)
+function M.handle_on_lines(buf, first, last_orig, last_new)
   local bcache = cache[buf]
   if not bcache then
     log.dprint('Cache for buffer was nil. Detaching')
     return true
   end
 
-  if bcache.blame then
-    on_lines_blame(bcache.blame.entries, first, last_orig, last_new)
-  end
+  bcache:on_lines(first, last_orig, last_new)
 
-  signs_normal:on_lines(buf, first, last_orig, last_new)
-  if signs_staged then
-    signs_staged:on_lines(buf, first, last_orig, last_new)
-  end
-
-  -- Signs in changed regions get invalidated so we need to force a redraw if
-  -- any signs get removed.
-  if bcache.hunks and signs_normal:contains(buf, first, last_new) then
-    -- Force a sign redraw on the next update (fixes #521)
-    bcache.force_next_update = true
-  end
-
-  if signs_staged then
-    if bcache.hunks_staged and signs_staged:contains(buf, first, last_new) then
-      -- Force a sign redraw on the next update (fixes #521)
-      bcache.force_next_update = true
-    end
+  for _, cb in ipairs(lines_callbacks) do
+    cb({
+      bufnr = buf,
+      bcache = bcache,
+      first = first,
+      last_orig = last_orig,
+      last_new = last_new,
+    })
   end
 
   M.update_sync_debounced(buf)
 end
 
 local ns = api.nvim_create_namespace('gitsigns')
-
---- @param bufnr integer
---- @param row integer
-local function apply_word_diff(bufnr, row)
-  -- Don't run on folded lines
-  if vim.fn.foldclosed(row + 1) ~= -1 then
-    return
-  end
-
-  local bcache = cache[bufnr]
-
-  if not bcache or not bcache.hunks then
-    return
-  end
-
-  local line = api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1]
-  if not line then
-    -- Invalid line
-    return
-  end
-
-  local lnum = row + 1
-
-  local hunk = Hunks.find_hunk(lnum, bcache.hunks)
-  if not hunk then
-    -- No hunk at line
-    return
-  end
-
-  if hunk.added.count ~= hunk.removed.count then
-    -- Only word diff if added count == removed
-    return
-  end
-
-  local pos = lnum - hunk.added.start + 1
-
-  local added_line = assert(hunk.added.lines[pos])
-  local removed_line = assert(hunk.removed.lines[pos])
-
-  local _, added_regions = require('gitsigns.diff_int').run_word_diff(
-    { removed_line },
-    { added_line }
-  )
-
-  local cols = #line
-
-  for _, region in ipairs(added_regions) do
-    local rtype, scol, ecol = region[2], region[3] - 1, region[4] - 1
-    if ecol == scol then
-      -- Make sure region is at least 1 column wide so deletes can be shown
-      ecol = scol + 1
-    end
-
-    local hl_group = rtype == 'add' and 'GitSignsAddLnInline'
-      or rtype == 'change' and 'GitSignsChangeLnInline'
-      or 'GitSignsDeleteLnInline'
-
-    local opts = {
-      ephemeral = true,
-      priority = 1000,
-    }
-
-    if ecol > cols and ecol == scol + 1 then
-      -- delete on last column, use virtual text instead
-      opts.virt_text = { { ' ', hl_group } }
-      opts.virt_text_pos = 'overlay'
-    else
-      opts.end_col = ecol
-      opts.hl_group = hl_group
-    end
-
-    api.nvim_buf_set_extmark(bufnr, ns, row, scol, opts)
-    util.redraw({ buf = bufnr, range = { row, row + 1 } })
-  end
-end
 
 --- @param bufnr integer
 --- @return boolean
@@ -381,19 +222,16 @@ M.update = throttle_async({ hash = 1, schedule = true }, function(bufnr)
     local hunks_staged_changed = Hunks.compare_heads(bcache.hunks_staged, old_hunks_staged)
 
     if hunks_changed or hunks_staged_changed then
-      -- Apply signs to the window. Other signs will be added by the decoration
-      -- provider as they are drawn.
-      apply_win_signs(bufnr, vim.fn.line('w0'), vim.fn.line('w$'), true)
-
       bcache.force_next_update = false
 
-      local summary = Hunks.get_summary(bcache.hunks)
-      summary.head = git_obj.repo.abbrev_head
-      Status.update(bufnr, summary)
-    end
-
-    if hunks_changed then
-      DeletedPreview.prepare(bufnr)
+      for _, cb in ipairs(update_callbacks) do
+        cb({
+          bufnr = bufnr,
+          bcache = bcache,
+          hunks_changed = hunks_changed,
+          hunks_staged_changed = hunks_staged_changed,
+        })
+      end
     end
   end)
 end)
@@ -410,67 +248,74 @@ end)
 --- @param bufnr integer
 --- @param keep_signs? boolean
 function M.detach(bufnr, keep_signs)
-  DeletedPreview.detach(bufnr)
-
-  if not keep_signs then
-    -- Remove all signs
-    signs_normal:remove(bufnr)
-    if signs_staged then
-      signs_staged:remove(bufnr)
-    end
-    redraw_statuscol(bufnr)
+  for _, cb in ipairs(detach_callbacks) do
+    cb(bufnr, keep_signs)
   end
 end
 
-function M.reset_signs()
-  -- Remove all signs
-  signs_normal:reset()
-  signs_staged:reset()
-end
-
+--- @param _ 'win'
 --- @param winid integer
 --- @param bufnr integer
 --- @param topline integer
 --- @param botline_guess integer
 --- @return boolean
-local function on_win(winid, bufnr, topline, botline_guess)
+local function on_win(_, winid, bufnr, topline, botline_guess)
   local bcache = cache[bufnr]
-  if not bcache or not bcache.hunks then
-    DeletedPreview.clear_win(winid)
-    return false
-  end
   local botline = math.min(botline_guess, api.nvim_buf_line_count(bufnr))
 
-  apply_win_signs(bufnr, topline + 1, botline + 1)
-
   local wants_on_line = false
-  if config.word_diff and config.diff_opts.internal then
-    wants_on_line = true
+
+  local ctx = {
+    ns = ns,
+    winid = winid,
+    bufnr = bufnr,
+    topline = topline,
+    botline = botline,
+    bcache = bcache,
+  }
+  for _, cb in ipairs(win_callbacks) do
+    wants_on_line = cb(ctx) or wants_on_line
   end
 
-  DeletedPreview.on_win(winid, bufnr, topline, botline)
-
-  return wants_on_line or false
+  return wants_on_line
 end
 
-function M.setup()
+--- @param _ 'line'
+--- @param winid integer
+--- @param bufnr integer
+--- @param row integer
+local function on_line(_, winid, bufnr, row)
+  local ctx = {
+    ns = ns,
+    winid = winid,
+    bufnr = bufnr,
+    row = row,
+    bcache = cache[bufnr],
+  }
+  for _, cb in ipairs(line_callbacks) do
+    cb(ctx)
+  end
+end
+
+M.setup = util.once(function()
+  -- Load default runtime subscribers here, not at module load, so requiring
+  -- manager stays cheap.
+  require('gitsigns.sign_renderer')
+  require('gitsigns.status')
+  require('gitsigns.deleted_preview')
+  require('gitsigns.word_diff')
+
+  api.nvim_create_augroup('gitsigns', { clear = false })
+
   -- Calling this before any await calls will stop nvim's intro messages being
   -- displayed
   api.nvim_set_decoration_provider(ns, {
-    on_win = function(_, winid, bufnr, topline, botline)
-      return on_win(winid, bufnr, topline, botline)
-    end,
-    on_line = function(_, _winid, bufnr, row)
-      if config.word_diff and config.diff_opts.internal then
-        apply_word_diff(bufnr, row)
-      end
-    end,
+    on_win = on_win,
+    on_line = on_line,
   })
 
+  -- These options change render output derived from cached hunks.
   Config.subscribe({ 'signcolumn', 'numhl', 'linehl', 'show_deleted', 'word_diff' }, function()
-    -- Remove all signs
-    M.reset_signs()
-
     for k, v in pairs(cache) do
       v:invalidate(true)
       M.update_sync_debounced(k)
@@ -488,17 +333,6 @@ function M.setup()
       end
       bcache:invalidate(true)
       M.update_sync_debounced(buf)
-    end,
-  })
-
-  api.nvim_create_autocmd('WinClosed', {
-    group = 'gitsigns',
-    callback = function(args)
-      local winid = tonumber(args.match)
-      if winid then
-        --- @cast winid integer
-        DeletedPreview.clear_win(winid)
-      end
     end,
   })
 
@@ -529,6 +363,8 @@ function M.setup()
       end,
     })
   end
-end
+
+  require('gitsigns.current_line_blame')
+end)
 
 return M

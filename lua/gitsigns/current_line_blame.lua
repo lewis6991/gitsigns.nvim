@@ -233,11 +233,10 @@ M.update = debounce.debounce_trailing(
   end
 )
 
-function M.setup()
+function M.refresh()
   for k in pairs(cache) do
     reset(k)
   end
-  local group = api.nvim_create_augroup('gitsigns_blame', {})
 
   if not config.current_line_blame then
     return
@@ -245,6 +244,16 @@ function M.setup()
 
   -- show current buffer line blame immediately
   M.update(api.nvim_get_current_buf())
+end
+
+local function configure()
+  M.refresh()
+
+  local group = api.nvim_create_augroup('gitsigns.current_line_blame', {})
+
+  if not config.current_line_blame then
+    return
+  end
 
   local update_events = { 'BufEnter', 'CursorMoved', 'CursorMovedI', 'WinResized' }
   local reset_events = { 'InsertEnter', 'BufLeave' }
@@ -278,8 +287,12 @@ function M.setup()
   })
 end
 
-Config.subscribe('current_line_blame', function()
-  M.setup()
-end)
+do -- Module-level activation
+  configure()
+
+  Config.subscribe({ 'current_line_blame', 'current_line_blame_opts' }, function()
+    configure()
+  end)
+end
 
 return M
