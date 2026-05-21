@@ -44,21 +44,31 @@ function M.update(bufnr, status)
   autocmd_update(bufnr)
 end
 
-function M.clear(bufnr)
-  if not api.nvim_buf_is_loaded(bufnr) then
-    return
-  end
+do -- Module-level activation
+  local manager = require('gitsigns.manager')
 
-  local b = vim.b[bufnr]
+  manager.on_update(function(ctx)
+    local summary = require('gitsigns.hunks').get_summary(ctx.bcache.hunks or {})
+    summary.head = ctx.bcache.git_obj.repo.abbrev_head
+    M.update(ctx.bufnr, summary)
+  end)
 
-  if b.gitsigns_head == nil and b.gitsigns_status_dict == nil and b.gitsigns_status == nil then
-    return
-  end
+  manager.on_detach(function(bufnr)
+    if not api.nvim_buf_is_loaded(bufnr) then
+      return
+    end
 
-  b.gitsigns_head = nil
-  b.gitsigns_status_dict = nil
-  b.gitsigns_status = nil
-  autocmd_update(bufnr)
+    local b = vim.b[bufnr]
+
+    if b.gitsigns_head == nil and b.gitsigns_status_dict == nil and b.gitsigns_status == nil then
+      return
+    end
+
+    b.gitsigns_head = nil
+    b.gitsigns_status_dict = nil
+    b.gitsigns_status = nil
+    autocmd_update(bufnr)
+  end)
 end
 
 return M

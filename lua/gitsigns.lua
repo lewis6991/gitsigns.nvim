@@ -91,8 +91,8 @@ local function setup_cwd_watcher(cwd, towatch)
   end)
 
   -- Watch .git/HEAD to detect branch changes
-  cwd_watcher:start(towatch, {}, function()
-    async().run(function(err)
+  cwd_watcher:start(towatch, {}, function(err)
+    async().run(function()
       local __FUNC__ = 'cwd_watcher_cb'
       if err then
         log().dprintf('Git dir update error: %s', err)
@@ -247,8 +247,9 @@ function M.setup(cfg)
   if init then
     api.nvim_create_augroup('gitsigns', {})
     setup_cli()
-    -- TODO(lewis6991): do this lazily
-    require('gitsigns.highlight').setup()
+    -- Highlights are global editor state, so define them during setup even
+    -- when attach-time rendering features stay lazy.
+    require('gitsigns.highlight')
     setup_attach()
     setup_cwd_head()
 
@@ -260,7 +261,7 @@ end
 --- @param lnum? integer Line number to return status for. Defaults to `vim.v.lnum`
 --- @return string
 function M.statuscolumn(bufnr, lnum)
-  return require('gitsigns.manager').statuscolumn(bufnr, lnum)
+  return require('gitsigns.sign_renderer').statuscolumn(bufnr, lnum)
 end
 
 M = setmetatable(M, {

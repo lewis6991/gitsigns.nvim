@@ -65,6 +65,27 @@ function CacheEntry:invalidate(all)
   end
 end
 
+--- Keep line-indexed cache state aligned with buffer edits.
+--- @param first integer
+--- @param last_orig integer
+--- @param last_new integer
+function CacheEntry:on_lines(first, last_orig, last_new)
+  local blame = self.blame and self.blame.entries
+  if not blame then
+    return
+  end
+
+  if last_new < last_orig then
+    util.list_remove(blame, last_new + 1, last_orig)
+  elseif last_new > last_orig then
+    util.list_insert(blame, last_orig + 1, last_new)
+  end
+
+  for i = first + 1, last_new do
+    blame[i] = nil
+  end
+end
+
 --- @param bufnr integer
 --- @param file string
 --- @param git_obj Gitsigns.GitObj

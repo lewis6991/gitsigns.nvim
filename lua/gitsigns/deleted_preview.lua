@@ -3,6 +3,7 @@ local config = require('gitsigns.config').config
 local HunkPreview = require('gitsigns.hunk_preview')
 local Virt = require('gitsigns.render.virt')
 local Inspect = require('gitsigns.inspect')
+local manager = require('gitsigns.manager')
 local util = require('gitsigns.util')
 
 local api = vim.api
@@ -416,7 +417,7 @@ function M.prepare(bufnr)
 end
 
 --- @param winid integer
-function M.clear_win(winid)
+local function clear_win(winid)
   local entry = win_ns[winid]
   if not entry then
     return
@@ -497,6 +498,39 @@ function M.on_win(winid, bufnr, topline, botline)
   end
 
   return #visible > 0
+end
+
+do -- Module-level activation
+  manager.on_detach(function(bufnr)
+    M.detach(bufnr)
+  end)
+
+  manager.on_update(function(ctx)
+    if ctx.hunks_changed then
+      M.prepare(ctx.bufnr)
+    end
+  end)
+
+  manager.on_win(function(ctx)
+    if not (ctx.bcache and ctx.bcache.hunks) then
+      clear_win(ctx.winid)
+      return false
+    end
+
+    M.on_win(ctx.winid, ctx.bufnr, ctx.topline, ctx.botline)
+    return false
+  end)
+
+  api.nvim_create_autocmd('WinClosed', {
+    group = api.nvim_create_augroup('gitsigns.deleted_preview', {}),
+    callback = function(args)
+      local winid = tonumber(args.match)
+      if winid then
+        --- @cast winid integer
+        clear_win(winid)
+      end
+    end,
+  })
 end
 
 return M
