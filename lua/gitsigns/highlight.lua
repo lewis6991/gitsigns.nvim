@@ -30,7 +30,7 @@ local function gen_hl(staged, kind, ty)
   local cty = capitalise(ty)
   local hl = ('GitSigns%s%s%s'):format(staged and 'Staged' or '', cty, kind)
 
-  if kind == 'Ln' and (ty == 'delete' or 'ty' == 'topdelete') then
+  if kind == 'Ln' and (ty == 'delete' or ty == 'topdelete') then
     return
   end
 
