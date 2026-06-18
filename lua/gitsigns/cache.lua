@@ -143,6 +143,12 @@ function CacheEntry:run_blame(lnum, opts)
     or (not self.git_obj:from_tree() and not require('gitsigns.git.version').check(2, 41))
 
   while true do
+    -- The buffer may have been detached (and the git object closed) while an
+    -- earlier blame was in flight, leaving git_obj.repo nil. Bail out instead
+    -- of running blame against a closed object.
+    if self.git_obj:closed() then
+      return {}, {}
+    end
     local contents = send_contents and util.buf_lines(bufnr) or nil
     local tick = vim.b[bufnr].changedtick
     local lnum0 = api.nvim_buf_line_count(bufnr) > BLAME_THRESHOLD_LEN and lnum or nil

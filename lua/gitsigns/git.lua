@@ -83,6 +83,11 @@ function Obj:close()
   self.repo = nil
 end
 
+--- @return boolean
+function Obj:closed()
+  return self._closed
+end
+
 function Obj:from_tree()
   return Repo.from_tree(self.revision)
 end
