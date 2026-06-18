@@ -307,7 +307,7 @@ end
 --- @async
 --- @param win integer
 --- @param bwin integer
---- @param open 'vsplit'|'tabnew'
+--- @param open 'vsplit'|'tabnew' |'edit'
 --- @param bcache Gitsigns.CacheEntry
 local function show_commit(win, bwin, open, bcache)
   local cursor = api.nvim_win_get_cursor(bwin)[1]
@@ -585,12 +585,20 @@ function M.blame(opts)
     buffer = blm_bufnr,
   })
 
+  pmap('n', 'e', function()
+    async.run(show_commit, win, blm_win, 'edit', bcache):raise_on_error()
+  end, {
+    desc = 'Show commit in current window',
+    buffer = blm_bufnr,
+  })
+
   menu('GitsignsBlame', {
     { 'Reblame at commit', 'r' },
     { 'Reblame at commit parent', 'R' },
     { 'Diff (tab)', 'd' },
     { 'Show commit (vsplit)', 's' },
     { '            (tab)', 'S' },
+    { '            (current window)', 'e' },
   })
 
   local group = api.nvim_create_augroup('GitsignsBlame', {})
