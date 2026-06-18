@@ -281,4 +281,28 @@ describe('git', function()
     eq_path(submodule_worktree, result.info.toplevel)
     eq_path(submodule_gitdir, result.info.gitdir)
   end)
+
+  it('blame does not crash when the git object was closed (#1557)', function()
+    setup_test_repo()
+    helpers.setup_gitsigns(helpers.test_config)
+    helpers.edit(helpers.test_file)
+    helpers.wait_for_attach()
+
+    local result = exec_lua(function()
+      local async = require('gitsigns.async')
+      local bcache = assert(require('gitsigns.cache').cache[vim.api.nvim_get_current_buf()])
+
+      -- Detaching closes the git object (sets repo = nil). A debounced blame
+      -- that was already in flight can still reach run_blame afterwards.
+      bcache.git_obj:close()
+
+      return async
+        .run(function()
+          return bcache:run_blame(1)
+        end)
+        :wait(5000)
+    end)
+
+    eq({}, result)
+  end)
 end)
