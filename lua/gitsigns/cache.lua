@@ -110,12 +110,23 @@ end)
 
 --- @async
 --- @private
-function CacheEntry:wait_for_hunks()
-  local loop_protect = 0
-  while not self.hunks and loop_protect < 10 do
-    loop_protect = loop_protect + 1
+--- @param staged? boolean
+--- @return boolean
+function CacheEntry:wait_for_hunks(staged)
+  if staged and not config.signs_staged_enable then
+    return false
+  end
+
+  local hunks_key = staged and 'hunks_staged' or 'hunks'
+
+  for _ = 1, 10 do
+    if self[hunks_key] ~= nil then
+      return true
+    end
     sleep(100)
   end
+
+  return self[hunks_key] ~= nil
 end
 
 -- If a file contains has up to this amount of lines, then
@@ -331,6 +342,10 @@ end
 --- @return Gitsigns.Hunk.Hunk?
 function CacheEntry:get_hunk(range, greedy, staged)
   local Hunks = require('gitsigns.hunks')
+
+  if not self:wait_for_hunks(staged) then
+    return
+  end
 
   local hunks = self:get_hunks(greedy, staged)
 
