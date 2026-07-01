@@ -141,13 +141,14 @@ local function incremental_iter(readline, commits, result)
   then
     commit = vim.tbl_extend('force', commit, NOT_COMMITTED)
   end
-  commits[sha] = commit --[[@as Gitsigns.CommitInfo]]
+  local commit_info = commit --[[@as Gitsigns.CommitInfo]]
+  commits[sha] = commit_info
 
   for j = 0, size - 1 do
     result[final_lnum + j] = {
       final_lnum = final_lnum + j,
       orig_lnum = orig_lnum + j,
-      commit = commits[sha],
+      commit = commit_info,
       filename = filename,
       previous_filename = previous_filename,
       previous_sha = previous_sha,
