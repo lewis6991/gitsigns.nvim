@@ -4,6 +4,7 @@ local cache = require('gitsigns.cache').cache
 local config = require('gitsigns.config').config
 local log = require('gitsigns.debug.log')
 local error_once = require('gitsigns.message').error_once
+local inspection = require('gitsigns.actions.inspection')
 local util = require('gitsigns.util')
 
 local get_temp_hl = require('gitsigns.highlight').get_temp_hl
@@ -33,6 +34,15 @@ end
 --- @param lnum integer
 --- @param hl_group string
 local function hl_line(bufnr, nsl, lnum, hl_group)
+  if not api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+
+  local line_count = api.nvim_buf_line_count(bufnr)
+  if lnum < 1 or lnum > line_count then
+    return
+  end
+
   api.nvim_buf_set_extmark(bufnr, nsl, lnum - 1, 0, {
     end_row = lnum,
     hl_eol = true,
@@ -172,11 +182,11 @@ end
 
 --- @param blame Gitsigns.CacheEntry.Blame
 --- @param win integer
---- @param main_win integer
+--- @param main_cache Gitsigns.CacheEntry
 --- @param buf_sha? string
 --- @return table<integer,true> commit_lines
 --- @return table<integer,boolean> commit_summaries
-local function render(blame, win, main_win, buf_sha)
+local function render(blame, win, main_cache, buf_sha)
   local max_author_len = 0
   local entries = blame.entries
 
@@ -184,8 +194,6 @@ local function render(blame, win, main_win, buf_sha)
     max_author_len = math.max(max_author_len, vim.fn.strdisplaywidth(b.commit.author))
   end
 
-  local main_buf = api.nvim_win_get_buf(main_win)
-  local main_cache = assert(cache[main_buf])
   local username = main_cache.git_obj.repo.username or ''
 
   local lines = {} --- @type string[]
@@ -200,7 +208,7 @@ local function render(blame, win, main_win, buf_sha)
   for i, b in ipairs(entries) do
     local commit = b.commit
     local sha = commit.abbrev_sha
-    local next_sha = entries[i + 1] and entries[i + 1].commit.abbrev_sha or nil
+    local next_sha = entries[i + 1] and entries[i + 1].commit.abbrev_sha
     local hash_hl = get_hash_color(sha)
     local line_chunks --- @type Gitsigns.BlameFmtChunk[]
     local summary_line = false
@@ -246,7 +254,11 @@ local function render(blame, win, main_win, buf_sha)
 
   local bufnr = api.nvim_win_get_buf(win)
 
+  local modifiable = vim.bo[bufnr].modifiable
+  vim.bo[bufnr].modifiable = true
   api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+  vim.bo[bufnr].modifiable = modifiable
+  api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
   local min_time, max_time = main_cache:get_blame_times()
 
   -- Apply highlights
@@ -277,6 +289,10 @@ end
 --- @param revision? string
 --- @param parent? boolean
 local function reblame(opts, blame, win, revision, parent)
+  if not api.nvim_win_is_valid(win) then
+    return
+  end
+
   local blm_win = api.nvim_get_current_win()
   local lnum = api.nvim_win_get_cursor(blm_win)[1]
   local sha = assert(blame[lnum]).commit.sha
@@ -287,21 +303,46 @@ local function reblame(opts, blame, win, revision, parent)
     return
   end
 
-  vim.cmd.quit()
-  api.nvim_set_current_win(win)
+  local source_buf = api.nvim_win_get_buf(win)
+  local old_tabpage = api.nvim_win_get_tabpage(win)
+  local move_panels = not inspection.is_revision_buf(source_buf)
+  local history_win = move_panels and inspection.find_panel_win(old_tabpage, 'gitsigns-history')
 
-  local did_attach = require('gitsigns.actions.diffthis').show(nil, sha)
-  if not did_attach then
-    return
+  api.nvim_set_current_win(win)
+  if move_panels then
+    if not inspection.show_revision_in_new_tab(source_buf, sha) then
+      return
+    end
+  else
+    if not require('gitsigns.actions.diffthis').show(source_buf, sha) then
+      if api.nvim_win_is_valid(blm_win) then
+        api.nvim_set_current_win(blm_win)
+      end
+      return
+    end
   end
 
-  local src_buf = api.nvim_win_get_buf(win)
-  local line_count = api.nvim_buf_line_count(src_buf)
+  win = api.nvim_get_current_win()
+  local line_count = api.nvim_buf_line_count(api.nvim_win_get_buf(win))
   local new_lnum = math.min(lnum, line_count)
   api.nvim_win_set_cursor(win, { new_lnum, 0 })
 
   async.schedule()
-  M.blame(opts)
+  if move_panels then
+    if history_win then
+      local history_vertical = vim.wo[history_win][0].winfixwidth
+      require('gitsigns.actions.history').history({
+        vertical = history_vertical,
+        split = history_vertical and 'aboveleft' or 'belowright',
+      })
+    end
+    M.blame(opts)
+    inspection.close_panels(old_tabpage)
+  elseif api.nvim_win_is_valid(blm_win) then
+    -- Keep the layout stable for revision-to-revision reblame: the existing
+    -- panel refreshes itself when focus returns instead of being closed/reopened.
+    api.nvim_set_current_win(blm_win)
+  end
 end
 
 --- @async
@@ -322,37 +363,45 @@ end
 local function sync_cursors(augroup, wins)
   local cursor_save --- @type integer?
 
-  ---@param w integer
-  local function sync_cursor(w)
-    local b = api.nvim_win_get_buf(w)
-    api.nvim_create_autocmd('BufLeave', {
-      buffer = b,
-      group = augroup,
-      callback = function()
-        if api.nvim_win_is_valid(w) then
-          cursor_save = api.nvim_win_get_cursor(w)[1]
-        end
-      end,
-    })
-
-    api.nvim_create_autocmd('BufEnter', {
-      group = augroup,
-      buffer = b,
-      callback = function()
-        if not api.nvim_win_is_valid(w) then
-          return
-        end
-        local cur_cursor, cur_cursor_col = unpack(api.nvim_win_get_cursor(w))
-        if cursor_save and cursor_save ~= cur_cursor then
-          api.nvim_win_set_cursor(w, { cursor_save, vim.o.startofline and 0 or cur_cursor_col })
-        end
-      end,
-    })
-  end
-
+  local tracked_wins = {} --- @type table<integer, true>
   for _, w in ipairs(wins) do
-    sync_cursor(w)
+    tracked_wins[w] = true
   end
+
+  local function get_tracked_win()
+    local w = api.nvim_get_current_win()
+    if tracked_wins[w] and api.nvim_win_is_valid(w) then
+      return w
+    end
+  end
+
+  api.nvim_create_autocmd({ 'BufLeave', 'WinLeave' }, {
+    group = augroup,
+    callback = function()
+      local w = get_tracked_win()
+      if not w then
+        return
+      end
+      cursor_save = api.nvim_win_get_cursor(w)[1]
+    end,
+  })
+
+  api.nvim_create_autocmd({ 'BufEnter', 'WinEnter' }, {
+    group = augroup,
+    callback = function()
+      local w = get_tracked_win()
+      if not w then
+        return
+      end
+
+      local cur_cursor, cur_cursor_col = unpack(api.nvim_win_get_cursor(w))
+      local line_count = api.nvim_buf_line_count(api.nvim_win_get_buf(w))
+      local target = cursor_save and math.min(cursor_save, line_count) or cur_cursor
+      if target ~= cur_cursor then
+        api.nvim_win_set_cursor(w, { target, vim.o.startofline and 0 or cur_cursor_col })
+      end
+    end,
+  })
 end
 
 --- @param name string
@@ -379,18 +428,30 @@ end
 --- @param commit_lines table<integer,true>
 --- @param commit_summaries table<integer,boolean>
 local function on_cursor_moved(bufnr, blm_win, blame, commit_lines, commit_summaries)
-  local blm_bufnr = api.nvim_get_current_buf()
+  if not api.nvim_win_is_valid(blm_win) then
+    return
+  end
+
+  local blm_bufnr = api.nvim_win_get_buf(blm_win)
   local lnum = api.nvim_win_get_cursor(blm_win)[1]
   local cur_sha = assert(blame[lnum]).commit.abbrev_sha
+  local highlight_source = cache[bufnr] ~= nil and vim.bo[bufnr].filetype ~= 'gitsigns-history'
   for i, info in pairs(blame) do
     if info.commit.abbrev_sha == cur_sha then
       hl_line(blm_bufnr, ns_hl, i, 'CursorLine')
       hl_line(blm_bufnr, ns_hl, i, '@markup.strong')
-      hl_line(bufnr, ns_hl, i, 'CursorLine')
+      if highlight_source then
+        hl_line(bufnr, ns_hl, i, 'CursorLine')
+      end
     end
   end
 
-  if commit_lines[lnum] and commit_lines[lnum + 1] and commit_summaries[lnum] ~= false then
+  if
+    highlight_source
+    and commit_lines[lnum]
+    and commit_lines[lnum + 1]
+    and commit_summaries[lnum] ~= false
+  then
     local blame_info = assert(blame[lnum])
     local hash_hl = get_hash_color(blame_info.commit.abbrev_sha)
     api.nvim_buf_set_extmark(blm_bufnr, ns_hl, lnum - 1, 0, {
@@ -427,38 +488,6 @@ local function diff(bufnr, blm_win, blame)
   end
 end
 
---- Update the right-side extmarks when the window is resized
---- @param blm_bufnr integer
---- @param blm_win integer
---- @param entries table<integer,Gitsigns.BlameInfo?>
---- @param min_time integer
---- @param max_time integer
-local function update_right_extmarks(blm_bufnr, blm_win, entries, min_time, max_time)
-  if not api.nvim_win_is_valid(blm_win) or not api.nvim_buf_is_valid(blm_bufnr) then
-    return
-  end
-
-  -- Get the actual window width (not the content width)
-  -- Subtract 1 because virt_text_win_col is 0-indexed
-  local win_width = api.nvim_win_get_width(blm_win) - 1
-
-  -- Get all extmarks and delete only those with virt_text_win_col
-  -- These are the right-side heatmap indicators that need repositioning
-  local extmarks = api.nvim_buf_get_extmarks(blm_bufnr, ns, 0, -1, { details = true })
-
-  for _, ext in ipairs(extmarks) do
-    local id, _row, _col, details = ext[1], ext[2], ext[3], assert(ext[4])
-    if details.virt_text_win_col then
-      api.nvim_buf_del_extmark(blm_bufnr, ns, id)
-    end
-  end
-
-  -- Recreate the right-side extmarks with updated position
-  for i, blame_info in ipairs(entries) do
-    set_right_extmark(blm_bufnr, i, win_width, min_time, max_time, blame_info.commit.author_time)
-  end
-end
-
 --- @param mode string
 --- @param lhs string
 --- @param cb fun()
@@ -475,19 +504,41 @@ local function pmap(mode, lhs, cb, opts)
 end
 
 --- @async
+--- @param bcache Gitsigns.CacheEntry
 --- @param opts Gitsigns.BlameOpts?
-function M.blame(opts)
-  local bufnr = api.nvim_get_current_buf()
-  local win = api.nvim_get_current_win()
-  local bcache = cache[bufnr]
-  if not bcache then
-    log.dprint('Not attached')
+--- @return Gitsigns.CacheEntry.Blame
+local function load_blame(bcache, opts)
+  bcache:get_blame(nil, opts)
+  return assert(bcache.blame)
+end
+
+--- @param win integer
+local function set_blame_statusline(win)
+  if not api.nvim_win_is_valid(win) then
     return
   end
 
-  local lnum = nil
-  bcache:get_blame(lnum, opts)
-  local blame = assert(bcache.blame)
+  if vim.o.laststatus == 3 then
+    vim.wo[win][0].statusline = ''
+    return
+  end
+
+  -- Statusline plugins commonly rewrite this on WinEnter/WinLeave. Keep the
+  -- narrow blame column blank whenever the blame window is touched.
+  vim.wo[win][0].statusline = ' '
+end
+
+--- @param source_win integer
+--- @param bcache Gitsigns.CacheEntry
+--- @param blame Gitsigns.CacheEntry.Blame
+--- @return integer blm_win
+--- @return integer blm_bufnr
+--- @return table<integer,true> commit_lines
+--- @return table<integer,boolean> commit_summaries
+local function create_blame_window(source_win, bcache, blame)
+  api.nvim_set_current_win(source_win)
+
+  local bufnr = api.nvim_win_get_buf(source_win)
 
   -- Save position to align 'scrollbind'
   local top = vim.fn.line('w0') + vim.wo.scrolloff
@@ -497,10 +548,12 @@ function M.blame(opts)
   local blm_win = api.nvim_get_current_win()
 
   local blm_bufnr = api.nvim_create_buf(false, true)
+  if vim.fn.exists('&winfixbuf') == 1 then
+    vim.wo[blm_win][0].winfixbuf = false
+  end
   api.nvim_win_set_buf(blm_win, blm_bufnr)
   api.nvim_buf_set_name(blm_bufnr, (bcache:get_rev_bufname():gsub('^gitsigns:', 'gitsigns-blame:')))
-
-  local commit_lines, commit_summaries = render(blame, blm_win, win, bcache.git_obj.revision)
+  local commit_lines, commit_summaries = render(blame, blm_win, bcache, bcache.git_obj.revision)
 
   local blm_bo = vim.bo[blm_bufnr]
   blm_bo.buftype = 'nofile'
@@ -519,8 +572,9 @@ function M.blame(opts)
   blm_wlo.winfixwidth = true
   blm_wlo.wrap = false
   blm_wlo.list = false
+  set_blame_statusline(blm_win)
 
-  if vim.wo[win].winbar ~= '' and blm_wlo.winbar == '' then
+  if vim.wo[source_win].winbar ~= '' and blm_wlo.winbar == '' then
     local name = api.nvim_buf_get_name(bufnr)
     blm_wlo.winbar = vim.fn.fnamemodify(name, ':.')
   end
@@ -534,55 +588,235 @@ function M.blame(opts)
   vim.cmd(tostring(current))
   vim.cmd('normal! 0')
 
-  local cur_wlo = vim.wo[win][0]
-  local cur_orig_wlo = { cur_wlo.foldenable, cur_wlo.scrollbind, cur_wlo.wrap }
-  cur_wlo.foldenable = false
-  cur_wlo.scrollbind = true
-  cur_wlo.wrap = false
+  return blm_win, blm_bufnr, commit_lines, commit_summaries
+end
+
+--- @class (exact) Gitsigns.BlameSession.Opts
+--- @field opts Gitsigns.BlameOpts?
+--- @field source_win integer
+--- @field bufnr integer
+--- @field bcache Gitsigns.CacheEntry
+--- @field blame Gitsigns.CacheEntry.Blame
+--- @field blm_win integer
+--- @field blm_bufnr integer
+--- @field commit_lines table<integer,true>
+--- @field commit_summaries table<integer,boolean>
+
+--- @class (exact) Gitsigns.BlameSession
+--- @field private _opts Gitsigns.BlameOpts?
+--- @field private _source_win integer
+--- @field private _bufnr integer
+--- @field private _bcache Gitsigns.CacheEntry
+--- @field private _blame Gitsigns.CacheEntry.Blame
+--- @field private _blm_win integer
+--- @field private _blm_bufnr integer
+--- @field private _commit_lines table<integer,true>
+--- @field private _commit_summaries table<integer,boolean>
+--- @field private _source_win_opts table<integer,{boolean,boolean,boolean}>
+--- @field private _rerendering boolean
+local BlameSession = {}
+BlameSession.__index = BlameSession
+
+--- @param opts Gitsigns.BlameSession.Opts
+function BlameSession.start(opts)
+  local self = setmetatable({
+    _opts = opts.opts,
+    _source_win = opts.source_win,
+    _bufnr = opts.bufnr,
+    _bcache = opts.bcache,
+    _blame = opts.blame,
+    _blm_win = opts.blm_win,
+    _blm_bufnr = opts.blm_bufnr,
+    _commit_lines = opts.commit_lines,
+    _commit_summaries = opts.commit_summaries,
+    _source_win_opts = {},
+    _rerendering = false,
+  }, BlameSession)
+
+  self:_prepare_source_win(self._source_win)
 
   vim.cmd.redraw()
   vim.cmd.syncbind()
 
+  self:_setup_keymaps()
+  self:_setup_autocmds()
+end
+
+--- @private
+--- @param source_win integer
+function BlameSession:_prepare_source_win(source_win)
+  local cur_wlo = vim.wo[source_win][0]
+  self._source_win_opts[source_win] = self._source_win_opts[source_win]
+    or { cur_wlo.foldenable, cur_wlo.scrollbind, cur_wlo.wrap }
+  cur_wlo.foldenable = false
+  cur_wlo.scrollbind = true
+  cur_wlo.wrap = false
+end
+
+--- @private
+function BlameSession:_clear_highlights()
+  api.nvim_buf_clear_namespace(self._blm_bufnr, ns_hl, 0, -1)
+  if api.nvim_buf_is_valid(self._bufnr) then
+    api.nvim_buf_clear_namespace(self._bufnr, ns_hl, 0, -1)
+  end
+end
+
+--- @private
+function BlameSession:_rerender_panel()
+  if
+    self._rerendering
+    or not api.nvim_win_is_valid(self._blm_win)
+    or not api.nvim_buf_is_valid(self._blm_bufnr)
+  then
+    return
+  end
+
+  self._rerendering = true
+  self:_clear_highlights()
+
+  self._commit_lines, self._commit_summaries =
+    render(self._blame, self._blm_win, self._bcache, self._bcache.git_obj.revision)
+
+  local target_lnum = api.nvim_win_get_cursor(self._blm_win)[1]
+  if api.nvim_win_is_valid(self._source_win) then
+    pcall(api.nvim_win_call, self._source_win, function()
+      vim.cmd.syncbind()
+    end)
+    target_lnum = api.nvim_win_get_cursor(self._source_win)[1]
+  end
+  target_lnum = math.min(target_lnum, math.max(#self._blame.entries, 1))
+  api.nvim_win_set_cursor(self._blm_win, { target_lnum, 0 })
+
+  on_cursor_moved(
+    self._bufnr,
+    self._blm_win,
+    self._blame.entries,
+    self._commit_lines,
+    self._commit_summaries
+  )
+  self._rerendering = false
+end
+
+--- @async
+--- @private
+function BlameSession:_refresh()
+  if not api.nvim_win_is_valid(self._blm_win) then
+    return
+  end
+  set_blame_statusline(self._blm_win)
+
+  local tabpage = api.nvim_win_get_tabpage(self._blm_win)
+  local new_win = inspection.find_target_win(tabpage, self._source_win)
+  if not new_win then
+    if inspection.has_target_candidate_win(tabpage, self._source_win) then
+      return
+    end
+    pcall(api.nvim_win_close, self._blm_win, true)
+    return
+  end
+  self._source_win = new_win
+  self:_prepare_source_win(self._source_win)
+
+  if not api.nvim_win_is_valid(self._source_win) or not api.nvim_win_is_valid(self._blm_win) then
+    return
+  end
+
+  local new_bufnr = api.nvim_win_get_buf(self._source_win)
+  local new_bcache = cache[new_bufnr]
+  if not new_bcache then
+    async.schedule()
+    if
+      not api.nvim_win_is_valid(self._source_win)
+      or api.nvim_win_get_buf(self._source_win) ~= new_bufnr
+    then
+      return
+    end
+    new_bcache = cache[new_bufnr]
+    if not new_bcache then
+      return
+    end
+  end
+
+  if new_bufnr == self._bufnr then
+    return
+  end
+
+  local prev_bufnr = self._bufnr
+  if api.nvim_buf_is_valid(prev_bufnr) then
+    api.nvim_buf_clear_namespace(prev_bufnr, ns_hl, 0, -1)
+  end
+  api.nvim_buf_clear_namespace(self._blm_bufnr, ns_hl, 0, -1)
+
+  self._bufnr = new_bufnr
+  self._bcache = new_bcache
+  self._blame = load_blame(self._bcache, self._opts)
+
+  api.nvim_buf_set_name(
+    self._blm_bufnr,
+    (self._bcache:get_rev_bufname():gsub('^gitsigns:', 'gitsigns-blame:'))
+  )
+  if vim.wo[self._source_win].winbar ~= '' then
+    local name = api.nvim_buf_get_name(self._bufnr)
+    vim.wo[self._blm_win][0].winbar = vim.fn.fnamemodify(name, ':.')
+  end
+
+  vim.cmd.syncbind()
+  self:_rerender_panel()
+end
+
+--- @private
+function BlameSession:_setup_keymaps()
   vim.keymap.set('n', '<CR>', function()
     vim.cmd.popup(']GitsignsBlame')
   end, {
     desc = 'Open blame context menu',
-    buffer = blm_bufnr,
+    buffer = self._blm_bufnr,
   })
 
   pmap('n', 'r', function()
-    async.run(reblame, opts, blame.entries, win, bcache.git_obj.revision):raise_on_error()
+    async
+      .run(reblame, self._opts, self._blame.entries, self._source_win, self._bcache.git_obj.revision)
+      :raise_on_error()
   end, {
     desc = 'Reblame at commit',
-    buffer = blm_bufnr,
+    buffer = self._blm_bufnr,
   })
 
   pmap('n', 'd', function()
-    async.run(diff, bufnr, blm_win, blame.entries):raise_on_error()
+    async.run(diff, self._bufnr, self._blm_win, self._blame.entries):raise_on_error()
   end, {
     desc = 'Diff (tab)',
-    buffer = blm_bufnr,
+    buffer = self._blm_bufnr,
   })
 
   pmap('n', 'R', function()
-    async.run(reblame, opts, blame.entries, win, bcache.git_obj.revision, true):raise_on_error()
+    async
+      .run(
+        reblame,
+        self._opts,
+        self._blame.entries,
+        self._source_win,
+        self._bcache.git_obj.revision,
+        true
+      )
+      :raise_on_error()
   end, {
     desc = 'Reblame at commit parent',
-    buffer = blm_bufnr,
+    buffer = self._blm_bufnr,
   })
 
   pmap('n', 's', function()
-    async.run(show_commit, win, blm_win, 'vsplit', bcache):raise_on_error()
+    async.run(show_commit, self._source_win, self._blm_win, 'vsplit', self._bcache):raise_on_error()
   end, {
     desc = 'Show commit in a vertical split',
-    buffer = blm_bufnr,
+    buffer = self._blm_bufnr,
   })
 
   pmap('n', 'S', function()
-    async.run(show_commit, win, blm_win, 'tabnew', bcache):raise_on_error()
+    async.run(show_commit, self._source_win, self._blm_win, 'tabnew', self._bcache):raise_on_error()
   end, {
     desc = 'Show commit in a new tab',
-    buffer = blm_bufnr,
+    buffer = self._blm_bufnr,
   })
 
   menu('GitsignsBlame', {
@@ -592,64 +826,135 @@ function M.blame(opts)
     { 'Show commit (vsplit)', 's' },
     { '            (tab)', 'S' },
   })
+end
 
+--- @private
+function BlameSession:_setup_autocmds()
   local group = api.nvim_create_augroup('GitsignsBlame', {})
 
-  api.nvim_create_autocmd({ 'BufHidden', 'QuitPre' }, {
-    buffer = bufnr,
+  api.nvim_create_autocmd({ 'CursorMoved', 'BufLeave' }, {
+    buffer = self._blm_bufnr,
     group = group,
-    once = true,
     callback = function()
-      if api.nvim_win_is_valid(blm_win) then
-        api.nvim_win_close(blm_win, true)
-      end
+      self:_clear_highlights()
     end,
   })
 
-  api.nvim_create_autocmd({ 'CursorMoved', 'BufLeave' }, {
-    buffer = blm_bufnr,
+  api.nvim_create_autocmd({ 'BufWinEnter', 'WinEnter', 'WinLeave' }, {
+    buffer = self._blm_bufnr,
     group = group,
     callback = function()
-      api.nvim_buf_clear_namespace(blm_bufnr, ns_hl, 0, -1)
-      if api.nvim_buf_is_valid(bufnr) then
-        api.nvim_buf_clear_namespace(bufnr, ns_hl, 0, -1)
+      local win = api.nvim_get_current_win()
+      if api.nvim_win_get_buf(win) == self._blm_bufnr then
+        if
+          win ~= self._blm_win
+          and api.nvim_win_is_valid(self._blm_win)
+          and api.nvim_win_get_buf(self._blm_win) == self._blm_bufnr
+        then
+          -- Splits can briefly show the blame buffer in the destination window.
+          -- Keep ownership on the real panel so resize refreshes do not render
+          -- blame into the buffer that replaces that transient clone.
+          set_blame_statusline(win)
+          return
+        end
+        self._blm_win = win
+        set_blame_statusline(win)
+        vim.schedule(function()
+          if api.nvim_win_is_valid(win) and api.nvim_win_get_buf(win) == self._blm_bufnr then
+            set_blame_statusline(win)
+          end
+        end)
       end
     end,
   })
 
   -- Highlight the same commit under the cursor
   api.nvim_create_autocmd('CursorMoved', {
-    buffer = blm_bufnr,
+    buffer = self._blm_bufnr,
     group = group,
     callback = function()
-      on_cursor_moved(bufnr, blm_win, blame.entries, commit_lines, commit_summaries)
+      on_cursor_moved(
+        self._bufnr,
+        self._blm_win,
+        self._blame.entries,
+        self._commit_lines,
+        self._commit_summaries
+      )
     end,
   })
 
-  -- Update right-side extmarks on window resize
+  -- Re-apply virtual text after layout changes. Bottom history splits can make
+  -- the scroll-bound blame/source pair settle before virtual lines catch up.
   api.nvim_create_autocmd('WinResized', {
-    buffer = blm_bufnr,
+    buffer = self._blm_bufnr,
     group = group,
     callback = function()
-      local min_time, max_time = assert(cache[bufnr]):get_blame_times()
-      update_right_extmarks(blm_bufnr, blm_win, blame.entries, min_time, max_time)
+      self:_rerender_panel()
+    end,
+  })
+
+  api.nvim_create_autocmd({ 'BufEnter', 'WinEnter' }, {
+    group = group,
+    callback = function()
+      if
+        api.nvim_win_is_valid(self._source_win)
+        and api.nvim_win_get_buf(self._source_win) == self._bufnr
+      then
+        return
+      end
+      async
+        .run(function()
+          self:_refresh()
+        end)
+        :raise_on_error()
     end,
   })
 
   api.nvim_create_autocmd('WinClosed', {
-    pattern = tostring(blm_win),
+    pattern = tostring(self._blm_win),
     group = group,
     callback = function()
-      if api.nvim_buf_is_valid(bufnr) then
-        api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+      pcall(api.nvim_del_augroup_by_id, group)
+      if api.nvim_buf_is_valid(self._bufnr) then
+        api.nvim_buf_clear_namespace(self._bufnr, ns_hl, 0, -1)
       end
-      if api.nvim_win_is_valid(win) then
-        cur_wlo.foldenable, cur_wlo.scrollbind, cur_wlo.wrap = unpack(cur_orig_wlo)
+      for source_win, opts0 in pairs(self._source_win_opts) do
+        if api.nvim_win_is_valid(source_win) then
+          local wlo = vim.wo[source_win][0]
+          wlo.foldenable, wlo.scrollbind, wlo.wrap = unpack(opts0)
+        end
       end
     end,
   })
 
-  sync_cursors(group, { win, blm_win })
+  sync_cursors(group, { self._source_win, self._blm_win })
+end
+
+--- @async
+--- @param opts Gitsigns.BlameOpts?
+function M.blame(opts)
+  local source_win, bufnr, bcache = inspection.get_source_context(api.nvim_get_current_win())
+
+  if not bcache then
+    log.dprint('Not attached')
+    return
+  end
+
+  local blame = load_blame(bcache, opts)
+  local blm_win, blm_bufnr, commit_lines, commit_summaries =
+    create_blame_window(source_win, bcache, blame)
+
+  BlameSession.start({
+    opts = opts,
+    source_win = source_win,
+    bufnr = bufnr,
+    bcache = bcache,
+    blame = blame,
+    blm_win = blm_win,
+    blm_bufnr = blm_bufnr,
+    commit_lines = commit_lines,
+    commit_summaries = commit_summaries,
+  })
 end
 
 return M
