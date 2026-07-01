@@ -56,12 +56,12 @@ local function get_blame_hunk(repo, info)
     i = assert(i_next or i_prev, 'no hunks in commit')
   end
 
-  hunk = assert(hunks[i])
+  local fallback_hunk = assert(hunks[i])
   return {
-    hunk = hunk,
+    hunk = fallback_hunk,
     index = i,
     total = #hunks,
-    guess_offset = hunk.added.start - info.orig_lnum,
+    guess_offset = fallback_hunk.added.start - info.orig_lnum,
     removed_source = removed_source,
     added_source = added_source,
   }

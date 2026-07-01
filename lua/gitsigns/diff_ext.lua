@@ -1,6 +1,6 @@
 local Hunks = require('gitsigns.hunks')
 
-local scheduler = require('gitsigns.async').schedule
+local schedule = require('gitsigns.async').schedule
 local config = require('gitsigns.config').config
 local git_command = require('gitsigns.git.cmd')
 
@@ -28,8 +28,9 @@ function M.run_diff(text_cmp, text_buf)
   local results = {} --- @type Gitsigns.Hunk.Hunk[]
 
   -- tmpname must not be called in a callback
-  if vim.in_fast_event() then
-    scheduler()
+  local in_fast_event = vim.in_fast_event() --[[@as boolean]]
+  if in_fast_event then
+    schedule()
   end
 
   local file_buf = vim.fn.tempname()

@@ -133,7 +133,7 @@ function M.nav_hunk(direction, opts)
       if opts.navigation_message then
         api.nvim_echo({ { 'No more hunks', 'WarningMsg' } }, false, {})
       end
-      local _, col = vim.fn.getline(line):find('^%s*')
+      local _, col = (vim.fn.getline(line) --[[@as string]]):find('^%s*')
       --- @cast col -?
       api.nvim_win_set_cursor(0, { line, col })
       return
@@ -149,7 +149,7 @@ function M.nav_hunk(direction, opts)
 
   vim.cmd([[ normal! m' ]]) -- add current cursor position to the jump list
 
-  local _, col = vim.fn.getline(line):find('^%s*')
+  local _, col = (vim.fn.getline(line) --[[@as string]]):find('^%s*')
   --- @cast col -?
   api.nvim_win_set_cursor(0, { line, col })
 

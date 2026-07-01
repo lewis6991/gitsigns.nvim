@@ -64,10 +64,10 @@ local C = {}
 
 local C_meta = {} --- @type table<string, Gitsigns.CmdMeta>
 
---- @generic T
+--- @generic T, R
 --- @param callback? fun(err?: string)
---- @param func async fun(...:T...) # The async function to wrap
---- @return Gitsigns.async.Task
+--- @param func async fun(...:T...): R... # The async function to wrap
+--- @return Gitsigns.async.Task<R>
 local function async_run(callback, func, ...)
   assert(type(func) == 'function')
 
