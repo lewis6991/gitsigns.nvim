@@ -88,6 +88,7 @@ describe('highlights', function()
     helpers.setup_path()
     local res = helpers.exec_lua(function()
       vim.api.nvim_set_hl(0, 'Normal', { bg = 0x000000 })
+      vim.api.nvim_set_hl(0, 'GitSignsColorTemp', { fg = 0x0080ff, bg = 0x000000 })
 
       package.loaded['gitsigns.highlight'] = nil
       local hl = require('gitsigns.highlight')
@@ -98,6 +99,6 @@ describe('highlights', function()
     end)
 
     assert(res.name:match('^GitSignsColorTemp%.fg%.%d+$') ~= nil)
-    eq(0x00007F, res.fg)
+    eq(0x000000, res.fg)
   end)
 end)
