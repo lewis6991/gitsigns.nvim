@@ -5,6 +5,7 @@ local clear = helpers.clear
 local command = helpers.api.nvim_command
 
 local cleanup = helpers.cleanup
+local exec_lua = helpers.exec_lua
 local test_config = helpers.test_config
 local expectf = helpers.expectf
 local match_dag = helpers.match_dag
@@ -82,6 +83,35 @@ describe('highlights', function()
     command('set termguicolors')
     config.linehl = true
     setup_gitsigns(config)
+  end)
+
+  it('does not define line highlights for delete-only signs', function()
+    helpers.setup_path()
+
+    local generated = exec_lua(function()
+      package.loaded['gitsigns.highlight'] = nil
+
+      local unwanted = {
+        GitSignsDeleteLn = true,
+        GitSignsTopdeleteLn = true,
+        GitSignsStagedDeleteLn = true,
+        GitSignsStagedTopdeleteLn = true,
+      }
+      local found = {} --- @type string[]
+
+      for _, entry in ipairs(require('gitsigns.highlight').hls) do
+        for name in pairs(entry) do
+          if unwanted[name] then
+            found[#found + 1] = name
+          end
+        end
+      end
+
+      table.sort(found)
+      return found
+    end)
+
+    eq({}, generated)
   end)
 
   it('get_temp_hl handles equal min/max', function()
