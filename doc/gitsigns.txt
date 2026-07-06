@@ -1221,11 +1221,6 @@ GitSignsChangedeleteLn
     Used for buffer line (when `config.linehl == true`) of 'changedelete' signs.
 
     Fallbacks: `GitSignsChangeLn`
-                                                        *hl-GitSignsTopdeleteLn*
-GitSignsTopdeleteLn
-    Used for buffer line (when `config.linehl == true`) of 'topdelete' signs.
-
-    Fallbacks: `GitSignsDeleteLn`
                                                         *hl-GitSignsUntrackedLn*
 GitSignsUntrackedLn
     Used for buffer line (when `config.linehl == true`) of 'untracked' signs.
@@ -1336,11 +1331,6 @@ GitSignsStagedChangedeleteLn
     Used for buffer line (when `config.linehl == true`) of 'changedelete' staged signs.
 
     Fallbacks: `GitSignsChangedeleteLn` (fg=50%)
-                                                        *hl-GitSignsStagedTopdeleteLn*
-GitSignsStagedTopdeleteLn
-    Used for buffer line (when `config.linehl == true`) of 'topdelete' staged signs.
-
-    Fallbacks: `GitSignsTopdeleteLn` (fg=50%)
                                                         *hl-GitSignsStagedUntrackedLn*
 GitSignsStagedUntrackedLn
     Used for buffer line (when `config.linehl == true`) of 'untracked' staged signs.
