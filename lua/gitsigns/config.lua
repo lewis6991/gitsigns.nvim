@@ -820,6 +820,7 @@ M.schema = {
     description = [[
       Enable GitHub integration. This allows the following features:
       • `:Gitsigns blame_line` will show PR numbers (with a hyperlink)
+      • `:Gitsigns history` will show associated PR numbers in expanded info
     ]],
   },
 

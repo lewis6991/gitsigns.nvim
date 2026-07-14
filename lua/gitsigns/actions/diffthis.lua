@@ -89,15 +89,28 @@ end
 local function create_revision_buf(bufnr, base, relpath)
   local bcache = assert(cache[bufnr])
   base = util.norm_base(base)
-
-  local bufname = bcache:get_rev_bufname(base, relpath)
-
-  if util.bufexists(bufname) then
-    return bufname, vim.fn.bufnr(bufname)
+  local history_relpath = vim.b[bufnr].gitsigns_history_relpath
+  if type(history_relpath) ~= 'string' then
+    history_relpath = bcache.git_obj.relpath
   end
 
-  local dbuf = api.nvim_create_buf(false, true)
-  api.nvim_buf_set_name(dbuf, bufname)
+  local bufname = bcache:get_rev_bufname(base, relpath)
+  local exists = util.bufexists(bufname)
+  local dbuf = exists and vim.fn.bufnr(bufname) or api.nvim_create_buf(false, true)
+
+  if not exists then
+    api.nvim_buf_set_name(dbuf, bufname)
+  end
+
+  if history_relpath then
+    -- Keep history anchored to the current file path even when this buffer is
+    -- showing an older filename after a rename.
+    vim.b[dbuf].gitsigns_history_relpath = history_relpath
+  end
+
+  if exists then
+    return bufname, dbuf
+  end
 
   local ok, err = pcall(bufread, bufnr, dbuf, base, relpath)
   if not ok then
@@ -220,14 +233,21 @@ function M.show(bufnr, base, relpath)
     return false
   end
 
-  local bufname = create_revision_buf(bufnr, base, relpath)
-  if not bufname then
+  local bufname, dbuf = create_revision_buf(bufnr, base, relpath)
+  if not bufname or not dbuf then
     log.dprint('No bufname for revision ' .. base)
     return false
   end
 
   log.dprint('bufname ' .. bufname)
-  vim.cmd.edit(bufname)
+
+  if api.nvim_get_current_buf() ~= dbuf then
+    vim.cmd.edit(bufname)
+  else
+    -- Re-editing the same revision scratch buffer can clear its contents.
+    -- Treat this as a no-op when the target window already shows it.
+    return cache[dbuf] ~= nil
+  end
 
   -- Wait for the buffer to attach in case the user passes a callback that
   -- requires the buffer to be attached.
