@@ -106,7 +106,11 @@ function M:add(bufnr, signs, filter)
       if config.signcolumn and cs.show_count and sign.count then
         local cc = config.count_chars
         local count_char = cc[sign.count] or cc['+'] or ''
-        text = text .. count_char
+        if vim.fn.strdisplaywidth(count_char) > 1 then
+          text = count_char
+        else
+          text = text .. count_char
+        end
       end
 
       local sign_hl_group = self:hl(ty, 'hl')
