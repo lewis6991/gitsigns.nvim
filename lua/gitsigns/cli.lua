@@ -8,7 +8,7 @@ local log = require('gitsigns.debug.log')
 local message = require('gitsigns.message')
 
 --- @type table<string,function>[]
-local sources = { actions, attach, Debug }
+local sources = { actions, Debug }
 
 --- try to parse each argument as a lua boolean, nil or number, if fails then
 --- keep argument as a string:
@@ -55,6 +55,7 @@ function M.complete(arglead, line)
       return cmp_func(arglead, line)
     end
   end
+  table.sort(matches)
   return matches
 end
 
