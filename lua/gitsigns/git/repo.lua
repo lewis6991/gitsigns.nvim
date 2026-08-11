@@ -383,7 +383,12 @@ function M:files_changed(base, include_untracked)
     return ret
   end
 
-  local results = self:command({ 'status', '--porcelain', '--ignore-submodules' })
+  local results = self:command(util.flatten({
+    'status',
+    '--porcelain',
+    '--ignore-submodules',
+    include_untracked and '--untracked-files=all',
+  }))
 
   for _, line in ipairs(results) do
     local status = line:sub(1, 2)

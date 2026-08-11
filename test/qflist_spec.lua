@@ -94,4 +94,28 @@ describe('qflist', function()
       eq(true, texts[1]:match('^Removed') ~= nil)
     end)
   end)
+
+  it('includes untracked files inside untracked directories in setqflist all', function()
+    setup_test_repo()
+    command('cd ' .. scratch)
+    setup_gitsigns(test_config)
+
+    local untracked = scratch .. '/newdir/untracked.lua'
+    helpers.write_to_file(untracked, { 'untracked' })
+
+    exec_lua(function()
+      require('gitsigns.actions').setqflist('all', { open = false })
+    end)
+
+    helpers.expectf(function()
+      local names = exec_lua(function()
+        return vim.tbl_map(function(item)
+          return item.filename or vim.api.nvim_buf_get_name(item.bufnr)
+        end, vim.fn.getqflist())
+      end) --- @type string[]
+
+      eq(1, #names)
+      eq_path(untracked, names[1])
+    end)
+  end)
 end)
