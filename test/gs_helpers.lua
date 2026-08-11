@@ -14,6 +14,9 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 
 --- @return boolean
 local function is_win()
+  if not M.get_session() then
+    return package.config:sub(1, 1) == '\\'
+  end
   return M.fn.has('win32') == 1
 end
 
@@ -329,8 +332,8 @@ function M.cleanup()
       pcall(vim.cmd, 'silent! cd ' .. vim.fn.fnameescape(tmpdir0))
 
       for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-        local name = vim.api.nvim_buf_get_name(buf)
-        if name ~= '' and name:find(root, 1, true) then
+        local ok, name = pcall(vim.api.nvim_buf_get_name, buf)
+        if ok and name ~= '' and name:find(root, 1, true) then
           pcall(vim.api.nvim_buf_delete, buf, { force = true })
         end
       end

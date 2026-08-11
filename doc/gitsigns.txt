@@ -295,6 +295,30 @@ change_base({base}, {global}, {callback})              *gitsigns.change_base()*
         {global}   (`boolean?`): Change the base of all buffers.
         {callback} (`(fun(err: string?))?`)
 
+history({callback})                                       *gitsigns.history()*
+    Show the git history for the current file in a panel below the source
+    window.
+
+    Opening a revision from a normal source buffer moves the panels to a new
+    tab for that revision and closes the original panels.
+    When invoked from the command line, `:vert Gitsigns history` opens the
+    history panel on the left instead.
+
+    Mappings:
+      <CR> opens [Open buffer].
+      v    [Open buffer] in a vertical split.
+      t    [Open buffer] in a new tab.
+      gv   [Show commit] in a vertical split.
+      gt   [Show commit] in a new tab.
+      i    toggles expanded inline info for the selected entry.
+      ?    opens an action picker for the selected entry.
+
+    Attributes: ~
+        {async}
+
+    Parameters: ~
+        {callback} (`(fun(err: string?))?`)
+
 blame({opts}, {callback})                                   *gitsigns.blame()*
     Run git-blame on the current file and open the results
     in a scroll-bound vertical split.
@@ -306,6 +330,11 @@ blame({opts}, {callback})                                   *gitsigns.blame()*
       s   [Show commit] in a vertical split.
       S   [Show commit] in a new tab.
       r   [Reblame at commit]
+      R   [Reblame at commit parent]
+
+    Reblaming from a normal source buffer opens the selected revision in a new
+    tab and moves attached panels there. Reblaming from a revision buffer stays
+    in the same tab.
 
     Attributes: ~
         {async}
@@ -1111,6 +1140,7 @@ gh                                                        *gitsigns-config-gh*
 
     Enable GitHub integration. This allows the following features:
     • `:Gitsigns blame_line` will show PR numbers (with a hyperlink)
+    • `:Gitsigns history` will show associated PR numbers in expanded info
 
 word_diff                                          *gitsigns-config-word_diff*
     Type: `boolean`, Default: `false`

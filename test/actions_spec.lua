@@ -165,6 +165,7 @@ describe('actions', function()
 
   it('completes action command arguments', function()
     eq(true, vim.tbl_contains(complete('', 'vertical Gits '), 'attach'))
+    eq(true, vim.tbl_contains(complete('', 'vertical Gits '), 'history'))
     eq({ '--bufnr=', '--force', '--trigger=' }, complete('', 'Gitsigns attach '))
     eq({ '--ignore_whitespace' }, complete('', 'Gitsigns blame '))
     eq({ '--full', '--ignore_whitespace' }, complete('', 'Gitsigns blame_line '))

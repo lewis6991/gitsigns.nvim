@@ -716,6 +716,11 @@ end
 ---   s   [Show commit] in a vertical split.
 ---   S   [Show commit] in a new tab.
 ---   r   [Reblame at commit]
+---   R   [Reblame at commit parent]
+---
+--- Reblaming from a normal source buffer opens the selected revision in a new
+--- tab and moves attached panels there. Reblaming from a revision buffer stays
+--- in the same tab.
 ---
 --- Attributes:
 --- - {async}
@@ -729,6 +734,35 @@ end
 C.blame = function(args, _)
   --- @diagnostic disable-next-line: param-type-mismatch
   M.blame(args)
+end
+
+--- Show the git history for the current file in a panel below the source
+--- window.
+---
+--- Opening a revision from a normal source buffer moves the panels to a new
+--- tab for that revision and closes the original panels.
+--- When invoked from the command line, `:vert Gitsigns history` opens the
+--- history panel on the left instead.
+---
+--- Mappings:
+---   <CR> opens [Open buffer].
+---   v    [Open buffer] in a vertical split.
+---   t    [Open buffer] in a new tab.
+---   gv   [Show commit] in a vertical split.
+---   gt   [Show commit] in a new tab.
+---   i    toggles expanded inline info for the selected entry.
+---   ?    opens an action picker for the selected entry.
+---
+--- Attributes:
+--- - {async}
+---
+--- @param callback? fun(err?: string)
+function M.history(callback)
+  async_run(callback, require('gitsigns.actions.history').history)
+end
+
+function C.history(_, params)
+  async_run(nil, require('gitsigns.actions.history').history, params.smods)
 end
 
 --- @async

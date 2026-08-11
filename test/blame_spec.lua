@@ -31,6 +31,54 @@ local function open_blame_panel()
   )
 end
 
+local function open_blame_panel_from_source()
+  eq(
+    'gitsigns-blame',
+    exec_lua(function()
+      local source_win --- @type integer?
+
+      for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+        local bufnr = vim.api.nvim_win_get_buf(win)
+        local filetype = vim.bo[bufnr].filetype
+        if filetype ~= 'gitsigns-history' and filetype ~= 'gitsigns-blame' then
+          source_win = win
+          break
+        end
+      end
+
+      assert(source_win)
+      vim.api.nvim_set_current_win(source_win)
+      vim.wait(5000, function()
+        return require('gitsigns.cache').cache[vim.api.nvim_win_get_buf(source_win)] ~= nil
+      end)
+
+      local async = require('gitsigns.async')
+      async.run(require('gitsigns.actions.blame').blame):wait(5000)
+
+      for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+        local bufnr = vim.api.nvim_win_get_buf(win)
+        if vim.bo[bufnr].filetype == 'gitsigns-blame' then
+          vim.api.nvim_set_current_win(win)
+          return vim.bo.filetype
+        end
+      end
+
+      return vim.bo.filetype
+    end)
+  )
+end
+
+local function open_history_panel()
+  eq(
+    'gitsigns-history',
+    exec_lua(function()
+      local async = require('gitsigns.async')
+      async.run(require('gitsigns.actions.history').history):wait(5000)
+      return vim.bo.filetype
+    end)
+  )
+end
+
 local function get_blame_panel_state()
   return exec_lua(function()
     local bufnr = vim.api.nvim_get_current_buf()
@@ -58,10 +106,126 @@ local function get_blame_panel_state()
       line_widths = line_widths,
       lines = lines,
       row_hls = row_hls,
+      statusline = vim.wo.statusline,
       win_width = vim.api.nvim_win_get_width(0),
       year = os.date('%Y'),
     }
   end)
+end
+
+local function get_history_blame_state()
+  return exec_lua(function()
+    local history_win --- @type integer?
+    local blame_win --- @type integer?
+    local source_win --- @type integer?
+
+    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      local bufnr = vim.api.nvim_win_get_buf(win)
+      local filetype = vim.bo[bufnr].filetype
+      if filetype == 'gitsigns-history' then
+        history_win = win
+      elseif filetype == 'gitsigns-blame' then
+        blame_win = win
+      else
+        source_win = win
+      end
+    end
+
+    if not history_win or not source_win then
+      return
+    end
+
+    local namespaces = vim.api.nvim_get_namespaces()
+    local history_bufnr = vim.api.nvim_win_get_buf(history_win)
+    local source_bufnr = vim.api.nvim_win_get_buf(source_win)
+    local history_pos = vim.fn.win_screenpos(history_win)
+    local source_pos = vim.fn.win_screenpos(source_win)
+    local result = {
+      history_has_blame_hls = namespaces.gitsigns_blame_win_hl and #vim.api.nvim_buf_get_extmarks(
+        history_bufnr,
+        namespaces.gitsigns_blame_win_hl,
+        0,
+        -1,
+        {}
+      ) > 0 or false,
+      history_col = history_pos[2],
+      history_height = vim.api.nvim_win_get_height(history_win),
+      history_top = history_pos[1],
+      history_width = vim.api.nvim_win_get_width(history_win),
+      source_col = source_pos[2],
+      source_height = vim.api.nvim_win_get_height(source_win),
+      source_lines = vim.api.nvim_buf_get_lines(source_bufnr, 0, -1, false),
+      source_name = vim.api.nvim_buf_get_name(source_bufnr),
+      source_top = source_pos[1],
+      source_width = vim.api.nvim_win_get_width(source_win),
+    }
+
+    if blame_win then
+      local blame_bufnr = vim.api.nvim_win_get_buf(blame_win)
+      local blame_pos = vim.fn.win_screenpos(blame_win)
+      result.blame_col = blame_pos[2]
+      result.blame_height = vim.api.nvim_win_get_height(blame_win)
+      result.blame_lines = vim.api.nvim_buf_get_lines(blame_bufnr, 0, -1, false)
+      result.blame_name = vim.api.nvim_buf_get_name(blame_bufnr)
+      result.blame_top = blame_pos[1]
+      result.blame_width = vim.api.nvim_win_get_width(blame_win)
+    end
+
+    return result
+  end)
+end
+
+local function focus_window(filetype)
+  return exec_lua(function(target)
+    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      local bufnr = vim.api.nvim_win_get_buf(win)
+      if vim.bo[bufnr].filetype == target then
+        vim.api.nvim_set_current_win(win)
+        return true
+      end
+    end
+
+    return false
+  end, filetype)
+end
+
+local function panels_moved_to_revision_tab(source_name, expect_blame)
+  return exec_lua(function(source_name0, expect_blame0)
+    expect_blame0 = expect_blame0 ~= false
+    local tabs = vim.api.nvim_list_tabpages()
+    if #tabs ~= 2 then
+      return false
+    end
+
+    local old_panel_count = 0
+    local old_source_name --- @type string?
+    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tabs[1])) do
+      local bufnr = vim.api.nvim_win_get_buf(win)
+      local filetype = vim.bo[bufnr].filetype
+      if filetype == 'gitsigns-blame' or filetype == 'gitsigns-history' then
+        old_panel_count = old_panel_count + 1
+      else
+        old_source_name = vim.api.nvim_buf_get_name(bufnr)
+      end
+    end
+
+    local new_filetypes = {} --- @type table<string,true>
+    local new_revision = false
+    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      local bufnr = vim.api.nvim_win_get_buf(win)
+      new_filetypes[vim.bo[bufnr].filetype] = true
+      if vim.api.nvim_buf_get_name(bufnr):match('^gitsigns://') then
+        new_revision = true
+      end
+    end
+
+    return old_panel_count == 0
+      and old_source_name == source_name0
+      and #vim.api.nvim_tabpage_list_wins(0) == (expect_blame0 and 3 or 2)
+      and (new_filetypes['gitsigns-blame'] == true) == expect_blame0
+      and new_filetypes['gitsigns-history']
+      and new_revision
+  end, source_name, expect_blame)
 end
 
 local function has_hl(row_hls, row, name)
@@ -122,6 +286,410 @@ describe('blame', function()
     eq('gitsigns-blame', exec_lua('return vim.bo.filetype'))
   end)
 
+  it('moves history and blame panels to a revision tab on reblame', function()
+    setup_gitsigns(test_config)
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    helpers.write_to_file(test_file, { 'ONE', 'TWO' })
+    helpers.git('add', test_file)
+    helpers.git('commit', '-m', 'second commit')
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    open_blame_panel()
+    open_history_panel()
+    eq(true, focus_window('gitsigns-blame'))
+
+    feed('r')
+
+    expectf(function()
+      return panels_moved_to_revision_tab(test_file)
+    end)
+
+    local revision_tab = exec_lua(function()
+      local state = {
+        tab_count = #vim.api.nvim_list_tabpages(),
+        win_count = #vim.api.nvim_tabpage_list_wins(0),
+      }
+      for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+        local bufnr = vim.api.nvim_win_get_buf(win)
+        local filetype = vim.bo[bufnr].filetype
+        if filetype == 'gitsigns-blame' then
+          state.blame_win = win
+        elseif filetype == 'gitsigns-history' then
+          state.history_win = win
+        elseif vim.api.nvim_buf_get_name(bufnr):match('^gitsigns://') then
+          state.source_win = win
+          state.source_name = vim.api.nvim_buf_get_name(bufnr)
+        end
+      end
+      return state
+    end)
+
+    feed('R')
+
+    expectf(function()
+      return exec_lua(function(before)
+        if #vim.api.nvim_list_tabpages() ~= before.tab_count then
+          return false
+        end
+        if #vim.api.nvim_tabpage_list_wins(0) ~= before.win_count then
+          return false
+        end
+        for _, key in ipairs({ 'blame_win', 'history_win', 'source_win' }) do
+          local win = before[key]
+          if type(win) ~= 'number' or not vim.api.nvim_win_is_valid(win) then
+            return false
+          end
+        end
+        local blame_lines =
+          vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(before.blame_win), 0, -1, false)
+        local source_name = vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(before.source_win))
+        return vim.bo[vim.api.nvim_win_get_buf(before.blame_win)].filetype == 'gitsigns-blame'
+          and vim.bo[vim.api.nvim_win_get_buf(before.history_win)].filetype == 'gitsigns-history'
+          and source_name:match('^gitsigns://') ~= nil
+          and source_name ~= before.source_name
+          and blame_lines[2] == '┕ init commit'
+      end, revision_tab)
+    end)
+  end)
+
+  it('scrolls the history selection as repeated reblame updates it', function()
+    setup_gitsigns(test_config)
+    setup_test_repo({
+      test_file_text = { 'line 01' },
+    })
+
+    for i = 2, 12 do
+      local lines = {} --- @type string[]
+      for j = 1, i do
+        lines[j] = ('line %02d'):format(j)
+      end
+      helpers.write_to_file(test_file, lines)
+      helpers.git('add', test_file)
+      helpers.git('commit', '-m', ('commit %02d'):format(i))
+    end
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+    exec_lua(function()
+      vim.o.scrolloff = 3
+    end)
+
+    open_blame_panel()
+    open_history_panel()
+    eq(true, focus_window('gitsigns-blame'))
+
+    feed('7G')
+    feed('r')
+
+    local function get_history_cursor()
+      return exec_lua(function()
+        for _, tabpage in ipairs(vim.api.nvim_list_tabpages()) do
+          for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tabpage)) do
+            local bufnr = vim.api.nvim_win_get_buf(win)
+            if vim.bo[bufnr].filetype == 'gitsigns-history' then
+              return vim.api.nvim_win_call(win, function()
+                return {
+                  cursor = vim.api.nvim_win_get_cursor(win)[1],
+                  scrolloff = vim.wo.scrolloff,
+                  visible_bot = vim.fn.line('w$'),
+                  visible_top = vim.fn.line('w0'),
+                }
+              end)
+            end
+          end
+        end
+      end)
+    end
+
+    local function focus_blame_panel()
+      return exec_lua(function()
+        for _, tabpage in ipairs(vim.api.nvim_list_tabpages()) do
+          for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tabpage)) do
+            local bufnr = vim.api.nvim_win_get_buf(win)
+            if vim.bo[bufnr].filetype == 'gitsigns-blame' then
+              vim.api.nvim_set_current_win(win)
+              return true
+            end
+          end
+        end
+        return false
+      end)
+    end
+
+    expectf(function()
+      local state = get_history_cursor()
+      return exec_lua('return #vim.api.nvim_list_tabpages()') == 2 and state and state.cursor > 1
+    end)
+
+    local previous = assert(get_history_cursor()).cursor
+    for _ = 1, 3 do
+      eq(true, focus_blame_panel())
+      feed('R')
+      expectf(function()
+        local state = get_history_cursor()
+        return state
+          and state.cursor > previous
+          and state.visible_top <= state.cursor - state.scrolloff
+          and state.visible_bot >= state.cursor + state.scrolloff
+      end)
+      previous = assert(get_history_cursor()).cursor
+    end
+  end)
+
+  it('keeps the blame panel in sync with history buffer switches', function()
+    setup_gitsigns(test_config)
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    helpers.write_to_file(test_file, { 'ONE', 'TWO' })
+    helpers.git('add', test_file)
+    helpers.git('commit', '-m', 'second commit')
+
+    helpers.write_to_file(test_file, { 'uno', 'dos' })
+    helpers.git('add', test_file)
+    helpers.git('commit', '-m', 'third commit')
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    open_history_panel()
+
+    feed('j')
+    feed('<CR>')
+
+    expectf(function()
+      local state = get_history_blame_state()
+      return state and state.source_lines[1] == 'ONE' and state.source_lines[2] == 'TWO'
+    end)
+
+    open_blame_panel_from_source()
+
+    expectf(function()
+      local state = get_history_blame_state()
+      return state
+        and state.blame_lines[2] == '┕ second commit'
+        and state.blame_height == state.source_height
+        and not state.history_has_blame_hls
+        and state.blame_name == state.source_name:gsub('^gitsigns:', 'gitsigns-blame:')
+    end)
+
+    eq(true, focus_window('gitsigns-history'))
+    feed('j')
+    feed('<CR>')
+
+    expectf(function()
+      local state = get_history_blame_state()
+      return state
+        and state.source_lines[1] == 'one'
+        and state.source_lines[2] == 'two'
+        and state.blame_lines[2] == '┕ init commit'
+        and state.blame_height == state.source_height
+        and not state.history_has_blame_hls
+        and state.blame_name == state.source_name:gsub('^gitsigns:', 'gitsigns-blame:')
+    end)
+  end)
+
+  it('keeps the blame panel aligned with the source when opening history', function()
+    setup_gitsigns(test_config)
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    open_blame_panel()
+
+    eq(
+      'gitsigns-history',
+      exec_lua(function()
+        vim.cmd('Gitsigns history')
+        vim.wait(5000, function()
+          return vim.bo.filetype == 'gitsigns-history'
+        end)
+        return vim.bo.filetype
+      end)
+    )
+
+    expectf(function()
+      local state = get_history_blame_state()
+      return state
+        and state.blame_height ~= nil
+        and not state.history_has_blame_hls
+        and state.blame_height == state.source_height
+        and state.blame_top == state.source_top
+        and state.history_top > state.blame_top
+        and state.history_col <= state.blame_col
+        and state.history_col + state.history_width >= state.source_col + state.source_width
+        and state.history_height < state.source_height
+    end)
+  end)
+
+  it('does not let transient blame clones steal panel ownership', function()
+    setup_gitsigns(test_config)
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    open_blame_panel()
+
+    eq(
+      { 'scratch' },
+      exec_lua(function()
+        local blame_bufnr = vim.api.nvim_get_current_buf()
+
+        vim.cmd('botright split')
+        local win = vim.api.nvim_get_current_win()
+        local scratch_bufnr = vim.api.nvim_create_buf(false, true)
+        if vim.fn.exists('&winfixbuf') == 1 then
+          vim.wo[win][0].winfixbuf = false
+        end
+        vim.api.nvim_win_set_buf(win, scratch_bufnr)
+        vim.api.nvim_buf_set_lines(scratch_bufnr, 0, -1, false, { 'scratch' })
+
+        vim.api.nvim_exec_autocmds('WinResized', { buffer = blame_bufnr })
+        return vim.api.nvim_buf_get_lines(scratch_bufnr, 0, -1, false)
+      end)
+    )
+  end)
+
+  it('opens blame from the history panel', function()
+    setup_gitsigns(test_config)
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    open_history_panel()
+    open_blame_panel()
+
+    eq(
+      true,
+      exec_lua(function()
+        local filetypes = {} --- @type table<string,true>
+        for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+          local bufnr = vim.api.nvim_win_get_buf(win)
+          filetypes[vim.bo[bufnr].filetype] = true
+        end
+        return filetypes['gitsigns-history'] and filetypes['gitsigns-blame']
+      end)
+    )
+  end)
+
+  it('does not retarget blame from an unrelated unattached window', function()
+    setup_gitsigns(test_config)
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    eq(
+      false,
+      exec_lua(function()
+        vim.cmd.new()
+        local async = require('gitsigns.async')
+        async.run(require('gitsigns.actions.blame').blame):wait(5000)
+
+        for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+          local bufnr = vim.api.nvim_win_get_buf(win)
+          if vim.bo[bufnr].filetype == 'gitsigns-blame' then
+            return true
+          end
+        end
+
+        return false
+      end)
+    )
+  end)
+
+  it('does not reopen blame when history opens a revision', function()
+    setup_gitsigns(test_config)
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    helpers.write_to_file(test_file, { 'ONE', 'TWO' })
+    helpers.git('add', test_file)
+    helpers.git('commit', '-m', 'second commit')
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    open_blame_panel()
+    exec_lua(function()
+      for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+        local bufnr = vim.api.nvim_win_get_buf(win)
+        if vim.bo[bufnr].filetype ~= 'gitsigns-blame' then
+          vim.api.nvim_set_current_win(win)
+          return
+        end
+      end
+    end)
+    open_history_panel()
+
+    local before = exec_lua(function()
+      local filetypes = {} --- @type table<string,true>
+      for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+        local bufnr = vim.api.nvim_win_get_buf(win)
+        filetypes[vim.bo[bufnr].filetype] = true
+      end
+      return {
+        filetypes = filetypes,
+        tab_count = #vim.api.nvim_list_tabpages(),
+        win_count = #vim.api.nvim_tabpage_list_wins(0),
+      }
+    end)
+
+    eq(1, before.tab_count)
+    eq(3, before.win_count)
+    eq(true, before.filetypes['gitsigns-blame'])
+    eq(true, before.filetypes['gitsigns-history'])
+
+    feed('j')
+    feed('<CR>')
+
+    expectf(function()
+      return panels_moved_to_revision_tab(test_file, false)
+    end)
+  end)
+
   it('renders the default side-panel layout', function()
     setup_gitsigns(test_config)
     setup_test_repo({
@@ -141,8 +709,113 @@ describe('blame', function()
 
     assert(result.lines[1]:match('^┍ %x%x%x%x%x%x%x%x tester ' .. date_pat .. '$'))
     eq('┕ init commit', result.lines[2])
+    eq(' ', result.statusline)
     eq(true, has_hl_match(result.row_hls, 1, '^GitSignsBlameColor%.'))
     eq(true, has_hl(result.row_hls, 2, 'Comment'))
+  end)
+
+  it('keeps the side-panel statusline blank across window changes', function()
+    setup_gitsigns(test_config)
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    exec_lua(function()
+      local group = vim.api.nvim_create_augroup('GitsignsTestStatuslineReset', {})
+      vim.api.nvim_create_autocmd({ 'BufWinEnter', 'WinEnter', 'WinLeave' }, {
+        group = group,
+        callback = function()
+          vim.wo.statusline = ' reset '
+        end,
+      })
+    end)
+
+    open_blame_panel()
+
+    local result = exec_lua(function()
+      local blame_win = vim.api.nvim_get_current_win()
+      vim.cmd.wincmd('p')
+      local after_leave = vim.wo[blame_win][0].statusline
+      vim.cmd.wincmd('p')
+      local after_enter = vim.wo[blame_win][0].statusline
+      pcall(vim.api.nvim_del_augroup_by_name, 'GitsignsTestStatuslineReset')
+      return { after_enter = after_enter, after_leave = after_leave }
+    end)
+
+    eq(' ', result.after_leave)
+    eq(' ', result.after_enter)
+  end)
+
+  it('does not blank the global statusline', function()
+    setup_gitsigns(test_config)
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    exec_lua(function()
+      vim.o.laststatus = 3
+      vim.o.statusline = ' global '
+    end)
+
+    open_blame_panel()
+
+    local result = exec_lua(function()
+      local win = vim.api.nvim_get_current_win()
+      return {
+        effective_statusline = vim.wo[win].statusline,
+        local_statusline = vim.wo[win][0].statusline,
+      }
+    end)
+
+    eq(' global ', result.effective_statusline)
+    eq('', result.local_statusline)
+  end)
+
+  it('opens when the new panel split starts with winfixbuf', function()
+    if exec_lua(function()
+      return vim.fn.exists('&winfixbuf') == 0
+    end) then
+      return
+    end
+
+    setup_gitsigns(test_config)
+    setup_test_repo({
+      test_file_text = { 'one', 'two' },
+    })
+
+    edit(test_file)
+    check({
+      status = { head = 'main', added = 0, changed = 0, removed = 0 },
+      signs = {},
+    })
+
+    exec_lua(function()
+      local group = vim.api.nvim_create_augroup('GitsignsTestWinfixbuf', {})
+      vim.api.nvim_create_autocmd('WinNew', {
+        group = group,
+        callback = function()
+          vim.wo[0][0].winfixbuf = true
+        end,
+      })
+    end)
+
+    open_blame_panel()
+
+    exec_lua(function()
+      pcall(vim.api.nvim_del_augroup_by_name, 'GitsignsTestWinfixbuf')
+    end)
   end)
 
   it('supports string side-panel formatters', function()
