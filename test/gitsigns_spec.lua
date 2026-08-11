@@ -681,6 +681,19 @@ describe('gitsigns (with screen)', function()
   end)
 
   describe('configuration', function()
+    it('reads defaults from diffopt', function()
+      helpers.setup_path()
+      command('set diffopt=internal,indent-heuristic,algorithm:histogram,linematch:30')
+
+      eq({
+        algorithm = 'histogram',
+        indent_heuristic = true,
+        internal = true,
+        linematch = 30,
+        vertical = true,
+      }, exec_lua("return require('gitsigns.config').config.diff_opts"))
+    end)
+
     it('validates union-typed fields', function()
       helpers.setup_path()
 

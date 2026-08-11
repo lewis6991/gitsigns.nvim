@@ -152,7 +152,7 @@ local function parse_diffopt()
     iwhiteall = 'ignore_whitespace',
   }
 
-  local diffopt = vim.opt.diffopt:get() --[[@as string[] ]]
+  local diffopt = vim.split(vim.o.diffopt, ',', { plain = true })
   for _, o in ipairs(diffopt) do
     if optmap[o] then
       r[optmap[o]] = true
