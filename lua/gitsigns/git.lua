@@ -18,8 +18,10 @@ M.Repo = Repo
 --- Revision the object is tracking against. Nil for index
 --- @field revision? string
 ---
---- The fixed object name to use. Nil for untracked.
+--- The base object name, or the index object when the selected base is missing.
+--- Nil for untracked.
 --- @field object_name? string
+--- @field object_missing? true File is missing from the selected revision
 ---
 --- The path of the file relative to toplevel. Used to
 --- perform git operations. Nil if file does not exist
@@ -39,11 +41,35 @@ Obj.__index = Obj
 M.Obj = Obj
 
 --- @async
+--- @param self Gitsigns.GitObj
+--- @param revision string?
+--- @return string? err
+local function refresh(self, revision)
+  local info, err = self.repo:file_info(self.file, revision)
+
+  if err then
+    log.eprint(err)
+  end
+
+  if not info then
+    return err
+  end
+
+  self.revision = revision
+  self.relpath = info.relpath
+  self.object_name = info.object_name
+  self.object_missing = info.object_missing
+  self.mode_bits = info.mode_bits
+  self.has_conflicts = info.has_conflicts
+  self.i_crlf = info.i_crlf
+  self.w_crlf = info.w_crlf
+end
+
+--- @async
 --- @param revision? string
 --- @return string? err
 function Obj:change_revision(revision)
-  self.revision = util.norm_base(revision)
-  return self:refresh()
+  return refresh(self, util.norm_base(revision))
 end
 
 --- @async
@@ -55,22 +81,7 @@ end
 --- @async
 --- @return string? err
 function Obj:refresh()
-  local info, err = self.repo:file_info(self.file, self.revision)
-
-  if err then
-    log.eprint(err)
-  end
-
-  if not info then
-    return err
-  end
-
-  self.relpath = info.relpath
-  self.object_name = info.object_name
-  self.mode_bits = info.mode_bits
-  self.has_conflicts = info.has_conflicts
-  self.i_crlf = info.i_crlf
-  self.w_crlf = info.w_crlf
+  return refresh(self, self.revision)
 end
 
 function Obj:close()
@@ -103,8 +114,8 @@ function Obj:get_show_text(revision, relpath)
     return {}
   end
 
-  if not revision and not self.object_name then
-    log.dprint('no revision or object_name')
+  if not revision and (self.object_missing or not self.object_name) then
+    log.dprint('no base object')
     return { '' }
   end
 
@@ -293,6 +304,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
 
   self.relpath = info.relpath
   self.object_name = info.object_name
+  self.object_missing = info.object_missing
   self.mode_bits = info.mode_bits
   self.has_conflicts = info.has_conflicts
   self.i_crlf = info.i_crlf

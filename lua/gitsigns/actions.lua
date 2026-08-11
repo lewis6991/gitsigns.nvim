@@ -734,11 +734,16 @@ end
 --- @async
 --- @param bcache Gitsigns.CacheEntry
 --- @param base string?
+--- @return string? err
 local function update_buf_base(bcache, base)
-  bcache.file_mode = base == 'FILE'
-  if not bcache.file_mode then
-    bcache.git_obj:change_revision(base)
+  local file_mode = base == 'FILE'
+  if not file_mode then
+    local err = bcache.git_obj:change_revision(base)
+    if err then
+      return err
+    end
   end
+  bcache.file_mode = file_mode
   bcache:invalidate(true)
   update(bcache.bufnr)
 end
@@ -788,11 +793,13 @@ function M.change_base(base, global, callback)
     base = util.norm_base(base)
 
     if global then
-      config.base = base
-
       for _, bcache in pairs(cache) do
-        update_buf_base(bcache, base)
+        local err = update_buf_base(bcache, base)
+        if err then
+          error(err)
+        end
       end
+      config.base = base
     else
       local bufnr = current_buf()
       local bcache = cache[bufnr]
@@ -800,7 +807,10 @@ function M.change_base(base, global, callback)
         return
       end
 
-      update_buf_base(bcache, base)
+      local err = update_buf_base(bcache, base)
+      if err then
+        error(err)
+      end
     end
   end)
 end

@@ -754,7 +754,8 @@ function M:ls_tree(path, revision)
       return self:ls_tree(old_path, revision)
     end
 
-    return nil, ('%s not found in %s'):format(path, revision)
+    -- The revision is valid but may predate the file.
+    return
   end
 
   local info, relpath = unpack(vim.split(res, '\t'))
@@ -774,6 +775,7 @@ end
 --- @field relpath? string nil if file is not in working tree
 --- @field mode_bits? string
 --- @field object_name? string nil if file is untracked
+--- @field object_missing? true File is missing from the selected revision
 --- @field i_crlf? boolean (requires git version >= 2.9)
 --- @field w_crlf? boolean (requires git version >= 2.9)
 --- @field has_conflicts? true
@@ -869,6 +871,18 @@ function M:file_info(file, revision)
         mode_bits = info.mode_bits,
         object_name = info.object_name,
       }
+    end
+
+    if not info then
+      local worktree_info, err2 = self:ls_files(file)
+      if err2 or not worktree_info or not worktree_info.relpath then
+        return nil, err2
+      end
+
+      -- Keep current path metadata for tracked-file handling, but mark the
+      -- selected base as empty.
+      worktree_info.object_missing = true
+      return worktree_info
     end
   else
     return self:ls_files(file)

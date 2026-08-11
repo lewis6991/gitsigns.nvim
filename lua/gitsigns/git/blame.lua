@@ -226,11 +226,10 @@ end
 function M.run_blame(obj, contents, lnum, revision, opts)
   local ret = {} --- @type table<integer,Gitsigns.BlameInfo>
 
-  if not obj.object_name or obj.repo.abbrev_head == '' then
-    assert(contents, 'contents must be provided for untracked files')
-    -- As we support attaching to untracked files we need to return something if
-    -- the file isn't isn't tracked in git.
-    -- If abbrev_head is empty, then assume the repo has no commits
+  if obj.object_missing or not obj.object_name or obj.repo.abbrev_head == '' then
+    assert(contents, 'contents must be provided for files without a base object')
+    -- Untracked files and files missing from the selected revision have no
+    -- blame source, so report their contents as uncommitted.
     local commit = not_committed(obj.file)
     for i in ipairs(contents) do
       ret[i] = {

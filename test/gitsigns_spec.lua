@@ -764,6 +764,109 @@ describe('gitsigns (with screen)', function()
         signs = { added = 1 },
       })
     end)
+
+    it('treats a file missing at the base as added', function()
+      setup_test_repo()
+      write_to_file(newfile, { 'line one', 'line two' })
+      git('add', newfile)
+      git('commit', '-m', 'add new file')
+
+      setup_gitsigns(config)
+      edit(newfile)
+
+      check({
+        status = { head = 'main', added = 0, changed = 0, removed = 0 },
+        signs = {},
+      })
+
+      command('Gitsigns change_base HEAD~1')
+
+      check({
+        status = { head = 'main', added = 2, changed = 0, removed = 0 },
+        signs = { added = 2 },
+      })
+
+      local sha = exec_lua(function()
+        local async = require('gitsigns.async')
+        return async
+          .run(function()
+            local bcache = require('gitsigns.cache').cache[vim.api.nvim_get_current_buf()]
+            local git_obj = bcache.git_obj
+            local blame = git_obj:run_blame(
+              vim.api.nvim_buf_get_lines(0, 0, -1, false),
+              nil,
+              git_obj.revision,
+              {}
+            )
+            return blame[1].commit.sha
+          end)
+          :wait(5000)
+      end)
+      eq(string.rep('0', 40), sha)
+    end)
+
+    it('attaches to a file missing at the configured base', function()
+      setup_test_repo()
+      write_to_file(newfile, { 'line one', 'line two' })
+      git('add', newfile)
+      git('commit', '-m', 'add new file')
+
+      config.base = 'HEAD~1'
+      setup_gitsigns(config)
+      edit(newfile)
+
+      check({
+        status = { head = 'main', added = 2, changed = 0, removed = 0 },
+        signs = { added = 2 },
+      })
+    end)
+
+    it('preserves the current base when the new revision is invalid', function()
+      setup_test_repo()
+      edit(test_file)
+      feed('oEDIT<esc>')
+      command('write')
+      git('add', test_file)
+      git('commit', '-m', 'commit on main')
+
+      setup_gitsigns(config)
+      check({
+        status = { head = 'main', added = 0, changed = 0, removed = 0 },
+        signs = {},
+      })
+      command('Gitsigns change_base HEAD~1')
+
+      check({
+        status = { head = 'main', added = 1, changed = 0, removed = 0 },
+        signs = { added = 1 },
+      })
+
+      local err = exec_lua(function()
+        local async = require('gitsigns.async')
+        return async
+          .run(function()
+            return async.await(
+              3,
+              require('gitsigns').change_base,
+              '__gitsigns_missing_ref__',
+              false
+            )
+          end)
+          :wait(5000)
+      end)
+
+      eq(true, err:find('__gitsigns_missing_ref__', 1, true) ~= nil)
+      eq(
+        'HEAD~1',
+        exec_lua(
+          "return require('gitsigns.cache').cache[vim.api.nvim_get_current_buf()].git_obj.revision"
+        )
+      )
+      check({
+        status = { head = 'main', added = 1, changed = 0, removed = 0 },
+        signs = { added = 1 },
+      })
+    end)
   end)
 
   local function testsuite(internal_diff)
