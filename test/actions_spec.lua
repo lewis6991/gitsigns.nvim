@@ -209,6 +209,45 @@ describe('actions', function()
     eq({ 'true', 'false', 'nil' }, complete('', 'Gitsigns toggle_signs '))
   end)
 
+  it('sorts subcommand completion', function()
+    local subcmds = complete('', 'Gitsigns ')
+    assert(#subcmds > 0, 'expected some subcommand completions')
+
+    local sorted = vim.deepcopy(subcmds)
+    table.sort(sorted)
+    eq(sorted, subcmds)
+
+    eq({ 'debug_messages', 'detach', 'detach_all' }, complete('de', 'Gitsigns de'))
+    eq({
+      'toggle_current_line_blame',
+      'toggle_deleted',
+      'toggle_linehl',
+      'toggle_numhl',
+      'toggle_signs',
+      'toggle_word_diff',
+    }, complete('toggle', 'Gitsigns toggle'))
+  end)
+
+  it('does not complete unwrapped commands', function()
+    local subcmds = complete('', 'Gitsigns ')
+
+    -- `attach`, `detach` and `detach_all` are exposed by both `gitsigns.attach`
+    -- and `gitsigns.actions`. Only the wrapped `gitsigns.actions` variants are
+    -- completed, so each is offered exactly once.
+    local counts = {} --- @type table<string,integer>
+    for _, name in ipairs(subcmds) do
+      counts[name] = (counts[name] or 0) + 1
+    end
+
+    for _, name in ipairs({ 'attach', 'detach', 'detach_all' }) do
+      eq(1, counts[name], ('expected %s to be completed exactly once'):format(name))
+    end
+
+    for name, count in pairs(counts) do
+      assert(count == 1, ('duplicate subcommand completion: %s'):format(name))
+    end
+  end)
+
   it('parses named flag assignments', function()
     local result = exec_lua(function()
       local parse_args = require('gitsigns.cli.argparse').parse_args
