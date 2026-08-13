@@ -75,6 +75,7 @@ jobs:
     env:
       NVIM_TEST_VERSION: ${{ matrix.neovim_branch }}
       GITSIGNS_TEST_ALLOW_FS_POLL_FALLBACK: '0'
+      GITSIGNS_TEST_TRACE: '1'
 
     steps:
       - name: Checkout
@@ -180,7 +181,16 @@ jobs:
       - name: Run Test
         if: matrix.setup == 'windows-msys2'
         shell: msys2 {0}
+        # Below the job timeout, so a wedged run still reaches the log step.
+        timeout-minutes: 7
         run: make test
+
+      # A wedged editor produces no test output at all, so the Nvim log is the
+      # only record of why. It is not printed by the runner.
+      - name: Nvim log
+        if: failure() || cancelled()
+        shell: bash
+        run: cat .nvimlog || true
 
   format:
     runs-on: ubuntu-latest
