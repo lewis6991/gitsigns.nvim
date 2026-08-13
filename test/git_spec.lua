@@ -48,6 +48,50 @@ describe('git', function()
     helpers.setup_path()
   end)
 
+  it('refreshes HEAD from a watcher callback', function()
+    setup_test_repo()
+
+    local err = exec_lua(function(dir)
+      local async = require('gitsigns.async')
+      local Repo = require('gitsigns.git.repo')
+      require('gitsigns.config').build({ watch_gitdir = { enable = true } })
+
+      local repo = assert(async.run(Repo.get, dir):wait(5000))
+
+      -- Point HEAD at a ref that resolves via neither loose refs nor
+      -- packed-refs, so the refresh falls back to running git. Without that
+      -- the refresh answers from a file read and never awaits.
+      local f = assert(io.open(dir .. '/.git/HEAD', 'w'))
+      f:write('ref: refs/heads/gone\n')
+      f:close()
+
+      -- Callbacks are invoked from `vim.schedule`, where no coroutine is
+      -- running, and `pcall`ed by the watcher -- so a raise here is invisible
+      -- in normal operation. Drive one directly and surface it.
+      local caught --- @type string?
+      local done = false
+      vim.schedule(function()
+        --- @diagnostic disable-next-line: invisible
+        for _, cb in ipairs(repo._watcher.update_callbacks) do
+          local ok, e = pcall(cb)
+          if not ok then
+            caught = tostring(e)
+          end
+        end
+        done = true
+      end)
+
+      vim.wait(5000, function()
+        return done
+      end)
+
+      repo:unref()
+      return caught
+    end, scratch)
+
+    eq(nil, err)
+  end)
+
   it('serializes repo operations across objects in the same repo', function()
     local result = exec_lua(function()
       local async = require('gitsigns.async')
