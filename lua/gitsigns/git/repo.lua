@@ -255,6 +255,7 @@ local function get_head_oid0(gitdir, commondir)
 end
 
 --- Manual implementation of `git rev-parse HEAD` with command fallback.
+--- @async
 --- @param gitdir string
 --- @param commondir string
 --- @return string? oid
@@ -266,9 +267,8 @@ local function get_head_oid(gitdir, commondir)
 
   log.dprintf('Falling back to `git rev-parse HEAD`: %s', err)
 
-  local stdout, stderr, code = async
-    .run(git_command, { '--git-dir', gitdir, 'rev-parse', 'HEAD' }, { ignore_error = true })
-    :wait()
+  local stdout, stderr, code =
+    git_command({ '--git-dir', gitdir, 'rev-parse', 'HEAD' }, { ignore_error = true })
 
   local oid = stdout[1]
 
@@ -513,25 +513,40 @@ function M._new(info)
         return
       end
 
-      self.head_oid = get_head_oid(self.gitdir, self.commondir)
-      -- Set abbrev_head to empty string if head_oid is unavailable (.e.g repo
-      -- with no commits). This is consistent with `git rev-parse --abrev-ref
-      -- HEAD` which returns "HEAD" in this case.
-      local abbrev_head = self.head_oid and get_abbrev_head(self.gitdir, head2) or ''
-      if self.abbrev_head ~= abbrev_head then
-        self.abbrev_head = abbrev_head
-        log.dprintf('HEAD changed, updating abbrev_head to %s', self.abbrev_head)
-      end
-
-      local head_ref = parse_head_ref(head2)
-      if self.head_ref ~= head_ref then
-        self.head_ref = head_ref
-        self._watcher:set_head_ref(self.head_ref)
-      end
+      -- Callbacks run from `vim.schedule`, so there is no coroutine here.
+      -- `git_command` awaits (on Windows it awaits `cygpath` before it even
+      -- spawns git), and awaiting outside a task raises. Give it one.
+      async.run(function()
+        self:_refresh_head(head2)
+      end)
     end)
   end
 
   return self
+end
+
+--- @async
+--- @private
+--- @param head string Contents of `HEAD`, already read
+function M:_refresh_head(head)
+  self.head_oid = get_head_oid(self.gitdir, self.commondir)
+
+  -- Set abbrev_head to empty string if head_oid is unavailable (.e.g repo
+  -- with no commits). This is consistent with `git rev-parse --abrev-ref
+  -- HEAD` which returns "HEAD" in this case.
+  local abbrev_head = self.head_oid and get_abbrev_head(self.gitdir, head) or ''
+  if self.abbrev_head ~= abbrev_head then
+    self.abbrev_head = abbrev_head
+    log.dprintf('HEAD changed, updating abbrev_head to %s', self.abbrev_head)
+  end
+
+  local head_ref = parse_head_ref(head)
+  if self.head_ref ~= head_ref then
+    self.head_ref = head_ref
+    if self._watcher then
+      self._watcher:set_head_ref(self.head_ref)
+    end
+  end
 end
 
 function M:has_watcher()
