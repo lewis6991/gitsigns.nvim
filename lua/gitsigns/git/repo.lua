@@ -590,6 +590,40 @@ local function normalize_path(path)
   return vim.fs.normalize(path)
 end
 
+--- Make `path` relative to the worktree, for use as a git pathspec:
+--- `<toplevel>/src/x.lua` -> `src/x.lua`. Equivalent because `command()`
+--- runs with `cwd` set to the toplevel.
+---
+--- Absolute paths are avoided because MSYS git rewrites them (`D:/x` ->
+--- `/d/x`), which then fails to match the `--work-tree` passed for linked
+--- worktrees, and git reports the file as outside the repository.
+--- @async
+--- @param path string
+--- @return string
+function M:relpathspec(path)
+  if not Path.is_abs(path) then
+    return path
+  end
+
+  local norm = vim.fs.normalize(path)
+
+  -- `toplevel` is in mixed form (`D:/x`) but paths reaching here may be in
+  -- MSYS form (`/d/x`), so compare against both. Rewrite rather than calling
+  -- `cygpath`: that spawns a process, and it blocks on paths that don't exist
+  -- yet, which is every not-yet-written buffer.
+  local drive, rest = self.toplevel:match('^(%a):/(.*)$')
+  local msys = drive and ('/' .. drive:lower() .. '/' .. rest)
+
+  for _, top in ipairs({ self.toplevel, msys }) do
+    if top and vim.startswith(norm, top .. '/') then
+      return norm:sub(#top + 2)
+    end
+  end
+
+  -- Outside the worktree: leave it for git to reject (see `ls_files`).
+  return path
+end
+
 --- Working tree for a gitdir, when it can't be discovered from the cwd.
 --- @async
 --- @param gitdir string
@@ -760,7 +794,8 @@ function M:ls_tree(path, revision)
   local results, stderr, code = self:command({
     'ls-tree',
     revision,
-    path,
+    '--',
+    self:relpathspec(path),
   }, { ignore_error = true })
 
   if code > 0 then
@@ -822,7 +857,8 @@ function M:ls_files(file)
       '--others',
       '--exclude-standard',
       has_eol and '--eol',
-      file,
+      '--',
+      self:relpathspec(file),
     }),
     { ignore_error = true }
   )

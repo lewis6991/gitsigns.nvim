@@ -100,6 +100,42 @@ describe('git', function()
     eq({ 'a_enter', 'a_exit', 'b_enter', 'b_exit' }, result.events)
   end)
 
+  it('relpathspec makes worktree paths relative', function()
+    helpers.git_init_scratch()
+
+    local result = exec_lua(function(repo_dir)
+      local async = require('gitsigns.async')
+      local Repo = require('gitsigns.git.repo')
+
+      local repo = assert(async.run(Repo.get, repo_dir):wait(5000))
+      local outside = vim.fs.dirname(repo.toplevel) .. '/outside.txt'
+
+      local ret = async
+        .run(function()
+          return {
+            inside = repo:relpathspec(repo.toplevel .. '/file'),
+            nested = repo:relpathspec(repo.toplevel .. '/dir/nested.txt'),
+            relative = repo:relpathspec('already/relative.txt'),
+            -- Outside the worktree: passed through so git still rejects it.
+            outside = repo:relpathspec(outside),
+            outside_expected = outside,
+          }
+        end)
+        :wait(5000)
+
+      repo:unref()
+      return ret
+    end, scratch)
+
+    eq({
+      inside = 'file',
+      nested = 'dir/nested.txt',
+      relative = 'already/relative.txt',
+      outside = result.outside_expected,
+      outside_expected = result.outside_expected,
+    }, result)
+  end)
+
   it('log_rename_status handles spaced filenames', function()
     helpers.git_init_scratch()
 

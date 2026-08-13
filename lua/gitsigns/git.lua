@@ -151,7 +151,7 @@ end
 
 --- @async
 function Obj:unstage_file()
-  self.repo:command({ 'reset', self.file })
+  self.repo:command({ 'reset', '--', self.repo:relpathspec(self.file) })
   autocmd_changed(self.file)
 end
 
@@ -175,7 +175,7 @@ function Obj:ensure_file_in_index()
 
   if not self.object_name then
     -- If there is no object_name then it is not yet in the index so add it
-    self.repo:command({ 'add', '--intent-to-add', self.file })
+    self.repo:command({ 'add', '--intent-to-add', '--', self.repo:relpathspec(self.file) })
   else
     -- Update the index with the common ancestor (stage 1) which is what bcache
     -- stores
