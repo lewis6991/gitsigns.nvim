@@ -149,4 +149,29 @@ describe('debounce', function()
       eq(2, exec_lua('return _G._debounce_hash_fn_value'))
     end)
   end)
+  it('keeps throttling after the function errors', function()
+    -- A raise used to leave the running flag set, so every later call returned
+    -- early and the throttled function never ran again. Anything waiting on it
+    -- then waits forever, which reads as a hang rather than an error.
+    local calls = exec_lua(function()
+      local async = require('gitsigns.async')
+      local throttle_async = require('gitsigns.debounce').throttle_async
+
+      local n = 0
+      local throttled = throttle_async({ schedule = true }, function()
+        n = n + 1
+        error('boom')
+      end)
+
+      for _ = 1, 2 do
+        pcall(function()
+          async.run(throttled):wait(2000)
+        end)
+      end
+
+      return n
+    end)
+
+    eq(2, calls)
+  end)
 end)
