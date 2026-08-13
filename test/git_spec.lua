@@ -282,6 +282,54 @@ describe('git', function()
     eq_path(submodule_gitdir, result.info.gitdir)
   end)
 
+  it('infers linked worktrees from gitdir metadata', function()
+    -- `git worktree add` records resolved paths in the gitdir metadata
+    local root = fn.resolve(scratch)
+    local main = root .. '/main'
+    local linked = root .. '/linked'
+
+    --- Given a repo with a file and a worktree
+    init_repo(main)
+    write_to_file(main .. '/file', { 'main' })
+    git_in(main, 'add', 'file')
+    git_in(main, 'commit', '-m', 'init commit')
+    git_in(main, 'worktree', 'add', linked, '-b', 'linked')
+
+    local linked_gitdir = main .. '/.git/worktrees/linked'
+    local linked_file = linked .. '/file'
+
+    local result = exec_lua(function(gitdir, file)
+      local async = require('gitsigns.async')
+      local Obj = require('gitsigns.git').Obj
+      local Repo = require('gitsigns.git.repo')
+
+      local info = assert(async.run(Repo.get_info, nil, gitdir):wait(5000))
+
+      --- Simulate how git's `!shell` aliases set GIT_DIR before running gitsigns.
+      local old_gitdir = vim.env.GIT_DIR
+      local old_worktree = vim.env.GIT_WORK_TREE
+      vim.env.GIT_DIR = gitdir
+      vim.env.GIT_WORK_TREE = nil
+
+      local obj = async.run(Obj.new, file, nil, 'utf-8'):wait(5000)
+
+      vim.env.GIT_DIR = old_gitdir
+      vim.env.GIT_WORK_TREE = old_worktree
+
+      local relpath = obj and obj.relpath
+      if obj then
+        obj:close()
+      end
+
+      return { info = info, relpath = relpath }
+    end, linked_gitdir, linked_file)
+
+    --- We find the working tree, metadata, and file.
+    eq_path(linked, result.info.toplevel)
+    eq_path(linked_gitdir, result.info.gitdir)
+    eq('file', result.relpath)
+  end)
+
   it('blame does not crash when the git object was closed (#1557)', function()
     setup_test_repo()
     helpers.setup_gitsigns(helpers.test_config)

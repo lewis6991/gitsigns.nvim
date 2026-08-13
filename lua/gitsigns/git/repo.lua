@@ -590,6 +590,25 @@ local function normalize_path(path)
   return vim.fs.normalize(path)
 end
 
+--- Working tree for a gitdir, when it can't be discovered from the cwd.
+--- @async
+--- @param gitdir string
+--- @return string
+local function get_worktree(gitdir)
+  -- A linked worktree's GIT_DIR may be set to `.git/worktrees/<name>/`.
+  -- The gitdir file contains the path to the working tree.
+  -- https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables
+  local dotgit = read_first_line(Path.join(gitdir, 'gitdir'))
+  if dotgit then
+    -- `worktree.useRelativePaths` stores this relative to gitdir.
+    if not Path.is_abs(dotgit) then
+      dotgit = Path.join(gitdir, dotgit)
+    end
+    return vim.fs.dirname(assert(normalize_path(dotgit)))
+  end
+  return vim.fs.dirname(gitdir)
+end
+
 --- @async
 --- @param gitdir string
 --- @param head_str string
@@ -648,7 +667,7 @@ function M.get_info(dir, gitdir, worktree)
     if core_worktree then
       worktree = Path.is_abs(core_worktree) and core_worktree or Path.join(gitdir, core_worktree)
     else
-      worktree = vim.fs.dirname(gitdir)
+      worktree = get_worktree(gitdir)
     end
   end
 
