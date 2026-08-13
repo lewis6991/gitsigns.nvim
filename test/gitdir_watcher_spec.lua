@@ -332,6 +332,17 @@ describe('gitdir_watcher', function()
 
     git('add', test_file)
 
+    -- Poll fingerprints are snapshotted when the watches are synced, which may
+    -- already be after the `git add` above. Stale them so the next tick sees
+    -- the change; otherwise nothing notifies and the status never updates.
+    helpers.exec_lua(function()
+      local bcache = require('gitsigns.cache').cache[vim.api.nvim_get_current_buf()]
+      local watcher = assert(assert(bcache).git_obj.repo._watcher)
+      for target in pairs(watcher._target_fingerprints) do
+        watcher._target_fingerprints[target] = 'stale'
+      end
+    end)
+
     helpers.check({ status = { head = '', added = 0, changed = 0, removed = 0 }, signs = {} })
   end)
 
@@ -372,8 +383,18 @@ describe('gitdir_watcher', function()
     helpers.exec_lua(function()
       local bcache = require('gitsigns.cache').cache[vim.api.nvim_get_current_buf()]
       local repo = assert(bcache).git_obj.repo
-      local _, handle = next(assert(repo._watcher).handles)
+      local watcher = assert(repo._watcher)
+      local _, handle = next(watcher.handles)
       assert(handle)
+
+      -- A poll callback only notifies when a fingerprint differs from the last
+      -- snapshot. That snapshot may already include the `git add` above, in
+      -- which case this callback notifies nothing and no other one follows.
+      -- Stale the fingerprints so the change is always seen.
+      for target in pairs(watcher._target_fingerprints) do
+        watcher._target_fingerprints[target] = 'stale'
+      end
+
       handle._cb(nil, nil, nil)
     end)
 
