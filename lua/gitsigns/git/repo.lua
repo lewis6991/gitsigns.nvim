@@ -15,7 +15,7 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 --- @field gitdir string
 --- @field toplevel string
 --- @field detached boolean
---- @field abbrev_head string
+--- @field abbrev_head? string
 
 --- @class Gitsigns.Repo : Gitsigns.RepoInfo
 ---
@@ -683,6 +683,18 @@ function M.get_info(dir, gitdir, worktree)
   end
 
   if code > 0 then
+    if not gitdir and not worktree and dir then
+      local jj_gitdir, jj_worktree = require('gitsigns.jj.detect').resolve(dir)
+      if jj_gitdir then
+        local info, jerr = M.get_info(dir, jj_gitdir, jj_worktree)
+        if info then
+          -- HEAD in jj's backing git store cannot be trusted to reflect
+          -- the repo's actually HEAD. Setting
+          info.abbrev_head = nil
+        end
+        return info, jerr
+      end
+    end
     return nil, string.format('got stderr: %s', stderr or '')
   end
 
