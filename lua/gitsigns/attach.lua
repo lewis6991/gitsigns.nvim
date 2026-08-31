@@ -303,6 +303,16 @@ M.attach = throttle_async({ hash = attach_hash }, function(opts)
     assert(ctx)
   end
 
+  -- get_buf_context() -> on_attach_pre() awaits config._on_attach_pre, which
+  -- yields control. The buffer may be deleted while we're suspended there
+  -- (e.g. a plugin opens a scratch buffer, writes it, then force-wipes it
+  -- before this coroutine resumes), so re-validate before touching cbuf
+  -- again, matching the checks already done after this function's other two
+  -- yield points below.
+  if not api.nvim_buf_is_valid(cbuf) then
+    return
+  end
+
   local encoding = vim.bo[cbuf].fileencoding
   if encoding == '' then
     encoding = 'utf-8'
