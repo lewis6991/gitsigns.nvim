@@ -4,6 +4,7 @@ local argparse = require('gitsigns.cli.argparse')
 --- @field completing_subcmd boolean
 --- @field subcmd string?
 --- @field pos_args string[]
+--- @field raw_args string[]
 
 local M = {}
 local COMMAND = 'Gitsigns'
@@ -12,14 +13,16 @@ local COMMAND = 'Gitsigns'
 --- @param trailing_space boolean
 --- @return string?
 --- @return string[]
+--- @return string[]
 local function parse_prev_args(args, trailing_space)
   local last = trailing_space and #args or (#args - 1)
   if last < 2 then
-    return args[1], {}
+    return args[1], {}, {}
   end
 
-  local pos_args = argparse.parse_argv(vim.list_slice(args, 2, last))
-  return args[1], pos_args
+  local raw_args = vim.list_slice(args, 2, last)
+  local pos_args = argparse.parse_argv(raw_args)
+  return args[1], pos_args, raw_args
 end
 
 --- Parse a command-line string up to the cursor for completion.
@@ -33,12 +36,13 @@ function M.parse(line)
   if ok and parsed.cmd == COMMAND then
     local args = parsed.args or {}
     local completing_subcmd = #args == 0 or (#args == 1 and not trailing_space)
-    local subcmd, pos_args = parse_prev_args(args, trailing_space)
+    local subcmd, pos_args, raw_args = parse_prev_args(args, trailing_space)
 
     return {
       completing_subcmd = completing_subcmd,
       subcmd = subcmd,
       pos_args = completing_subcmd and {} or pos_args,
+      raw_args = completing_subcmd and {} or raw_args,
     }
   end
 
@@ -58,12 +62,13 @@ function M.parse(line)
   end
 
   local completing_subcmd = #args == 0 or (#args == 1 and not trailing_space)
-  local subcmd, pos_args = parse_prev_args(args, trailing_space)
+  local subcmd, pos_args, raw_args = parse_prev_args(args, trailing_space)
 
   return {
     completing_subcmd = completing_subcmd,
     subcmd = subcmd,
     pos_args = completing_subcmd and {} or pos_args,
+    raw_args = completing_subcmd and {} or raw_args,
   }
 end
 

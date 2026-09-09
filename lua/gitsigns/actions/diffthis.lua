@@ -13,31 +13,56 @@ local api = vim.api
 
 local M = {}
 
---- @async
 --- @param bufnr integer
+--- @param text string[]
+local function read_revision(bufnr, text)
+  -- Use Neovim's file reader to detect encoding, line endings, and the BOM.
+  local path = vim.fn.tempname()
+  local ok, err = pcall(function()
+    vim.fn.writefile(text, path, 'b')
+    api.nvim_buf_call(bufnr, function()
+      vim.cmd('silent noautocmd keepalt 0read ++edit ' .. vim.fn.fnameescape(path))
+      -- :read leaves the empty buffer's original line after the inserted text.
+      api.nvim_buf_set_lines(bufnr, -2, -1, false, {})
+    end)
+  end)
+  vim.fn.delete(path)
+  if not ok then
+    error(err)
+  end
+end
+
+--- @async
+--- @param repo Gitsigns.Repo
 --- @param dbufnr integer
 --- @param base string?
---- @param relpath string?
-local function bufread(bufnr, dbufnr, base, relpath)
-  local bcache = assert(cache[bufnr])
+--- @param relpath string
+--- @param bufnr integer?
+local function bufread(repo, dbufnr, base, relpath, bufnr)
+  local bcache = bufnr and cache[bufnr]
   base = util.norm_base(base)
-  relpath = relpath or assert(bcache.git_obj.relpath)
   local text --- @type string[]
-  if base == bcache.git_obj.revision and relpath == bcache.git_obj.relpath then
+  if bcache and base == bcache.git_obj.revision and relpath == bcache.git_obj.relpath then
     text = assert(bcache.compare_text)
   else
     local err
-    text, err = bcache.git_obj:get_show_text(base, relpath)
+    if bcache then
+      text, err = bcache.git_obj:get_show_text(base, relpath)
+    else
+      text, err = repo:get_show_text(assert(base) .. ':' .. relpath)
+    end
     if err then
       error(err, 2)
     end
     async.schedule()
-    if not api.nvim_buf_is_valid(bufnr) then
+    if not api.nvim_buf_is_valid(dbufnr) then
       return
     end
   end
 
-  vim.bo[dbufnr].fileformat = relpath == bcache.git_obj.relpath and vim.bo[bufnr].fileformat
+  vim.bo[dbufnr].fileformat = bcache
+      and relpath == bcache.git_obj.relpath
+      and vim.bo[assert(bufnr)].fileformat
     or (text[1] and text[1]:sub(-1) == '\r' and 'dos' or 'unix')
 
   vim.bo[dbufnr].filetype = vim.filetype.match({ buf = dbufnr })
@@ -47,12 +72,22 @@ local function bufread(bufnr, dbufnr, base, relpath)
   vim.bo[dbufnr].modifiable = true
   Status.update(dbufnr, { head = base })
 
-  util.set_lines(dbufnr, 0, -1, text)
+  if bcache then
+    util.set_lines(dbufnr, 0, -1, text)
+  else
+    read_revision(dbufnr, text)
+  end
 
   vim.bo[dbufnr].modifiable = modifiable
   vim.bo[dbufnr].modified = false
   -- TODO(lewis6991): make this blocking
-  require('gitsigns.attach').attach({ bufnr = dbufnr, trigger = 'BufReadCmd' })
+  require('gitsigns.attach').attach({
+    bufnr = dbufnr,
+    trigger = 'BufReadCmd',
+    ctx = not bufnr
+        and { file = relpath, base = base, gitdir = repo.gitdir, toplevel = repo.toplevel }
+      or nil,
+  })
 end
 
 --- @async
@@ -81,25 +116,27 @@ end
 
 --- @async
 --- Create a gitsigns buffer for a certain revision of a file
---- @param bufnr integer
+--- @param repo Gitsigns.Repo
 --- @param base string?
---- @param relpath string?
+--- @param relpath string
+--- @param bufnr integer? Source buffer, required for editable index revisions.
 --- @return string? bufname Buffer name
 --- @return integer? bufnr Buffer number
-local function create_revision_buf(bufnr, base, relpath)
-  local bcache = assert(cache[bufnr])
+--- @return boolean? created Whether a new buffer was created.
+function M.create_revision_buf(repo, base, relpath, bufnr)
   base = util.norm_base(base)
 
-  local bufname = bcache:get_rev_bufname(base, relpath)
+  local name_base = base or (bufnr and assert(cache[bufnr]).git_obj.revision) or ':0'
+  local bufname = ('gitsigns://%s//%s:%s'):format(repo.gitdir, name_base, relpath)
 
   if util.bufexists(bufname) then
-    return bufname, vim.fn.bufnr(bufname)
+    return bufname, vim.fn.bufnr(bufname), false
   end
 
   local dbuf = api.nvim_create_buf(false, true)
   api.nvim_buf_set_name(dbuf, bufname)
 
-  local ok, err = pcall(bufread, bufnr, dbuf, base, relpath)
+  local ok, err = pcall(bufread, repo, dbuf, base, relpath, bufnr)
   if not ok then
     message.error(err --[[@as string]])
     async.schedule()
@@ -109,13 +146,14 @@ local function create_revision_buf(bufnr, base, relpath)
 
   -- allow editing the index revision
   if not base then
+    assert(bufnr, 'Index revisions need a source buffer')
     vim.bo[dbuf].buftype = 'acwrite'
 
     api.nvim_create_autocmd('BufReadCmd', {
       group = 'gitsigns',
       buffer = dbuf,
       callback = function()
-        async.run(bufread, bufnr, dbuf, base, relpath):raise_on_error()
+        async.run(bufread, repo, dbuf, base, relpath, bufnr):raise_on_error()
       end,
     })
 
@@ -131,7 +169,7 @@ local function create_revision_buf(bufnr, base, relpath)
     vim.bo[dbuf].modifiable = false
   end
 
-  return bufname, dbuf
+  return bufname, dbuf, true
 end
 
 --- @async
@@ -139,8 +177,9 @@ end
 --- @param opts? Gitsigns.DiffthisOpts
 local function diffthis_rev(base, opts)
   local bufnr = api.nvim_get_current_buf()
+  local git_obj = assert(cache[bufnr]).git_obj
 
-  local bufname, dbuf = create_revision_buf(bufnr, base)
+  local bufname, dbuf = M.create_revision_buf(git_obj.repo, base, assert(git_obj.relpath), bufnr)
   if not bufname then
     return
   end
@@ -223,7 +262,9 @@ function M.show(bufnr, base, relpath)
     return false
   end
 
-  local bufname = create_revision_buf(bufnr, base, relpath)
+  local git_obj = cache[bufnr].git_obj
+  local bufname =
+    M.create_revision_buf(git_obj.repo, base, relpath or assert(git_obj.relpath), bufnr)
   if not bufname then
     log.dprint('No bufname for revision ' .. base)
     return false

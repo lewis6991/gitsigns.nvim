@@ -61,6 +61,15 @@ end
 --- @async
 --- @param params vim.api.keyset.create_user_command.command_args
 function M.run(params)
+  if params.fargs and params.fargs[1] then
+    local cmd_func, raw_args = actions._get_cmd_func(params.fargs[1])
+    if cmd_func and raw_args then
+      -- Keep path arguments intact, including flags, assignments, and numeric names.
+      cmd_func(vim.list_slice(params.fargs, 2), params)
+      return
+    end
+  end
+
   local pos_args_raw, named_args_raw = argparse.parse_args(params.args)
 
   local func = pos_args_raw[1]

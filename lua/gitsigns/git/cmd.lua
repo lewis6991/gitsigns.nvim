@@ -44,6 +44,13 @@ local function git_command(args, spec)
     LC_ALL = 'C',
     LANGUAGE = 'C',
   })
+  if vim.fn.has('win32') == 1 then
+    -- Native Neovim passes literal arguments. Stop MSYS2/Cygwin expanding
+    -- wildcards before Git can interpret pathspecs or change directory.
+    for _, key in ipairs({ 'MSYS', 'CYGWIN' }) do
+      spec.env[key] = (spec.env[key] or vim.env[key] or '') .. ' noglob'
+    end
+  end
 
   --- @type vim.SystemCompleted
   local obj = asystem(cmd, spec)

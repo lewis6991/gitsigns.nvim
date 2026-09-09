@@ -174,6 +174,42 @@ setqflist({target}, {opts}, {callback})                 *gitsigns.setqflist()*
                      Open the quickfix/location list viewer. Defaults to `true`.
         {callback} (`(fun(err: string?))?`)
 
+diff({revision}, {paths}, {callback})                        *gitsigns.diff()*
+    Show changes with a file tree and diff windows. Reuse an empty startup
+    window; otherwise open a new tab.
+
+    >text
+      :Gitsigns diff           Compare HEAD with the working tree.
+      :Gitsigns diff <commit>  Compare <commit> with its first parent.
+      :Gitsigns diff A..B      Compare A with B.
+      :Gitsigns diff A...B     Compare the merge base of A and B with B.
+<
+
+    Limit files with Git pathspecs. Use `--` when omitting the revision:
+    >text
+      :Gitsigns diff -- lua/ doc/
+      :Gitsigns diff HEAD lua/gitsigns.lua
+      :Gitsigns diff main..HEAD *.lua
+<
+    Paths are relative to the current directory within the repository;
+    otherwise they are relative to the repository root. Escape spaces with
+    backslashes (see |<f-args>|).
+
+    For a single commit, press `<CR>` on its header to show the author, date,
+    and full message beside the panel. Press `q` to close the message.
+
+    Press `g?` in the panel for keys. Directories use standard fold commands.
+    In either diff buffer, `]f` / `[f` select the next / previous file without
+    changing windows. A count skips files; navigation stops at either end.
+
+    Regular working-tree files are editable; revision buffers are read-only.
+    See |diff-mode| for diff navigation.
+
+    Parameters: ~
+        {revision} (`string?`): (default: working tree)
+        {paths}    (`string[]?`): Git pathspecs.
+        {callback} (`(fun(err: string?))?`)
+
 show_commit({revision}, {open}, {callback})              *gitsigns.show_commit()*
     Show revision {base} commit in split or tab
 
@@ -306,6 +342,7 @@ blame({opts}, {callback})                                   *gitsigns.blame()*
       s   [Show commit] in a vertical split.
       S   [Show commit] in a new tab.
       r   [Reblame at commit]
+      D   [Diff commit] in a file panel.
 
     Attributes: ~
         {async}
