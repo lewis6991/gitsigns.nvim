@@ -164,6 +164,9 @@ local function diffthis_rev(base, opts)
   api.nvim_create_autocmd('BufHidden', {
     buffer = assert(dbuf),
     callback = function()
+      if not api.nvim_win_is_valid(cwin) then
+        return
+      end
       local tabpage = api.nvim_win_get_tabpage(cwin)
 
       local disable_cwin_diff = true
