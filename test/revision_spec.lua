@@ -31,4 +31,35 @@ describe('revision buffers', function()
     api.nvim_command('enew')
     eq(-1, helpers.fn.bufwinid(revision))
   end)
+
+  it('shows another file at the same revision with its own line endings', function()
+    helpers.git('config', 'core.autocrlf', 'false')
+    helpers.write_to_file(
+      helpers.scratch .. '/other.txt',
+      { 'other', 'file' },
+      { newline = '\r\n' }
+    )
+    helpers.git('add', 'other.txt')
+    helpers.git('commit', '-m', 'Add another file')
+    helpers.setup_gitsigns(vim.tbl_extend('force', helpers.test_config, { base = 'HEAD' }))
+    helpers.edit(helpers.test_file)
+    helpers.wait_for_attach()
+    eq('unix', exec_lua('return vim.bo.fileformat'))
+
+    eq(
+      true,
+      exec_lua(function()
+        return require('gitsigns.async')
+          .run(
+            require('gitsigns.actions.diffthis').show,
+            vim.api.nvim_get_current_buf(),
+            'HEAD',
+            'other.txt'
+          )
+          :wait(1000)
+      end)
+    )
+    eq({ 'other', 'file' }, api.nvim_buf_get_lines(0, 0, -1, false))
+    eq('dos', exec_lua('return vim.bo.fileformat'))
+  end)
 end)
