@@ -6,17 +6,7 @@ local config = require('gitsigns.config').config
 
 local api = vim.api
 
-local SHOW_FORMAT = table.concat({
-  'commit' .. '%x20%H',
-  'tree' .. '%x20%T',
-  'parent' .. '%x20%P',
-  'author' .. '%x20%an%x20<%ae>%x20%ad',
-  'committer' .. '%x20%cn%x20<%ce>%x20%cd',
-  'encoding' .. '%x20%e',
-  '',
-  '%B',
-}, '%n')
-
+--- Find the hunk and file paths containing a line in a commit's patch.
 --- @param lnum integer
 --- @return Gitsigns.Hunk.Hunk
 --- @return string
@@ -44,12 +34,44 @@ end
 
 local M = {}
 
---- @param base string?
+--- Create or reuse a commit buffer without choosing a window.
+--- Pass cached metadata and message lines to omit the patch and use gitcommit.
+--- @async
+--- @param repo Gitsigns.Repo
+--- @param base string
+--- @param message? string[]
+--- @return integer commit_buf
+function M.create_buf(repo, base, message)
+  local lines = message or require('gitsigns.git.commit')(repo, base, 'full')
+  -- Message and full commit views must not reuse each other's contents or mappings.
+  local buffer_name = ('gitsigns%s://%s//%s'):format(message and '-commit' or '', repo.gitdir, base)
+  if Util.bufexists(buffer_name) then
+    return vim.fn.bufnr(buffer_name)
+  end
+
+  local commit_buf = api.nvim_create_buf(true, true)
+  api.nvim_buf_set_name(commit_buf, buffer_name)
+  api.nvim_buf_set_lines(commit_buf, 0, -1, false, lines)
+  vim.bo[commit_buf].modifiable = false
+  vim.bo[commit_buf].buftype = 'nofile'
+  vim.bo[commit_buf].filetype = message and 'gitcommit' or 'git'
+  vim.bo[commit_buf].bufhidden = 'wipe'
+  if message then
+    vim.keymap.set('n', 'q', '<cmd>close<CR>', {
+      buffer = commit_buf,
+      silent = true,
+      desc = 'Close commit message',
+    })
+  end
+  return commit_buf
+end
+
+--- Follow a parent or tree reference, or open a file at the selected patch line.
 --- @param bufnr integer
 --- @param commit_buf integer
 --- @param ref_list string[]
 --- @param ref_list_ptr integer
-local function goto_action(base, bufnr, commit_buf, ref_list, ref_list_ptr)
+local function goto_action(bufnr, commit_buf, ref_list, ref_list_ptr)
   local curline = api.nvim_get_current_line()
   local header, ref = curline:match('^([a-z]+) (%x+)')
   if (header == 'tree' or header == 'parent') and ref then
@@ -80,6 +102,7 @@ local function goto_action(base, bufnr, commit_buf, ref_list, ref_list_ptr)
   end
 end
 
+--- Open a full commit and install optional history and patch navigation mappings.
 --- @async
 --- @param base? string?
 --- @param open? 'vsplit'|'tabnew'|'edit'
@@ -88,7 +111,7 @@ end
 --- @param ref_list_ptr? integer
 --- @return integer? commit_buf
 function M.show_commit(base, open, bufnr, ref_list, ref_list_ptr)
-  base = Util.norm_base(base or 'HEAD')
+  base = Util.norm_base(base or 'HEAD') or 'HEAD'
   open = open or 'vsplit'
   bufnr = bufnr or api.nvim_get_current_buf()
   ref_list = ref_list or {}
@@ -103,42 +126,13 @@ function M.show_commit(base, open, bufnr, ref_list, ref_list_ptr)
     return
   end
 
-  local res = bcache.git_obj.repo:command({
-    'show',
-    '--unified=0',
-    '--format=format:' .. SHOW_FORMAT,
-    base,
-  })
-
-  -- Remove encoding line if it's not set to something meaningful
-  if assert(res[6]):match('^encoding (unknown)?') == nil then
-    table.remove(res, 6)
-  end
-
-  local buffer_name = bcache:get_rev_bufname(base, false)
-  local commit_buf = nil
-  -- find preexisting commit buffer or create a new one
-  for _, buf in ipairs(api.nvim_list_bufs()) do
-    if api.nvim_buf_get_name(buf) == buffer_name then
-      commit_buf = buf
-      break
-    end
-  end
-  if commit_buf == nil then
-    commit_buf = api.nvim_create_buf(true, true)
-    api.nvim_buf_set_name(commit_buf, buffer_name)
-    api.nvim_buf_set_lines(commit_buf, 0, -1, false, res)
-    vim.bo[commit_buf].modifiable = false
-    vim.bo[commit_buf].buftype = 'nofile'
-    vim.bo[commit_buf].filetype = 'git'
-    vim.bo[commit_buf].bufhidden = 'wipe'
-  end
+  local commit_buf = M.create_buf(bcache.git_obj.repo, base)
   vim.cmd[open]({ mods = { keepalt = true } })
   api.nvim_win_set_buf(0, commit_buf)
 
   if config._commit_maps then
     vim.keymap.set('n', '<CR>', function()
-      goto_action(base, bufnr, commit_buf, ref_list, ref_list_ptr)
+      goto_action(bufnr, commit_buf, ref_list, ref_list_ptr)
     end, { buffer = commit_buf, silent = true })
 
     vim.keymap.set('n', '<C-o>', function()
@@ -161,4 +155,4 @@ function M.show_commit(base, open, bufnr, ref_list, ref_list_ptr)
   return commit_buf
 end
 
-return M.show_commit
+return M

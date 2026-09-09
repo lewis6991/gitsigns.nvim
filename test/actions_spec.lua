@@ -56,6 +56,10 @@ local function expect_hunks(exp_hunks)
   end)
 end
 
+--- Complete arguments through the user command's completion handler.
+--- @param arglead string
+--- @param line string
+--- @return string[]
 local function complete(arglead, line)
   return exec_lua(function(arglead0, line0)
     return require('gitsigns.cli').complete(arglead0, line0)
@@ -151,7 +155,7 @@ describe('actions', function()
       local async = require('gitsigns.async')
       local commit_buf = async
         .run(function()
-          return require('gitsigns.actions.show_commit')('main', 'edit')
+          return require('gitsigns.actions.show_commit').show_commit('main', 'edit')
         end)
         :wait(1000)
 
@@ -207,6 +211,25 @@ describe('actions', function()
     eq({}, complete('--g', 'Gitsigns reset_hunk --g'))
     eq({ 'attached', 'all' }, complete('', 'Gitsigns setloclist 0 '))
     eq({ 'true', 'false', 'nil' }, complete('', 'Gitsigns toggle_signs '))
+  end)
+
+  it('completes diff revisions and paths', function()
+    setup_test_repo()
+    api.nvim_set_current_dir(scratch)
+    write_to_file(scratch .. '/src/new file%.lua', { 'new' })
+    write_to_file(scratch .. '/--flag', { 'flag' })
+    eq({ 'main' }, complete('ma', 'Gitsigns diff ma'))
+    eq({ '--flag', '--' }, complete('--', 'Gitsigns diff HEAD --'))
+    eq({ '--flag' }, complete('--f', 'Gitsigns diff -- --f'))
+    local backslash = exec_lua("return vim.fn.has('win32') == 1 and not vim.o.shellslash")
+    local matches = { 'src' .. (backslash and '\\\\' or '/') .. 'new\\ file%.lua' }
+    for _, prefix in ipairs({ '-- ', 'HEAD ', 'HEAD -- --flag ', 'HEAD --flag ' }) do
+      eq(matches, complete('src/n', 'Gitsigns diff ' .. prefix .. 'src/n'))
+    end
+    eq(matches, complete('src/new\\ f', 'Gitsigns diff -- src/new\\ f'))
+    local args = api.nvim_parse_cmd('Gitsigns ' .. matches[1], {}).args
+    eq(1, #args)
+    helpers.eq_path('src/new file%.lua', args[1])
   end)
 
   it('parses named flag assignments', function()

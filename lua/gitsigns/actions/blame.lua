@@ -314,7 +314,7 @@ local function show_commit(win, bwin, open, bcache)
   local blame = assert(bcache.blame)
   local sha = assert(blame.entries[cursor]).commit.sha
   api.nvim_set_current_win(win)
-  require('gitsigns.actions.show_commit')(sha, open)
+  require('gitsigns.actions.show_commit').show_commit(sha, open)
 end
 
 --- @param augroup integer
@@ -564,6 +564,16 @@ function M.blame(opts)
     buffer = blm_bufnr,
   })
 
+  pmap('n', 'D', function()
+    local lnum0 = api.nvim_win_get_cursor(blm_win)[1]
+    local sha = assert(blame.entries[lnum0]).commit.sha
+    api.nvim_set_current_win(win)
+    require('gitsigns.actions').diff(sha)
+  end, {
+    desc = 'Diff commit (tab)',
+    buffer = blm_bufnr,
+  })
+
   pmap('n', 'R', function()
     async.run(reblame, opts, blame.entries, win, bcache.git_obj.revision, true):raise_on_error()
   end, {
@@ -596,6 +606,7 @@ function M.blame(opts)
     { 'Reblame at commit', 'r' },
     { 'Reblame at commit parent', 'R' },
     { 'Diff (tab)', 'd' },
+    { 'Diff commit (tab)', 'D' },
     { 'Show commit (vsplit)', 's' },
     { '            (tab)', 'S' },
     { '            (current window)', 'e' },

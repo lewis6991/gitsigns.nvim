@@ -61,6 +61,8 @@ local C = {}
 
 --- @class Gitsigns.CmdMeta
 --- @field generated_completion? boolean
+--- @field raw_args? boolean
+--- @field complete? fun(arglead: string, line: string): string[]
 
 local C_meta = {} --- @type table<string, Gitsigns.CmdMeta>
 
@@ -716,6 +718,7 @@ end
 ---   s   [Show commit] in a vertical split.
 ---   S   [Show commit] in a new tab.
 ---   r   [Reblame at commit]
+---   D   [Diff commit] in a file panel.
 ---
 --- Attributes:
 --- - {async}
@@ -943,13 +946,96 @@ end
 --- @param open ('vsplit'|'tabnew')?
 --- @param callback? fun(err?: string)
 function M.show_commit(revision, open, callback)
-  async_run(callback, require('gitsigns.actions.show_commit'), revision, open)
+  async_run(callback, require('gitsigns.actions.show_commit').show_commit, revision, open)
 end
 
 function C.show_commit(args)
   local revision, open = args[1], args[2]
   M.show_commit(revision, open)
 end
+
+--- Show changes with a file tree and diff windows. Reuse an empty startup
+--- window; otherwise open a new tab.
+---
+--- ```text
+---   :Gitsigns diff           Compare HEAD with the working tree.
+---   :Gitsigns diff <commit>  Compare <commit> with its first parent.
+---   :Gitsigns diff A..B      Compare A with B.
+---   :Gitsigns diff A...B     Compare the merge base of A and B with B.
+--- ```
+---
+--- Limit files with Git pathspecs. Use `--` when omitting the revision:
+--- ```text
+---   :Gitsigns diff -- lua/ doc/
+---   :Gitsigns diff HEAD lua/gitsigns.lua
+---   :Gitsigns diff main..HEAD *.lua
+--- ```
+--- Paths are relative to the current directory within the repository;
+--- otherwise they are relative to the repository root. Escape spaces with
+--- backslashes (see [[<f-args>]]).
+---
+--- For a single commit, press `<CR>` on its header to show the author, date,
+--- and full message beside the panel. Press `q` to close the message.
+---
+--- Press `g?` in the panel for keys. Directories use standard fold commands.
+--- In either diff buffer, `]f` / `[f` select the next / previous file without
+--- changing windows. A count skips files; navigation stops at either end.
+---
+--- Regular working-tree files are editable; revision buffers are read-only.
+--- See [[diff-mode]] for diff navigation.
+---
+--- @param revision string? (default: working tree)
+--- @param paths string[]? Git pathspecs.
+--- @param callback? fun(err?: string)
+--- @overload fun(revision?: string, callback?: fun(err?: string))
+function M.diff(revision, paths, callback)
+  if type(paths) == 'function' then
+    callback, paths = paths, nil
+  end
+  async_run(callback, require('gitsigns.actions.diff'), revision, paths)
+end
+
+--- Separate the optional revision from Git pathspecs.
+--- @param args string[]
+function C.diff(args)
+  local revision = args[1]
+  local first_path = 2
+  if revision == '--' then
+    revision = nil
+  elseif args[2] == '--' then
+    first_path = 3
+  end
+  M.diff(revision, vim.list_slice(args, first_path))
+end
+
+C_meta.diff = {
+  raw_args = true,
+  generated_completion = false,
+  --- Complete a revision first, then file names; -- skips the revision.
+  --- @param arglead string
+  --- @param line string
+  --- @return string[]
+  complete = function(arglead, line)
+    local args = require('gitsigns.cli.context').parse(line).raw_args
+    local matches
+    if #args == 0 then
+      matches = require('gitsigns.cli.completion').heads(arglead)
+    else
+      matches = vim.tbl_map(function(path)
+        -- <f-args> only unescapes whitespace and backslashes.
+        return vim.fn.escape(path, ' \t\\')
+      end, vim.fn.getcompletion(arglead, 'file'))
+    end
+    if
+      (#args == 0 or (#args == 1 and args[1] ~= '--'))
+      and vim.startswith('--', arglead)
+      and not vim.tbl_contains(matches, '--')
+    then
+      matches[#matches + 1] = '--'
+    end
+    return matches
+  end,
+}
 
 --- Populate the quickfix list with hunks. Automatically opens the
 --- quickfix window.
@@ -1071,14 +1157,19 @@ function M.refresh(callback)
 end
 
 --- @param name string
---- @return fun(args: table, params: Gitsigns.CmdParams)
+--- @return (fun(args: table, params: Gitsigns.CmdParams))?
+--- @return boolean raw_args
 function M._get_cmd_func(name)
-  return C[name]
+  return C[name], C_meta[name] and C_meta[name].raw_args or false
 end
 
 --- @param name string
 --- @return (fun(arglead: string, line: string): string[])?
 function M._get_cmp_func(name)
+  local meta = C_meta[name]
+  if meta and meta.complete then
+    return meta.complete
+  end
   if not M._supports_generated_cmp(name) then
     return
   end
