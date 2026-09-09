@@ -49,7 +49,7 @@ local function not_committed(file)
   local time = os.time()
   return {
     sha = string.rep('0', 40),
-    abbrev_sha = string.rep('0', 8),
+    abbrev_sha = string.rep('0', 7),
     author = 'Not Committed Yet',
     author_mail = '<not.committed.yet>',
     author_tz = '+0000',
@@ -98,7 +98,7 @@ local function incremental_iter(readline, commits, result)
   local commit = commits[sha]
     or {
       sha = sha,
-      abbrev_sha = sha:sub(1, 8) --[[@as string]],
+      abbrev_sha = sha:sub(1, 7) --[[@as string]],
     }
 
   --- @type string?, string?
