@@ -21,8 +21,9 @@ local M = {}
 local function bufread(bufnr, dbufnr, base, relpath)
   local bcache = assert(cache[bufnr])
   base = util.norm_base(base)
+  relpath = relpath or assert(bcache.git_obj.relpath)
   local text --- @type string[]
-  if base == bcache.git_obj.revision then
+  if base == bcache.git_obj.revision and relpath == bcache.git_obj.relpath then
     text = assert(bcache.compare_text)
   else
     local err
@@ -36,9 +37,8 @@ local function bufread(bufnr, dbufnr, base, relpath)
     end
   end
 
-  -- TODO(lewis6991): This doesn't work if the buffer is for a different file
-  -- from bufnr. This function should take a repo object instead.
-  vim.bo[dbufnr].fileformat = vim.bo[bufnr].fileformat
+  vim.bo[dbufnr].fileformat = relpath == bcache.git_obj.relpath and vim.bo[bufnr].fileformat
+    or (text[1] and text[1]:sub(-1) == '\r' and 'dos' or 'unix')
 
   vim.bo[dbufnr].filetype = vim.filetype.match({ buf = dbufnr })
   vim.bo[dbufnr].bufhidden = 'wipe'
