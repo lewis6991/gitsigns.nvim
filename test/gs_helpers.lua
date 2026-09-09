@@ -329,7 +329,7 @@ function M.cleanup()
       pcall(vim.cmd, 'silent! cd ' .. vim.fn.fnameescape(tmpdir0))
 
       for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-        local name = vim.api.nvim_buf_get_name(buf)
+        local name = vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_get_name(buf) or ''
         if name ~= '' and name:find(root, 1, true) then
           pcall(vim.api.nvim_buf_delete, buf, { force = true })
         end
