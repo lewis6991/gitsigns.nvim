@@ -719,9 +719,10 @@ function DiffPanel:stage_files(how)
 
   -- Refresh attached buffers even when the Git watcher is disabled. Read the new
   -- object ID before invalidating the cached index text used to calculate hunks.
+  -- Match Git object paths because native buffer paths can use backslashes.
   for bufnr, bcache in pairs(cache) do
     local git_obj = bcache.git_obj
-    if git_obj.repo == self.repo and vim.tbl_contains(files, bcache.file) then
+    if git_obj.repo == self.repo and vim.tbl_contains(files, git_obj.file) then
       git_obj:refresh()
       if bcache:schedule() then
         bcache:invalidate(true)
