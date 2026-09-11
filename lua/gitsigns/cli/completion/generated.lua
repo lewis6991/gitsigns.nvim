@@ -148,7 +148,7 @@ return {
         {
           name = 'open',
           required = true,
-          values = { 'vsplit', 'tabnew' },
+          values = { 'diff', 'vsplit', 'tabnew' },
         },
       },
     },

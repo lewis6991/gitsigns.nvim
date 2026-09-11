@@ -111,6 +111,14 @@ end
 
 vim.list_extend(M.hls, {
   {
+    GitSignsDiffStaged = {
+      'Normal',
+      fg_factor = 0.15,
+      desc = 'Used for fully staged filenames in the diff panel.',
+    },
+  },
+
+  {
     GitSignsAddPreview = {
       'GitGutterAddLine',
       'SignifyLineAdd',
