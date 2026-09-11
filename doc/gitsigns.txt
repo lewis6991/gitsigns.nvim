@@ -180,7 +180,7 @@ diff({revision}, {paths}, {callback})                        *gitsigns.diff()*
 
     >text
       :Gitsigns diff           Compare HEAD with the working tree.
-      :Gitsigns diff <commit>  Compare <commit> with its first parent.
+      :Gitsigns diff <commit>  Compare <commit> with the working tree.
       :Gitsigns diff A..B      Compare A with B.
       :Gitsigns diff A...B     Compare the merge base of A and B with B.
 <
@@ -195,12 +195,30 @@ diff({revision}, {paths}, {callback})                        *gitsigns.diff()*
     otherwise they are relative to the repository root. Escape spaces with
     backslashes (see |<f-args>|).
 
-    For a single commit, press `<CR>` on its header to show the author, date,
-    and full message beside the panel. Press `q` to close the message.
+    Use |gitsigns.show_commit()| to view the changes introduced by a commit.
 
-    Press `g?` in the panel for keys. Directories use standard fold commands.
+    Press `g?` in the panel for keys. Directories sort before files at each
+    level and use standard fold commands. Closed directories show their changed
+    file count and total diffstat, including nested files.
+    Click or press `<CR>` on an entry to open it or toggle its directory fold.
+    Newly loaded diff buffers open at their first change. Already loaded
+    buffers keep their cursor position using Neovim's normal buffer behaviour.
+    Reviewed buffers stay loaded until the panel closes. Cleanup preserves
+    buffers that were already loaded, modified, or open in other windows.
     In either diff buffer, `]f` / `[f` select the next / previous file without
     changing windows. A count skips files; navigation stops at either end.
+
+    Working-tree comparisons list each file once. The two status columns show
+    index changes (relative to HEAD) and working-tree changes (relative to the
+    index). A blank means unchanged and `?` means untracked. For example,
+    `M ` is staged, ` M` is unstaged, and `MM` has both kinds of changes.
+    Fully staged filenames use |hl-GitSignsDiffStaged|.
+    Press `s` to stage a file, `u` to unstage it, or `<Space>` to toggle
+    staging. This stages remaining working-tree changes; otherwise it
+    unstages the file. On a directory, these keys act on all listed files
+    beneath it, including nested directories.
+    These actions operate on saved files and leave unsaved buffer edits intact.
+    Staging refreshes the panel and keeps the displayed diff.
 
     Regular working-tree files are editable; revision buffers are read-only.
     See |diff-mode| for diff navigation.
@@ -211,11 +229,23 @@ diff({revision}, {paths}, {callback})                        *gitsigns.diff()*
         {callback} (`(fun(err: string?))?`)
 
 show_commit({revision}, {open}, {callback})              *gitsigns.show_commit()*
-    Show revision {base} commit in split or tab
+    Show the changes introduced by a commit with a file tree and diff windows.
+    Compare the commit with its first parent, or the empty tree for a root
+    commit. See |gitsigns.diff()| for panel navigation and file actions.
+
+    The SHA and wrapped summary appear above the file tree. Press `<CR>` on
+    either to show the author, date, and full message beside the panel.
+    Press `q` to close the message.
+
+    Use `vsplit` or `tabnew` to show the full commit as text instead:
+    >text
+      :Gitsigns show_commit HEAD
+      :Gitsigns show_commit HEAD vsplit
+<
 
     Parameters: ~
         {revision} (`string?`): (default: 'HEAD')
-        {open}     (`("vsplit"|"tabnew")?`)
+        {open}     (`("diff"|"vsplit"|"tabnew")?`): (default: 'diff')
         {callback} (`(fun(err: string?))?`)
 
 show({revision}, {callback})                                 *gitsigns.show()*
@@ -1403,6 +1433,11 @@ GitSignsStagedUntrackedCul
     Used for the text (when the cursor is on the same line as the sign) of 'untracked' staged signs.
 
     Fallbacks: `GitSignsUntrackedCul` (fg=50%)
+                                                        *hl-GitSignsDiffStaged*
+GitSignsDiffStaged
+    Used for fully staged filenames in the diff panel.
+
+    Fallbacks: `Normal` (fg=15%)
                                                         *hl-GitSignsAddPreview*
 GitSignsAddPreview
     Used for added lines in previews.

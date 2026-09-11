@@ -194,7 +194,7 @@ describe('actions', function()
       '--split=topleft',
       '--split=botright',
     }, complete('--split=', 'Gitsigns diffthis --split='))
-    eq({ 'vsplit', 'tabnew' }, complete('', 'Gitsigns show_commit main '))
+    eq({ 'diff', 'vsplit', 'tabnew' }, complete('', 'Gitsigns show_commit main '))
     eq({ 'next' }, complete('n', 'Gitsigns nav_hunk n'))
     eq(
       { '--target=unstaged', '--target=staged', '--target=all' },

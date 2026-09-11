@@ -41,21 +41,33 @@ local M = {}
 --- @param base string
 --- @param message? string[]
 --- @return integer commit_buf
+--- @return boolean created
+--- @return boolean loaded
 function M.create_buf(repo, base, message)
   local lines = message or require('gitsigns.git.commit')(repo, base, 'full')
+
   -- Message and full commit views must not reuse each other's contents or mappings.
   local buffer_name = ('gitsigns%s://%s//%s'):format(message and '-commit' or '', repo.gitdir, base)
-  if Util.bufexists(buffer_name) then
-    return vim.fn.bufnr(buffer_name)
+  local exists = Util.bufexists(buffer_name)
+  local commit_buf = exists and vim.fn.bufnr(buffer_name) or api.nvim_create_buf(true, true)
+  local loaded = exists and api.nvim_buf_is_loaded(commit_buf)
+
+  if loaded then
+    return commit_buf, false, true
   end
 
-  local commit_buf = api.nvim_create_buf(true, true)
-  api.nvim_buf_set_name(commit_buf, buffer_name)
+  if not exists then
+    api.nvim_buf_set_name(commit_buf, buffer_name)
+  end
+
+  -- Populate new or unloaded buffers before restoring their read-only presentation.
+  vim.bo[commit_buf].modifiable = true
   api.nvim_buf_set_lines(commit_buf, 0, -1, false, lines)
   vim.bo[commit_buf].modifiable = false
   vim.bo[commit_buf].buftype = 'nofile'
   vim.bo[commit_buf].filetype = message and 'gitcommit' or 'git'
   vim.bo[commit_buf].bufhidden = 'wipe'
+
   if message then
     vim.keymap.set('n', 'q', '<cmd>close<CR>', {
       buffer = commit_buf,
@@ -63,7 +75,8 @@ function M.create_buf(repo, base, message)
       desc = 'Close commit message',
     })
   end
-  return commit_buf
+
+  return commit_buf, not exists, loaded
 end
 
 --- Follow a parent or tree reference, or open a file at the selected patch line.
