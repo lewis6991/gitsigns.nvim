@@ -249,10 +249,17 @@ function Watcher:_start_handle_path(handle_path)
     end
 
     if err0 then
-      if is_fs_event then
-        watcher:_fallback_to_fs_poll(err0)
-      else
-        watcher:_handle_fs_poll_error(handle_path, err0)
+      -- Never propagate out of a uv callback: an error here unwinds the event
+      -- loop rather than the caller, and the editor stops servicing requests.
+      local ok0, err1 = pcall(function()
+        if is_fs_event then
+          watcher:_fallback_to_fs_poll(err0)
+        else
+          watcher:_handle_fs_poll_error(handle_path, err0)
+        end
+      end)
+      if not ok0 then
+        log.eprintf('Git dir watcher error: %s', err1)
       end
       return
     end

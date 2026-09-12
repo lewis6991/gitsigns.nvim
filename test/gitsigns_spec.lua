@@ -21,6 +21,7 @@ local match_debug_messages = helpers.match_debug_messages
 local match_lines = helpers.match_lines
 local n, p, np = helpers.n, helpers.p, helpers.np
 local path_pattern = helpers.path_pattern
+local pathspec_pattern = helpers.pathspec_pattern
 local setup_gitsigns = helpers.setup_gitsigns
 local setup_test_repo = helpers.setup_test_repo
 local split = vim.split
@@ -112,8 +113,8 @@ describe('gitsigns (with screen)', function()
       p('system.system: git .* config user.name'),
       p(revparse_pat),
       p(
-        'system.system: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
-          .. path_pattern(test_file)
+        'system.system: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol %-%- '
+          .. pathspec_pattern(test_file)
       ),
       p('attach%.attach%(1%): Watching git dir .*'),
     })
@@ -203,7 +204,10 @@ describe('gitsigns (with screen)', function()
         'attach.attach(1): Attaching (trigger=BufReadPost)',
         np(revparse_pat),
         np('system.system: git .* config user.name'),
-        np('system.system: git .* ls%-files ' .. path_pattern(ignored_file)),
+        np(
+          'system.system: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol %-%- '
+            .. pathspec_pattern(ignored_file)
+        ),
         n('attach.attach(1): Cannot resolve file in repo'),
       })
 
@@ -351,8 +355,8 @@ describe('gitsigns (with screen)', function()
         np(revparse_pat),
         np('system.system: git .* config user.name'),
         np(
-          'system.system: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
-            .. path_pattern(newfile)
+          'system.system: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol %-%- '
+            .. pathspec_pattern(newfile)
         ),
         'attach.attach(1): Cannot resolve file in repo',
       })
