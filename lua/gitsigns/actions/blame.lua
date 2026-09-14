@@ -568,7 +568,7 @@ function M.blame(opts)
     local lnum0 = api.nvim_win_get_cursor(blm_win)[1]
     local sha = assert(blame.entries[lnum0]).commit.sha
     api.nvim_set_current_win(win)
-    require('gitsigns.actions').diff(sha)
+    require('gitsigns.actions').show_commit(sha)
   end, {
     desc = 'Diff commit (tab)',
     buffer = blm_bufnr,

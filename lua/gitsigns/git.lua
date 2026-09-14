@@ -155,6 +155,61 @@ function Obj:unstage_file()
   autocmd_changed(self.file)
 end
 
+--- Stage saved files, or restore their index entries to HEAD.
+--- @async
+--- @param repo Gitsigns.Repo
+--- @param entries Gitsigns.DiffEntry[]
+--- @param how 'stage'|'unstage'|'toggle'
+--- @return string[]? files Updated absolute paths, or nil if there was nothing to do.
+function M.stage_files(repo, entries, how)
+  -- A directory may contain both staged and unstaged files. Gather both operations.
+  local stage_paths = {} --- @type string[]
+  local unstage_paths = {} --- @type string[]
+
+  for _, entry in ipairs(entries) do
+    local index_status, worktree_status = entry.status:match('(.)(.)')
+
+    -- Include both sides of renames so Git also updates the old path.
+    if worktree_status ~= ' ' then
+      vim.list_extend(stage_paths, entry.worktree_paths or { entry.path })
+    end
+    if index_status ~= ' ' and index_status ~= '?' then
+      vim.list_extend(unstage_paths, entry.index_paths or { entry.path })
+    end
+  end
+
+  -- Toggling stages any remaining worktree changes before it unstages the selection.
+  local stage = how == 'stage' or (how == 'toggle' and #stage_paths > 0)
+  local paths = stage and stage_paths or unstage_paths
+  if #paths == 0 then
+    return
+  end
+
+  -- Update the whole selection in one command, serialized with other index writes.
+  repo:lock(function()
+    local _, err, code = repo:command(
+      util.flatten({
+        '--literal-pathspecs',
+        stage and 'add' or 'reset',
+        not stage and '-q',
+        '--',
+        paths,
+      }),
+      { ignore_error = true }
+    )
+    if code ~= 0 then
+      error(err or 'Unable to update index', 0)
+    end
+  end)
+
+  for i, path in ipairs(paths) do
+    paths[i] = util.Path.join(repo.toplevel, path)
+    autocmd_changed(paths[i])
+  end
+
+  return paths
+end
+
 --- @async
 --- @param contents? string[]
 --- @param lnum? integer|[integer, integer]

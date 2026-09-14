@@ -21,11 +21,14 @@ local function read_revision(bufnr, text)
   local ok, err = pcall(function()
     vim.fn.writefile(text, path, 'b')
     api.nvim_buf_call(bufnr, function()
+      api.nvim_buf_set_lines(bufnr, 0, -1, false, { '' })
       vim.cmd('silent noautocmd keepalt 0read ++edit ' .. vim.fn.fnameescape(path))
+
       -- :read leaves the empty buffer's original line after the inserted text.
       api.nvim_buf_set_lines(bufnr, -2, -1, false, {})
     end)
   end)
+
   vim.fn.delete(path)
   if not ok then
     error(err)
@@ -41,6 +44,8 @@ end
 local function bufread(repo, dbufnr, base, relpath, bufnr)
   local bcache = bufnr and cache[bufnr]
   base = util.norm_base(base)
+
+  -- Reuse the attached buffer's comparison text when it describes this revision.
   local text --- @type string[]
   if bcache and base == bcache.git_obj.revision and relpath == bcache.git_obj.relpath then
     text = assert(bcache.compare_text)
@@ -60,6 +65,9 @@ local function bufread(repo, dbufnr, base, relpath, bufnr)
     end
   end
 
+  -- Match the source file's format before replacing text and restoring protection.
+  local modifiable = vim.bo[dbufnr].modifiable
+  vim.bo[dbufnr].modifiable = true
   vim.bo[dbufnr].fileformat = bcache
       and relpath == bcache.git_obj.relpath
       and vim.bo[assert(bufnr)].fileformat
@@ -68,8 +76,6 @@ local function bufread(repo, dbufnr, base, relpath, bufnr)
   vim.bo[dbufnr].filetype = vim.filetype.match({ buf = dbufnr })
   vim.bo[dbufnr].bufhidden = 'wipe'
 
-  local modifiable = vim.bo[dbufnr].modifiable
-  vim.bo[dbufnr].modifiable = true
   Status.update(dbufnr, { head = base })
 
   if bcache then
@@ -80,6 +86,7 @@ local function bufread(repo, dbufnr, base, relpath, bufnr)
 
   vim.bo[dbufnr].modifiable = modifiable
   vim.bo[dbufnr].modified = false
+
   -- TODO(lewis6991): make this blocking
   require('gitsigns.attach').attach({
     bufnr = dbufnr,
@@ -123,28 +130,42 @@ end
 --- @return string? bufname Buffer name
 --- @return integer? bufnr Buffer number
 --- @return boolean? created Whether a new buffer was created.
+--- @return boolean? loaded Whether the buffer was already loaded.
 function M.create_revision_buf(repo, base, relpath, bufnr)
   base = util.norm_base(base)
 
   local name_base = base or (bufnr and assert(cache[bufnr]).git_obj.revision) or ':0'
   local bufname = ('gitsigns://%s//%s:%s'):format(repo.gitdir, name_base, relpath)
 
-  if util.bufexists(bufname) then
-    return bufname, vim.fn.bufnr(bufname), false
+  local exists = util.bufexists(bufname)
+  local dbuf = exists and vim.fn.bufnr(bufname) or api.nvim_create_buf(false, true)
+  local loaded = exists and api.nvim_buf_is_loaded(dbuf)
+
+  -- Editable index buffers already have a BufReadCmd to reload them.
+  if exists and (loaded or vim.bo[dbuf].buftype == 'acwrite') then
+    return bufname, dbuf, false, loaded
   end
 
-  local dbuf = api.nvim_create_buf(false, true)
-  api.nvim_buf_set_name(dbuf, bufname)
+  if not exists then
+    api.nvim_buf_set_name(dbuf, bufname)
+  end
 
+  -- An unloaded historical buffer needs its contents populated again.
   local ok, err = pcall(bufread, repo, dbuf, base, relpath, bufnr)
   if not ok then
     message.error(err --[[@as string]])
     async.schedule()
-    api.nvim_buf_delete(dbuf, { force = true })
+
+    -- A failed reload must not delete a buffer that already belonged to the user.
+    if exists then
+      vim.bo[dbuf].modifiable = false
+    else
+      api.nvim_buf_delete(dbuf, { force = true })
+    end
     return
   end
 
-  -- allow editing the index revision
+  -- Index buffers write back to Git; historical revisions remain read-only.
   if not base then
     assert(bufnr, 'Index revisions need a source buffer')
     vim.bo[dbuf].buftype = 'acwrite'
@@ -169,7 +190,7 @@ function M.create_revision_buf(repo, base, relpath, bufnr)
     vim.bo[dbuf].modifiable = false
   end
 
-  return bufname, dbuf, true
+  return bufname, dbuf, not exists, loaded
 end
 
 --- @async
