@@ -54,15 +54,16 @@ end
 --- @param win integer
 --- @param lnum integer
 --- @param width integer
+--- @param absolute? boolean
 --- @return Gitsigns.VirtTextChunk[]
-local function fallback_lno_chunks(win, lnum, width)
+local function fallback_lno_chunks(win, lnum, width, absolute)
   if width <= 0 then
     return {}
   end
 
   local cursor_lnum = assert(api.nvim_win_get_cursor(win)[1])
   local number = vim.wo[win].number
-  local relativenumber = vim.wo[win].relativenumber
+  local relativenumber = not absolute and vim.wo[win].relativenumber
 
   local display_lnum = lnum
   if relativenumber and (not number or lnum ~= cursor_lnum) then
@@ -130,7 +131,7 @@ end
 --- Build virtual-text chunks matching the window's statuscolumn/number columns.
 --- @param win integer
 --- @param lnum integer
---- @param opts? {extra_hl?: Gitsigns.HlName|Gitsigns.HlStack}
+--- @param opts? {extra_hl?: Gitsigns.HlName|Gitsigns.HlStack, absolute_lnum?:boolean}
 --- @return Gitsigns.VirtTextChunk[]
 local function build_prefix(win, lnum, opts)
   opts = opts or {}
@@ -141,7 +142,9 @@ local function build_prefix(win, lnum, opts)
   end)
 
   local chunks = {} --- @type Gitsigns.VirtTextChunk[]
-  if has_col and statuscol and statuscol ~= '' then
+  -- A custom statuscolumn can derive numbers and signs from the current buffer.
+  -- Base-revision line numbers must stay independent of that buffer's cursor.
+  if not opts.absolute_lnum and has_col and statuscol and statuscol ~= '' then
     --- @cast statuscol string
     chunks = eval_statusline_chunks(statuscol, win, lnum) or fallback_lno_chunks(win, lnum, width)
   else
@@ -151,7 +154,7 @@ local function build_prefix(win, lnum, opts)
       chunks = { { string.rep(' ', prefix_width), 'Normal' } }
     end
 
-    local body_chunks = fallback_lno_chunks(win, lnum, number_col_width)
+    local body_chunks = fallback_lno_chunks(win, lnum, number_col_width, opts.absolute_lnum)
     vim.list_extend(chunks, body_chunks)
   end
 
@@ -228,7 +231,7 @@ end
 
 --- @param lines Gitsigns.CapturedLine[]
 --- @param start_lnum integer
---- @param opts? {win?:integer, lno_hl?:boolean}
+--- @param opts? {win?:integer, lno_hl?:boolean, absolute_lnum?:boolean}
 --- @return Gitsigns.VirtTextChunk[][]
 local function render_virt_lines(lines, start_lnum, opts)
   opts = opts or {}
@@ -239,6 +242,7 @@ local function render_virt_lines(lines, start_lnum, opts)
     prefix = function(line_index)
       return build_prefix(win, start_lnum + line_index - 1, {
         extra_hl = 'GitSignsVirtLnum',
+        absolute_lnum = opts.absolute_lnum,
       })
     end
   end
@@ -253,7 +257,7 @@ end
 --- @param bufnr integer
 --- @param hunk Gitsigns.Hunk.Hunk
 --- @param staged boolean?
---- @param opts? {win?:integer, lno_hl?:boolean, word_diff?:boolean}
+--- @param opts? {win?:integer, lno_hl?:boolean, word_diff?:boolean, absolute_lnum?:boolean}
 --- @return Gitsigns.VirtTextChunk[][]
 local function build_virt_lines(bufnr, hunk, staged, opts)
   opts = opts or {}
@@ -346,7 +350,7 @@ end
 --- @param ns integer
 --- @param hunk Gitsigns.Hunk.Hunk
 --- @param staged boolean?
---- @param opts? {win?:integer, lno_hl?:boolean, leftcol?:boolean, word_diff?:boolean}
+--- @param opts? {win?:integer, lno_hl?:boolean, leftcol?:boolean, word_diff?:boolean, lines?:Gitsigns.CapturedLine[], id?:integer, absolute_lnum?:boolean}
 --- @return integer markid
 function M.place_inline_preview_lines(bufnr, ns, hunk, staged, opts)
   opts = opts or {}
@@ -354,7 +358,9 @@ function M.place_inline_preview_lines(bufnr, ns, hunk, staged, opts)
   local row = topdelete and 0 or hunk.added.start - 1
   local above = hunk.type ~= 'delete' or topdelete
   return api.nvim_buf_set_extmark(bufnr, ns, row, -1, {
-    virt_lines = build_virt_lines(bufnr, hunk, staged, opts),
+    id = opts.id,
+    virt_lines = opts.lines and render_virt_lines(opts.lines, hunk.removed.start, opts)
+      or build_virt_lines(bufnr, hunk, staged, opts),
     virt_lines_above = above,
     virt_lines_leftcol = opts.leftcol == true,
     virt_lines_overflow = VIRT_LINES_OVERFLOW,
@@ -376,7 +382,10 @@ end
 function M.prepare(bufnr)
   local prev = states[bufnr]
 
-  if not config.show_deleted then
+  if
+    not config.show_deleted
+    or (not window_ns_supported and require('gitsigns.unified').is_active(bufnr))
+  then
     states[bufnr] = nil
     clear_global_preview(bufnr)
     clear_buf_entries(bufnr)
@@ -434,6 +443,11 @@ end
 --- @return boolean
 function M.on_win(winid, bufnr, topline, botline)
   if not window_ns_supported then
+    return false
+  end
+
+  if require('gitsigns.unified').get_view(winid) then
+    clear_win(winid)
     return false
   end
 

@@ -22,6 +22,7 @@ local M = {}
 --- @field split 'aboveleft'|'belowright'|'topleft'|'botright'
 
 --- @class Gitsigns.CmdArgs
+--- @field unified? boolean
 --- @field vertical? boolean
 --- @field split? 'aboveleft'|'belowright'|'topleft'|'botright'
 --- @field global? boolean
@@ -60,6 +61,7 @@ local M = {}
 --- @class (exact) Gitsigns.DiffPanelOpts
 --- @inlinedoc
 --- @field diff? Gitsigns.DiffMode How to display files. Defaults to `'split'`.
+--- @field unified? boolean Alias for `diff = 'unified'` when `diff` is omitted.
 
 --- Variations of functions from M which are used for the Gitsigns command
 --- @type table<string,fun(args: Gitsigns.CmdArgs, params: Gitsigns.CmdParams)>
@@ -263,7 +265,7 @@ local function update(bufnr)
   if not bcache:schedule() then
     return
   end
-  if vim.wo.diff then
+  if vim.wo.diff or require('gitsigns.unified').is_active(bufnr) then
     require('gitsigns.actions.diffthis').update(bufnr)
   end
 end
@@ -847,6 +849,11 @@ end
 --- If {base} is the index, then the opened buffer is editable and
 --- any written changes will update the index accordingly.
 ---
+--- With `unified = true`, show deleted lines inline in the current window.
+--- Repeat the command to close the view. Use [[gitsigns.nav_hunk()]] to navigate
+--- its changes. Staging and reset actions retain their normal comparison base.
+--- Unmerged files continue to use the three-way split view unless a base is given.
+---
 --- Examples:
 --- ```lua
 ---   -- Diff against the index
@@ -856,6 +863,10 @@ end
 ---   -- Diff against the last commit
 ---   require('gitsigns').diffthis('~1')
 ---   -- :Gitsigns diffthis ~1
+---
+---   -- Show deleted lines inline in the current window. Repeat to close.
+---   require('gitsigns').diffthis(nil, { unified = true })
+---   -- :Gitsigns diffthis unified=true
 --- ```
 ---
 --- For a more complete list of ways to specify bases, see
@@ -877,6 +888,9 @@ function M.diffthis(base, opts, callback)
   if opts.vertical == nil then
     opts.vertical = config.diff_opts.vertical
   end
+  if opts.unified == nil then
+    opts.unified = config.diffthis.unified
+  end
   async_run(callback, require('gitsigns.actions.diffthis').diffthis, base, opts)
 end
 
@@ -885,6 +899,7 @@ function C.diffthis(args, params)
   local opts = {
     vertical = config.diff_opts.vertical,
     split = args.split,
+    unified = args.unified,
   }
 
   if args.vertical ~= nil then
@@ -1003,7 +1018,7 @@ end
 ---   :Gitsigns diff --diff=none main..HEAD -- lua/
 --- ```
 --- With `--diff=none`, buffers keep their existing Gitsigns signs and
---- comparison base. `--diff=unified` is not implemented yet.
+--- comparison base.
 ---
 --- Use [[gitsigns.show_commit()]] to view the changes introduced by a commit.
 ---
@@ -1035,6 +1050,12 @@ end
 --- Regular working-tree files are editable; revision buffers are read-only.
 --- See [[diff-mode]] for diff navigation.
 ---
+--- Press `gu` in the file panel to toggle a unified view, showing
+--- deleted lines inline. Start in this layout with `:Gitsigns diff --diff=unified`
+--- or `require('gitsigns').diff(nil, nil, { diff = 'unified' })`.
+--- `--unified` and `{ unified = true }` are aliases for this layout.
+--- Staging and reset actions retain their normal comparison base.
+---
 --- @param revision string? (default: working tree)
 --- @param paths string[]? Git pathspecs.
 --- @param opts Gitsigns.DiffPanelOpts? Additional options.
@@ -1054,6 +1075,9 @@ end
 --- @param args string[]
 function C.diff(args)
   local diff = args[1] and args[1]:match('^%-%-diff=(.*)$')
+  if args[1] == '--unified' then
+    diff = 'unified'
+  end
   if diff then
     args = vim.list_slice(args, 2)
   end
@@ -1078,6 +1102,9 @@ C_meta.diff = {
   complete = function(arglead, line)
     local args = require('gitsigns.cli.context').parse(line).raw_args
     local diff = args[1] and args[1]:match('^%-%-diff=(.*)$')
+    if args[1] == '--unified' then
+      diff = 'unified'
+    end
     if diff then
       args = vim.list_slice(args, 2)
     end
@@ -1098,8 +1125,9 @@ C_meta.diff = {
       matches[#matches + 1] = '--'
     end
     if #args == 0 and not diff then
-      local options = arglead:find('=', 1, true) and { '--diff=none', '--diff=split' }
-        or { '--diff=' }
+      local options = arglead:find('=', 1, true)
+          and { '--diff=none', '--diff=split', '--diff=unified' }
+        or { '--diff=', '--unified' }
       for _, option in ipairs(options) do
         if vim.startswith(option, arglead) then
           matches[#matches + 1] = option

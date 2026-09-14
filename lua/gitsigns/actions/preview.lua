@@ -68,7 +68,8 @@ local function get_hunk_at_cursor(bcache)
   return nil, nil, nil, 0
 end
 
-local function clear_preview_inline(bufnr)
+--- @param bufnr integer
+function M.clear_preview_inline(bufnr)
   api.nvim_buf_clear_namespace(bufnr, ns_inline, 0, -1)
   if inline_bufnr == bufnr then
     inline_bufnr = nil
@@ -109,49 +110,31 @@ local function index_added_node_for_staged_hunk(bufnr, hunk)
   }
 end
 
---- @param bufnr integer
---- @param nsw integer
---- @param hunk Gitsigns.Hunk.Hunk
-local function show_added(bufnr, nsw, hunk)
-  local start_row = hunk.added.start - 1
-
-  for offset = 0, hunk.added.count - 1 do
-    local row = start_row + offset
-    api.nvim_buf_set_extmark(bufnr, nsw, row, 0, {
-      end_row = row + 1,
-      hl_group = 'GitSignsAddPreview',
-      hl_eol = true,
-      priority = 1000,
-    })
-  end
-
-  local _, added_regions =
-    require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
-
-  for _, region in ipairs(added_regions) do
-    local offset, rtype, scol, ecol = region[1] - 1, region[2], region[3] - 1, region[4] - 1
-
-    -- Special case to handle cr at eol in buffer but not in show text
-    local cr_at_eol_change = rtype == 'change'
-      and vim.endswith(assert(hunk.added.lines[offset + 1]), '\r')
-
-    api.nvim_buf_set_extmark(bufnr, nsw, start_row + offset, scol, {
-      end_col = ecol,
-      strict = not cr_at_eol_change,
-      hl_group = rtype == 'add' and 'GitSignsAddInline'
-        or rtype == 'change' and 'GitSignsChangeInline'
-        or 'GitSignsDeleteInline',
-      priority = 1001,
-    })
-  end
-end
-
 --- Preview the hunk at the cursor position in a floating
 --- window. If the preview is already open, calling this
 --- will cause the window to get focus.
 function M.preview_hunk()
   if popup.is_open('hunk') then
     popup.focus_open('hunk')
+    return
+  end
+
+  local view = require('gitsigns.unified').get_view()
+  if view then
+    if not view.hunks then
+      return
+    end
+    local bufnr = current_buf()
+    local hunk, index =
+      Hunks.find_hunk(api.nvim_win_get_cursor(0)[1], view.hunks, api.nvim_buf_line_count(bufnr))
+    if hunk then
+      local lines = { { { ('Hunk %d of %d'):format(index, #view.hunks), 'Title' } } }
+      vim.list_extend(
+        lines,
+        HunkPreview.linespec_for_hunk(bufnr, hunk, view.base, bufnr, hunk.added)
+      )
+      popup.create(lines, config.preview_config, 'hunk')
+    end
     return
   end
 
@@ -202,6 +185,9 @@ end
 --- @async
 --- @return integer? markid
 function M.preview_hunk_inline()
+  if require('gitsigns.unified').get_view() then
+    return
+  end
   local bufnr = current_buf()
   local winid = api.nvim_get_current_win()
 
@@ -215,7 +201,7 @@ function M.preview_hunk_inline()
     api.nvim_buf_clear_namespace(inline_bufnr, ns_inline, 0, -1)
   end
 
-  clear_preview_inline(bufnr)
+  M.clear_preview_inline(bufnr)
 
   if window_ns_supported then
     api.nvim__ns_set(ns_inline, { wins = { winid } })
@@ -225,7 +211,7 @@ function M.preview_hunk_inline()
   inline_winid = winid
 
   local preview_id --- @type integer?
-  show_added(bufnr, ns_inline, hunk)
+  HunkPreview.highlight_added_hunk(bufnr, ns_inline, hunk)
   if hunk.removed.count > 0 then
     preview_id = DeletedPreview.place_inline_preview_lines(bufnr, ns_inline, hunk, staged, {
       win = winid,
@@ -239,7 +225,7 @@ function M.preview_hunk_inline()
     buffer = bufnr,
     desc = 'Clear gitsigns inline preview',
     callback = function()
-      clear_preview_inline(bufnr)
+      M.clear_preview_inline(bufnr)
     end,
     once = true,
   })
