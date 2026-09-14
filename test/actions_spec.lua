@@ -219,11 +219,24 @@ describe('actions', function()
     write_to_file(scratch .. '/src/new file%.lua', { 'new' })
     write_to_file(scratch .. '/--flag', { 'flag' })
     eq({ 'main' }, complete('ma', 'Gitsigns diff ma'))
+    eq({ '--', '--diff=' }, complete('--', 'Gitsigns diff --'))
+    eq({ '--diff=' }, complete('--d', 'Gitsigns diff --d'))
+    eq({ '--diff=none', '--diff=split' }, complete('--diff=', 'Gitsigns diff --diff='))
+    eq({ '--diff=none' }, complete('--diff=n', 'Gitsigns diff --diff=n'))
+    eq({ 'main' }, complete('ma', 'Gitsigns diff --diff=none ma'))
+    eq({ '--' }, complete('--', 'Gitsigns diff --diff=none --'))
     eq({ '--flag', '--' }, complete('--', 'Gitsigns diff HEAD --'))
     eq({ '--flag' }, complete('--f', 'Gitsigns diff -- --f'))
     local backslash = exec_lua("return vim.fn.has('win32') == 1 and not vim.o.shellslash")
     local matches = { 'src' .. (backslash and '\\\\' or '/') .. 'new\\ file%.lua' }
-    for _, prefix in ipairs({ '-- ', 'HEAD ', 'HEAD -- --flag ', 'HEAD --flag ' }) do
+    for _, prefix in ipairs({
+      '-- ',
+      'HEAD ',
+      'HEAD -- --flag ',
+      'HEAD --flag ',
+      '--diff=none -- ',
+      '--diff=none HEAD ',
+    }) do
       eq(matches, complete('src/n', 'Gitsigns diff ' .. prefix .. 'src/n'))
     end
     eq(matches, complete('src/new\\ f', 'Gitsigns diff -- src/new\\ f'))

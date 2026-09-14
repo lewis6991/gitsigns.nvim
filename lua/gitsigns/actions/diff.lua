@@ -135,11 +135,12 @@ local function compare_entries(a, b)
   return a.path < b.path
 end
 
---- @alias Gitsigns.DiffAction 'diff'|'target'|'base'|'stage'|'unstage'|'toggle'
+--- @alias Gitsigns.DiffAction 'diff'|'target'|'base'|'stage'|'unstage'|'toggle'|'refresh'
 
 --- Show panel and diff-buffer mappings in a focused popup.
 --- @param panel integer
-local function show_help(panel)
+--- @param diff Gitsigns.DiffMode
+local function show_help(panel, diff)
   local popup = require('gitsigns.popup')
   popup.close('diff_help')
 
@@ -151,9 +152,13 @@ local function show_help(panel)
 
   vim.list_extend(lines, {
     { { '', 'Normal' } },
-    { { 'Diff buffers', 'Title' } },
+    { { 'File buffers', 'Title' } },
     { { ']f / [f  Next / previous file (accepts count)', 'Normal' } },
-    { { ']c / [c  Next / previous change', 'Normal' } },
+  })
+  if diff ~= 'none' then
+    lines[#lines + 1] = { { ']c / [c  Next / previous change', 'Normal' } }
+  end
+  vim.list_extend(lines, {
     { { '', 'Normal' } },
     { { 'q / <Esc> / g?  Close this help', 'Comment' } },
   })
@@ -179,6 +184,7 @@ end
 --- @field paths? string[]
 --- @field cwd string
 --- @field show_commit? boolean
+--- @field diff Gitsigns.DiffMode
 --- @field base? string
 --- @field target? string
 --- @field entries Gitsigns.DiffEntry[]
@@ -191,7 +197,9 @@ end
 --- @field current_file integer
 --- @field scratch table<string, integer>
 --- @field retained table<integer, boolean>
---- @field busy boolean
+--- @field active_action? Gitsigns.DiffAction
+--- @field pending_refresh? boolean
+--- @field pending_action? [Gitsigns.DiffAction, boolean?, string]
 local DiffPanel = {}
 DiffPanel.__index = DiffPanel
 
@@ -512,7 +520,7 @@ function DiffPanel:render()
     api.nvim_win_set_width(panel_win, 36)
   end
 
-  -- Begin with all files visible; refresh restores any selected closed directory.
+  -- Begin with all files visible; refresh restores closed directories.
   resize_panel(panel_win, self.header_lines, self.dirs)
   wo.foldenable = true
   vim.cmd('normal! zR')
@@ -526,7 +534,7 @@ end
 --- Disable the previous diff before switching buffers and update window IDs in place.
 --- @private
 --- @param buf integer
---- @param base_buf integer? Omit to show only the commit message.
+--- @param base_buf integer? Omit for a single-buffer view.
 --- @param jump? boolean Jump to the first hunk for a newly loaded buffer.
 function DiffPanel:show_buffers(buf, base_buf, jump)
   -- Stop cursor/scroll binding before either window switches buffers, so the
@@ -539,7 +547,7 @@ function DiffPanel:show_buffers(buf, base_buf, jump)
     end
   end
 
-  -- A commit message uses only the right pane. Recreate missing panes for file diffs.
+  -- Messages and single-buffer views use only the right pane.
   if not base_buf then
     if self.left_win and api.nvim_win_is_valid(self.left_win) then
       api.nvim_win_close(self.left_win, false)
@@ -659,56 +667,72 @@ end
 --- Reload the tree, restoring the displayed file and selected node.
 --- @private
 --- @async
---- @param node Gitsigns.DiffNode
---- @param folded? boolean
-function DiffPanel:refresh(node, folded)
+function DiffPanel:refresh()
+  self.pending_refresh = nil
   local new_base, new_target, new_entries, new_commit =
     git_diff(self.repo, self.revision, self.paths, self.cwd, self.show_commit)
-  if not api.nvim_win_is_valid(self.panel_win) or api.nvim_get_current_tabpage() ~= self.tab then
+  if not api.nvim_win_is_valid(self.panel_win) then
     return
   end
 
-  local current_entry = self.entries[self.current_file]
+  -- Buffer staging can refresh a panel in another window or tab without taking focus.
+  api.nvim_win_call(self.panel_win, function()
+    local cursor = api.nvim_win_get_cursor(self.panel_win)
+    local node = self.rows[cursor[1]]
+    local current_entry = self.entries[self.current_file]
 
-  -- Replace the row data together with its rendering.
-  self.base, self.target, self.entries, self.commit = new_base, new_target, new_entries, new_commit
-  api.nvim_set_current_win(self.panel_win)
-  self:render()
-
-  -- The displayed diff and the panel cursor can refer to different files.
-  self.current_file = 0
-  local current = current_entry and self.nodes[current_entry.path]
-  if current then
-    self:mark_current_file(current.first)
-  end
-
-  -- Keep the selected path when it survives; otherwise select a nearby file.
-  if #self.entries > 0 then
-    local selected = self.nodes[node.path]
-    local index = math.max(1, math.min(node.directory and 1 or node.first, #self.entries))
-    api.nvim_win_set_cursor(
-      self.panel_win,
-      { selected and selected.lnum or assert(self.file_lnums[index]), 0 }
-    )
-
-    if selected and selected.directory and folded then
-      vim.cmd('normal! zc')
+    -- Open parents while collecting folds so closed children are remembered too.
+    local closed = {} --- @type string[]
+    for lnum = self.header_lines + 1, api.nvim_buf_line_count(self.buf) do
+      local row = self.rows[lnum]
+      if row and row.directory and fn.foldclosed(lnum) == lnum then
+        closed[#closed + 1] = row.path
+        vim.cmd.foldopen({ range = { lnum } })
+      end
     end
-  end
+
+    -- Replace the row data together with its rendering.
+    self.base, self.target, self.entries, self.commit =
+      new_base, new_target, new_entries, new_commit
+    self:render()
+
+    -- The displayed diff and the panel cursor can refer to different files.
+    self.current_file = 0
+    local current = current_entry and self.nodes[current_entry.path]
+    if current then
+      self:mark_current_file(current.first)
+    end
+
+    -- Keep the selected path when it survives; otherwise select a nearby file.
+    if #self.entries > 0 then
+      local selected = node and self.nodes[node.path]
+      local index = node and not node.directory and node.first or 1
+      index = math.min(index, #self.entries)
+      api.nvim_win_set_cursor(self.panel_win, {
+        selected and selected.lnum or assert(self.file_lnums[index]),
+        selected and cursor[2] or 0,
+      })
+    end
+
+    -- Restore children before their parents, using paths because rows can move.
+    for i = #closed, 1, -1 do
+      local dir = self.dirs[closed[i]]
+      if dir then
+        vim.cmd.foldclose({ range = { dir.lnum } })
+      end
+    end
+  end)
 end
 
 --- Stage or unstage the selected file or directory, then refresh the panel.
 --- @private
 --- @async
 --- @param how 'stage'|'unstage'|'toggle'
-function DiffPanel:stage_files(how)
-  local lnum = api.nvim_win_get_cursor(self.panel_win)[1]
-  local node = self.rows[lnum]
+--- @param node? Gitsigns.DiffNode
+function DiffPanel:stage_files(how, node)
   if not node or self.target then
     return
   end
-
-  local folded = node.directory and fn.foldclosed(lnum) == lnum
 
   -- Pass only listed descendants so directory actions respect panel filters.
   local entries = vim.list_slice(self.entries, node.first, node.last)
@@ -730,8 +754,6 @@ function DiffPanel:stage_files(how)
       end
     end
   end
-
-  self:refresh(node, folded)
 end
 
 --- Open the selected commit message, file diff, or one side in a new tab.
@@ -739,7 +761,8 @@ end
 --- @private
 --- @async
 --- @param how Gitsigns.DiffAction
-function DiffPanel:open_file(how)
+--- @param node? Gitsigns.DiffNode
+function DiffPanel:open_file(how, node)
   local lnum = api.nvim_win_get_cursor(self.panel_win)[1]
   if lnum <= 2 and self.commit and how == 'diff' then
     local buf, created, loaded = require('gitsigns.actions.show_commit').create_buf(
@@ -754,7 +777,6 @@ function DiffPanel:open_file(how)
     return
   end
 
-  local node = self.rows[lnum]
   if not node or node.directory then
     return
   end
@@ -762,17 +784,29 @@ function DiffPanel:open_file(how)
   local index = node.first
   local entry = assert(self.entries[index])
 
-  -- Read both sides before changing windows; either read may yield to the user.
+  -- Read the requested sides before changing windows; either read may yield to the user.
+  local show_diff = how == 'diff' and self.diff == 'split'
   local buf, created, loaded = self:file_buffer(entry, how == 'base' and 'base' or 'target')
   local old_buf, old_created, old_loaded
-  if buf and how == 'diff' then
+
+  -- A new single-buffer view still needs the base to locate its first change.
+  local read_base = how == 'diff' and (show_diff or not loaded)
+  if buf and read_base then
     old_buf, old_created, old_loaded = self:file_buffer(entry, 'base')
+  end
+
+  local first_hunk
+  if self.diff == 'none' and buf and old_buf then
+    local buf_lines = require('gitsigns.util').buf_lines
+    first_hunk = require('gitsigns.diff')(buf_lines(old_buf), buf_lines(buf), false)[1]
+    async.schedule()
   end
 
   -- Abandoned reads must not retain buffers or change a different tab.
   if
     not buf
-    or (how == 'diff' and not old_buf)
+    or not api.nvim_buf_is_valid(buf)
+    or (read_base and not old_buf)
     or not api.nvim_win_is_valid(self.panel_win)
     or api.nvim_get_current_tabpage() ~= self.tab
   then
@@ -787,7 +821,12 @@ function DiffPanel:open_file(how)
   end
 
   if how == 'diff' then
-    self:show_buffers(buf, old_buf, not loaded)
+    self:show_buffers(buf, show_diff and old_buf or nil, not loaded)
+    if first_hunk then
+      local line = math.max(1, math.min(first_hunk.added.start, api.nvim_buf_line_count(buf)))
+      api.nvim_win_set_cursor(self.right_win, { line, 0 })
+      vim.cmd('normal! zv')
+    end
     self:mark_current_file(index)
   else
     vim.cmd.tabnew()
@@ -800,23 +839,45 @@ end
 --- @async
 --- @param how Gitsigns.DiffAction
 --- @param keep_focus? boolean
-function DiffPanel:run_action(how, keep_focus)
-  if self.busy then
+--- @param path? string Queued selection; skip it if the path disappeared during refresh.
+function DiffPanel:run_action(how, keep_focus, path)
+  if how == 'refresh' then
+    self.pending_refresh = true
+  end
+  if not api.nvim_win_is_valid(self.panel_win) then
+    return
+  end
+  local node = self.rows[api.nvim_win_get_cursor(self.panel_win)[1]]
+  if path then
+    node = self.nodes[path]
+  end
+  if self.active_action then
+    -- Background refreshes must not swallow a file selection or staging command.
+    if self.active_action == 'refresh' and how ~= 'refresh' and node then
+      self.pending_action = { how, keep_focus, node.path }
+    end
     return
   end
 
-  self.busy = true
+  self.active_action = how
   local focus_win = api.nvim_get_current_win()
 
   -- Keep the repository alive if the panel is closed while Git is reading a file.
   self.repo:ref()
-  local action = (how == 'stage' or how == 'unstage' or how == 'toggle') and self.stage_files
-    or self.open_file
-  local opened, open_err = pcall(action, self, how)
+  local opened, open_err = pcall(function()
+    if how == 'refresh' then
+      self:refresh()
+    elseif how == 'stage' or how == 'unstage' or how == 'toggle' then
+      --- @cast how 'stage'|'unstage'|'toggle'
+      self:stage_files(how, node)
+    else
+      self:open_file(how, node)
+    end
+  end)
 
   -- Release action state even when a read or index update failed.
   self.repo:unref()
-  self.busy = false
+  self.active_action = nil
 
   if
     keep_focus
@@ -829,13 +890,22 @@ function DiffPanel:run_action(how, keep_focus)
   if not opened then
     message.error(open_err)
   end
+
+  -- Coalesce changes received while opening a file or reading the previous refresh.
+  local pending = self.pending_action
+  self.pending_action = nil
+  if pending then
+    self:run_action(pending[1], pending[2], pending[3])
+  elseif self.pending_refresh then
+    self:run_action('refresh')
+  end
 end
 
---- Move through this panel's files while keeping focus in the current diff window.
+--- Move through this panel's files while keeping focus in the current window.
 --- @private
 --- @param count integer Signed file offset, clamped to the first and last entries.
 function DiffPanel:navigate(count)
-  if self.busy or #self.file_lnums == 0 then
+  if (self.active_action and self.active_action ~= 'refresh') or #self.file_lnums == 0 then
     return
   end
 
@@ -855,9 +925,9 @@ end
 --- Bind file navigation while a diff window is current, restoring mappings on leave.
 --- Shared buffers then use their normal mappings in every other window or panel.
 --- @package
+--- @param group integer
 --- @return fun() cleanup
-function DiffPanel:setup_navigation()
-  local group = api.nvim_create_augroup('gitsigns_diff_' .. self.buf, {})
+function DiffPanel:setup_navigation(group)
   local restore = {} --- @type fun()[]
   local mapped_win --- @type integer?
   local directions = { [']f'] = 1, ['[f'] = -1 } --- @type table<string, integer>
@@ -889,8 +959,7 @@ function DiffPanel:setup_navigation()
       local win = api.nvim_get_current_win()
       if
         #restore > 0
-        or not self.left_win
-        or not api.nvim_win_is_valid(self.left_win)
+        or (self.diff == 'split' and (not self.left_win or not api.nvim_win_is_valid(self.left_win)))
         or (win ~= self.left_win and win ~= self.right_win)
       then
         return
@@ -928,10 +997,7 @@ function DiffPanel:setup_navigation()
     end,
   })
 
-  return function()
-    api.nvim_del_augroup_by_id(group)
-    unmap()
-  end
+  return unmap
 end
 
 --- Bind panel actions for files, directory folds, commit metadata, and help.
@@ -967,8 +1033,16 @@ function DiffPanel:setup_keymaps()
     end
   end)
 
-  map('<S-CR>', 'Diff file and keep focus in the panel', function()
+  map('<S-CR>', 'Open file and keep focus in the panel', function()
     async.run(self.run_action, self, 'diff', true):raise_on_error()
+  end)
+
+  map(']f', 'Next file', function()
+    self:navigate(vim.v.count1)
+  end)
+
+  map('[f', 'Previous file', function()
+    self:navigate(-vim.v.count1)
   end)
 
   map('o', 'View target file (tab)', function()
@@ -995,7 +1069,7 @@ function DiffPanel:setup_keymaps()
   end
 
   map('g?', 'Show available keys', function()
-    show_help(panel_buf)
+    show_help(panel_buf, self.diff)
   end)
 
   map('q', 'Close diff', function()
@@ -1029,7 +1103,17 @@ end
 --- @param revision? string Commit or revision range; nil compares HEAD with the working tree.
 --- @param paths? string[] Git pathspecs, relative to the current directory in the repository.
 --- @param show_commit? boolean Compare a commit with its first parent.
-return function(revision, paths, show_commit)
+--- @param opts? Gitsigns.DiffPanelOpts
+return function(revision, paths, show_commit, opts)
+  local diff = opts and opts.diff or 'split'
+  if diff == 'unified' then
+    message.error('Unified diff is not implemented yet')
+    return
+  elseif diff ~= 'none' and diff ~= 'split' then
+    message.error('Invalid diff mode: %s (expected none or split)', tostring(diff))
+    return
+  end
+
   local source_win = api.nvim_get_current_win()
   local cwd = fn.getcwd()
   local repo, err = get_repo()
@@ -1086,6 +1170,7 @@ return function(revision, paths, show_commit)
     paths = paths,
     cwd = cwd,
     show_commit = show_commit,
+    diff = diff,
 
     base = base,
     target = target,
@@ -1103,13 +1188,14 @@ return function(revision, paths, show_commit)
     -- Kept across file switches until this review closes.
     scratch = {},
     retained = {},
-    busy = false,
   }, DiffPanel)
 
   self:render()
 
   -- Tie window updates, temporary mappings, and retained buffers to the panel.
-  local resize = api.nvim_create_autocmd('WinResized', {
+  local group = api.nvim_create_augroup('gitsigns_diff_' .. panel, {})
+  api.nvim_create_autocmd('WinResized', {
+    group = group,
     callback = function()
       if api.nvim_win_is_valid(panel_win) then
         resize_panel(panel_win, self.header_lines, self.dirs)
@@ -1117,13 +1203,26 @@ return function(revision, paths, show_commit)
     end,
   })
 
-  local unmap = self:setup_navigation()
+  local unmap = self:setup_navigation(group)
+  if not self.target then
+    api.nvim_create_autocmd('User', {
+      group = group,
+      pattern = 'GitSignsChanged',
+      callback = function(args)
+        local file = args.data and args.data.file
+        if file and vim.startswith(file, self.repo.toplevel:gsub('/$', '') .. '/') then
+          async.run(self.run_action, self, 'refresh'):raise_on_error()
+        end
+      end,
+    })
+  end
   api.nvim_create_autocmd('BufWipeout', {
+    group = group,
     buffer = panel,
     once = true,
     callback = function()
+      api.nvim_del_augroup_by_id(group)
       unmap()
-      api.nvim_del_autocmd(resize)
       repo:unref()
 
       -- Wait for tab closure to remove its windows before checking other users.
