@@ -1031,17 +1031,11 @@ describe('popup preview', function()
         'd',
       },
     })
+    -- Stage before attaching, since Git watching is disabled.
+    helpers.write_to_file(test_file, { 'a', 'b', 'C', 'd' })
+    git('add', test_file)
     setup_gitsigns(test_config)
     edit(test_file)
-
-    exec_lua(function()
-      vim.api.nvim_buf_set_lines(0, 2, 3, false, { 'C' })
-      vim.cmd('write')
-    end)
-    git('add', test_file)
-    exec_lua(function()
-      require('gitsigns').refresh()
-    end)
 
     expectf(function()
       local staged = exec_lua(function()
@@ -1082,17 +1076,11 @@ describe('popup preview', function()
         'delta',
       },
     })
+    -- Stage before attaching, since Git watching is disabled.
+    helpers.write_to_file(test_file, { 'alpha', 'BRAVO', 'charlie', 'delta' })
+    git('add', test_file)
     setup_gitsigns(test_config)
     edit(test_file)
-
-    exec_lua(function()
-      vim.api.nvim_buf_set_lines(0, 1, 2, false, { 'BRAVO' })
-      vim.cmd('write')
-    end)
-    git('add', test_file)
-    exec_lua(function()
-      require('gitsigns').refresh()
-    end)
 
     expectf(function()
       local unstaged, staged = exec_lua(function()
