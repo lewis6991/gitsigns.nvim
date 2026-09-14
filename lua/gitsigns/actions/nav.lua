@@ -107,11 +107,15 @@ function M.nav_hunk(direction, opts)
   opts = process_nav_opts(opts)
   local bufnr = api.nvim_get_current_buf()
   local bcache = cache[bufnr]
-  if not bcache then
+  local view = require('gitsigns.unified').get_view()
+  local hunks --- @type Gitsigns.Hunk.Hunk[]?
+  if view then
+    hunks = view.hunks
+  elseif bcache then
+    hunks = get_nav_hunks(bufnr, opts.target, opts.greedy)
+  else
     return
   end
-
-  local hunks = get_nav_hunks(bufnr, opts.target, opts.greedy)
 
   if not hunks or vim.tbl_isempty(hunks) then
     if opts.navigation_message then
@@ -156,6 +160,7 @@ function M.nav_hunk(direction, opts)
   if opts.foldopen then
     vim.cmd('silent! foldopen!')
   end
+  require('gitsigns.unified').reveal()
 
   -- schedule so the cursor change can settle, otherwise the popup might
   -- appear in the old position

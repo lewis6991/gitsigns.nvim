@@ -4,6 +4,8 @@ local diffthis = require('gitsigns.actions.diffthis')
 local git_diff = require('gitsigns.git.diff')
 local message = require('gitsigns.message')
 local Repo = require('gitsigns.git.repo')
+local Unified = require('gitsigns.unified')
+local DiffBuffers = require('gitsigns.diff_buffers')
 
 local api = vim.api
 local fn = vim.fn
@@ -11,15 +13,6 @@ local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
 local ns = api.nvim_create_namespace('gitsigns_diff')
 local ns_selection = api.nvim_create_namespace('gitsigns_diff_selection')
 local ns_header = api.nvim_create_namespace('gitsigns_diff_header')
-
---- @class Gitsigns.DiffBufferRef
---- @field refs integer
---- @field bufhidden ''|'hide'|'unload'|'delete'|'wipe'
---- @field loaded boolean
---- @field created boolean
-
--- Buffers can belong to more than one review panel.
-local buffer_refs = {} --- @type table<integer, Gitsigns.DiffBufferRef>
 
 local HIGHLIGHTS = {
   A = 'GitSignsAdd',
@@ -185,6 +178,7 @@ end
 --- @field cwd string
 --- @field show_commit? boolean
 --- @field diff Gitsigns.DiffMode
+--- @field file? boolean Whether the displayed view is a file comparison.
 --- @field base? string
 --- @field target? string
 --- @field entries Gitsigns.DiffEntry[]
@@ -276,6 +270,7 @@ function DiffPanel:file_buffer(entry, side)
     bufnr = api.nvim_create_buf(false, true)
     self.scratch[key] = bufnr
     vim.bo[bufnr].bufhidden = 'wipe'
+    vim.bo[bufnr].endofline = false
   end
 
   -- Working-tree symlinks and gitlinks can change while their buffers stay loaded.
@@ -533,10 +528,15 @@ end
 --- Show a commit message or file diff beside the panel, recreating closed splits.
 --- Disable the previous diff before switching buffers and update window IDs in place.
 --- @private
+--- @async
 --- @param buf integer
 --- @param base_buf integer? Omit for a single-buffer view.
 --- @param jump? boolean Jump to the first hunk for a newly loaded buffer.
 function DiffPanel:show_buffers(buf, base_buf, jump)
+  -- Leaving the file window restores mappings before the layout changes.
+  api.nvim_set_current_win(self.panel_win)
+  Unified.close(self.right_win, base_buf)
+  self.file = base_buf ~= nil
   -- Stop cursor/scroll binding before either window switches buffers, so the
   -- previous file cannot move the next file's restored cursor.
   for _, win in ipairs({ self.right_win, self.left_win }) do
@@ -548,7 +548,7 @@ function DiffPanel:show_buffers(buf, base_buf, jump)
   end
 
   -- Messages and single-buffer views use only the right pane.
-  if not base_buf then
+  if not base_buf or self.diff == 'unified' then
     if self.left_win and api.nvim_win_is_valid(self.left_win) then
       api.nvim_win_close(self.left_win, false)
     end
@@ -562,7 +562,7 @@ function DiffPanel:show_buffers(buf, base_buf, jump)
   end
 
   api.nvim_set_current_win(self.right_win)
-  if base_buf then
+  if base_buf and self.diff == 'split' then
     if not self.left_win or not api.nvim_win_is_valid(self.left_win) then
       vim.cmd.vsplit({ mods = { split = 'aboveleft', keepalt = true } })
       self.left_win = api.nvim_get_current_win()
@@ -572,6 +572,10 @@ function DiffPanel:show_buffers(buf, base_buf, jump)
   api.nvim_win_set_buf(self.right_win, buf)
   api.nvim_set_current_win(self.right_win)
   if not base_buf then
+    return
+  end
+  if self.diff == 'unified' then
+    Unified.show(self.right_win, base_buf)
     return
   end
 
@@ -603,19 +607,7 @@ end
 --- @param loaded boolean?
 function DiffPanel:retain(buf, created, loaded)
   if not self.retained[buf] then
-    local ref = buffer_refs[buf]
-    if not ref then
-      -- Remember the original state once, even if several panels share this buffer.
-      ref = {
-        refs = 0,
-        bufhidden = vim.bo[buf].bufhidden,
-        loaded = loaded or false,
-        created = created or false,
-      }
-      buffer_refs[buf] = ref
-    end
-
-    ref.refs = ref.refs + 1
+    DiffBuffers.retain(buf, created, loaded)
     self.retained[buf] = true
   end
 
@@ -625,23 +617,7 @@ end
 --- @package
 function DiffPanel:release()
   for buf in pairs(self.retained) do
-    local ref = buffer_refs[buf]
-    ref.refs = ref.refs - 1
-
-    -- The last panel restores buffer policy without overriding a later user change.
-    if ref.refs == 0 then
-      buffer_refs[buf] = nil
-      if api.nvim_buf_is_valid(buf) then
-        if vim.bo[buf].bufhidden == 'hide' then
-          vim.bo[buf].bufhidden = ref.bufhidden
-        end
-
-        -- Preserve pre-existing buffers, unsaved edits, and windows in every tab.
-        if not ref.loaded and not vim.bo[buf].modified and #fn.win_findbuf(buf) == 0 then
-          api.nvim_buf_delete(buf, { unload = not ref.created })
-        end
-      end
-    end
+    DiffBuffers.release(buf)
   end
 end
 
@@ -785,7 +761,7 @@ function DiffPanel:open_file(how, node)
   local entry = assert(self.entries[index])
 
   -- Read the requested sides before changing windows; either read may yield to the user.
-  local show_diff = how == 'diff' and self.diff == 'split'
+  local show_diff = how == 'diff' and self.diff ~= 'none'
   local buf, created, loaded = self:file_buffer(entry, how == 'base' and 'base' or 'target')
   local old_buf, old_created, old_loaded
 
@@ -796,7 +772,7 @@ function DiffPanel:open_file(how, node)
   end
 
   local first_hunk
-  if self.diff == 'none' and buf and old_buf then
+  if self.diff ~= 'split' and not loaded and buf and old_buf then
     local buf_lines = require('gitsigns.util').buf_lines
     first_hunk = require('gitsigns.diff')(buf_lines(old_buf), buf_lines(buf), false)[1]
     async.schedule()
@@ -822,10 +798,14 @@ function DiffPanel:open_file(how, node)
 
   if how == 'diff' then
     self:show_buffers(buf, show_diff and old_buf or nil, not loaded)
+    if not api.nvim_win_is_valid(self.panel_win) or not api.nvim_win_is_valid(self.right_win) then
+      return
+    end
     if first_hunk then
       local line = math.max(1, math.min(first_hunk.added.start, api.nvim_buf_line_count(buf)))
       api.nvim_win_set_cursor(self.right_win, { line, 0 })
       vim.cmd('normal! zv')
+      Unified.reveal(self.right_win)
     end
     self:mark_current_file(index)
   else
@@ -930,7 +910,12 @@ end
 function DiffPanel:setup_navigation(group)
   local restore = {} --- @type fun()[]
   local mapped_win --- @type integer?
-  local directions = { [']f'] = 1, ['[f'] = -1 } --- @type table<string, integer>
+  local mappings = {
+    [']f'] = { direction = 1, desc = 'Next file' },
+    ['[f'] = { direction = -1, desc = 'Previous file' },
+    [']c'] = { direction = 1, desc = 'Next change', unified = true },
+    ['[c'] = { direction = -1, desc = 'Previous change', unified = true },
+  }
 
   --- Restore this window's mappings before entering another buffer or window.
   local function unmap()
@@ -967,31 +952,37 @@ function DiffPanel:setup_navigation(group)
 
       local buf = api.nvim_get_current_buf()
       mapped_win = win
-      for key, direction in pairs(directions) do
-        local previous = fn.maparg(key, 'n', false, true)
-        local callback = function()
-          self:navigate(direction * vim.v.count1)
-        end
-
-        vim.keymap.set('n', key, callback, {
-          buffer = buf,
-          desc = direction == 1 and 'Next file' or 'Previous file',
-        })
-
-        restore[#restore + 1] = function()
-          if not api.nvim_buf_is_valid(buf) then
-            return
+      for key, mapping in pairs(mappings) do
+        if not mapping.unified or (self.diff == 'unified' and self.file) then
+          local previous = fn.maparg(key, 'n', false, true)
+          local callback = function()
+            if mapping.unified then
+              require('gitsigns').nav_hunk(mapping.direction == 1 and 'next' or 'prev')
+            else
+              self:navigate(mapping.direction * vim.v.count1)
+            end
           end
 
-          api.nvim_buf_call(buf, function()
-            -- Leave a mapping installed by the user after entering the window alone.
-            if fn.maparg(key, 'n', false, true).callback == callback then
-              vim.keymap.del('n', key, { buffer = buf })
-              if previous.buffer == 1 then
-                fn.mapset('n', false, previous)
-              end
+          vim.keymap.set('n', key, callback, {
+            buffer = buf,
+            desc = mapping.desc,
+          })
+
+          restore[#restore + 1] = function()
+            if not api.nvim_buf_is_valid(buf) then
+              return
             end
-          end)
+
+            api.nvim_buf_call(buf, function()
+              -- Leave a mapping installed by the user after entering the window alone.
+              if fn.maparg(key, 'n', false, true).callback == callback then
+                vim.keymap.del('n', key, { buffer = buf })
+                if previous.buffer == 1 then
+                  fn.mapset('n', false, previous)
+                end
+              end
+            end)
+          end
         end
       end
     end,
@@ -1053,6 +1044,15 @@ function DiffPanel:setup_keymaps()
     async.run(self.run_action, self, 'base'):raise_on_error()
   end)
 
+  map('gu', 'Toggle unified diff', function()
+    if self.active_action or not self.entries[self.current_file] then
+      return
+    end
+    self.diff = self.diff == 'unified' and 'split' or 'unified'
+    api.nvim_win_set_cursor(panel_win, { assert(self.file_lnums[self.current_file]), 0 })
+    async.run(self.run_action, self, 'diff', true):raise_on_error()
+  end)
+
   -- Only working-tree comparisons can stage or unstage files.
   if not self.target then
     map('s', 'Stage file or directory', function()
@@ -1105,12 +1105,9 @@ end
 --- @param show_commit? boolean Compare a commit with its first parent.
 --- @param opts? Gitsigns.DiffPanelOpts
 return function(revision, paths, show_commit, opts)
-  local diff = opts and opts.diff or 'split'
-  if diff == 'unified' then
-    message.error('Unified diff is not implemented yet')
-    return
-  elseif diff ~= 'none' and diff ~= 'split' then
-    message.error('Invalid diff mode: %s (expected none or split)', tostring(diff))
+  local diff = opts and (opts.diff or (opts.unified and 'unified')) or 'split'
+  if diff ~= 'none' and diff ~= 'split' and diff ~= 'unified' then
+    message.error('Invalid diff mode: %s (expected none, split, or unified)', tostring(diff))
     return
   end
 
@@ -1223,6 +1220,7 @@ return function(revision, paths, show_commit, opts)
     callback = function()
       api.nvim_del_augroup_by_id(group)
       unmap()
+      Unified.close(self.right_win)
       repo:unref()
 
       -- Wait for tab closure to remove its windows before checking other users.

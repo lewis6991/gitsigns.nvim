@@ -39,6 +39,7 @@ return {
     diffthis = {
       flags = {
         split = { 'aboveleft', 'belowright', 'topleft', 'botright' },
+        unified = false,
         vertical = false,
       },
       positional = {

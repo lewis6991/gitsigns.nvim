@@ -4,6 +4,7 @@ local manager = require('gitsigns.manager')
 local message = require('gitsigns.message')
 local util = require('gitsigns.util')
 local Status = require('gitsigns.status')
+local Unified = require('gitsigns.unified')
 
 local cache = require('gitsigns.cache').cache
 local log = require('gitsigns.debug.log')
@@ -74,7 +75,6 @@ local function bufread(repo, dbufnr, base, relpath, bufnr)
     or (text[1] and text[1]:sub(-1) == '\r' and 'dos' or 'unix')
 
   vim.bo[dbufnr].filetype = vim.filetype.match({ buf = dbufnr })
-  vim.bo[dbufnr].bufhidden = 'wipe'
 
   Status.update(dbufnr, { head = base })
 
@@ -147,6 +147,8 @@ function M.create_revision_buf(repo, base, relpath, bufnr)
   end
 
   if not exists then
+    -- Reloads must preserve retention by a panel or unified view.
+    vim.bo[dbuf].bufhidden = 'wipe'
     api.nvim_buf_set_name(dbuf, bufname)
   end
 
@@ -200,7 +202,8 @@ local function diffthis_rev(base, opts)
   local bufnr = api.nvim_get_current_buf()
   local git_obj = assert(cache[bufnr]).git_obj
 
-  local bufname, dbuf = M.create_revision_buf(git_obj.repo, base, assert(git_obj.relpath), bufnr)
+  local bufname, dbuf, created, loaded =
+    M.create_revision_buf(git_obj.repo, base, assert(git_obj.relpath), bufnr)
   if not bufname then
     return
   end
@@ -208,6 +211,11 @@ local function diffthis_rev(base, opts)
   opts = opts or {}
 
   local cwin = api.nvim_get_current_win()
+
+  if opts.unified then
+    Unified.show(cwin, assert(dbuf), created, loaded)
+    return
+  end
 
   vim.cmd.diffsplit({
     bufname,
@@ -249,6 +257,12 @@ end
 --- @param base string?
 --- @param opts Gitsigns.DiffthisOpts
 function M.diffthis(base, opts)
+  if Unified.get_view() then
+    Unified.close(api.nvim_get_current_win())
+    if opts.unified then
+      return
+    end
+  end
   if vim.wo.diff then
     log.dprint('diff is disabled')
     return
@@ -262,6 +276,8 @@ function M.diffthis(base, opts)
   end
 
   if not base and bcache.git_obj.has_conflicts then
+    -- A unified view has two sides; preserve the three-way conflict view.
+    opts.unified = false
     diffthis_rev(':2', opts)
     opts.split = 'belowright'
     diffthis_rev(':3', opts)
@@ -336,22 +352,26 @@ end
 --- This function needs to be throttled as there is a call to vim.ui.input
 --- @param bufnr integer
 M.update = throttle_async({ hash = 1, schedule = true }, function(bufnr)
-  if not vim.wo.diff then
+  if not vim.wo.diff and not Unified.is_active(bufnr) then
     return
   end
   -- Note this will be the bufname for the currently set base
   -- which are the only ones we want to update
   local bufname = assert(cache[bufnr]):get_rev_bufname()
 
-  for _, w in ipairs(api.nvim_list_wins()) do
-    if api.nvim_win_is_valid(w) then
-      local b = api.nvim_win_get_buf(w)
+  -- Unified views retain their comparison buffer without displaying it.
+  for _, b in ipairs(api.nvim_list_bufs()) do
+    if
+      api.nvim_buf_is_loaded(b) and (#vim.fn.win_findbuf(b) > 0 or Unified.is_active(bufnr, b))
+    then
       local bname = api.nvim_buf_get_name(b)
       if bname == bufname or is_fugitive_diff_window(bname) then
         if should_reload(b) then
           api.nvim_buf_call(b, function()
             vim.cmd.doautocmd('BufReadCmd')
-            vim.cmd.diffupdate()
+            if vim.wo.diff then
+              vim.cmd.diffupdate()
+            end
           end)
         end
       end

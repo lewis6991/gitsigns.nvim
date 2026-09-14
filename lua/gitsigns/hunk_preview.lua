@@ -372,4 +372,41 @@ function M.linespec_for_hunk(bufnr, hunk, removed_source, added_source, added_no
   return ret
 end
 
+--- @param bufnr integer
+--- @param nsw integer
+--- @param hunk Gitsigns.Hunk.Hunk
+function M.highlight_added_hunk(bufnr, nsw, hunk)
+  local start_row = hunk.added.start - 1
+
+  for offset = 0, hunk.added.count - 1 do
+    local row = start_row + offset
+    api.nvim_buf_set_extmark(bufnr, nsw, row, 0, {
+      end_row = row + 1,
+      hl_group = 'GitSignsAddPreview',
+      hl_eol = true,
+      priority = 1000,
+    })
+  end
+
+  local _, added_regions =
+    require('gitsigns.diff_int').run_word_diff(hunk.removed.lines, hunk.added.lines)
+
+  for _, region in ipairs(added_regions) do
+    local offset, rtype, scol, ecol = region[1] - 1, region[2], region[3] - 1, region[4] - 1
+
+    -- Special case to handle cr at eol in buffer but not in show text
+    local cr_at_eol_change = rtype == 'change'
+      and vim.endswith(assert(hunk.added.lines[offset + 1]), '\r')
+
+    api.nvim_buf_set_extmark(bufnr, nsw, start_row + offset, scol, {
+      end_col = ecol,
+      strict = not cr_at_eol_change,
+      hl_group = rtype == 'add' and 'GitSignsAddInline'
+        or rtype == 'change' and 'GitSignsChangeInline'
+        or 'GitSignsDeleteInline',
+      priority = 1001,
+    })
+  end
+end
+
 return M

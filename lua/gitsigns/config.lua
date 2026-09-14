@@ -10,7 +10,11 @@ local validate = require('gitsigns.util').validate
 --- @field default_help? string
 --- @field description string
 
---- @class (exact) Gitsigns.DiffthisOpts
+--- @class (exact) Gitsigns.DiffViewOpts
+--- Show deleted lines inline instead of opening a diff split.
+--- @field unified? boolean
+
+--- @class (exact) Gitsigns.DiffthisOpts: Gitsigns.DiffViewOpts
 ---
 --- Split window vertically. Default to `config.diff_opts.vertical`. If running
 --- via command line, then shi is taken from the command modifiers.
@@ -513,6 +517,7 @@ M.schema = {
     },
     description = [[
       Options for the `:Gitsigns diffthis` command.
+      Set `unified = true` to use the inline layout by default.
     ]],
   },
 
