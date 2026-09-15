@@ -55,7 +55,7 @@ end
 --- @param with_poll? boolean
 local function install_failing_fs_watchers(with_poll)
   helpers.exec_lua(function(with_poll0)
-    local uv = vim.uv or vim.loop
+    local uv = vim.uv
 
     local function new_fake_handle(fields)
       local handle = fields or {}

@@ -3,7 +3,7 @@ local util = require('gitsigns.util')
 local log = require('gitsigns.debug.log')
 local config = require('gitsigns.config').config
 local Path = util.Path
-local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+local uv = vim.uv
 
 local FS_EVENT = 'fs_event'
 local FS_POLL = 'fs_poll'
@@ -341,7 +341,7 @@ end
 function Watcher:_fs_event_targets()
   local targets = {
     self.gitdir,
-    Path.join(self.commondir, 'reftable'),
+    vim.fs.joinpath(self.commondir, 'reftable'),
   }
 
   if self.commondir ~= self.gitdir then
@@ -351,7 +351,7 @@ function Watcher:_fs_event_targets()
   if self.head_ref then
     local rel_dir = vim.fs.dirname(self.head_ref)
     if rel_dir and rel_dir ~= '.' then
-      targets[#targets + 1] = Path.join(self.commondir, rel_dir)
+      targets[#targets + 1] = vim.fs.joinpath(self.commondir, rel_dir)
     end
   end
 
@@ -362,14 +362,14 @@ end
 --- @return string[]
 function Watcher:_fs_poll_targets()
   local targets = {
-    Path.join(self.gitdir, 'HEAD'),
-    Path.join(self.gitdir, 'index'),
-    Path.join(self.commondir, 'packed-refs'),
-    Path.join(self.commondir, 'reftable'),
+    vim.fs.joinpath(self.gitdir, 'HEAD'),
+    vim.fs.joinpath(self.gitdir, 'index'),
+    vim.fs.joinpath(self.commondir, 'packed-refs'),
+    vim.fs.joinpath(self.commondir, 'reftable'),
   }
 
   if self.head_ref then
-    targets[#targets + 1] = Path.join(self.commondir, self.head_ref)
+    targets[#targets + 1] = vim.fs.joinpath(self.commondir, self.head_ref)
   end
 
   return targets

@@ -42,9 +42,6 @@ function M.close(win, keep_base)
   end
   if api.nvim_buf_is_valid(view.buf) then
     api.nvim_buf_clear_namespace(view.buf, view.ns, 0, -1)
-    if not api.nvim__ns_set then
-      DeletedPreview.prepare(view.buf)
-    end
   end
 
   DiffBuffers.release(view.base, view.base == keep_base)
@@ -226,14 +223,9 @@ function M.show(win, base_buf, created, loaded)
 
   local buf = api.nvim_win_get_buf(win)
   local ns = api.nvim_create_namespace('gitsigns_unified_' .. win)
-  if api.nvim__ns_set then
-    api.nvim__ns_set(ns, { wins = { win } })
-  end
+  api.nvim__ns_set(ns, { wins = { win } })
   views[win] = { buf = buf, base = base_buf, ns = ns }
   require('gitsigns.actions.preview').clear_preview_inline(buf)
-  if not api.nvim__ns_set then
-    DeletedPreview.prepare(buf)
-  end
   watch(buf)
   watch(base_buf)
   update(win)
@@ -254,7 +246,7 @@ require('gitsigns.manager').on_win(function(ctx)
         and api.nvim_win_get_buf(ctx.winid) == view.buf
         and assert(vim.fn.getwininfo(ctx.winid)[1]).textoff ~= width
       then
-        util.redraw({ win = ctx.winid, valid = false })
+        api.nvim__redraw({ win = ctx.winid, valid = false })
       end
     end)
   end

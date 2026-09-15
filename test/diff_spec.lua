@@ -364,10 +364,9 @@ describe('diff panel', function()
     screen:expect({ any = 'top deleted' })
     screen:expect({ any = 'bottom deleted', unchanged = true })
     api.nvim_command('vsplit')
-    local scoped = exec_lua('return vim.api.nvim__ns_set ~= nil')
     screen:expect(function()
       local _, count = table.concat(screen:render(false, {}), '\n'):gsub('top deleted', '')
-      eq(scoped and 1 or 2, count)
+      eq(1, count)
     end)
     screen:detach()
   end)
@@ -1068,7 +1067,7 @@ describe('diff panel', function()
 
     -- The destination looks like a pathspec that could also match the unrelated file.
     local name = 'new[1].txt'
-    assert((vim.uv or vim.loop).fs_rename(helpers.test_file, helpers.scratch .. '/' .. name))
+    assert(vim.uv.fs_rename(helpers.test_file, helpers.scratch .. '/' .. name))
     git('add', '-N', '--', name)
     helpers.write_to_file(helpers.scratch .. '/new1.txt', { 'unrelated' })
 
@@ -1403,7 +1402,7 @@ describe('diff panel', function()
     if helpers.fn.has('win32') == 1 then
       helpers.pending('requires symlink support')
     end
-    local uv = vim.uv or vim.loop
+    local uv = vim.uv
     local path = helpers.scratch .. '/link'
     assert(uv.fs_symlink('dummy.txt', path))
     git('add', 'link')

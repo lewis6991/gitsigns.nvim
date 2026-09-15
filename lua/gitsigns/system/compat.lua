@@ -1,4 +1,4 @@
-local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+local uv = vim.uv
 
 --- @type vim.SystemSig
 local SIG = {

@@ -10,7 +10,7 @@ local eq = helpers.eq
 local buf_get_var = helpers.api.nvim_buf_get_var
 local system = helpers.fn.system
 local nvim_test_clear = helpers.clear
-local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+local uv = vim.uv
 
 --- @return boolean
 local function is_win()

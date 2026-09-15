@@ -13,7 +13,6 @@ local current_buf = api.nvim_get_current_buf
 local M = {}
 
 local ns_inline = api.nvim_create_namespace('gitsigns_preview_inline')
-local window_ns_supported = api.nvim__ns_set ~= nil
 local inline_bufnr --- @type integer?
 local inline_winid --- @type integer?
 
@@ -74,9 +73,7 @@ function M.clear_preview_inline(bufnr)
   if inline_bufnr == bufnr then
     inline_bufnr = nil
     inline_winid = nil
-    if window_ns_supported then
-      api.nvim__ns_set(ns_inline, { wins = {} })
-    end
+    api.nvim__ns_set(ns_inline, { wins = {} })
   end
 end
 
@@ -203,9 +200,7 @@ function M.preview_hunk_inline()
 
   M.clear_preview_inline(bufnr)
 
-  if window_ns_supported then
-    api.nvim__ns_set(ns_inline, { wins = { winid } })
-  end
+  api.nvim__ns_set(ns_inline, { wins = { winid } })
 
   inline_bufnr = bufnr
   inline_winid = winid
@@ -246,7 +241,7 @@ function M.has_preview_inline(bufnr)
     return false
   end
 
-  if window_ns_supported and inline_winid ~= api.nvim_get_current_win() then
+  if inline_winid ~= api.nvim_get_current_win() then
     return false
   end
 

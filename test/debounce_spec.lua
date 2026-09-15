@@ -22,7 +22,7 @@ describe('debounce', function()
 
   after_each(function()
     exec_lua(function()
-      local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+      local uv = vim.uv
 
       if _G._debounce_orig_new_timer then
         uv.new_timer = _G._debounce_orig_new_timer
@@ -39,7 +39,7 @@ describe('debounce', function()
 
   it('closes the timer even if the function errors', function()
     exec_lua(function()
-      local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+      local uv = vim.uv
 
       _G._debounce_close_called = 0
 

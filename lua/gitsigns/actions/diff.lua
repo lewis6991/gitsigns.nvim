@@ -9,7 +9,7 @@ local DiffBuffers = require('gitsigns.diff_buffers')
 
 local api = vim.api
 local fn = vim.fn
-local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+local uv = vim.uv
 local ns = api.nvim_create_namespace('gitsigns_diff')
 local ns_selection = api.nvim_create_namespace('gitsigns_diff_selection')
 local ns_header = api.nvim_create_namespace('gitsigns_diff_header')

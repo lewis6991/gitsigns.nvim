@@ -525,9 +525,7 @@ function M.blame(opts)
     blm_wlo.winbar = vim.fn.fnamemodify(name, ':.')
   end
 
-  if vim.fn.exists('&winfixbuf') == 1 then
-    blm_wlo.winfixbuf = true
-  end
+  blm_wlo.winfixbuf = true
 
   vim.cmd(tostring(top))
   vim.cmd('normal! zt')

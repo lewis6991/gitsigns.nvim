@@ -1,5 +1,5 @@
 local util = require('gitsigns.util')
-local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+local uv = vim.uv
 
 --- @class (exact) Gitsigns.DiffEntry
 --- @field path string

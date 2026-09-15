@@ -1,4 +1,4 @@
-local validate = require('gitsigns.util').validate
+local validate = vim.validate
 
 --- @class (exact) Gitsigns.SchemaElem
 --- @field type type|type[]|fun(x:any): boolean

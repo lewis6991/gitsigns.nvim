@@ -15,7 +15,7 @@ local throttle_async = require('gitsigns.debounce').throttle_async
 
 local api = vim.api
 local current_buf = api.nvim_get_current_buf
-local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+local uv = vim.uv
 
 --- @class gitsigns.attach
 local M = {}
@@ -167,7 +167,7 @@ local function handle_moved(bufnr, old_relpath)
     git_obj.relpath = new_name
     git_obj.file = git_obj.repo.toplevel .. '/' .. new_name
   elseif git_obj.orig_relpath then
-    local orig_file = Path.join(git_obj.repo.toplevel, git_obj.orig_relpath)
+    local orig_file = vim.fs.joinpath(git_obj.repo.toplevel, git_obj.orig_relpath)
     if not git_obj.repo:file_info(orig_file, git_obj.revision) then
       return
     end
@@ -180,7 +180,7 @@ local function handle_moved(bufnr, old_relpath)
     return
   end
 
-  git_obj.file = Path.join(git_obj.repo.toplevel, git_obj.relpath)
+  git_obj.file = vim.fs.joinpath(git_obj.repo.toplevel, git_obj.relpath)
   bcache.file = git_obj.file
   git_obj:refresh()
   if not bcache:schedule() then
@@ -320,7 +320,7 @@ M.attach = throttle_async({ hash = attach_hash }, function(opts)
 
   local file, toplevel = ctx.file, ctx.toplevel
   if not Path.is_abs(file) and toplevel then
-    file = Path.join(toplevel, file)
+    file = vim.fs.joinpath(toplevel, file)
   end
 
   local revision = ctx.base or config.base

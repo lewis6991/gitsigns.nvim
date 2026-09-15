@@ -8,7 +8,7 @@ Read this file before broad test changes, CI debugging, or test-heavy work.
   tests: `ulimit -n 1024; make test ...`
 - `ulimit -n 1024; make test [FILTER=pattern]`: run the functional suite with
   the default Neovim target.
-- `ulimit -n 1024; make test-010`, `ulimit -n 1024; make test-011`,
+- `ulimit -n 1024; make test-011`,
   `ulimit -n 1024; make test-012`, `ulimit -n 1024; make test-nightly`: run
   the suite against the supported Neovim versions.
 - `make build`: format Lua sources and regenerate docs before committing.
@@ -21,5 +21,5 @@ Read this file before broad test changes, CI debugging, or test-heavy work.
 - Small localized fixes can skip dedicated regression coverage when existing
   tests already cover the behavior well enough.
 - When Neovim internals are touched, run the version matrix and at least check
-  `make test-010 && make test-nightly`.
+  `make test-011 && make test-nightly`.
 - Keep tests deterministic by guarding optional Git features.
