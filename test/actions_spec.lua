@@ -143,6 +143,40 @@ describe('actions', function()
     })
   end)
 
+  for _, cancel in ipairs({ false, true }) do
+    it(
+      'ignores repeated picker callbacks after ' .. (cancel and 'cancellation' or 'selection'),
+      function()
+        local signs_enabled = exec_lua(function(cancel0)
+          local async = require('gitsigns.async')
+          local config = require('gitsigns.config').config
+          local choose --- @type fun(item?: string)
+
+          config.signcolumn = true
+          vim.ui.select = function(_, _, callback)
+            choose = callback
+            return {
+              close = function()
+                error('picker handles must not be closed by async')
+              end,
+            }
+          end
+
+          local task = async.run(require('gitsigns.cli').run, { args = '', fargs = {} })
+          choose(not cancel0 and 'toggle_signs' or nil)
+          task:wait(1000)
+
+          choose('toggle_signs')
+          choose(nil)
+          task:wait(1000)
+
+          return config.signcolumn
+        end, cancel)
+        eq(cancel, signs_enabled)
+      end
+    )
+  end
+
   it('show_commit does not include ansi color codes', function()
     setup_test_repo()
     edit(test_file)
