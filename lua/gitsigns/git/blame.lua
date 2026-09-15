@@ -1,4 +1,4 @@
-local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+local uv = vim.uv
 
 local error_once = require('gitsigns.message').error_once
 local log = require('gitsigns.debug.log')

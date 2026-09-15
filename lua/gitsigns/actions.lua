@@ -12,7 +12,7 @@ local api = vim.api
 local current_buf = api.nvim_get_current_buf
 
 local tointeger = util.tointeger
-local validate = util.validate
+local validate = vim.validate
 
 --- @class gitsigns.actions
 local M = {}
@@ -220,7 +220,7 @@ function M.toggle_word_diff(value)
     config.word_diff = not config.word_diff
   end
   -- Don't use refresh() to avoid flicker
-  util.redraw({ buf = 0, range = { vim.fn.line('w0') - 1, vim.fn.line('w$') } })
+  api.nvim__redraw({ buf = 0, range = { vim.fn.line('w0') - 1, vim.fn.line('w$') } })
   return config.word_diff
 end
 

@@ -203,7 +203,7 @@ function M.stage_files(repo, entries, how)
   end)
 
   for i, path in ipairs(paths) do
-    paths[i] = util.Path.join(repo.toplevel, path)
+    paths[i] = vim.fs.joinpath(repo.toplevel, path)
     autocmd_changed(paths[i])
   end
 
@@ -344,7 +344,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
   end
 
   if info.relpath then
-    file = util.Path.join(repo.toplevel, info.relpath)
+    file = vim.fs.joinpath(repo.toplevel, info.relpath)
   end
 
   local self = setmetatable({}, Obj)

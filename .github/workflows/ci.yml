@@ -43,10 +43,6 @@ jobs:
 
       matrix:
         include:
-          - name: test linux (v0.10.4)
-            os: ubuntu-latest
-            neovim_branch: 'v0.10.4'
-            setup: linux
           - name: test linux (v0.11.7)
             os: ubuntu-latest
             neovim_branch: 'v0.11.7'

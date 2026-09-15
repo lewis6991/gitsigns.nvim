@@ -1,27 +1,12 @@
-local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+local uv = vim.uv
 
 local is_win = vim.fn.has('win32') == 1
-local nvim011 = vim.fn.has('nvim-0.11') == 1
 
 --- @class Gitsigns.Util.Path
 local Path = {}
 
 --- @class Gitsigns.Util
 local M = {}
-
---- Compatibility wrapper for the old and new vim.validate() signatures.
---- @param name string
---- @param value any
---- @param validator type|type[]|fun(v:any): boolean
---- @param optional? boolean
-function M.validate(name, value, validator, optional)
-  if nvim011 then
-    --- @diagnostic disable-next-line: redundant-parameter,param-type-mismatch
-    vim.validate(name, value, validator, optional)
-  else
-    vim.validate({ [name] = { value, validator, optional or false } })
-  end
-end
 
 --- @param path? string
 --- @return boolean
@@ -50,17 +35,6 @@ function Path.is_abs(path)
 
   -- Check if the path is absolute on Unix-like systems
   return vim.startswith(path, '/')
-end
-
-function Path.join(...)
-  if vim.fs.joinpath then
-    return vim.fs.joinpath(...)
-  end
-  local path = table.concat({ ... }, '/')
-  if is_win then
-    path = path:gsub('\\', '/')
-  end
-  return (path:gsub('//+', '/'))
 end
 
 M.Path = Path
@@ -251,15 +225,6 @@ function M.get_relative_time(timestamp)
     return to_relative_string(elapsed, month_seconds, 'month')
   else
     return to_relative_string(elapsed, year_seconds, 'year')
-  end
-end
-
---- @param opts vim.api.keyset.redraw
-function M.redraw(opts)
-  if vim.fn.has('nvim-0.10') == 1 then
-    vim.api.nvim__redraw(opts)
-  elseif opts.range then
-    vim.api.nvim__buf_redraw_range(opts.buf or 0, opts.range[1], opts.range[2])
   end
 end
 

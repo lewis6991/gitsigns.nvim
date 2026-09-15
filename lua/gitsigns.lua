@@ -1,5 +1,5 @@
 local api = vim.api
-local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+local uv = vim.uv
 
 --- @class gitsigns.main: gitsigns.actions,gitsigns.attach,gitsigns.debug
 local M = {}

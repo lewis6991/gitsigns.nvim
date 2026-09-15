@@ -3,7 +3,6 @@ local api = vim.api
 local config = require('gitsigns.config').config
 local Hunks = require('gitsigns.hunks')
 local manager = require('gitsigns.manager')
-local util = require('gitsigns.util')
 
 local M = {}
 
@@ -82,7 +81,7 @@ local function apply_word_diff(ctx)
     end
 
     api.nvim_buf_set_extmark(ctx.bufnr, ctx.ns, ctx.row, scol, opts)
-    util.redraw({ buf = ctx.bufnr, range = { ctx.row, ctx.row + 1 } })
+    api.nvim__redraw({ buf = ctx.bufnr, range = { ctx.row, ctx.row + 1 } })
   end
 end
 

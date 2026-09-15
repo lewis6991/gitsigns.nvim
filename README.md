@@ -135,7 +135,7 @@ Deep buffer integration for Git
 
 ## 📋 Requirements
 
-- Neovim >= 0.9.0
+- Neovim >= 0.11.0
 
 > [!TIP]
 > If your version of Neovim is too old, then you can use a past [release].

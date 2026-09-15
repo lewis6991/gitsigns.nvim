@@ -49,11 +49,7 @@ test: nvim-test
 	-@[ -t 0 ] && stty sane || true
 
 .PHONY: test-all
-test-all: test-010 test-011 test-012 test-nightly
-
-.PHONY: test-010
-test-010:
-	$(MAKE) test NVIM_TEST_VERSION=v0.10.4
+test-all: test-011 test-012 test-nightly
 
 .PHONY: test-011
 test-011:

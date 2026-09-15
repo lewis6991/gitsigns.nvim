@@ -70,7 +70,6 @@ describe('gitsigns (with screen)', function()
       [12] = { foreground = Screen.colors.DodgerBlue, background = Screen.colors.WebGray },
     }
 
-    -- Use the classic vim colorscheme, not the new defaults in nvim >= 0.10
     if fn.has('nvim-0.12') == 0 then
       default_attrs[2].foreground = Screen.colors.NvimDarkCyan
       default_attrs[3].foreground = Screen.colors.NvimDarkGreen
@@ -99,8 +98,6 @@ describe('gitsigns (with screen)', function()
   end)
 
   it('gitdir watcher works on a fresh repo', function()
-    --- @type integer
-    local nvim_ver = exec_lua('return vim.version().minor')
     screen:try_resize(20, 6)
     setup_test_repo({ no_add = true })
     config.watch_gitdir.enable = true
@@ -120,7 +117,7 @@ describe('gitsigns (with screen)', function()
 
     check({
       status = { head = '', added = 18, changed = 0, removed = 0 },
-      signs = { untracked = nvim_ver == 9 and 8 or 7 },
+      signs = { untracked = 7 },
     })
 
     git('add', test_file)
@@ -407,26 +404,6 @@ describe('gitsigns (with screen)', function()
       setup_gitsigns(config)
     end)
 
-    local function stub_notify_once()
-      exec_lua(function()
-        _G.__gitsigns_notify_once_orig = vim.notify_once
-        vim.notify_once = function() end
-      end)
-    end
-
-    local function restore_notify_once()
-      exec_lua(function()
-        if _G.__gitsigns_notify_once_orig then
-          vim.notify_once = _G.__gitsigns_notify_once_orig
-          _G.__gitsigns_notify_once_orig = nil
-        end
-      end)
-    end
-
-    after_each(function()
-      restore_notify_once()
-    end)
-
     local function blame_line_ui_test(autocrlf, file_ending)
       setup_test_repo()
       exec_lua([[vim.g.editorconfig = false]])
@@ -485,10 +462,6 @@ describe('gitsigns (with screen)', function()
     end)
 
     it('falls back when function formatters return invalid virt_text', function()
-      -- nvim 0.10.4 can hang screen tests that render notify_once messages.
-      -- This spec only cares about falling back to the default formatter.
-      stub_notify_once()
-
       exec_lua(function()
         require('gitsigns.config').config.current_line_blame_formatter = function()
           return 'not virt_text'
@@ -1279,21 +1252,12 @@ describe('gitsigns (with screen)', function()
 
     feed('x')
 
-    if fn.has('nvim-0.11') > 0 then
-      screen:expect({
-        grid = [[
-        {12:~ }^orem ipsum        |
-        {6:~                   }|
-        ]],
-      })
-    else
-      screen:expect({
-        grid = [[
-        {2:~ }^orem ipsum        |
-        {6:~                   }|
-        ]],
-      })
-    end
+    screen:expect({
+      grid = [[
+      {12:~ }^orem ipsum        |
+      {6:~                   }|
+      ]],
+    })
   end)
 
   it('handle #521', function()
@@ -1306,28 +1270,15 @@ describe('gitsigns (with screen)', function()
     feed('dd')
 
     local function check_screen(unchanged)
-      if fn.has('nvim-0.11') > 0 then
-        -- TODO(lewis6991): ???
-        screen:expect({
-          grid = [[
-          {11:^ }^is                |
-          {1:  }a                 |
-          {1:  }file              |
-                              |
-        ]],
-          unchanged = unchanged,
-        })
-      else
-        screen:expect({
-          grid = [[
-          {4:^ }^is                |
-          {1:  }a                 |
-          {1:  }file              |
-          {1:  }used              |
-        ]],
-          unchanged = unchanged,
-        })
-      end
+      screen:expect({
+        grid = [[
+        {11:^ }^is                |
+        {1:  }a                 |
+        {1:  }file              |
+                            |
+      ]],
+        unchanged = unchanged,
+      })
     end
 
     check_screen()

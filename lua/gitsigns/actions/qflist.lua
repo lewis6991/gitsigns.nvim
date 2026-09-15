@@ -5,7 +5,7 @@ local run_diff = require('gitsigns.diff')
 local config = require('gitsigns.config').config
 local util = require('gitsigns.util')
 
-local uv = vim.uv or vim.loop ---@diagnostic disable-line: deprecated
+local uv = vim.uv
 
 local current_buf = vim.api.nvim_get_current_buf
 

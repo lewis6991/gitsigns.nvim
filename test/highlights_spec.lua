@@ -36,14 +36,7 @@ describe('highlights', function()
       [9] = { foreground = Screen.colors.SeaGreen, bold = true },
     }
 
-    -- Use the classic vim colorscheme, not the new defaults in nvim >= 0.10
-    if helpers.fn.has('nvim-0.10') > 0 then
-      command('colorscheme vim')
-    else
-      default_attrs[2] = { background = Screen.colors.LightMagenta }
-      default_attrs[4] =
-        { background = Screen.colors.LightCyan1, bold = true, foreground = Screen.colors.Blue1 }
-    end
+    command('colorscheme vim')
 
     screen:set_default_attr_ids(default_attrs)
 
@@ -64,16 +57,14 @@ describe('highlights', function()
 
     setup_gitsigns(config)
 
-    local nvim10 = helpers.fn.has('nvim-0.10') > 0
-
     expectf(function()
       match_dag({
-        p('Deriving GitSignsAdd from ' .. (nvim10 and 'Added' or 'DiffAdd')),
+        p('Deriving GitSignsAdd from Added'),
         p('Deriving GitSignsAddLn from DiffAdd'),
         p('Deriving GitSignsAddNr from GitSignsAdd'),
         p('Deriving GitSignsChangeLn from DiffChange'),
         p('Deriving GitSignsChangeNr from GitSignsChange'),
-        p('Deriving GitSignsDelete from ' .. (nvim10 and 'Removed' or 'DiffDelete')),
+        p('Deriving GitSignsDelete from Removed'),
         p('Deriving GitSignsDeleteNr from GitSignsDelete'),
       })
     end)
