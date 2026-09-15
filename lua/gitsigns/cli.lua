@@ -75,11 +75,19 @@ function M.run(params)
   local func = pos_args_raw[1]
 
   if not func then
-    func = async.await(3, function(...)
+    func = async.await(function(callback)
+      local completed = false
       -- Need to wrap vim.ui.select as Snacks version of vim.ui.select returns a
       -- module table with a close method which conflicts with the async lib
-      vim.ui.select(...)
-    end, M.complete('', 'Gitsigns '), {}) --[[@as string]]
+      vim.ui.select(M.complete('', 'Gitsigns '), {}, function(item)
+        -- Some pickers reuse this callback when resumed. Only accept the first result.
+        if completed then
+          return
+        end
+        completed = true
+        callback(item)
+      end)
+    end) --[[@as string]]
     if not func then
       return
     end
