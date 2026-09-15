@@ -255,6 +255,7 @@ local function get_head_oid0(gitdir, commondir)
 end
 
 --- Manual implementation of `git rev-parse HEAD` with command fallback.
+--- @async
 --- @param gitdir string
 --- @param commondir string
 --- @return string? oid
@@ -266,9 +267,8 @@ local function get_head_oid(gitdir, commondir)
 
   log.dprintf('Falling back to `git rev-parse HEAD`: %s', err)
 
-  local stdout, stderr, code = async
-    .run(git_command, { '--git-dir', gitdir, 'rev-parse', 'HEAD' }, { ignore_error = true })
-    :wait()
+  local stdout, stderr, code =
+    git_command({ '--git-dir', gitdir, 'rev-parse', 'HEAD' }, { ignore_error = true })
 
   local oid = stdout[1]
 
@@ -513,25 +513,40 @@ function M._new(info)
         return
       end
 
-      self.head_oid = get_head_oid(self.gitdir, self.commondir)
-      -- Set abbrev_head to empty string if head_oid is unavailable (.e.g repo
-      -- with no commits). This is consistent with `git rev-parse --abrev-ref
-      -- HEAD` which returns "HEAD" in this case.
-      local abbrev_head = self.head_oid and get_abbrev_head(self.gitdir, head2) or ''
-      if self.abbrev_head ~= abbrev_head then
-        self.abbrev_head = abbrev_head
-        log.dprintf('HEAD changed, updating abbrev_head to %s', self.abbrev_head)
-      end
-
-      local head_ref = parse_head_ref(head2)
-      if self.head_ref ~= head_ref then
-        self.head_ref = head_ref
-        self._watcher:set_head_ref(self.head_ref)
-      end
+      -- Callbacks run from `vim.schedule`, so there is no coroutine here.
+      -- `git_command` awaits (on Windows it awaits `cygpath` before it even
+      -- spawns git), and awaiting outside a task raises. Give it one.
+      async.run(function()
+        self:_refresh_head(head2)
+      end)
     end)
   end
 
   return self
+end
+
+--- @async
+--- @private
+--- @param head string Contents of `HEAD`, already read
+function M:_refresh_head(head)
+  self.head_oid = get_head_oid(self.gitdir, self.commondir)
+
+  -- Set abbrev_head to empty string if head_oid is unavailable (.e.g repo
+  -- with no commits). This is consistent with `git rev-parse --abrev-ref
+  -- HEAD` which returns "HEAD" in this case.
+  local abbrev_head = self.head_oid and get_abbrev_head(self.gitdir, head) or ''
+  if self.abbrev_head ~= abbrev_head then
+    self.abbrev_head = abbrev_head
+    log.dprintf('HEAD changed, updating abbrev_head to %s', self.abbrev_head)
+  end
+
+  local head_ref = parse_head_ref(head)
+  if self.head_ref ~= head_ref then
+    self.head_ref = head_ref
+    if self._watcher then
+      self._watcher:set_head_ref(self.head_ref)
+    end
+  end
 end
 
 function M:has_watcher()
@@ -588,6 +603,59 @@ local function normalize_path(path)
     path = util.cygpath(path, 'mixed')
   end
   return vim.fs.normalize(path)
+end
+
+--- Make `path` relative to the worktree, for use as a git pathspec:
+--- `<toplevel>/src/x.lua` -> `src/x.lua`. Equivalent because `command()`
+--- runs with `cwd` set to the toplevel.
+---
+--- Absolute paths are avoided because MSYS git rewrites them (`D:/x` ->
+--- `/d/x`), which then fails to match the `--work-tree` passed for linked
+--- worktrees, and git reports the file as outside the repository.
+--- @async
+--- @param path string
+--- @return string
+function M:relpathspec(path)
+  if not Path.is_abs(path) then
+    return path
+  end
+
+  local norm = vim.fs.normalize(path)
+
+  -- `toplevel` is in mixed form (`D:/x`) but paths reaching here may be in
+  -- MSYS form (`/d/x`), so compare against both. Rewrite rather than calling
+  -- `cygpath`: that spawns a process, and it blocks on paths that don't exist
+  -- yet, which is every not-yet-written buffer.
+  local drive, rest = self.toplevel:match('^(%a):/(.*)$')
+  local msys = drive and ('/' .. drive:lower() .. '/' .. rest)
+
+  for _, top in ipairs({ self.toplevel, msys }) do
+    if top and vim.startswith(norm, top .. '/') then
+      return norm:sub(#top + 2)
+    end
+  end
+
+  -- Outside the worktree: leave it for git to reject (see `ls_files`).
+  return path
+end
+
+--- Working tree for a gitdir, when it can't be discovered from the cwd.
+--- @async
+--- @param gitdir string
+--- @return string
+local function get_worktree(gitdir)
+  -- A linked worktree's GIT_DIR may be set to `.git/worktrees/<name>/`.
+  -- The gitdir file contains the path to the working tree.
+  -- https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables
+  local dotgit = read_first_line(Path.join(gitdir, 'gitdir'))
+  if dotgit then
+    -- `worktree.useRelativePaths` stores this relative to gitdir.
+    if not Path.is_abs(dotgit) then
+      dotgit = Path.join(gitdir, dotgit)
+    end
+    return vim.fs.dirname(assert(normalize_path(dotgit)))
+  end
+  return vim.fs.dirname(gitdir)
 end
 
 --- @async
@@ -648,7 +716,7 @@ function M.get_info(dir, gitdir, worktree)
     if core_worktree then
       worktree = Path.is_abs(core_worktree) and core_worktree or Path.join(gitdir, core_worktree)
     else
-      worktree = vim.fs.dirname(gitdir)
+      worktree = get_worktree(gitdir)
     end
   end
 
@@ -741,7 +809,8 @@ function M:ls_tree(path, revision)
   local results, stderr, code = self:command({
     'ls-tree',
     revision,
-    path,
+    '--',
+    self:relpathspec(path),
   }, { ignore_error = true })
 
   if code > 0 then
@@ -803,7 +872,8 @@ function M:ls_files(file)
       '--others',
       '--exclude-standard',
       has_eol and '--eol',
-      file,
+      '--',
+      self:relpathspec(file),
     }),
     { ignore_error = true }
   )

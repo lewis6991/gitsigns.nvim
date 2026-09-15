@@ -144,6 +144,7 @@ M.test_config = {
   debug_mode = true,
   _test_mode = true,
   _allow_fs_poll_fallback = os.getenv('GITSIGNS_TEST_ALLOW_FS_POLL_FALLBACK') ~= '0',
+  _force_cygpath_await = os.getenv('GITSIGNS_TEST_FORCE_CYGPATH_AWAIT') == '1',
   watch_gitdir = {
     enable = false,
     follow_files = true,
@@ -421,6 +422,7 @@ function M.eq_path(expected, actual, msg)
   eq(M.normalize_path(expected), M.normalize_path(actual), msg)
 end
 
+--- For a path gitsigns passes to git as a pathspec, use `pathspec_pattern`.
 --- @param path string
 --- @return string
 function M.path_pattern(path)
@@ -437,6 +439,21 @@ function M.path_pattern(path)
   end
 
   return pattern
+end
+
+--- Pattern for a path as gitsigns passes it to git: a pathspec relative to
+--- the worktree (see `Repo:relpathspec`).
+--- @param path string
+--- @return string
+function M.pathspec_pattern(path)
+  local scratch = assert(M.normalize_path(M.scratch))
+  local normalized = assert(M.normalize_path(path))
+
+  if vim.startswith(normalized, scratch .. '/') then
+    normalized = normalized:sub(#scratch + 2)
+  end
+
+  return M.path_pattern(normalized)
 end
 
 function M.git_init_scratch()

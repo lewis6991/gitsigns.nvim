@@ -466,6 +466,18 @@ function M.cygpath(path, mode)
     has_cygpath = is_win and vim.fn.executable('cygpath') == 1
   end
 
+  -- On Windows with MSYS git this awaits, which is what makes callers yield.
+  -- Elsewhere it returns here, so a caller that yields from a context it
+  -- shouldn't (a uv or `vim.schedule` callback) looks fine everywhere except
+  -- the one platform that cannot be tested on. Let the tests force the await.
+  if require('gitsigns.config').config._force_cygpath_await then
+    async.await(1, function(cb)
+      vim.schedule(cb)
+    end)
+    async.schedule()
+    return path
+  end
+
   if not has_cygpath or uv.fs_stat(path) then
     return path
   end
