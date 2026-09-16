@@ -640,21 +640,21 @@ function DiffPanel:mark_current_file(index)
   })
 end
 
---- Reload the tree, restoring the displayed file and selected node.
+--- Reload the tree, restoring the displayed file, selected node, and closed folds.
 --- @private
 --- @async
 function DiffPanel:refresh()
   self.pending_refresh = nil
-  local new_base, new_target, new_entries, new_commit =
+  local base, target, entries, commit =
     git_diff(self.repo, self.revision, self.paths, self.cwd, self.show_commit)
   if not api.nvim_win_is_valid(self.panel_win) then
     return
   end
 
-  -- Buffer staging can refresh a panel in another window or tab without taking focus.
+  -- Update panels in other windows or tabs without taking focus.
   api.nvim_win_call(self.panel_win, function()
-    local cursor = api.nvim_win_get_cursor(self.panel_win)
-    local node = self.rows[cursor[1]]
+    local view = fn.winsaveview()
+    local node = self.rows[view.lnum]
     local current_entry = self.entries[self.current_file]
 
     -- Open parents while collecting folds so closed children are remembered too.
@@ -668,8 +668,7 @@ function DiffPanel:refresh()
     end
 
     -- Replace the row data together with its rendering.
-    self.base, self.target, self.entries, self.commit =
-      new_base, new_target, new_entries, new_commit
+    self.base, self.target, self.entries, self.commit = base, target, entries, commit
     self:render()
 
     -- The displayed diff and the panel cursor can refer to different files.
@@ -686,7 +685,7 @@ function DiffPanel:refresh()
       index = math.min(index, #self.entries)
       api.nvim_win_set_cursor(self.panel_win, {
         selected and selected.lnum or assert(self.file_lnums[index]),
-        selected and cursor[2] or 0,
+        selected and view.col or 0,
       })
     end
 
@@ -697,6 +696,9 @@ function DiffPanel:refresh()
         vim.cmd.foldclose({ range = { dir.lnum } })
       end
     end
+    -- Keep the scroll position while allowing a reload to move the selected row.
+    view.lnum, view.col = unpack(api.nvim_win_get_cursor(self.panel_win))
+    fn.winrestview(view)
   end)
 end
 
@@ -1180,7 +1182,7 @@ return function(revision, paths, show_commit, opts)
     nodes = {},
     header_lines = 0,
     dirs = {},
-    current_file = 1,
+    current_file = 0,
 
     -- Kept across file switches until this review closes.
     scratch = {},
@@ -1202,12 +1204,22 @@ return function(revision, paths, show_commit, opts)
 
   local unmap = self:setup_navigation(group)
   if not self.target then
+    local prefix = self.repo.toplevel:gsub('/$', '') .. '/'
+    api.nvim_create_autocmd('BufWritePost', {
+      group = group,
+      callback = function(args)
+        local file = vim.fs.normalize(api.nvim_buf_get_name(args.buf))
+        if vim.bo[args.buf].buftype == '' and vim.startswith(file, prefix) then
+          async.run(self.run_action, self, 'refresh'):raise_on_error()
+        end
+      end,
+    })
     api.nvim_create_autocmd('User', {
       group = group,
       pattern = 'GitSignsChanged',
       callback = function(args)
         local file = args.data and args.data.file
-        if file and vim.startswith(file, self.repo.toplevel:gsub('/$', '') .. '/') then
+        if file and vim.startswith(file, prefix) then
           async.run(self.run_action, self, 'refresh'):raise_on_error()
         end
       end,

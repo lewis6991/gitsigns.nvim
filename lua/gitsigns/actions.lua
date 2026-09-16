@@ -1046,6 +1046,8 @@ end
 --- These actions operate on saved files and leave unsaved buffer edits intact.
 --- Staging or unstaging from the panel or a file buffer refreshes the tree
 --- and keeps the displayed file.
+--- The file list, status columns and diffstats reflect saved files and
+--- refresh on write. Unsaved edits appear in the file pane.
 ---
 --- Regular working-tree files are editable; revision buffers are read-only.
 --- See [[diff-mode]] for diff navigation.
