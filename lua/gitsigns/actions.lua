@@ -1011,8 +1011,8 @@ end
 --- otherwise they are relative to the repository root. Escape spaces with
 --- backslashes (see [[<f-args>]]).
 ---
---- Put `--diff=none` before the revision to show the selected buffer beside
---- the file tree without opening a diff. `--diff=split` is the default:
+--- Use `--diff=none` to show the selected buffer beside the file tree
+--- without opening a diff. `--diff=split` is the default:
 --- ```text
 ---   :Gitsigns diff --diff=none
 ---   :Gitsigns diff --diff=none main..HEAD -- lua/
@@ -1054,6 +1054,8 @@ end
 --- deleted lines inline. Start in this layout with `:Gitsigns diff --diff=unified`
 --- or `require('gitsigns').diff(nil, nil, { diff = 'unified' })`.
 --- `--unified` and `{ unified = true }` are aliases for this layout.
+--- Layout options can appear before or after the revision. Use `--` before
+--- paths that could be mistaken for options.
 --- Staging and reset actions retain their normal comparison base.
 ---
 --- @param revision string? (default: working tree)
@@ -1071,16 +1073,28 @@ function M.diff(revision, paths, opts, callback)
   async_run(callback, require('gitsigns.actions.diff'), revision, paths, nil, opts)
 end
 
+--- Remove layout options, preserving literal paths after --.
+--- @param args string[]
+--- @return string?
+local function parse_diff_options(args)
+  local diff
+  local i = 1
+  while args[i] and args[i] ~= '--' do
+    local mode = args[i] == '--unified' and 'unified' or args[i]:match('^%-%-diff=(.*)$')
+    if mode then
+      diff = mode
+      table.remove(args, i)
+    else
+      i = i + 1
+    end
+  end
+  return diff
+end
+
 --- Separate the optional revision from Git pathspecs.
 --- @param args string[]
 function C.diff(args)
-  local diff = args[1] and args[1]:match('^%-%-diff=(.*)$')
-  if args[1] == '--unified' then
-    diff = 'unified'
-  end
-  if diff then
-    args = vim.list_slice(args, 2)
-  end
+  local diff = parse_diff_options(args)
   local revision = args[1]
   local first_path = 2
   if revision == '--' then
@@ -1101,13 +1115,7 @@ C_meta.diff = {
   --- @return string[]
   complete = function(arglead, line)
     local args = require('gitsigns.cli.context').parse(line).raw_args
-    local diff = args[1] and args[1]:match('^%-%-diff=(.*)$')
-    if args[1] == '--unified' then
-      diff = 'unified'
-    end
-    if diff then
-      args = vim.list_slice(args, 2)
-    end
+    local diff = parse_diff_options(args)
     local matches
     if #args == 0 then
       matches = require('gitsigns.cli.completion').heads(arglead)
@@ -1124,7 +1132,7 @@ C_meta.diff = {
     then
       matches[#matches + 1] = '--'
     end
-    if #args == 0 and not diff then
+    if not vim.tbl_contains(args, '--') and not diff then
       local options = arglead:find('=', 1, true)
           and { '--diff=none', '--diff=split', '--diff=unified' }
         or { '--diff=', '--unified' }

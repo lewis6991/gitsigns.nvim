@@ -264,7 +264,14 @@ describe('actions', function()
     eq({ '--' }, complete('--', 'Gitsigns diff --diff=none --'))
     eq({ 'main' }, complete('ma', 'Gitsigns diff --diff=unified ma'))
     eq({ 'main' }, complete('ma', 'Gitsigns diff --unified ma'))
-    eq({ '--flag', '--' }, complete('--', 'Gitsigns diff HEAD --'))
+    eq({ '--flag', '--', '--diff=', '--unified' }, complete('--', 'Gitsigns diff HEAD --'))
+    eq({ '--unified' }, complete('--u', 'Gitsigns diff HEAD~ --u'))
+    eq(
+      { '--diff=none', '--diff=split', '--diff=unified' },
+      complete('--diff=', 'Gitsigns diff HEAD~ --diff=')
+    )
+    eq({ '--flag', '--' }, complete('--', 'Gitsigns diff HEAD~ --unified --'))
+    eq({}, complete('--u', 'Gitsigns diff HEAD~ -- --u'))
     eq({ '--flag' }, complete('--f', 'Gitsigns diff -- --f'))
     local backslash = exec_lua("return vim.fn.has('win32') == 1 and not vim.o.shellslash")
     local matches = { 'src' .. (backslash and '\\\\' or '/') .. 'new\\ file%.lua' }
@@ -279,6 +286,9 @@ describe('actions', function()
       '--diff=unified HEAD ',
       '--unified -- ',
       '--unified HEAD ',
+      'HEAD~ --diff=none ',
+      'HEAD~ --diff=unified -- ',
+      'HEAD~ --unified ',
     }) do
       eq(matches, complete('src/n', 'Gitsigns diff ' .. prefix .. 'src/n'))
     end
