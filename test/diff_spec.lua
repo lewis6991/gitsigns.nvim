@@ -284,6 +284,41 @@ describe('diff panel', function()
     end
   )
 
+  it('accepts diff layout options after the revision', function()
+    helpers.write_to_file(helpers.test_file, { 'committed' })
+    git('commit', '-am', 'Change the file')
+    helpers.write_to_file(helpers.test_file, { 'working tree' })
+
+    for _, option in ipairs({
+      '--unified',
+      '--diff=unified -- dummy.txt',
+      '--diff=none -- dummy.txt',
+      '--diff=split -- dummy.txt',
+    }) do
+      open_diff_command('HEAD~ ' .. option)
+      -- Wait for the initial file open before using the panel's mappings.
+      local selection = api.nvim_get_namespaces().gitsigns_diff_selection
+      helpers.expectf(function()
+        eq({ '  M dummy.txt' }, api.nvim_buf_get_lines(0, 1, -3, false), option)
+        eq(1, #api.nvim_buf_get_extmarks(0, selection, 0, -1, {}))
+      end)
+      select_file('dummy.txt')
+      helpers.expectf(function()
+        eq({ 'working tree' }, api.nvim_buf_get_lines(0, 0, -1, false), option)
+        if option:find('unified', 1, true) then
+          eq(2, #api.nvim_tabpage_list_wins(0))
+          eq({ 'original' }, unified_removed())
+        elseif option:find('none', 1, true) then
+          eq(2, #api.nvim_tabpage_list_wins(0))
+          eq({}, diff_state())
+        else
+          eq({ { 'original' }, { 'working tree' } }, diff_state())
+        end
+      end)
+      select_file('dummy.txt', 'q')
+    end
+  end)
+
   it('shows deleted and renamed historical files in unified mode', function()
     helpers.write_to_file(helpers.scratch .. '/old.txt', { 'unchanged', 'old' })
     git('add', '.')
@@ -712,16 +747,25 @@ describe('diff panel', function()
   end)
 
   it('preserves spaces, assignments, flags, and numeric path names', function()
-    local names =
-      { '--diff=none', '--flag', '001', 'a=b', 'nil', 'with space.txt', '{one,two}.txt' }
+    local names = {
+      '--diff=none',
+      '--flag',
+      '--unified',
+      '001',
+      'a=b',
+      'nil',
+      'with space.txt',
+      '{one,two}.txt',
+    }
     for _, name in ipairs(names) do
       helpers.write_to_file(helpers.scratch .. '/' .. name, { name })
     end
     helpers.write_to_file(helpers.scratch .. '/not-selected', { 'outside' })
-    open_diff_command('-- --diff=none --flag 001 a=b nil with\\ space.txt {one,two}.txt')
+    open_diff_command('-- --diff=none --flag --unified 001 a=b nil with\\ space.txt {one,two}.txt')
     eq({
       ' ?? --diff=none',
       ' ?? --flag',
+      ' ?? --unified',
       ' ?? 001',
       ' ?? a=b',
       ' ?? nil',
