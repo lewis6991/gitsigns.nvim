@@ -115,6 +115,7 @@ local validate = vim.validate
 --- @field _verbose boolean
 --- @field _test_mode boolean
 --- @field _allow_fs_poll_fallback boolean
+--- @field _force_cygpath_await boolean
 --- @field _new_sign_calc boolean
 --- @field _update_lock boolean
 --- @field _commit_maps boolean
@@ -854,6 +855,12 @@ M.schema = {
     description = 'Allow watch_gitdir to fall back to fs_poll',
     type = 'boolean',
     default = true,
+  },
+
+  _force_cygpath_await = {
+    description = 'Make `util.cygpath` await, as it does under MSYS',
+    type = 'boolean',
+    default = false,
   },
 
   word_diff = {

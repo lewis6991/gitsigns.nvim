@@ -38,9 +38,18 @@ $(NVIM_TEST):
 
 FILTER ?= .*
 
+# A wedged editor blocks the runner inside an RPC request that never returns,
+# so the suite emits nothing further and only an external kill ends it. Bound
+# it here: SIGABRT first, for a stack rather than silence.
+TEST_TIMEOUT ?= 300
+TIMEOUT := $(shell command -v timeout 2>/dev/null)
+ifneq ($(TIMEOUT),)
+  TEST_RUNNER := $(TIMEOUT) --signal=ABRT --kill-after=30 $(TEST_TIMEOUT)
+endif
+
 .PHONY: test
 test: nvim-test
-	$(NVIM_TEST)/bin/nvim-test test \
+	$(TEST_RUNNER) $(NVIM_TEST)/bin/nvim-test test \
 		--helper=$(PWD)/test/preload.lua \
 		--lpath=$(PWD)/lua/?.lua \
 		--verbose \
