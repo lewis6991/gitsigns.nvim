@@ -113,6 +113,16 @@ end
 --- @param opts? {start_col?:integer, end_col?:integer}
 --- @return Gitsigns.CapturedLine[]
 function M.capture_lines(bufnr, start_row, count, opts)
+  bufnr = bufnr == 0 and api.nvim_get_current_buf() or bufnr
+  if source_hls_supported and count > 0 then
+    local highlighter = vim.treesitter.highlighter.active[bufnr]
+    if highlighter then
+      -- Hidden source buffers may not have been parsed by a redraw yet.
+      -- Include injections in the captured range before caching highlights.
+      highlighter.tree:parse({ start_row, start_row + count })
+    end
+  end
+
   opts = opts or {}
   local lines = {} --- @type Gitsigns.CapturedLine[]
   for i = 1, math.max(count, 0) do
