@@ -64,7 +64,9 @@ function M.create_partial_hunk(hunks, top, bot)
     local added_in_hunk = h.added.count - h.removed.count
 
     local added_in_range = 0
-    if h.added.start >= top and h.vend <= bot then
+    -- A topdelete hunk starts at line 0 but its sign is on line 1
+    local hstart = max(h.added.start, 1)
+    if hstart >= top and h.vend <= bot then
       -- Range contains hunk
       added_in_range = added_in_hunk
     else
