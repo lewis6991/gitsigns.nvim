@@ -670,6 +670,14 @@ describe('actions', function()
       stage_hunk({ 2, 2 })
       expect_hunks({})
     end)
+
+    it('can stage topdelete hunks', function()
+      set_lines(0, 2, {})
+      expect_hunks({ '@@ -1,2 +0 @@' })
+
+      stage_hunk({ 1, 1 })
+      expect_hunks({})
+    end)
   end)
 
   local function check_cursor(pos)
