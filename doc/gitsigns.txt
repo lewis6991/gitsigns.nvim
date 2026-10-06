@@ -1048,6 +1048,11 @@ update_debounce                              *gitsigns-config-update_debounce*
 
     Debounce time for updates (in milliseconds).
 
+update_hidden_buffers                  *gitsigns-config-update_hidden_buffers*
+    Type: `boolean`, Default: `false`
+
+    Update all buffers, even those that are not active.
+
 current_line_blame                        *gitsigns-config-current_line_blame*
     Type: `boolean`, Default: `false`
 
