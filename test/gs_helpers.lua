@@ -107,6 +107,7 @@ local function local_delete(path)
       error(err, 0)
     end
 
+    -- Wait for delayed Windows handles only when deletion is blocked.
     drain_session_gc(50)
     M.sleep(50)
   end
@@ -337,7 +338,8 @@ function M.cleanup()
     end, M.scratch, local_tmpdir())
 
     if is_win() then
-      drain_session_gc(100)
+      -- Collect released handles before the first deletion attempt.
+      drain_session_gc(0)
     end
 
     if not is_win() and M.fn.delete(M.scratch, 'rf') == 0 then
