@@ -581,7 +581,7 @@ function M.wait_for_attach(bufnr)
   M.expectf(function()
     return M.exec_lua(function(bufnr0)
       if bufnr0 == vim.NIL then
-        bufnr0 = 0
+        bufnr0 = vim.api.nvim_get_current_buf()
       end
       local cache = require('gitsigns.cache').cache[bufnr0]
       return cache ~= nil
