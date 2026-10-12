@@ -144,14 +144,10 @@ local BLAME_THRESHOLD_LEN = 10000
 function CacheEntry:run_blame(lnum, opts)
   local bufnr = self.bufnr
 
-  -- Always send contents if buffer represents an editable file on disk.
-  -- Otherwise do not sent contents buffer revision is from tree and git version
-  -- is below 2.41.
-  --
-  -- This avoids the error:
-  --   "fatal: cannot use --contents with final commit object name"
-  local send_contents = vim.bo[bufnr].buftype == ''
-    or (not self.git_obj:from_tree() and not require('gitsigns.git.version').check(2, 41))
+  -- Send the displayed contents for working files and index buffers.
+  -- Historical buffers use their revision; Git < 2.41 rejects combining a
+  -- commit with --contents.
+  local send_contents = vim.bo[bufnr].buftype == '' or not self.git_obj:from_tree()
 
   while true do
     -- The buffer may have been detached (and the git object closed) while an

@@ -461,6 +461,53 @@ describe('gitsigns (with screen)', function()
       blame_line_ui_test('false', 'unix')
     end)
 
+    for _, case in ipairs({
+      { revision = ':0', commit = 'HEAD', contents = { 'committed', 'staged' } },
+      { revision = 'HEAD~1', commit = 'HEAD~1', contents = { 'original', 'second' } },
+    }) do
+      it('blames displayed lines in ' .. case.revision .. ' buffers', function()
+        -- Create different first lines in HEAD and HEAD~1.
+        setup_test_repo({ test_file_text = { 'original', 'second' } })
+        write_to_file(test_file, { 'committed', 'second' })
+        git('commit', '-am', 'Change the first line')
+
+        -- Stage the second line, then change both lines in the working file.
+        write_to_file(test_file, { 'committed', 'staged' })
+        git('add', test_file)
+        write_to_file(test_file, { 'unstaged', 'working' })
+
+        -- Open the real revision view and check the displayed contents.
+        edit(test_file)
+        wait_for_attach()
+        command('Gitsigns show ' .. case.revision)
+        expectf(function()
+          eq(true, vim.endswith(api.nvim_buf_get_name(0), '//' .. case.revision .. ':dummy.txt'))
+        end)
+        wait_for_attach()
+        eq(case.contents, api.nvim_buf_get_lines(0, 0, -1, false))
+
+        -- Check the commit for the displayed first line.
+        local expected_sha = fn.systemlist({ 'git', '-C', scratch, 'rev-parse', case.commit })[1]
+        expectf(function()
+          local blame = get_buf_var(0, 'gitsigns_blame_line_dict')
+          eq(expected_sha, blame.sha)
+          eq('tester', blame.author)
+          eq(1, blame.final_lnum)
+        end)
+
+        if case.revision == ':0' then
+          -- The staged second line has no commit yet.
+          feed('j')
+          expectf(function()
+            local blame = get_buf_var(0, 'gitsigns_blame_line_dict')
+            eq(2, blame.final_lnum)
+            eq(string.rep('0', 40), blame.sha)
+            eq('Not Committed Yet', blame.author)
+          end)
+        end
+      end)
+    end
+
     it('falls back when function formatters return invalid virt_text', function()
       exec_lua(function()
         require('gitsigns.config').config.current_line_blame_formatter = function()
