@@ -48,6 +48,50 @@ describe('git', function()
     helpers.setup_path()
   end)
 
+  it('refreshes HEAD from a watcher callback', function()
+    setup_test_repo()
+
+    local err = exec_lua(function(dir)
+      local async = require('gitsigns.async')
+      local Repo = require('gitsigns.git.repo')
+      require('gitsigns.config').build({ watch_gitdir = { enable = true } })
+
+      local repo = assert(async.run(Repo.get, dir):wait(5000))
+
+      -- Point HEAD at a ref that resolves via neither loose refs nor
+      -- packed-refs, so the refresh falls back to running git. Without that
+      -- the refresh answers from a file read and never awaits.
+      local f = assert(io.open(dir .. '/.git/HEAD', 'w'))
+      f:write('ref: refs/heads/gone\n')
+      f:close()
+
+      -- Callbacks are invoked from `vim.schedule`, where no coroutine is
+      -- running, and `pcall`ed by the watcher -- so a raise here is invisible
+      -- in normal operation. Drive one directly and surface it.
+      local caught --- @type string?
+      local done = false
+      vim.schedule(function()
+        --- @diagnostic disable-next-line: invisible
+        for _, cb in ipairs(repo._watcher.update_callbacks) do
+          local ok, e = pcall(cb)
+          if not ok then
+            caught = tostring(e)
+          end
+        end
+        done = true
+      end)
+
+      vim.wait(5000, function()
+        return done
+      end)
+
+      repo:unref()
+      return caught
+    end, scratch)
+
+    eq(nil, err)
+  end)
+
   it('serializes repo operations across objects in the same repo', function()
     local result = exec_lua(function()
       local async = require('gitsigns.async')
@@ -98,6 +142,42 @@ describe('git', function()
     end)
 
     eq({ 'a_enter', 'a_exit', 'b_enter', 'b_exit' }, result.events)
+  end)
+
+  it('relpathspec makes worktree paths relative', function()
+    helpers.git_init_scratch()
+
+    local result = exec_lua(function(repo_dir)
+      local async = require('gitsigns.async')
+      local Repo = require('gitsigns.git.repo')
+
+      local repo = assert(async.run(Repo.get, repo_dir):wait(5000))
+      local outside = vim.fs.dirname(repo.toplevel) .. '/outside.txt'
+
+      local ret = async
+        .run(function()
+          return {
+            inside = repo:relpathspec(repo.toplevel .. '/file'),
+            nested = repo:relpathspec(repo.toplevel .. '/dir/nested.txt'),
+            relative = repo:relpathspec('already/relative.txt'),
+            -- Outside the worktree: passed through so git still rejects it.
+            outside = repo:relpathspec(outside),
+            outside_expected = outside,
+          }
+        end)
+        :wait(5000)
+
+      repo:unref()
+      return ret
+    end, scratch)
+
+    eq({
+      inside = 'file',
+      nested = 'dir/nested.txt',
+      relative = 'already/relative.txt',
+      outside = result.outside_expected,
+      outside_expected = result.outside_expected,
+    }, result)
   end)
 
   it('log_rename_status handles spaced filenames', function()
@@ -280,6 +360,54 @@ describe('git', function()
     eq(false, result.has_outside_repo)
     eq_path(submodule_worktree, result.info.toplevel)
     eq_path(submodule_gitdir, result.info.gitdir)
+  end)
+
+  it('infers linked worktrees from gitdir metadata', function()
+    -- `git worktree add` records resolved paths in the gitdir metadata
+    local root = fn.resolve(scratch)
+    local main = root .. '/main'
+    local linked = root .. '/linked'
+
+    --- Given a repo with a file and a worktree
+    init_repo(main)
+    write_to_file(main .. '/file', { 'main' })
+    git_in(main, 'add', 'file')
+    git_in(main, 'commit', '-m', 'init commit')
+    git_in(main, 'worktree', 'add', linked, '-b', 'linked')
+
+    local linked_gitdir = main .. '/.git/worktrees/linked'
+    local linked_file = linked .. '/file'
+
+    local result = exec_lua(function(gitdir, file)
+      local async = require('gitsigns.async')
+      local Obj = require('gitsigns.git').Obj
+      local Repo = require('gitsigns.git.repo')
+
+      local info = assert(async.run(Repo.get_info, nil, gitdir):wait(5000))
+
+      --- Simulate how git's `!shell` aliases set GIT_DIR before running gitsigns.
+      local old_gitdir = vim.env.GIT_DIR
+      local old_worktree = vim.env.GIT_WORK_TREE
+      vim.env.GIT_DIR = gitdir
+      vim.env.GIT_WORK_TREE = nil
+
+      local obj = async.run(Obj.new, file, nil, 'utf-8'):wait(5000)
+
+      vim.env.GIT_DIR = old_gitdir
+      vim.env.GIT_WORK_TREE = old_worktree
+
+      local relpath = obj and obj.relpath
+      if obj then
+        obj:close()
+      end
+
+      return { info = info, relpath = relpath }
+    end, linked_gitdir, linked_file)
+
+    --- We find the working tree, metadata, and file.
+    eq_path(linked, result.info.toplevel)
+    eq_path(linked_gitdir, result.info.gitdir)
+    eq('file', result.relpath)
   end)
 
   it('blame does not crash when the git object was closed (#1557)', function()

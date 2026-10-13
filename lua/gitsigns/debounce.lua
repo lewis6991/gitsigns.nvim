@@ -126,8 +126,14 @@ function M.throttle_async(opts, fn)
     while scheduled[id] do
       scheduled[id] = nil
       running[id] = true
-      fn(...)
+      -- Clear the flag even if `fn` raises. Leaving it set makes every later
+      -- call return early, so the throttled function stops running for good
+      -- and whatever waits on it waits forever.
+      local ok, err = pcall(fn, ...)
       running[id] = nil
+      if not ok then
+        error(err, 0)
+      end
     end
   end
 end

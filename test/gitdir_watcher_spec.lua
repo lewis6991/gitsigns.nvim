@@ -14,6 +14,7 @@ local match_debug_messages = helpers.match_debug_messages
 local n, p, np = helpers.n, helpers.p, helpers.np
 local normalize_path = helpers.normalize_path
 local path_pattern = helpers.path_pattern
+local pathspec_pattern = helpers.pathspec_pattern
 local setup_gitsigns = helpers.setup_gitsigns
 local git = helpers.git
 local test_file --- @type string
@@ -137,7 +138,7 @@ describe('gitdir_watcher', function()
       'attach.attach(1): Attaching (trigger=BufReadPost)',
       np(revparse_pat),
       np('system.system: git .* config user.name'),
-      np('system.system: git .* ls%-files .* ' .. path_pattern(test_file)),
+      np('system.system: git .* ls%-files .* ' .. pathspec_pattern(test_file)),
       np('attach%.attach%(1%): Watching git dir .*'),
       np('system.system: git .* show .*'),
     })
@@ -152,7 +153,7 @@ describe('gitdir_watcher', function()
     match_dag({
       p('system.system: git .* diff %-%-name%-status .* %-%-cached'),
       p('attach.handle_moved%(1%): File moved to dummy%.txt2'),
-      p('system.system: git .* ls%-files .* ' .. path_pattern(test_file2) .. '$'),
+      p('system.system: git .* ls%-files .* ' .. pathspec_pattern(test_file2) .. '$'),
       p(
         'attach%.handle_moved%(1%): Renamed buffer 1 from '
           .. path_pattern(test_file)
@@ -173,7 +174,7 @@ describe('gitdir_watcher', function()
     match_dag({
       p('system.system: git .* diff %-%-name%-status .* %-%-cached'),
       p('attach.handle_moved%(1%): File moved to dummy%.txt3'),
-      p('system.system: git .* ls%-files .* ' .. path_pattern(test_file3) .. '$'),
+      p('system.system: git .* ls%-files .* ' .. pathspec_pattern(test_file3) .. '$'),
       p(
         'attach%.handle_moved%(1%): Renamed buffer 1 from '
           .. path_pattern(test_file2)
@@ -192,7 +193,7 @@ describe('gitdir_watcher', function()
     match_dag({
       p('system.system: git .* diff %-%-name%-status .* %-%-cached'),
       p('attach.handle_moved%(1%): Moved file reset'),
-      p('system.system: git .* ls%-files .* ' .. path_pattern(test_file) .. '$'),
+      p('system.system: git .* ls%-files .* ' .. pathspec_pattern(test_file) .. '$'),
       p(
         'attach%.handle_moved%(1%): Renamed buffer 1 from '
           .. path_pattern(test_file3)
@@ -331,6 +332,17 @@ describe('gitdir_watcher', function()
 
     git('add', test_file)
 
+    -- Poll fingerprints are snapshotted when the watches are synced, which may
+    -- already be after the `git add` above. Stale them so the next tick sees
+    -- the change; otherwise nothing notifies and the status never updates.
+    helpers.exec_lua(function()
+      local bcache = require('gitsigns.cache').cache[vim.api.nvim_get_current_buf()]
+      local watcher = assert(assert(bcache).git_obj.repo._watcher)
+      for target in pairs(watcher._target_fingerprints) do
+        watcher._target_fingerprints[target] = 'stale'
+      end
+    end)
+
     helpers.check({ status = { head = '', added = 0, changed = 0, removed = 0 }, signs = {} })
   end)
 
@@ -371,8 +383,18 @@ describe('gitdir_watcher', function()
     helpers.exec_lua(function()
       local bcache = require('gitsigns.cache').cache[vim.api.nvim_get_current_buf()]
       local repo = assert(bcache).git_obj.repo
-      local _, handle = next(assert(repo._watcher).handles)
+      local watcher = assert(repo._watcher)
+      local _, handle = next(watcher.handles)
       assert(handle)
+
+      -- A poll callback only notifies when a fingerprint differs from the last
+      -- snapshot. That snapshot may already include the `git add` above, in
+      -- which case this callback notifies nothing and no other one follows.
+      -- Stale the fingerprints so the change is always seen.
+      for target in pairs(watcher._target_fingerprints) do
+        watcher._target_fingerprints[target] = 'stale'
+      end
+
       handle._cb(nil, nil, nil)
     end)
 
