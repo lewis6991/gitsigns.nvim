@@ -177,7 +177,7 @@ describe('actions', function()
     )
   end
 
-  it('show_commit does not include ansi color codes', function()
+  it('shows a commit in the current window without ansi color codes', function()
     setup_test_repo()
     edit(test_file)
     check({
@@ -185,17 +185,25 @@ describe('actions', function()
       signs = {},
     })
 
+    local source = api.nvim_get_current_buf()
+    api.nvim_buf_set_lines(source, 0, -1, false, { 'unsaved' })
     local lines = exec_lua(function()
-      local async = require('gitsigns.async')
-      local commit_buf = async
-        .run(function()
-          return require('gitsigns.actions.show_commit').show_commit('main', 'edit')
-        end)
-        :wait(1000)
+      local done = false
+      require('gitsigns').show('main', nil, function(err)
+        assert(not err, err)
+        done = true
+      end)
+      assert(vim.wait(1000, function()
+        return done
+      end))
 
-      return vim.api.nvim_buf_get_lines(commit_buf, 0, -1, false)
+      return vim.api.nvim_buf_get_lines(0, 0, -1, false)
     end)
 
+    eq(1, #api.nvim_tabpage_list_wins(0))
+    eq('git', exec_lua('return vim.bo.filetype'))
+    eq(false, exec_lua('return vim.bo.modifiable'))
+    eq({ 'unsaved' }, api.nvim_buf_get_lines(source, 0, -1, false))
     for _, line in ipairs(lines) do
       assert(not line:find('\27', 1, true), ('unexpected ANSI escape in line: %q'):format(line))
     end
@@ -228,7 +236,11 @@ describe('actions', function()
       '--split=topleft',
       '--split=botright',
     }, complete('--split=', 'Gitsigns diffthis --split='))
-    eq({ 'diff', 'vsplit', 'tabnew' }, complete('', 'Gitsigns show_commit main '))
+    eq({ '--open=' }, complete('', 'Gitsigns show main '))
+    eq(
+      { '--open=edit', '--open=split', '--open=vsplit', '--open=tabnew' },
+      complete('--open=', 'Gitsigns show main --open=')
+    )
     eq({ 'next' }, complete('n', 'Gitsigns nav_hunk n'))
     eq(
       { '--target=unstaged', '--target=staged', '--target=all' },
@@ -253,7 +265,9 @@ describe('actions', function()
     write_to_file(scratch .. '/src/new file%.lua', { 'new' })
     write_to_file(scratch .. '/--flag', { 'flag' })
     eq({ 'main' }, complete('ma', 'Gitsigns diff ma'))
-    eq({ '--', '--diff=', '--unified' }, complete('--', 'Gitsigns diff --'))
+    eq({ '--', '--commit', '--diff=', '--unified' }, complete('--', 'Gitsigns diff --'))
+    eq({ 'main' }, complete('ma', 'Gitsigns diff --commit ma'))
+    eq({ '--', '--diff=', '--unified' }, complete('--', 'Gitsigns diff --commit --'))
     eq({ '--diff=' }, complete('--d', 'Gitsigns diff --d'))
     eq(
       { '--diff=none', '--diff=split', '--diff=unified' },
@@ -261,16 +275,19 @@ describe('actions', function()
     )
     eq({ '--diff=none' }, complete('--diff=n', 'Gitsigns diff --diff=n'))
     eq({ 'main' }, complete('ma', 'Gitsigns diff --diff=none ma'))
-    eq({ '--' }, complete('--', 'Gitsigns diff --diff=none --'))
+    eq({ '--', '--commit' }, complete('--', 'Gitsigns diff --diff=none --'))
     eq({ 'main' }, complete('ma', 'Gitsigns diff --diff=unified ma'))
     eq({ 'main' }, complete('ma', 'Gitsigns diff --unified ma'))
-    eq({ '--flag', '--', '--diff=', '--unified' }, complete('--', 'Gitsigns diff HEAD --'))
+    eq(
+      { '--flag', '--', '--commit', '--diff=', '--unified' },
+      complete('--', 'Gitsigns diff HEAD --')
+    )
     eq({ '--unified' }, complete('--u', 'Gitsigns diff HEAD~ --u'))
     eq(
       { '--diff=none', '--diff=split', '--diff=unified' },
       complete('--diff=', 'Gitsigns diff HEAD~ --diff=')
     )
-    eq({ '--flag', '--' }, complete('--', 'Gitsigns diff HEAD~ --unified --'))
+    eq({ '--flag', '--', '--commit' }, complete('--', 'Gitsigns diff HEAD~ --unified --'))
     eq({}, complete('--u', 'Gitsigns diff HEAD~ -- --u'))
     eq({ '--flag' }, complete('--f', 'Gitsigns diff -- --f'))
     local backslash = exec_lua("return vim.fn.has('win32') == 1 and not vim.o.shellslash")

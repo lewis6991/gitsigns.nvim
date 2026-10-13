@@ -6,11 +6,10 @@ local git = helpers.git
 
 helpers.env()
 
---- @param action 'diff'|'show_commit'
 --- @param revision? string
 --- @param paths? string[]
 --- @param opts? Gitsigns.DiffPanelOpts
-local function open_panel(action, revision, paths, opts)
+local function open_diff(revision, paths, opts)
   exec_lua(function(args)
     local done = false
     local function on_open(err)
@@ -22,26 +21,19 @@ local function open_panel(action, revision, paths, opts)
     if args.opts then
       gs.diff(args.revision, args.paths, args.opts, on_open)
     else
-      gs[args.action](args.revision, args.paths, on_open)
+      gs.diff(args.revision, args.paths, on_open)
     end
 
     assert(vim.wait(5000, function()
       return done
     end))
-  end, { action = action, revision = revision, paths = paths, opts = opts })
+  end, { revision = revision, paths = paths, opts = opts })
   eq('gitsigns-diff', exec_lua('return vim.bo.filetype'))
 end
 
 --- @param revision? string
---- @param paths? string[]
---- @param opts? Gitsigns.DiffPanelOpts
-local function open_diff(revision, paths, opts)
-  open_panel('diff', revision, paths, opts)
-end
-
---- @param revision? string
 local function open_commit(revision)
-  open_panel('show_commit', revision)
+  open_diff(revision, nil, { commit = true })
 end
 
 --- @param args string
@@ -365,7 +357,7 @@ describe('diff panel', function()
     api.nvim_command('vsplit')
     exec_lua(function()
       local done = false
-      require('gitsigns').show(nil, function(err)
+      require('gitsigns').show(':%', nil, function(err)
         assert(not err, err)
         done = true
       end)
@@ -746,6 +738,7 @@ describe('diff panel', function()
 
   it('preserves spaces, assignments, flags, and numeric path names', function()
     local names = {
+      '--commit',
       '--diff=none',
       '--flag',
       '--unified',
@@ -759,8 +752,11 @@ describe('diff panel', function()
       helpers.write_to_file(helpers.scratch .. '/' .. name, { name })
     end
     helpers.write_to_file(helpers.scratch .. '/not-selected', { 'outside' })
-    open_diff_command('-- --diff=none --flag --unified 001 a=b nil with\\ space.txt {one,two}.txt')
+    open_diff_command(
+      '-- --commit --diff=none --flag --unified 001 a=b nil with\\ space.txt {one,two}.txt'
+    )
     eq({
+      ' ?? --commit',
       ' ?? --diff=none',
       ' ?? --flag',
       ' ?? --unified',
@@ -1608,6 +1604,21 @@ describe('diff panel', function()
     eq(buf, api.nvim_get_current_buf())
   end)
 
+  it('compares a commit with its first parent in unified mode', function()
+    helpers.write_to_file(helpers.test_file, { 'committed' })
+    git('commit', '-am', 'Change the file')
+    helpers.write_to_file(helpers.test_file, { 'working tree' })
+
+    open_diff_command('--commit --diff=unified')
+    select_file('dummy.txt')
+    helpers.expectf(function()
+      eq(2, #api.nvim_tabpage_list_wins(0))
+      eq({ 'committed' }, api.nvim_buf_get_lines(0, 0, -1, false))
+      eq({ 'original' }, unified_removed())
+    end)
+    eq(false, exec_lua('return vim.bo.modifiable'))
+  end)
+
   it('reuses the startup window for a root commit and closes cleanly', function()
     local source_win = api.nvim_get_current_win()
     local source_tab = api.nvim_get_current_tabpage()
@@ -1720,7 +1731,7 @@ describe('diff panel', function()
     local source = api.nvim_get_current_buf()
     api.nvim_buf_set_lines(source, 0, -1, false, { 'unsaved' })
     helpers.chdir_tmp()
-    api.nvim_command('Gitsigns show_commit HEAD')
+    api.nvim_command('Gitsigns diff --commit HEAD')
     expect_diff({ 'original' }, { 'committed' })
     helpers.feed('q')
     eq(source, api.nvim_get_current_buf())
@@ -1835,6 +1846,33 @@ describe('diff panel', function()
     end)
   end)
 
+  it('opens commit buffers in a split or new tab', function()
+    helpers.edit(helpers.test_file)
+    helpers.wait_for_attach()
+    local sha = git_output('rev-parse', 'HEAD')[1]
+
+    exec_lua(function()
+      local done = false
+      require('gitsigns').show(nil, { open = 'vsplit' }, function(err)
+        assert(not err, err)
+        done = true
+      end)
+      assert(vim.wait(5000, function()
+        return done
+      end))
+    end)
+    eq(2, #api.nvim_tabpage_list_wins(0))
+    eq('git', exec_lua('return vim.bo.filetype'))
+    eq('commit ' .. sha, api.nvim_buf_get_lines(0, 0, 1, false)[1])
+    api.nvim_command('close')
+
+    api.nvim_command('Gitsigns show HEAD --open=tabnew')
+    helpers.expectf(function()
+      eq(2, #api.nvim_list_tabpages())
+      eq('commit ' .. sha, api.nvim_buf_get_lines(0, 0, 1, false)[1])
+    end)
+  end)
+
   it('keeps full commit navigation separate from the panel message', function()
     helpers.setup_gitsigns(vim.tbl_extend('force', helpers.test_config, { _commit_maps = true }))
     helpers.write_to_file(helpers.test_file, { 'changed' })
@@ -1843,7 +1881,7 @@ describe('diff panel', function()
     helpers.edit(helpers.test_file)
     helpers.wait_for_attach()
     local source = api.nvim_get_current_win()
-    api.nvim_command('Gitsigns show_commit ' .. sha .. ' vsplit')
+    api.nvim_command('Gitsigns show ' .. sha .. ' --open=vsplit')
     helpers.expectf(function()
       eq('commit ' .. sha, api.nvim_buf_get_lines(0, 0, 1, false)[1])
     end)

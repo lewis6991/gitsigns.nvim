@@ -31,7 +31,7 @@ local M = {}
 --- @field bufnr? integer
 --- @field direction? ('first'|'last'|'next'|'prev')
 --- @field revision? string
---- @field open? boolean|('vsplit'|'tabnew')
+--- @field open? boolean|('edit'|'split'|'vsplit'|'tabnew')
 --- @field target? (0|integer|'attached'|'all'|'unstaged'|'staged')
 --- @field nr? (0|integer)
 --- @field [integer] any
@@ -62,6 +62,11 @@ local M = {}
 --- @inlinedoc
 --- @field diff? Gitsigns.DiffMode How to display files. Defaults to `'split'`.
 --- @field unified? boolean Alias for `diff = 'unified'` when `diff` is omitted.
+--- @field commit? boolean Compare a commit (default: `HEAD`) with its first parent.
+
+--- @class (exact) Gitsigns.ShowOpts
+--- @inlinedoc
+--- @field open? 'edit'|'split'|'vsplit'|'tabnew' How to open the buffer. Defaults to `'edit'`.
 
 --- Variations of functions from M which are used for the Gitsigns command
 --- @type table<string,fun(args: Gitsigns.CmdArgs, params: Gitsigns.CmdParams)>
@@ -924,72 +929,64 @@ end
 --    print('PARAMS:', vim.inspect(params))
 -- end
 
---- Show revision {base} of the current file, if it is given, or
---- with the currently set base (index by default).
+--- Show a commit, including its message and patch, in a buffer.
+--- Use `<revision>:<path>` to show a file at that revision. Paths are relative
+--- to the repository root; `%` means the current buffer's file.
+--- Use `:%` for the editable index version of the current file.
 ---
---- If {base} is the index, then the opened buffer is editable and
---- any written changes will update the index accordingly.
----
---- Examples:
---- ```lua
----   -- View the index version of the file
----   require('gitsigns').show()
----   -- :Gitsigns show
----
----   -- View revision of file in the last commit
----   require('gitsigns').show('~1')
----   -- :Gitsigns show ~1
---- ```
----
---- For a more complete list of ways to specify bases, see
---- [[gitsigns-revision]].
----
---- Attributes:
---- - {async}
----
---- @param revision (string|'FILE')?
---- @param callback? fun(err?: string)
-function M.show(revision, callback)
-  async_run(callback, require('gitsigns.actions.diffthis').show, nil, revision)
-end
-
-function C.show(args)
-  local revision = args[1]
-  if revision ~= nil then
-    revision = tostring(revision)
-  end
-  M.show(revision)
-end
-
---- Show the changes introduced by a commit with a file tree and diff windows.
---- Compare the commit with its first parent, or the empty tree for a root
---- commit. See [[gitsigns.diff()]] for panel navigation and file actions.
----
---- The SHA and wrapped summary appear above the file tree. Press `<CR>` on
---- either to show the author, date, and full message beside the panel.
---- Press `q` to close the message.
----
---- Use `vsplit` or `tabnew` to show the full commit as text instead:
 --- ```text
----   :Gitsigns show_commit HEAD
----   :Gitsigns show_commit HEAD vsplit
+---   :Gitsigns show HEAD
+---   :Gitsigns show HEAD --open=tabnew
+---   :Gitsigns show HEAD~1:%
+---   :Gitsigns show :%
 --- ```
+---
+--- Use [[gitsigns.diff()]] with `--commit` to review a commit in the diff panel.
 ---
 --- @param revision string? (default: 'HEAD')
---- @param open ('diff'|'vsplit'|'tabnew')? (default: 'diff')
+--- @param opts Gitsigns.ShowOpts? Display options.
 --- @param callback? fun(err?: string)
-function M.show_commit(revision, open, callback)
-  if not open or open == 'diff' then
-    async_run(callback, require('gitsigns.actions.diff'), revision, nil, true)
+function M.show(revision, opts, callback)
+  revision = revision or 'HEAD'
+  local base, path = revision:match('^(:[0-3]):(.+)$')
+  if not base then
+    base, path = revision:match('^([^:]*):(.+)$')
+  end
+  if path and not (base == '' and vim.startswith(path, '/')) then
+    async_run(
+      callback,
+      require('gitsigns.actions.diffthis').show,
+      base == '' and ':0' or base,
+      { path = path ~= '%' and path or nil, open = opts and opts.open }
+    )
   else
-    async_run(callback, require('gitsigns.actions.show_commit').show_commit, revision, open)
+    async_run(
+      callback,
+      require('gitsigns.actions.show_commit').show_commit,
+      revision,
+      opts and opts.open or 'edit'
+    )
   end
 end
 
-function C.show_commit(args)
-  local revision, open = args[1], args[2]
-  M.show_commit(revision, open)
+--- @param args string[]
+function C.show(args)
+  local opts = {} --- @type Gitsigns.ShowOpts
+  local i = 1
+  while args[i] do
+    local open = args[i]:match('^%-%-open=(.*)$')
+    if open then
+      --- @cast open 'edit'|'split'|'vsplit'|'tabnew'
+      opts.open = open
+      table.remove(args, i)
+    else
+      i = i + 1
+    end
+  end
+  M.show(args[1], opts)
 end
+
+C_meta.show = { raw_args = true }
 
 --- Show changes with a file tree and diff windows. Reuse an empty startup
 --- window; otherwise open a new tab.
@@ -1000,6 +997,11 @@ end
 ---   :Gitsigns diff A..B      Compare A with B.
 ---   :Gitsigns diff A...B     Compare the merge base of A and B with B.
 --- ```
+---
+--- Use `--commit [revision]` to compare a commit (default: `HEAD`) with its
+--- first parent, or the empty tree for a root commit. Its SHA and summary
+--- appear above the file tree. Press `<CR>` on either to show the full message
+--- beside the panel, and `q` to close the message.
 ---
 --- Limit files with Git pathspecs. Use `--` when omitting the revision:
 --- ```text
@@ -1020,7 +1022,7 @@ end
 --- With `--diff=none`, buffers keep their existing Gitsigns signs and
 --- comparison base.
 ---
---- Use [[gitsigns.show_commit()]] to view the changes introduced by a commit.
+--- Use [[gitsigns.show()]] to view the full commit as text.
 ---
 --- Press `g?` in the panel for keys. Directories sort before files at each
 --- level and use standard fold commands. Closed directories show their changed
@@ -1072,31 +1074,35 @@ function M.diff(revision, paths, opts, callback)
   elseif type(opts) == 'function' then
     callback, opts = opts, nil
   end
-  async_run(callback, require('gitsigns.actions.diff'), revision, paths, nil, opts)
+  async_run(callback, require('gitsigns.actions.diff'), revision, paths, opts and opts.commit, opts)
 end
 
---- Remove layout options, preserving literal paths after --.
+--- Remove diff options, preserving literal paths after --.
 --- @param args string[]
---- @return string?
+--- @return Gitsigns.DiffPanelOpts
 local function parse_diff_options(args)
-  local diff
+  local opts = {} --- @type Gitsigns.DiffPanelOpts
   local i = 1
   while args[i] and args[i] ~= '--' do
     local mode = args[i] == '--unified' and 'unified' or args[i]:match('^%-%-diff=(.*)$')
-    if mode then
-      diff = mode
+    if args[i] == '--commit' then
+      opts.commit = true
+      table.remove(args, i)
+    elseif mode then
+      --- @cast mode Gitsigns.DiffMode
+      opts.diff = mode
       table.remove(args, i)
     else
       i = i + 1
     end
   end
-  return diff
+  return opts
 end
 
 --- Separate the optional revision from Git pathspecs.
 --- @param args string[]
 function C.diff(args)
-  local diff = parse_diff_options(args)
+  local opts = parse_diff_options(args)
   local revision = args[1]
   local first_path = 2
   if revision == '--' then
@@ -1104,8 +1110,7 @@ function C.diff(args)
   elseif args[2] == '--' then
     first_path = 3
   end
-  --- @cast diff Gitsigns.DiffMode?
-  M.diff(revision, vim.list_slice(args, first_path), { diff = diff })
+  M.diff(revision, vim.list_slice(args, first_path), opts)
 end
 
 C_meta.diff = {
@@ -1117,7 +1122,7 @@ C_meta.diff = {
   --- @return string[]
   complete = function(arglead, line)
     local args = require('gitsigns.cli.context').parse(line).raw_args
-    local diff = parse_diff_options(args)
+    local opts = parse_diff_options(args)
     local matches
     if #args == 0 then
       matches = require('gitsigns.cli.completion').heads(arglead)
@@ -1134,10 +1139,15 @@ C_meta.diff = {
     then
       matches[#matches + 1] = '--'
     end
-    if not vim.tbl_contains(args, '--') and not diff then
-      local options = arglead:find('=', 1, true)
-          and { '--diff=none', '--diff=split', '--diff=unified' }
-        or { '--diff=', '--unified' }
+    if not vim.tbl_contains(args, '--') then
+      local options = opts.commit and {} or { '--commit' }
+      if not opts.diff then
+        vim.list_extend(
+          options,
+          arglead:find('=', 1, true) and { '--diff=none', '--diff=split', '--diff=unified' }
+            or { '--diff=', '--unified' }
+        )
+      end
       for _, option in ipairs(options) do
         if vim.startswith(option, arglead) then
           matches[#matches + 1] = option

@@ -44,6 +44,7 @@ end
 --- @param bufnr integer?
 local function bufread(repo, dbufnr, base, relpath, bufnr)
   local bcache = bufnr and cache[bufnr]
+  local index = base == ':0'
   base = util.norm_base(base)
 
   -- Reuse the attached buffer's comparison text when it describes this revision.
@@ -52,7 +53,9 @@ local function bufread(repo, dbufnr, base, relpath, bufnr)
     text = assert(bcache.compare_text)
   else
     local err
-    if bcache then
+    if index then
+      text, err = repo:get_show_text(':0:' .. relpath, bcache and bcache.git_obj.encoding)
+    elseif bcache then
       text, err = bcache.git_obj:get_show_text(base, relpath)
     else
       text, err = repo:get_show_text(assert(base) .. ':' .. relpath)
@@ -102,6 +105,13 @@ end
 --- @param dbufnr integer
 --- @param base string?
 local function bufwrite(bufnr, dbufnr, base)
+  -- The source can be a historical buffer that was wiped when the index opened.
+  if
+    not cache[bufnr]
+    or (cache[dbufnr] and cache[bufnr].git_obj.relpath ~= cache[dbufnr].git_obj.relpath)
+  then
+    bufnr = dbufnr
+  end
   local bcache = assert(cache[bufnr])
   local buftext = util.buf_lines(dbufnr)
   base = util.norm_base(base)
@@ -132,7 +142,7 @@ end
 --- @return boolean? created Whether a new buffer was created.
 --- @return boolean? loaded Whether the buffer was already loaded.
 function M.create_revision_buf(repo, base, relpath, bufnr)
-  base = util.norm_base(base)
+  base = base == ':0' and base or util.norm_base(base)
 
   local name_base = base or (bufnr and assert(cache[bufnr]).git_obj.revision) or ':0'
   local bufname = ('gitsigns://%s//%s:%s'):format(repo.gitdir, name_base, relpath)
@@ -168,7 +178,7 @@ function M.create_revision_buf(repo, base, relpath, bufnr)
   end
 
   -- Index buffers write back to Git; historical revisions remain read-only.
-  if not base then
+  if not util.norm_base(base) then
     assert(bufnr, 'Index revisions need a source buffer')
     vim.bo[dbuf].buftype = 'acwrite'
 
@@ -286,13 +296,17 @@ function M.diffthis(base, opts)
   end
 end
 
+--- @class (exact) Gitsigns.ShowFileOpts : Gitsigns.ShowOpts
+--- @field bufnr? integer Source buffer. Defaults to the current buffer.
+--- @field path? string File path relative to the repository root.
+
 --- @async
---- @param bufnr integer?
---- @param base string?
---- @param relpath string?
+--- @param ref string?
+--- @param opts? Gitsigns.ShowFileOpts
 --- @return boolean did_attach
-function M.show(bufnr, base, relpath)
-  bufnr = bufnr or api.nvim_get_current_buf()
+function M.show(ref, opts)
+  opts = opts or {}
+  local bufnr = opts.bufnr or api.nvim_get_current_buf()
 
   if not cache[bufnr] then
     print('Error: Buffer is not attached.')
@@ -301,14 +315,14 @@ function M.show(bufnr, base, relpath)
 
   local git_obj = cache[bufnr].git_obj
   local bufname =
-    M.create_revision_buf(git_obj.repo, base, relpath or assert(git_obj.relpath), bufnr)
+    M.create_revision_buf(git_obj.repo, ref, opts.path or assert(git_obj.relpath), bufnr)
   if not bufname then
-    log.dprint('No bufname for revision ' .. base)
+    log.dprint('No bufname for revision ' .. tostring(ref))
     return false
   end
 
   log.dprint('bufname ' .. bufname)
-  vim.cmd.edit(bufname)
+  vim.cmd[opts.open or 'edit']({ bufname, mods = { keepalt = true } })
 
   -- Wait for the buffer to attach in case the user passes a callback that
   -- requires the buffer to be attached.

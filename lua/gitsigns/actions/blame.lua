@@ -290,7 +290,7 @@ local function reblame(opts, blame, win, revision, parent)
   vim.cmd.quit()
   api.nvim_set_current_win(win)
 
-  local did_attach = require('gitsigns.actions.diffthis').show(nil, sha)
+  local did_attach = require('gitsigns.actions.diffthis').show(sha)
   if not did_attach then
     return
   end
@@ -421,7 +421,10 @@ local function diff(bufnr, blm_win, blame)
   local info = assert(blame[lnum])
 
   vim.cmd('tab sbuffer ' .. bufnr)
-  require('gitsigns.actions.diffthis').show(bufnr, info.commit.sha, info.filename)
+  require('gitsigns.actions.diffthis').show(info.commit.sha, {
+    bufnr = bufnr,
+    path = info.filename,
+  })
   if info.previous_sha then
     require('gitsigns.actions').diffthis(info.previous_sha)
   end
@@ -568,7 +571,7 @@ function M.blame(opts)
     local lnum0 = api.nvim_win_get_cursor(blm_win)[1]
     local sha = assert(blame.entries[lnum0]).commit.sha
     api.nvim_set_current_win(win)
-    require('gitsigns.actions').show_commit(sha)
+    require('gitsigns.actions').diff(sha, nil, { commit = true })
   end, {
     desc = 'Diff commit (tab)',
     buffer = blm_bufnr,

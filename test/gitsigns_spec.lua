@@ -479,7 +479,7 @@ describe('gitsigns (with screen)', function()
         -- Open the real revision view and check the displayed contents.
         edit(test_file)
         wait_for_attach()
-        command('Gitsigns show ' .. case.revision)
+        command('Gitsigns show ' .. case.revision .. ':%')
         expectf(function()
           eq(true, vim.endswith(api.nvim_buf_get_name(0), '//' .. case.revision .. ':dummy.txt'))
         end)
@@ -1514,7 +1514,7 @@ describe('gitsigns attach', function()
     edit('test')
     wait_for_attach()
 
-    command('Gitsigns show')
+    command('Gitsigns show :%')
 
     local show_bufnr --- @type integer?
     expectf(function()
