@@ -131,25 +131,14 @@ return {
       },
     },
     show = {
-      positional = {
-        {
-          name = 'revision',
-          required = true,
-          revision = true,
-          values = { 'FILE' },
-        },
+      flags = {
+        open = { 'edit', 'split', 'vsplit', 'tabnew' },
       },
-    },
-    show_commit = {
       positional = {
         {
           name = 'revision',
-          revision = true,
-        },
-        {
-          name = 'open',
           required = true,
-          values = { 'diff', 'vsplit', 'tabnew' },
+          revision = true,
         },
       },
     },

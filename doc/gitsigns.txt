@@ -185,6 +185,11 @@ diff({revision}, {paths}, {opts}, {callback})                     *gitsigns.diff
       :Gitsigns diff A...B     Compare the merge base of A and B with B.
 <
 
+    Use `--commit [revision]` to compare a commit (default: `HEAD`) with its
+    first parent, or the empty tree for a root commit. Its SHA and summary
+    appear above the file tree. Press `<CR>` on either to show the full message
+    beside the panel, and `q` to close the message.
+
     Limit files with Git pathspecs. Use `--` when omitting the revision:
     >text
       :Gitsigns diff -- lua/ doc/
@@ -204,7 +209,7 @@ diff({revision}, {paths}, {opts}, {callback})                     *gitsigns.diff
     With `--diff=none`, buffers keep their existing Gitsigns signs and
     comparison base.
 
-    Use |gitsigns.show_commit()| to view the changes introduced by a commit.
+    Use |gitsigns.show()| to view the full commit as text.
 
     Press `g?` in the panel for keys. Directories sort before files at each
     level and use standard fold commands. Closed directories show their changed
@@ -253,53 +258,30 @@ diff({revision}, {paths}, {opts}, {callback})                     *gitsigns.diff
                      How to display files. Defaults to `'split'`.
                    • {unified}: (`boolean?`)
                      Alias for `diff = 'unified'` when `diff` is omitted.
+                   • {commit}: (`boolean?`)
+                     Compare a commit (default: `HEAD`) with its first parent.
         {callback} (`(fun(err: string?))?`)
 
-show_commit({revision}, {open}, {callback})              *gitsigns.show_commit()*
-    Show the changes introduced by a commit with a file tree and diff windows.
-    Compare the commit with its first parent, or the empty tree for a root
-    commit. See |gitsigns.diff()| for panel navigation and file actions.
+show({revision}, {opts}, {callback})                         *gitsigns.show()*
+    Show a commit, including its message and patch, in a buffer.
+    Use `<revision>:<path>` to show a file at that revision. Paths are relative
+    to the repository root; `%` means the current buffer's file.
+    Use `:%` for the editable index version of the current file.
 
-    The SHA and wrapped summary appear above the file tree. Press `<CR>` on
-    either to show the author, date, and full message beside the panel.
-    Press `q` to close the message.
-
-    Use `vsplit` or `tabnew` to show the full commit as text instead:
     >text
-      :Gitsigns show_commit HEAD
-      :Gitsigns show_commit HEAD vsplit
+      :Gitsigns show HEAD
+      :Gitsigns show HEAD --open=tabnew
+      :Gitsigns show HEAD~1:%
+      :Gitsigns show :%
 <
+
+    Use |gitsigns.diff()| with `--commit` to review a commit in the diff panel.
 
     Parameters: ~
         {revision} (`string?`): (default: 'HEAD')
-        {open}     (`("diff"|"vsplit"|"tabnew")?`): (default: 'diff')
-        {callback} (`(fun(err: string?))?`)
-
-show({revision}, {callback})                                 *gitsigns.show()*
-    Show revision {base} of the current file, if it is given, or
-    with the currently set base (index by default).
-
-    If {base} is the index, then the opened buffer is editable and
-    any written changes will update the index accordingly.
-
-    Examples: >lua
-      -- View the index version of the file
-      require('gitsigns').show()
-      -- :Gitsigns show
-
-      -- View revision of file in the last commit
-      require('gitsigns').show('~1')
-      -- :Gitsigns show ~1
-<
-
-    For a more complete list of ways to specify bases, see
-    |gitsigns-revision|.
-
-    Attributes: ~
-        {async}
-
-    Parameters: ~
-        {revision} (`(string|"FILE")?`)
+        {opts}     (`Gitsigns.ShowOpts?`): Display options.
+                   • {open}: (`("edit"|"split"|"vsplit"|"tabnew")?`)
+                     How to open the buffer. Defaults to `'edit'`.
         {callback} (`(fun(err: string?))?`)
 
 diffthis({base}, {opts}, {callback})                     *gitsigns.diffthis()*

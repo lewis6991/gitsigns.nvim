@@ -109,7 +109,10 @@ local function goto_action(bufnr, commit_buf, ref_list, ref_list_ptr)
     end
 
     Async.run(function()
-      require('gitsigns.actions.diffthis').show(bufnr, commit, added and new_file or old_file)
+      require('gitsigns.actions.diffthis').show(commit, {
+        bufnr = bufnr,
+        path = added and new_file or old_file,
+      })
       api.nvim_win_set_cursor(0, { added and hunk.added.start or hunk.removed.start, 0 })
     end):raise_on_error()
   end
@@ -118,7 +121,7 @@ end
 --- Open a full commit and install optional history and patch navigation mappings.
 --- @async
 --- @param base? string?
---- @param open? 'vsplit'|'tabnew'|'edit'
+--- @param open? 'edit'|'split'|'vsplit'|'tabnew'
 --- @param bufnr? integer
 --- @param ref_list? string[]
 --- @param ref_list_ptr? integer
@@ -140,7 +143,9 @@ function M.show_commit(base, open, bufnr, ref_list, ref_list_ptr)
   end
 
   local commit_buf = M.create_buf(bcache.git_obj.repo, base)
-  vim.cmd[open]({ mods = { keepalt = true } })
+  if open ~= 'edit' then
+    vim.cmd[open]({ mods = { keepalt = true } })
+  end
   api.nvim_win_set_buf(0, commit_buf)
 
   if config._commit_maps then

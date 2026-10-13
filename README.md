@@ -129,7 +129,7 @@ Deep buffer integration for Git
 <details>
   <summary><strong>Show different revisions of buffers</strong></summary>
 
-  - Use `:Gitsigns show <REVISION>` to `:edit` the current buffer at `<REVISION>`
+  - Use `:Gitsigns show <REVISION>:%` to `:edit` the current buffer at `<REVISION>`
 
 </details>
 
