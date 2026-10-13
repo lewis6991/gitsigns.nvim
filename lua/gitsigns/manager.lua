@@ -154,7 +154,7 @@ M.update = throttle_async({ hash = 1, schedule = true }, function(bufnr)
     return
   end
 
-  if not buf_in_view(bufnr) then
+  if not config.update_hidden_buffers and not buf_in_view(bufnr) then
     log.dprint('Buffer not in view, deferring update')
     bcache.update_on_view = true
     return
