@@ -121,7 +121,6 @@ local function update_cwd_head()
   local paths = vim.fs.find('.git', {
     limit = 1,
     upward = true,
-    type = 'directory',
   })
 
   if #paths == 0 then
