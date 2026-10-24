@@ -408,7 +408,7 @@ function M.on_win(winid, bufnr, topline, botline)
   local missing = {} --- @type Gitsigns.Hunk.Hunk[]
   for _, hunk in ipairs(state.hunks) do
     local row, above = show_deleted_placement(hunk)
-    if row >= topline - 1 and row < botline then
+    if row >= topline - 1 and row <= botline then
       local lines = state.lines[hunk]
       if lines then
         visible[#visible + 1] = {

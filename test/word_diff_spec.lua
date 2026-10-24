@@ -1337,6 +1337,54 @@ describe('show_deleted', function()
     end)
   end)
 
+  it('renders deleted lines at the end of the file', function()
+    setup_test_repo({
+      test_file_text = {
+        'alpha',
+        'omega',
+        'local foo = 1',
+      },
+    })
+    local config = vim.deepcopy(test_config)
+    config.show_deleted = true
+    setup_gitsigns(config)
+    edit(test_file)
+    exec_lua(function()
+      vim.api.nvim_buf_set_lines(0, 2, 3, false, {})
+    end)
+
+    expectf(function()
+      local hunk = exec_lua(function()
+        return require('gitsigns').get_hunks()[1]
+      end)
+      assert(hunk and hunk.type == 'delete')
+    end)
+
+    expectf(function()
+      local rows = exec_lua(function()
+        vim.cmd('redraw!')
+
+        local rows0 = {} --- @type string[]
+        for row = 1, 4 do
+          local chars = {} --- @type string[]
+          for col = 1, 24 do
+            chars[#chars + 1] = vim.fn.screenstring(row, col)
+          end
+          rows0[row] = table.concat(chars)
+        end
+        return rows0
+      end)
+
+      local found = false
+      for _, row in ipairs(rows) do
+        if row:find('local foo = 1', 1, true) then
+          found = true
+        end
+      end
+      assert(found, ('rows=%s'):format(vim.inspect(rows)))
+    end)
+  end)
+
   it('refreshes deleted preview captures when word_diff changes', function()
     setup_test_repo({
       test_file_text = {
