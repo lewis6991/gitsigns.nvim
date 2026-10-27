@@ -27,6 +27,15 @@ describe('popup', function()
         { relative = 'cursor', row = 1, col = 0 },
         'test'
       )
+
+      -- Registered after the popup's own handler, so it runs after it
+      vim.api.nvim_create_autocmd('WinScrolled', {
+        once = true,
+        callback = function()
+          vim.g.test_scrolled_height = vim.api.nvim_win_get_height(winid)
+        end,
+      })
+
       return winid, vim.api.nvim_win_get_height(winid)
     end)
 
@@ -36,12 +45,7 @@ describe('popup', function()
     feed('<C-e>')
 
     expectf(function()
-      eq(
-        4,
-        exec_lua(function(winid0)
-          return vim.api.nvim_win_get_height(winid0)
-        end, winid)
-      )
+      eq(4, exec_lua('return vim.g.test_scrolled_height'))
     end)
   end)
 end)
