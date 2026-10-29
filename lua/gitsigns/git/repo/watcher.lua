@@ -88,17 +88,22 @@ end
 --- Poll callbacks only tell us that a watched handle path changed. Compare
 --- logical target fingerprints so we only notify on relevant gitdir changes.
 --- @param handle_path string
---- @param target_fingerprints table<string, string?>
+--- @param target_fingerprints table<string, string|false>
 --- @return boolean notify
 local function should_notify_fs_poll(handle_path, target_fingerprints)
+  local changed = false
   for target, previous in pairs(target_fingerprints) do
-    if previous ~= poll_fingerprint(target) then
-      log.dprintf("Git dir update: '%s' { poll = true }", handle_path)
-      return true
+    local current = poll_fingerprint(target) or false
+    target_fingerprints[target] = current
+    if previous ~= current then
+      changed = true
     end
   end
 
-  return false
+  if changed then
+    log.dprintf("Git dir update: '%s' { poll = true }", handle_path)
+  end
+  return changed
 end
 
 --- @class Gitsigns.Repo.Watcher
@@ -109,7 +114,7 @@ end
 --- @field private handles table<string, uv.uv_fs_event_t|uv.uv_fs_poll_t> Map from concrete handle path -> handle
 --- @field private head_ref? string
 --- @field private _backend 'fs_event'|'fs_poll'
---- @field private _target_fingerprints table<string, string?> Snapshot of fs_poll logical targets
+--- @field private _target_fingerprints table<string, string|false> Snapshot of fs_poll logical targets
 --- @field private _closed? true
 --- @field private _gc userdata? Used for garbage collection
 local Watcher = {}
@@ -184,6 +189,10 @@ function Watcher:_handle_fs_poll_error(handle_path, err)
   log.dprintf('Git dir update error: %s', err)
   self:_drop_handle_path(handle_path)
   self:_sync_watches()
+  -- A restarted poll may take its baseline after the metadata changed.
+  if should_notify_fs_poll(handle_path, self._target_fingerprints) then
+    self.notify_debounced()
+  end
   return false
 end
 
@@ -291,8 +300,7 @@ end
 
 --- @private
 --- Reconcile the concrete handle paths with the logical targets we care about.
---- In poll mode this also snapshots the targets so callbacks can ignore
---- unrelated parent-dir changes and only notify on git metadata updates.
+--- In poll mode preserve snapshots until a callback consumes the changes.
 function Watcher:_sync_watches()
   if self._closed then
     return
@@ -302,13 +310,16 @@ function Watcher:_sync_watches()
   local logical_targets = is_fs_event and self:_fs_event_targets() or self:_fs_poll_targets()
 
   local desired_handle_paths = {} --- @type table<string, true>
-  local target_fingerprints = not is_fs_event and {} or nil --- @type table<string, string?>?
+  local target_fingerprints = not is_fs_event and {} or nil --- @type table<string, string|false>?
 
   for _, target in ipairs(logical_targets) do
     if target_fingerprints then
-      -- Fingerprints belong to logical targets, not handle paths. A missing
-      -- file may be polled via its parent dir until it appears.
-      target_fingerprints[target] = poll_fingerprint(target)
+      local previous = self._target_fingerprints[target]
+      if previous == nil then
+        -- Keep absent targets too, so their creation can be detected.
+        previous = poll_fingerprint(target) or false
+      end
+      target_fingerprints[target] = previous
     end
 
     local handle_path = resolve_handle_path(target, is_fs_event)

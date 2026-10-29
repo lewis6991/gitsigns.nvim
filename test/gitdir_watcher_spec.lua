@@ -379,6 +379,53 @@ describe('gitdir_watcher', function()
     helpers.check({ status = { head = '', added = 0, changed = 0, removed = 0 }, signs = {} })
   end)
 
+  for _, case in ipairs({
+    { name = 'detects index creation', with_index = false, poll_error = false },
+    { name = 'detects index creation after a poll error', with_index = false, poll_error = true },
+    { name = 'detects index changes after a poll error', with_index = true, poll_error = true },
+  }) do
+    it(case.name, function()
+      setup_test_repo({ no_add = not case.with_index })
+      helpers.setup_path()
+      install_failing_fs_watchers(true)
+
+      local notified = helpers.exec_lua(function(dir, poll_error)
+        require('gitsigns.config').build({ _allow_fs_poll_fallback = true })
+        local watcher = require('gitsigns.git.repo.watcher').new(dir .. '/.git')
+        local updates = 0
+        watcher:on_update(function()
+          updates = updates + 1
+        end)
+        -- Consume the initial fallback notification before changing the index.
+        assert(vim.wait(2000, function()
+          return updates == 1
+        end))
+
+        vim.fn.writefile({ 'changed' }, dir .. '/dummy.txt')
+        vim.fn.system({ 'git', '-C', dir, 'add', '--', 'dummy.txt' })
+        assert(vim.v.shell_error == 0)
+
+        local path = dir .. '/.git/HEAD'
+        local old = assert(watcher.handles[path])
+        if poll_error then
+          old._cb('ENOENT', nil, nil)
+          local replacement = assert(watcher.handles[path])
+          assert(replacement ~= old and old:is_closing())
+        else
+          old._cb(nil, nil, nil)
+        end
+
+        local changed = vim.wait(1000, function()
+          return updates == 2
+        end)
+        watcher:close()
+        return changed
+      end, helpers.scratch, case.poll_error)
+
+      eq(true, notified)
+    end)
+  end
+
   it('closes and recreates watchers when buffers detach and reattach', function()
     setup_test_repo()
     setup_gitsigns(watcher_test_config)
