@@ -572,6 +572,12 @@ describe('gitdir_watcher', function()
       --- assign to nil to allow gc
       watcher, repo = nil, nil
 
+      -- Compiled async callbacks can retain completed tasks and their repo result.
+      -- Drop those references before checking the repo's own GC behavior.
+      if jit then
+        jit.flush()
+      end
+
       vim.wait(2000, function()
         collectgarbage('collect')
 
