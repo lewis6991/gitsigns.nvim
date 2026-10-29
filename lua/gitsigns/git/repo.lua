@@ -430,16 +430,6 @@ function M:check_attr(attr, files)
   return ret
 end
 
---- @param encoding string
---- @return boolean
-local function iconv_supported(encoding)
-  -- TODO(lewis6991): needs https://github.com/neovim/neovim/pull/21924
-  if vim.startswith(encoding, 'utf-16') or vim.startswith(encoding, 'utf-32') then
-    return false
-  end
-  return true
-end
-
 --- @async
 --- Get version of file in the index, return array lines
 --- @param object string
@@ -448,10 +438,10 @@ end
 function M:get_show_text(object, encoding)
   local stdout, stderr = self:command({ 'show', object }, { text = false, ignore_error = true })
 
-  if encoding and encoding ~= 'utf-8' and iconv_supported(encoding) then
-    for i, l in ipairs(stdout) do
-      stdout[i] = vim.iconv(l, encoding, 'utf-8')
-    end
+  if encoding and encoding ~= '' and encoding ~= 'utf-8' then
+    -- Decode line endings with the text before splitting into UTF-8 lines.
+    local text = util.iconv(table.concat(stdout, '\n'), encoding, 'utf-8')
+    stdout = vim.split(text, '\n')
   end
 
   return stdout, stderr

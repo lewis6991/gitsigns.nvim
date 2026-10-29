@@ -82,7 +82,7 @@ local function bufread(repo, dbufnr, base, relpath, bufnr)
   Status.update(dbufnr, { head = base })
 
   if bcache then
-    util.set_lines(dbufnr, 0, -1, text)
+    util.set_lines(dbufnr, 0, -1, text, bcache.git_obj.encoding)
   else
     read_revision(dbufnr, text)
   end
@@ -113,10 +113,10 @@ local function bufwrite(bufnr, dbufnr, base)
     bufnr = dbufnr
   end
   local bcache = assert(cache[bufnr])
-  local buftext = util.buf_lines(dbufnr)
+  local contents, buftext = util.buf_lines(dbufnr, true)
   base = util.norm_base(base)
   bcache.git_obj:lock(function()
-    bcache.git_obj:stage_lines(buftext)
+    bcache.git_obj:stage_lines(contents)
   end)
   async.schedule()
   if not api.nvim_buf_is_valid(bufnr) then

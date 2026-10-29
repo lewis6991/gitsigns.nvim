@@ -84,6 +84,10 @@ local BOM_TABLE = {
   ['utf-32be'] = make_bom(0x00, 0x00, 0xfe, 0xff),
   ['utf-7'] = make_bom(0x2b, 0x2f, 0x76),
   ['utf-1'] = make_bom(0xf7, 0x54, 0x4c),
+  ['ucs-2'] = make_bom(0xfe, 0xff),
+  ['ucs-2le'] = make_bom(0xff, 0xfe),
+  ['ucs-4'] = make_bom(0x00, 0x00, 0xfe, 0xff),
+  ['ucs-4le'] = make_bom(0xff, 0xfe, 0x00, 0x00),
 }
 
 ---@param x string?
@@ -97,9 +101,48 @@ local function add_bom(x, encoding)
   return x
 end
 
+--- Convert text without adding or removing a BOM.
+--- @param text string
+--- @param from string
+--- @param to string
+--- @return string
+function M.iconv(text, from, to)
+  -- Neovim's 'utf-16' file encoding is big-endian. Use an explicit byte order
+  -- so iconv does not add or consume a BOM.
+  from = from == 'utf-16' and 'utf-16be' or from
+  to = to == 'utf-16' and 'utf-16be' or to
+
+  if from == to then
+    return text
+  end
+
+  if vim.fn.has('nvim-0.13') == 1 then
+    return assert(vim.iconv(text, from, to))
+  end
+
+  -- Work around a Neovim 0.11/0.12 bug that drops the byte order from 'utf-16be'.
+  -- neovim/neovim#40262. Fixed in 0.13: neovim/neovim#40567
+  -- Convert through UTF-16LE and swap bytes to preserve the BOM.
+  if from == 'utf-16be' then
+    text = text:gsub('..', string.reverse)
+    from = 'utf-16le'
+  end
+
+  local swap_output = to == 'utf-16be'
+  if swap_output then
+    to = 'utf-16le'
+  end
+
+  local converted = assert(vim.iconv(text, from, to))
+  return swap_output and converted:gsub('..', string.reverse) or converted
+end
+
+--- Get buffer text with file line endings and a BOM when 'bomb' is set.
 --- @param bufnr integer
---- @return string[]
-function M.buf_lines(bufnr)
+--- @param encode? boolean Use 'fileencoding' for the text, line endings and any BOM.
+--- @return string[] UTF-8 by default; file-encoded bytes when encode is true.
+--- @return string[] utf8_text UTF-8 comparison text.
+function M.buf_lines(bufnr, encode)
   -- nvim_buf_get_lines strips carriage returns if fileformat==dos
   local buftext = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
@@ -119,11 +162,27 @@ function M.buf_lines(bufnr)
     buftext[#buftext + 1] = ''
   end
 
-  if vim.bo[bufnr].bomb then
-    buftext[1] = add_bom(buftext[1], vim.bo[bufnr].fileencoding)
+  local utf8_text = buftext
+  local encoding = encode and vim.bo[bufnr].fileencoding or 'utf-8'
+  if encoding == '' then
+    encoding = 'utf-8'
   end
 
-  return buftext
+  if encoding ~= 'utf-8' then
+    -- Neovim stores buffer text as UTF-8. Convert the text and line endings
+    -- to the file encoding before adding the BOM.
+    local text = M.iconv(table.concat(buftext, '\n'), 'utf-8', encoding)
+    buftext = vim.split(text, '\n')
+  end
+
+  if vim.bo[bufnr].bomb then
+    buftext[1] = add_bom(buftext[1], encoding)
+    if utf8_text ~= buftext then
+      utf8_text[1] = add_bom(utf8_text[1], 'utf-8')
+    end
+  end
+
+  return buftext, utf8_text
 end
 
 --- @param bufnr integer
@@ -165,17 +224,32 @@ function M.noautocmd(events, f)
   vim.o.eventignore = ei
 end
 
+--- Set buffer text from UTF-8 comparison lines.
 --- @param bufnr integer
 --- @param start_row integer
 --- @param end_row integer
 --- @param lines string[]
-function M.set_lines(bufnr, start_row, end_row, lines)
+--- @param fileencoding? string Encoding to use when writing the buffer.
+function M.set_lines(bufnr, start_row, end_row, lines, fileencoding)
+  if fileencoding then
+    vim.bo[bufnr].fileencoding = fileencoding
+  end
   if vim.bo[bufnr].fileformat == 'dos' then
     lines = M.strip_cr(lines)
   end
+
   if start_row == 0 and end_row == -1 then
+    lines = vim.deepcopy(lines) --[[@as string[] ]]
+    local utf8_bom = BOM_TABLE['utf-8']
+    local first_line = lines[1]
+    if first_line and vim.startswith(first_line, utf8_bom) then
+      vim.bo[bufnr].bomb = true
+      lines[1] = first_line:sub(#utf8_bom + 1)
+    else
+      vim.bo[bufnr].bomb = false
+    end
+
     if lines[#lines] == '' then
-      lines = vim.deepcopy(lines) --[[@as string[] ]]
       lines[#lines] = nil
     else
       vim.bo[bufnr].eol = false

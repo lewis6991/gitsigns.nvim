@@ -462,6 +462,87 @@ describe('gitsigns (with screen)', function()
     end)
 
     for _, case in ipairs({
+      {
+        name = 'cp866 with CRLF and no final newline',
+        encoding = 'cp866',
+        fileformat = 'dos',
+        no_eol = true,
+      },
+      { name = 'cp866 with textconv', encoding = 'cp866', textconv = true },
+      { name = 'UTF-8 with BOM', encoding = 'utf-8', bom = true },
+      { name = 'UTF-16BE with BOM', encoding = 'utf-16be', bom = true },
+      {
+        name = 'UTF-32LE with BOM and CRLF',
+        encoding = 'utf-32le',
+        bom = true,
+        fileformat = 'dos',
+      },
+    }) do
+      it('blames committed and unsaved lines in ' .. case.name, function()
+        if case.textconv and fn.executable('iconv') == 0 then
+          helpers.pending('requires iconv')
+        end
+
+        -- Commit encoded text, then read it into a UTF-8 buffer.
+        setup_test_repo()
+        if case.textconv then
+          git('config', 'diff.cp866.textconv', 'iconv -f cp866 -t utf-8')
+          write_to_file(scratch .. '/.gitattributes', { '*.txt -text diff=cp866' })
+          git('add', '.gitattributes')
+        end
+        exec_lua(function(file, opts)
+          vim.g.editorconfig = false
+          local buf = vim.api.nvim_create_buf(false, false)
+          vim.api.nvim_buf_set_lines(buf, 0, -1, false, { 'один', 'два' })
+          vim.bo[buf].fileencoding = opts.encoding
+          vim.bo[buf].bomb = opts.bom == true
+          vim.bo[buf].fileformat = opts.fileformat or 'unix'
+          vim.bo[buf].endofline = not opts.no_eol
+          vim.bo[buf].fixendofline = false
+          vim.api.nvim_buf_call(buf, function()
+            vim.cmd('silent noautocmd keepalt write! ' .. vim.fn.fnameescape(file))
+          end)
+          vim.api.nvim_buf_delete(buf, { force = true })
+        end, test_file, case)
+        git('commit', '-am', 'Add encoded text')
+        local sha = fn.systemlist({ 'git', '-C', scratch, 'rev-parse', 'HEAD' })[1]
+
+        command('set fileencodings=ucs-bom,' .. case.encoding)
+        edit(test_file)
+        wait_for_attach()
+        eq({ 'один', 'два' }, api.nvim_buf_get_lines(0, 0, -1, false))
+        check({ signs = {} })
+        expectf(function()
+          eq(sha, get_buf_var(0, 'gitsigns_blame_line_dict').sha)
+        end)
+
+        if case.bom then
+          -- Removing the BOM changes the file even though the displayed text is unchanged.
+          command('setlocal nobomb')
+          command('Gitsigns refresh')
+          check({ signs = { changed = 1 } })
+          command('setlocal bomb')
+          command('Gitsigns refresh')
+          check({ signs = {} })
+        end
+
+        -- An unsaved edit must not change blame for the first line.
+        api.nvim_buf_set_lines(0, 1, 2, false, { 'три' })
+        feed('j')
+        expectf(function()
+          local blame = get_buf_var(0, 'gitsigns_blame_line_dict')
+          eq(2, blame.final_lnum)
+          eq(string.rep('0', 40), blame.sha)
+          eq('Not Committed Yet', blame.author)
+        end)
+        feed('k')
+        expectf(function()
+          eq(sha, get_buf_var(0, 'gitsigns_blame_line_dict').sha)
+        end)
+      end)
+    end
+
+    for _, case in ipairs({
       { revision = ':0', commit = 'HEAD', contents = { 'committed', 'staged' } },
       { revision = 'HEAD~1', commit = 'HEAD~1', contents = { 'original', 'second' } },
     }) do
