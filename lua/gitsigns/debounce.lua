@@ -1,3 +1,4 @@
+local async = require('gitsigns.async')
 local uv = vim.uv
 
 local M = {}
@@ -126,8 +127,14 @@ function M.throttle_async(opts, fn)
     while scheduled[id] do
       scheduled[id] = nil
       running[id] = true
-      fn(...)
+      -- Keep the failing function's stack in its task while we release the throttle.
+      local task = async.run(fn, ...)
+      local ok, err = pcall(async.await, task)
       running[id] = nil
+      if not ok then
+        scheduled[id] = nil
+        error(err, 0)
+      end
     end
   end
 end

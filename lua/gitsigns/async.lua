@@ -216,7 +216,17 @@ end
 --- @param err? any
 --- @param result? any[] & { n: integer }
 function Task:_finish(err, result)
-  self._current_child = nil
+  -- Keep an awaited task's failing stack available to Task:traceback().
+  local child = self._current_child
+  if
+    not (
+      err ~= nil
+      and getmetatable(child) == Task
+      and (child --[[@as Gitsigns.async.Task<any>]])._err == err
+    )
+  then
+    self._current_child = nil
+  end
   self._err = err
   self._result = result
   threads[self._thread] = nil

@@ -149,4 +149,86 @@ describe('debounce', function()
       eq(2, exec_lua('return _G._debounce_hash_fn_value'))
     end)
   end)
+
+  for _, async_module in ipairs({ 'gitsigns.async', 'vim.async' }) do
+    for _, fail_start in ipairs({ false, true }) do
+      for _, schedule in ipairs({ false, true }) do
+        local name = ('throttle recovers from %s errors with schedule=%s (%s)'):format(
+          fail_start and 'async startup' or 'call',
+          tostring(schedule),
+          async_module
+        )
+        it(name, function()
+          local supported = exec_lua(function(module)
+            local ok = pcall(require, module)
+            return ok
+          end, async_module)
+          if not supported then
+            helpers.pending('requires ' .. async_module)
+          end
+
+          local result = exec_lua(function(module, schedule0, fail_start0)
+            local async = require(module)
+            local original = package.loaded['gitsigns.async']
+            package.loaded['gitsigns.async'] = async
+            local ok, debounce = pcall(require, 'gitsigns.debounce')
+            package.loaded['gitsigns.async'] = original
+            assert(ok, debounce)
+
+            local gate = async.event and async.event()
+            local release --- @type fun()?
+            local calls = 0
+            local failure = {}
+            local start_operation = async.wrap(1, function(_callback)
+              error(failure)
+            end)
+            local function fail_update()
+              if gate then
+                gate:wait()
+              else
+                -- vim.async has no event helper; hold its callback instead.
+                async.await(function(callback)
+                  release = callback
+                end)
+              end
+              if fail_start0 then
+                start_operation()
+              else
+                error(failure)
+              end
+            end
+            local function refresh_buffer()
+              fail_update()
+            end
+            local throttled = debounce.throttle_async({ schedule = schedule0 }, function()
+              calls = calls + 1
+              if calls == 1 then
+                refresh_buffer()
+              end
+              async.await(vim.schedule)
+            end)
+
+            local first = async.run(throttled)
+            -- Call while suspended to queue or drop an update.
+            async.run(throttled):wait(1000)
+            if gate then
+              gate:set()
+            else
+              assert(release)()
+            end
+            local success, err = first:pwait(1000)
+            local traceback = first:traceback()
+            assert(traceback:find("in function 'fail_update'", 1, true), traceback)
+            assert(traceback:find("in function 'refresh_buffer'", 1, true), traceback)
+
+            -- A later update must still run and yield after the error.
+            async.run(throttled):wait(1000)
+            return { calls = calls, failed = not success, same_error = err == failure }
+          end, async_module, schedule, fail_start)
+
+          eq({ calls = 2, failed = true, same_error = true }, result)
+        end)
+      end
+    end
+  end
 end)
