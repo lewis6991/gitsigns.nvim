@@ -1,8 +1,8 @@
 local orig_pcall = pcall
 
 if package.loaded['jit'] then
-  local coxpcall = orig_pcall(require, 'coxpcall')
-  if coxpcall then
+  local ok, coxpcall = orig_pcall(require, 'coxpcall')
+  if ok then
     pcall = coxpcall.pcall
   end
 end
