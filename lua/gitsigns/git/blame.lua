@@ -217,7 +217,7 @@ end
 
 --- @async
 --- @param obj Gitsigns.GitObj
---- @param contents? string[]
+--- @param contents? string[] File-encoded contents.
 --- @param lnum? integer|[integer, integer]
 --- @param revision? string
 --- @param opts? Gitsigns.BlameOpts
@@ -264,6 +264,8 @@ function M.run_blame(obj, contents, lnum, revision, opts)
   local _, stderr = obj.repo:command(
     util.flatten({
       'blame',
+      -- Stdin represents the file, not the output of its textconv filter.
+      contents and '--no-textconv',
       '--incremental',
       contents and { '--contents', '-' },
       opts.ignore_whitespace and '-w' or nil,

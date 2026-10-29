@@ -156,7 +156,7 @@ function CacheEntry:run_blame(lnum, opts)
     if self.git_obj:closed() then
       return {}, {}
     end
-    local contents = send_contents and util.buf_lines(bufnr) or nil
+    local contents = send_contents and util.buf_lines(bufnr, true) or nil
     local tick = vim.b[bufnr].changedtick
     local lnum0 = api.nvim_buf_line_count(bufnr) > BLAME_THRESHOLD_LEN and lnum or nil
     -- TODO(lewis6991): Cancel blame on changedtick

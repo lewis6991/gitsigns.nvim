@@ -211,7 +211,7 @@ function M.stage_files(repo, entries, how)
 end
 
 --- @async
---- @param contents? string[]
+--- @param contents? string[] File-encoded contents.
 --- @param lnum? integer|[integer, integer]
 --- @param revision? string
 --- @param opts? Gitsigns.BlameOpts

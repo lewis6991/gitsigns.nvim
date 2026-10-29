@@ -127,7 +127,7 @@ local update = require('gitsigns.debounce').throttle_async(
 
     local tick = api.nvim_buf_get_changedtick(view.buf)
     local base_tick = api.nvim_buf_get_changedtick(view.base)
-    local hunks = require('gitsigns.diff')(util.buf_lines(view.base), util.buf_lines(view.buf))
+    local hunks = require('gitsigns.diff')(util.buf_lines(view.base), (util.buf_lines(view.buf)))
     async.schedule()
     if
       views[win] ~= view

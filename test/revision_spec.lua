@@ -76,6 +76,46 @@ describe('revision buffers', function()
     eq({ 'working tree' }, helpers.fn.readfile(file))
   end)
 
+  it('keeps the encoding and BOM when writing the index', function()
+    exec_lua('vim.g.editorconfig = false')
+    local encoded = exec_lua(function()
+      return assert(
+        vim.iconv('\239\187\191Кирилл\nВторая строка\n', 'utf-8', 'utf-16le')
+      )
+    end)
+    helpers.write_to_file(helpers.test_file, { encoded }, { trailing_newline = false })
+    helpers.git('commit', '-am', 'Add UTF-16 text with a BOM')
+    helpers.edit(helpers.test_file)
+    helpers.wait_for_attach()
+    local source = api.nvim_get_current_buf()
+
+    api.nvim_command('Gitsigns show :%')
+    helpers.expectf(function()
+      eq('acwrite', exec_lua('return vim.bo.buftype'))
+      eq({ 'Кирилл', 'Вторая строка' }, api.nvim_buf_get_lines(0, 0, -1, false))
+    end)
+    helpers.wait_for_attach()
+
+    api.nvim_buf_set_lines(0, 1, 2, false, { 'Изменено' })
+    api.nvim_command('write')
+    local expected = exec_lua(function()
+      return assert(vim.iconv('\239\187\191Кирилл\nИзменено\n', 'utf-8', 'utf-16le'))
+    end)
+    helpers.expectf(function()
+      eq(
+        expected,
+        exec_lua(function(root)
+          return vim
+            .system({ 'git', '-C', root, 'show', ':dummy.txt' }, { text = false })
+            :wait().stdout
+        end, helpers.scratch)
+      )
+      eq(false, exec_lua('return vim.bo.modified'))
+    end)
+    api.nvim_set_current_buf(source)
+    helpers.check({ signs = { changed = 1 } })
+  end)
+
   it('shows another file at the same revision with its own line endings', function()
     helpers.git('config', 'core.autocrlf', 'false')
     helpers.write_to_file(
