@@ -11,6 +11,7 @@ local buf_get_var = helpers.api.nvim_buf_get_var
 local system = helpers.fn.system
 local nvim_test_clear = helpers.clear
 local uv = vim.uv
+local is_win_runner = package.config:sub(1, 1) == '\\'
 
 --- @return boolean
 local function is_win()
@@ -47,7 +48,7 @@ end
 
 --- @param timeout integer
 local function drain_session_gc(timeout)
-  if not is_win() or not M.get_session() then
+  if not M.get_session() or not is_win() then
     return
   end
 
@@ -95,7 +96,7 @@ end
 
 --- @param path string
 local function local_delete(path)
-  local retries = is_win() and 100 or 1
+  local retries = is_win_runner and 100 or 1
 
   for attempt = 1, retries do
     local ok, err = pcall(local_delete_once, path)
