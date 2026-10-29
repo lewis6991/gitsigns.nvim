@@ -282,6 +282,59 @@ describe('git', function()
     eq_path(submodule_gitdir, result.info.gitdir)
   end)
 
+  for _, relative in ipairs({ false, true }) do
+    it(
+      'stages and unstages literal paths in a linked worktree with relative links='
+        .. tostring(relative),
+      function()
+        if
+          relative
+          and not exec_lua(function()
+            local async = require('gitsigns.async')
+            return async.run(require('gitsigns.git.version').check, 2, 48):wait(5000)
+          end)
+        then
+          helpers.pending('requires Git 2.48+')
+        end
+
+        local main = scratch .. '/main'
+        local linked = scratch .. '/linked'
+        init_repo(main)
+        git_in(main, 'config', 'core.fsmonitor', 'false')
+        write_to_file(main .. '/HEAD', { 'original' })
+        git_in(main, 'add', '--', 'HEAD')
+        git_in(main, 'commit', '-m', 'initial commit')
+        local args = { 'worktree', 'add', '-b', 'linked' }
+        if relative then
+          args[#args + 1] = '--relative-paths'
+        end
+        args[#args + 1] = linked
+        git_in(main, unpack(args))
+
+        helpers.setup_gitsigns(helpers.test_config)
+        helpers.edit(linked .. '/HEAD')
+        helpers.wait_for_attach()
+        eq_path(linked, exec_lua('return vim.b.gitsigns_status_dict.root'))
+
+        helpers.api.nvim_buf_set_lines(0, 0, -1, false, { 'changed' })
+        helpers.check({ signs = { changed = 1 } })
+        helpers.stage_hunk({ 1, 1 })
+        eq('changed\n', fn.system({ 'git', '-C', linked, 'show', ':HEAD' }))
+        helpers.reset_buffer_index()
+        eq('original\n', fn.system({ 'git', '-C', linked, 'show', ':HEAD' }))
+
+        local newfile = linked .. '/-new [file].txt'
+        write_to_file(newfile, { 'new' })
+        helpers.edit(newfile)
+        helpers.wait_for_attach()
+        helpers.stage_hunk({ 1, 1 })
+        eq('new\n', fn.system({ 'git', '-C', linked, 'show', ':-new [file].txt' }))
+        helpers.reset_buffer_index()
+        eq('', fn.system({ 'git', '-C', linked, 'diff', '--cached', '--name-only' }))
+      end
+    )
+  end
+
   it('blame does not crash when the git object was closed (#1557)', function()
     setup_test_repo()
     helpers.setup_gitsigns(helpers.test_config)
