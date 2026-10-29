@@ -284,6 +284,51 @@ describe('git', function()
 
   for _, relative in ipairs({ false, true }) do
     it(
+      'attaches with only GIT_DIR (relative worktree links=' .. tostring(relative) .. ')',
+      function()
+        if
+          relative
+          and not exec_lua(function()
+            local async = require('gitsigns.async')
+            return async.run(require('gitsigns.git.version').check, 2, 48):wait(5000)
+          end)
+        then
+          helpers.pending('requires Git 2.48+')
+        end
+
+        local main = scratch .. '/main'
+        local linked = scratch .. '/linked'
+        init_repo(main)
+        git_in(main, 'config', 'core.fsmonitor', 'false')
+        write_to_file(main .. '/file.txt', { 'original' })
+        git_in(main, 'add', 'file.txt')
+        git_in(main, 'commit', '-m', 'initial commit')
+        local args = { 'worktree', 'add', '-b', 'linked' }
+        if relative then
+          args[#args + 1] = '--relative-paths'
+        end
+        args[#args + 1] = linked
+        git_in(main, unpack(args))
+
+        exec_lua(function(gitdir)
+          vim.env.GIT_DIR = gitdir
+          vim.env.GIT_WORK_TREE = nil
+        end, main .. '/.git/worktrees/linked')
+        helpers.setup_gitsigns(helpers.test_config)
+        helpers.edit(linked .. '/file.txt')
+        helpers.wait_for_attach()
+        eq_path(linked, exec_lua('return vim.b.gitsigns_status_dict.root'))
+
+        exec_lua(function()
+          vim.env.GIT_DIR = nil
+          vim.env.GIT_WORK_TREE = nil
+        end)
+      end
+    )
+  end
+
+  for _, relative in ipairs({ false, true }) do
+    it(
       'stages and unstages literal paths in a linked worktree with relative links='
         .. tostring(relative),
       function()
