@@ -582,6 +582,21 @@ end
 
 --- @async
 --- @param gitdir string
+--- @return string
+local function infer_worktree_root(gitdir)
+  -- Linked worktrees point back to their working tree's .git file.
+  local dotgit = read_first_line(vim.fs.joinpath(gitdir, 'gitdir'))
+  if dotgit then
+    if not Path.is_abs(dotgit) then
+      dotgit = vim.fs.joinpath(gitdir, dotgit)
+    end
+    return vim.fs.dirname(assert(normalize_path(dotgit)))
+  end
+  return vim.fs.dirname(gitdir)
+end
+
+--- @async
+--- @param gitdir string
 --- @param head_str string
 --- @param cwd string
 --- @return string
@@ -639,7 +654,7 @@ function M.get_info(dir, gitdir, worktree)
       worktree = Path.is_abs(core_worktree) and core_worktree
         or vim.fs.joinpath(gitdir, core_worktree)
     else
-      worktree = vim.fs.dirname(gitdir)
+      worktree = infer_worktree_root(gitdir)
     end
   end
 
