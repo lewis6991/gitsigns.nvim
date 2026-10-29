@@ -109,8 +109,8 @@ describe('gitsigns (with screen)', function()
       p('system.system: git .* config user.name'),
       p(revparse_pat),
       p(
-        'system.system: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
-          .. path_pattern(test_file)
+        'system.system: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol %-%- '
+          .. vim.pesc(vim.fs.basename(test_file))
       ),
       p('attach%.attach%(1%): Watching git dir .*'),
     })
@@ -200,7 +200,7 @@ describe('gitsigns (with screen)', function()
         'attach.attach(1): Attaching (trigger=BufReadPost)',
         np(revparse_pat),
         np('system.system: git .* config user.name'),
-        np('system.system: git .* ls%-files ' .. path_pattern(ignored_file)),
+        np('system.system: git .* ls%-files .* %-%- ' .. vim.pesc(vim.fs.basename(ignored_file))),
         n('attach.attach(1): Cannot resolve file in repo'),
       })
 
@@ -348,8 +348,8 @@ describe('gitsigns (with screen)', function()
         np(revparse_pat),
         np('system.system: git .* config user.name'),
         np(
-          'system.system: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol '
-            .. path_pattern(newfile)
+          'system.system: git .* ls%-files %-%-stage %-%-others %-%-exclude%-standard %-%-eol %-%- '
+            .. vim.pesc(vim.fs.basename(newfile))
         ),
         'attach.attach(1): Cannot resolve file in repo',
       })

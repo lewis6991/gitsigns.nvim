@@ -732,6 +732,7 @@ function M:ls_tree(path, revision)
   local results, stderr, code = self:command({
     'ls-tree',
     revision,
+    '--',
     path,
   }, { ignore_error = true })
 
@@ -794,6 +795,7 @@ function M:ls_files(file)
       '--others',
       '--exclude-standard',
       has_eol and '--eol',
+      '--',
       file,
     }),
     { ignore_error = true }
@@ -855,6 +857,11 @@ end
 --- @return Gitsigns.Repo.LsFiles.Result? info
 --- @return string? err
 function M:file_info(file, revision)
+  -- Git runs from toplevel. Relative pathspecs avoid MSYS rewriting absolute paths.
+  if Path.is_abs(file) then
+    file = vim.fs.relpath(self.toplevel, assert(normalize_path(file))) or file
+  end
+
   if M.from_tree(revision) then
     local info, err = self:ls_tree(file, assert(revision))
     if err then
