@@ -79,9 +79,9 @@ end
 --- @param typ string
 --- @return string, boolean
 function M.unwrap_partial(typ)
-  typ = M.strip_optional(typ)
-  local inner = typ:match('^Partial<(.*)>$')
-  return inner and vim.trim(inner) or typ, inner ~= nil
+  typ = vim.trim(typ)
+  local inner, optional = typ:match('^Partial<(.*)>(%??)$')
+  return inner and vim.trim(inner) .. optional or typ, inner ~= nil
 end
 
 return M

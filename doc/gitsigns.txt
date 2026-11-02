@@ -479,7 +479,7 @@ prev_hunk({opts}, {callback})                           *gitsigns.prev_hunk()*
         {async}
 
     Parameters: ~
-        {opts}     (`Partial<Gitsigns.NavOpts>?`): Configuration options.
+        {opts}     (`Gitsigns.NavOpts?`): Configuration options.
                    • {wrap}: (`boolean?`)
                      Whether to loop around file or not. Defaults to the value
                      'wrapscan'
@@ -514,7 +514,7 @@ next_hunk({opts}, {callback})                           *gitsigns.next_hunk()*
         {async}
 
     Parameters: ~
-        {opts}     (`Partial<Gitsigns.NavOpts>?`): Configuration options.
+        {opts}     (`Gitsigns.NavOpts?`): Configuration options.
                    • {wrap}: (`boolean?`)
                      Whether to loop around file or not. Defaults to the value
                      'wrapscan'
@@ -546,7 +546,7 @@ nav_hunk({direction}, {opts}, {callback})                 *gitsigns.nav_hunk()*
 
     Parameters: ~
         {direction} (`("first"|"last"|"next"|"prev")`)
-        {opts}      (`Partial<Gitsigns.NavOpts>?`): Configuration options.
+        {opts}      (`Gitsigns.NavOpts?`): Configuration options.
                     • {wrap}: (`boolean?`)
                       Whether to loop around file or not. Defaults to the value
                       'wrapscan'
