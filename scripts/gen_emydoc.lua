@@ -50,6 +50,7 @@ local script_dir = vim.fn.fnamemodify(script_info.source:sub(2), ':p:h')
 --- @field root string
 --- @field load fun(): EmmyDocJson
 --- @field strip_optional fun(typ: string): string, boolean
+--- @field unwrap_partial fun(typ: string): string, boolean
 
 local M = {
   root = vim.fn.fnamemodify(script_dir, ':h'),
@@ -73,6 +74,14 @@ function M.strip_optional(typ)
   end
 
   return typ, optional
+end
+
+--- @param typ string
+--- @return string, boolean
+function M.unwrap_partial(typ)
+  typ = vim.trim(typ)
+  local inner, optional = typ:match('^Partial<(.*)>(%??)$')
+  return inner and vim.trim(inner) .. optional or typ, inner ~= nil
 end
 
 return M
