@@ -102,7 +102,7 @@ end
 
 --- @async
 --- @param direction 'first'|'last'|'next'|'prev'
---- @param opts? Gitsigns.NavOpts
+--- @param opts? Partial<Gitsigns.NavOpts>
 function M.nav_hunk(direction, opts)
   opts = process_nav_opts(opts)
   local bufnr = api.nvim_get_current_buf()

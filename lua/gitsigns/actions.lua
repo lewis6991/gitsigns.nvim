@@ -560,11 +560,10 @@ end
 --- - {async}
 ---
 --- @param direction ('first'|'last'|'next'|'prev')
---- @param opts Gitsigns.NavOpts? Configuration options.
+--- @param opts Partial<Gitsigns.NavOpts>? Configuration options.
 --- @param callback? fun(err?: string)
 function M.nav_hunk(direction, opts, callback)
   async_run(callback, function()
-    --- @cast opts Gitsigns.NavOpts?
     require('gitsigns.actions.nav').nav_hunk(direction, opts)
   end)
 end
@@ -583,7 +582,7 @@ end
 ---
 --- Attributes:
 --- - {async}
---- @param opts Gitsigns.NavOpts? Configuration options.
+--- @param opts Partial<Gitsigns.NavOpts>? Configuration options.
 --- @param callback? fun(err?: string)
 function M.next_hunk(opts, callback)
   async_run(callback, function()
@@ -605,7 +604,7 @@ end
 ---
 --- Attributes:
 --- - {async}
---- @param opts Gitsigns.NavOpts? Configuration options.
+--- @param opts Partial<Gitsigns.NavOpts>? Configuration options.
 --- @param callback? fun(err?: string)
 function M.prev_hunk(opts, callback)
   async_run(callback, function()
