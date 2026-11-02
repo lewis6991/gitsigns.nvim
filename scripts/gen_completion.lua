@@ -178,7 +178,7 @@ local function resolve_named_type(aliases, typ)
     typ = alias
   end
 
-  return typ
+  return (emydoc.unwrap_partial(typ))
 end
 
 --- @param aliases table<string, string>

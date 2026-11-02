@@ -537,7 +537,8 @@ end
 --- @param types_seen? table<string, true>
 --- @return string[]?
 local function build_type_field_docs(name, classes, class_attrs, depth, types_seen)
-  name = strip_optional(name)
+  local partial
+  name, partial = emydoc.unwrap_partial(name)
 
   local t = classes[name]
   if not t then
@@ -558,7 +559,11 @@ local function build_type_field_docs(name, classes, class_attrs, depth, types_se
 
   for _, m in ipairs(get_fields(t, classes)) do
     if m.typ then
-      lines[#lines + 1] = ('%s{%s}: (`%s`)'):format(bullet_prefix, m.name, m.typ:gsub('`', ''))
+      local typ = m.typ
+      if partial and not vim.endswith(typ, '?') then
+        typ = typ .. '?'
+      end
+      lines[#lines + 1] = ('%s{%s}: (`%s`)'):format(bullet_prefix, m.name, typ:gsub('`', ''))
 
       if inlinedoc then
         local desc = m.description and vim.split(m.description, '\n') or {}
@@ -884,7 +889,7 @@ local function gen_types_doc()
     for _, member in ipairs(get_class_functions(class)) do
       for _, p in ipairs(member.params) do
         if p.typ then
-          local typ = strip_optional(p.typ)
+          local typ = emydoc.unwrap_partial(p.typ)
           if typ and class_attrs[typ] and class_attrs[typ].inlinedoc then
             collect_inline_doc_types(typ, classes, class_attrs, doc_types, doc_type_order, {})
           end
