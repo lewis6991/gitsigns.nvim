@@ -168,6 +168,15 @@ M.update = throttle_async({ hash = 1, schedule = true }, function(bufnr)
     local git_obj = bcache.git_obj
     local file_mode = bcache.file_mode
 
+    -- Diffs compare buffer text, so follow its 'fileformat' rather than the
+    -- on-disk EOL from file_info, which goes stale when the buffer is written
+    -- with different line endings.
+    local w_crlf = vim.bo[bufnr].fileformat == 'dos'
+    if git_obj.w_crlf ~= w_crlf then
+      git_obj.w_crlf = w_crlf
+      bcache:invalidate(true)
+    end
+
     if not bcache.compare_text or config._refresh_staged_on_update or file_mode then
       if file_mode then
         bcache.compare_text = util.file_lines(git_obj.file)
