@@ -32,21 +32,22 @@ with most of the default settings:
 >lua
     require('gitsigns').setup {
       signs = {
-        add          = { text = '┃' },
-        change       = { text = '┃' },
-        delete       = { text = '_' },
-        topdelete    = { text = '‾' },
-        changedelete = { text = '~' },
-        untracked    = { text = '┆' },
+        add          = { text = '┃', show_count = false },
+        change       = { text = '┃', show_count = false },
+        delete       = { text = '_', show_count = false },
+        topdelete    = { text = '‾', show_count = false },
+        changedelete = { text = '~', show_count = false },
+        untracked    = { text = '┆', show_count = false },
       },
       signs_staged = {
-        add          = { text = '┃' },
-        change       = { text = '┃' },
-        delete       = { text = '_' },
-        topdelete    = { text = '‾' },
-        changedelete = { text = '~' },
-        untracked    = { text = '┆' },
+        add          = { text = '┃', show_count = false },
+        change       = { text = '┃', show_count = false },
+        delete       = { text = '_', show_count = false },
+        topdelete    = { text = '‾', show_count = false },
+        changedelete = { text = '~', show_count = false },
+        untracked    = { text = '┆', show_count = false },
       },
+      count_chars = { "1", "2", "3", "4", "5", "6", "7", "8", "9", ["+"] = ">" },
       signs_staged_enable = true,
       signcolumn = true,  -- Toggle with `:Gitsigns toggle_signs`
       numhl      = false, -- Toggle with `:Gitsigns toggle_numhl`
