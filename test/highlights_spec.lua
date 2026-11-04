@@ -105,6 +105,22 @@ describe('highlights', function()
     eq({}, generated)
   end)
 
+  it('get_temp_hl uses endpoint colors for times outside the blame range', function()
+    helpers.setup_path()
+    local colors = exec_lua(function()
+      local temp = require('gitsigns.highlight').get_temp_hl
+      return {
+        temp(10, 20, 9, 0.5, true),
+        temp(10, 20, 10, 0.5, true),
+        temp(10, 20, 21, 0.5, true),
+        temp(10, 20, 20, 0.5, true),
+      }
+    end)
+    eq(colors[2], colors[1])
+    eq(colors[4], colors[3])
+    assert(colors[1] ~= colors[3])
+  end)
+
   it('get_temp_hl handles equal min/max', function()
     helpers.setup_path()
     local res = helpers.exec_lua(function()
