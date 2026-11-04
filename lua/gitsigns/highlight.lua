@@ -329,7 +329,7 @@ do --- temperature highlight
     local Color = require('gitsigns.color')
 
     local denom = math.max(max, t) - min
-    local normalized_t = denom ~= 0 and (t - min) / denom or 0
+    local normalized_t = denom ~= 0 and math.max(0, t - min) / denom or 0
     local raw_temp_color = Color.temp(normalized_t)
 
     if normal_bg == nil then
