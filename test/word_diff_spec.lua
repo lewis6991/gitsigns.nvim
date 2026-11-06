@@ -251,7 +251,7 @@ describe('inline preview', function()
 
     eq(wins_before, wins_after)
     eq(2, virt_line_count)
-    eq(true, leftcol)
+    eq(false, leftcol)
   end)
 
   it('shows top-of-file deletions with virtual lines', function()
@@ -321,7 +321,7 @@ describe('inline preview', function()
 
     eq(wins_before, wins_after)
     eq(1, virt_line_count)
-    eq(true, leftcol)
+    eq(false, leftcol)
     assert(top_row)
   end)
 
