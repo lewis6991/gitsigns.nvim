@@ -1,0 +1,26 @@
+name: Lock closed issues
+
+on:
+  schedule:
+    - cron: '30 2 * * *' # Run every day at 02:30 UTC
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: lock-issues
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set closing date limit
+        id: cutoff
+        run: echo "date=$(date -u -d '90 days ago' +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+      - uses: dessant/lock-threads@v6
+        with:
+          process-only: issues
+          # Use the closing date so that comments do not reset the 90-day period.
+          issue-inactive-days: '0'
+          exclude-issue-closed-after: ${{ steps.cutoff.outputs.date }}
