@@ -312,6 +312,67 @@ describe('gitdir_watcher', function()
     helpers.check({ signs = {} }, b2)
   end)
 
+  it('debounces cwd HEAD events across watcher restarts', function()
+    setup_test_repo()
+    git('branch', 'feature/foo')
+    helpers.setup_path()
+
+    local result = helpers.exec_lua(function(scratch)
+      vim.cmd.cd(scratch)
+      local on_event --- @type fun(err?: string)?
+      local starts = 0
+      local new_fs_event = vim.uv.new_fs_event
+      vim.uv.new_fs_event = function()
+        return {
+          stop = function() end,
+          getpath = function() end,
+          start = function(_, _, _, callback)
+            starts = starts + 1
+            on_event = callback
+          end,
+        } --[[@as uv.uv_fs_event_t]]
+      end
+
+      local calls = 0
+      local system0 = vim.system
+      vim.system = function(cmd, ...)
+        if vim.tbl_contains(cmd, 'rev-parse') then
+          calls = calls + 1
+        end
+        return system0(cmd, ...)
+      end
+
+      require('gitsigns').setup({ auto_attach = false })
+      assert(vim.wait(2000, function()
+        return on_event ~= nil and vim.g.gitsigns_head == 'main'
+      end))
+      vim.uv.new_fs_event = new_fs_event
+      calls = 0
+
+      vim.fn.writefile({ 'ref: refs/heads/feature/foo' }, '.git/HEAD')
+      for i = 1, 3 do
+        assert(on_event)()
+        assert(vim.wait(1000, function()
+          return starts == i + 1
+        end))
+      end
+      vim.wait(300, function()
+        return false
+      end)
+      local burst = { calls, vim.g.gitsigns_head }
+
+      vim.fn.writefile({ 'ref: refs/heads/main' }, '.git/HEAD')
+      assert(on_event)()
+      vim.wait(300, function()
+        return false
+      end)
+      vim.system = system0
+      return { burst, { calls, vim.g.gitsigns_head } }
+    end, helpers.scratch)
+
+    eq({ { 1, 'feature/foo' }, { 2, 'main' } }, result)
+  end)
+
   it('falls back to fs_poll when fs_event fails', function()
     setup_test_repo({ no_add = true })
     install_failing_fs_watchers()

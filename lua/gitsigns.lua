@@ -53,7 +53,8 @@ end
 ---@async
 ---@param cwd string current working directory
 ---@param towatch string Directory to watch
-local function setup_cwd_watcher(cwd, towatch)
+---@param update_head? fun()
+local function setup_cwd_watcher(cwd, towatch, update_head)
   if cwd_watcher then
     cwd_watcher:stop()
     -- TODO(lewis6991): (#1027) Running `fs_event:stop()` -> `fs_event:start()`
@@ -72,23 +73,24 @@ local function setup_cwd_watcher(cwd, towatch)
 
   local debounce_trailing = require('gitsigns.debounce').debounce_trailing
 
-  local update_head = debounce_trailing(100, function()
-    async()
-      .run(function()
-        local git = require('gitsigns.git')
-        local info = git.Repo.get_info(cwd) or {}
-        local new_head = info.abbrev_head
-        async().schedule()
-        if new_head ~= vim.g.gitsigns_head then
-          vim.g.gitsigns_head = new_head
-          api.nvim_exec_autocmds('User', {
-            pattern = 'GitSignsUpdate',
-            modeline = false,
-          })
-        end
-      end)
-      :raise_on_error()
-  end)
+  update_head = update_head
+    or debounce_trailing(100, function()
+      async()
+        .run(function()
+          local git = require('gitsigns.git')
+          local info = git.Repo.get_info(cwd) or {}
+          local new_head = info.abbrev_head
+          async().schedule()
+          if new_head ~= vim.g.gitsigns_head then
+            vim.g.gitsigns_head = new_head
+            api.nvim_exec_autocmds('User', {
+              pattern = 'GitSignsUpdate',
+              modeline = false,
+            })
+          end
+        end)
+        :raise_on_error()
+    end)
 
   -- Watch .git/HEAD to detect branch changes
   cwd_watcher:start(towatch, {}, function(err)
@@ -102,10 +104,9 @@ local function setup_cwd_watcher(cwd, towatch)
 
       update_head()
 
-      -- git often (always?) replaces .git/HEAD which can change the inode being
-      -- watched so we need to stop the current watcher and start another one to
-      -- make sure we keep getting future events
-      setup_cwd_watcher(cwd, towatch)
+      -- Git can replace HEAD by renaming HEAD.lock over it. Restart the
+      -- file watch so it observes the new inode.
+      setup_cwd_watcher(cwd, towatch, update_head)
     end)
   end)
 end
