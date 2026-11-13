@@ -1,10 +1,11 @@
 local api = vim.api
 local uv = vim.uv
+local fs_event = require('gitsigns.fs_event')
 
 --- @class gitsigns.main: gitsigns.actions,gitsigns.attach,gitsigns.debug
 local M = {}
 
-local cwd_watcher ---@type uv.uv_fs_event_t?
+local cwd_watcher ---@type Gitsigns.FsEvent?
 
 local function log()
   return require('gitsigns.debug.log')
@@ -54,7 +55,8 @@ end
 ---@param cwd string current working directory
 ---@param towatch string Directory to watch
 ---@param update_head? fun()
-local function setup_cwd_watcher(cwd, towatch, update_head)
+---@param stat? uv.fs_stat.result
+local function setup_cwd_watcher(cwd, towatch, update_head, stat)
   if cwd_watcher then
     cwd_watcher:stop()
     -- TODO(lewis6991): (#1027) Running `fs_event:stop()` -> `fs_event:start()`
@@ -63,7 +65,7 @@ local function setup_cwd_watcher(cwd, towatch, update_head)
       async().schedule()
     end
   else
-    cwd_watcher = assert(uv.new_fs_event())
+    cwd_watcher = assert(fs_event.new())
   end
 
   if cwd_watcher:getpath() == towatch then
@@ -93,7 +95,7 @@ local function setup_cwd_watcher(cwd, towatch, update_head)
     end)
 
   -- Watch .git/HEAD to detect branch changes
-  cwd_watcher:start(towatch, {}, function(err)
+  cwd_watcher:start(towatch, {}, function(err, _, _, current_stat)
     async().run(function()
       local __FUNC__ = 'cwd_watcher_cb'
       if err then
@@ -106,9 +108,9 @@ local function setup_cwd_watcher(cwd, towatch, update_head)
 
       -- Git can replace HEAD by renaming HEAD.lock over it. Restart the
       -- file watch so it observes the new inode.
-      setup_cwd_watcher(cwd, towatch, update_head)
+      setup_cwd_watcher(cwd, towatch, update_head, current_stat)
     end)
-  end)
+  end, stat)
 end
 
 --- @async

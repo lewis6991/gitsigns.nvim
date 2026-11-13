@@ -4,12 +4,13 @@ local log = require('gitsigns.debug.log')
 local config = require('gitsigns.config').config
 local Path = util.Path
 local uv = vim.uv
+local fs_event = require('gitsigns.fs_event')
 
 local FS_EVENT = 'fs_event'
 local FS_POLL = 'fs_poll'
 local FS_POLL_INTERVAL = 200
 
---- @param handle uv.uv_fs_event_t|uv.uv_fs_poll_t
+--- @param handle Gitsigns.FsEvent|uv.uv_fs_poll_t
 local function close_handle(handle)
   if handle:is_closing() then
     return
@@ -19,12 +20,9 @@ local function close_handle(handle)
   handle:close()
 end
 
---- Polling tracks logical git metadata targets. The actual poll handle may
---- point at the target itself or at its parent dir when the file is absent.
---- @param path string
+--- @param stat? uv.fs_stat.result
 --- @return string?
-local function poll_fingerprint(path)
-  local stat = uv.fs_stat(path)
+local function poll_fingerprint(stat)
   if not stat then
     return nil
   end
@@ -85,15 +83,16 @@ local function should_notify_fs_event(filename, events)
   return true
 end
 
---- Poll callbacks only tell us that a watched handle path changed. Compare
---- logical target fingerprints so we only notify on relevant gitdir changes.
+--- Compare logical targets, which may share a parent directory poll handle.
 --- @param handle_path string
 --- @param target_fingerprints table<string, string|false>
+--- @param current_stat? uv.fs_stat.result Stat of handle_path from the poll callback.
 --- @return boolean notify
-local function should_notify_fs_poll(handle_path, target_fingerprints)
+local function should_notify_fs_poll(handle_path, target_fingerprints, current_stat)
   local changed = false
   for target, previous in pairs(target_fingerprints) do
-    local current = poll_fingerprint(target) or false
+    local stat = target == handle_path and current_stat or uv.fs_stat(target)
+    local current = poll_fingerprint(stat) or false
     target_fingerprints[target] = current
     if previous ~= current then
       changed = true
@@ -111,7 +110,7 @@ end
 --- @field private notify_debounced fun()
 --- @field private gitdir string
 --- @field private commondir string
---- @field private handles table<string, uv.uv_fs_event_t|uv.uv_fs_poll_t> Map from concrete handle path -> handle
+--- @field private handles table<string, Gitsigns.FsEvent|uv.uv_fs_poll_t> Map from concrete handle path -> handle
 --- @field private head_ref? string
 --- @field private _backend 'fs_event'|'fs_poll'
 --- @field private _target_fingerprints table<string, string|false> Snapshot of fs_poll logical targets
@@ -228,7 +227,7 @@ end
 function Watcher:_start_handle_path(handle_path)
   local backend = self._backend
   local is_fs_event = backend == FS_EVENT
-  local handle, err, err_name = (is_fs_event and uv.new_fs_event or uv.new_fs_poll)()
+  local handle, err, err_name = (is_fs_event and fs_event.new or uv.new_fs_poll)()
   err = err_name or err
   if not handle then
     err = err or ('uv.new_' .. backend .. ' failed')
@@ -270,7 +269,7 @@ function Watcher:_start_handle_path(handle_path)
     if is_fs_event then
       should_notify = should_notify_fs_event(arg1, arg2)
     else
-      should_notify = should_notify_fs_poll(handle_path, watcher._target_fingerprints)
+      should_notify = should_notify_fs_poll(handle_path, watcher._target_fingerprints, arg2)
       -- A poll callback may mean the target appeared or disappeared, so the
       -- next watch should move between the file and its parent dir.
       watcher:_sync_watches()
@@ -317,7 +316,7 @@ function Watcher:_sync_watches()
       local previous = self._target_fingerprints[target]
       if previous == nil then
         -- Keep absent targets too, so their creation can be detected.
-        previous = poll_fingerprint(target) or false
+        previous = poll_fingerprint(uv.fs_stat(target)) or false
       end
       target_fingerprints[target] = previous
     end
