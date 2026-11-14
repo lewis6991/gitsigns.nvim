@@ -1998,6 +1998,78 @@ describe('diff panel', function()
     eq(true, exec_lua('return vim.wo.diff'))
   end)
 
+  for _, diff in ipairs({ 'unified', 'split' }) do
+    it('does not enter the file window on Shift-Enter: diff=' .. diff, function()
+      -- <S-CR> updates the target window. WinEnter on that window must not fire.
+      helpers.write_to_file(helpers.scratch .. '/a.txt', { 'a' })
+      helpers.write_to_file(helpers.scratch .. '/b.txt', { 'b' })
+      git('add', 'a.txt', 'b.txt')
+      git('commit', '-m', 'Add files')
+      helpers.write_to_file(helpers.scratch .. '/a.txt', { 'a-changed' })
+      helpers.write_to_file(helpers.scratch .. '/b.txt', { 'b-changed' })
+
+      open_diff(nil, nil, { diff = diff })
+      local panel = api.nvim_get_current_win()
+      local right = exec_lua(function(panel_win)
+        local best, col = panel_win, -1
+        for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+          local win_col = vim.api.nvim_win_get_position(win)[2]
+          if win_col > col then
+            best, col = win, win_col
+          end
+        end
+        return best
+      end, panel)
+      select_file('b.txt', '$')
+      local cursor = api.nvim_win_get_cursor(panel)
+      exec_lua(function(panel_win)
+        local file_wins = {}
+        for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+          if win ~= panel_win then
+            file_wins[win] = true
+          end
+        end
+        _G.enters = 0
+        _G.buf_enters = 0
+        vim.api.nvim_create_autocmd('WinEnter', {
+          callback = function()
+            _G.enters = _G.enters + 1
+          end,
+        })
+        -- Loading a buffer can BufEnter the hidden autocmd window. Only the
+        -- file windows must stay unentered.
+        vim.api.nvim_create_autocmd('BufEnter', {
+          callback = function()
+            if file_wins[vim.api.nvim_get_current_win()] then
+              _G.buf_enters = _G.buf_enters + 1
+            end
+          end,
+        })
+      end, panel)
+
+      helpers.feed('<S-CR>')
+      if diff == 'split' then
+        expect_diff({ 'b' }, { 'b-changed' })
+      else
+        helpers.expectf(function()
+          eq({ 'b-changed' }, api.nvim_buf_get_lines(api.nvim_win_get_buf(right), 0, -1, false))
+        end)
+      end
+      eq(0, exec_lua('return _G.enters'))
+      eq(0, exec_lua('return _G.buf_enters'))
+      eq(panel, api.nvim_get_current_win())
+      eq(cursor, api.nvim_win_get_cursor(panel))
+
+      -- Plain <CR> still focuses the file window.
+      exec_lua('_G.enters = 0')
+      helpers.feed('<CR>')
+      helpers.expectf(function()
+        eq(false, panel == api.nvim_get_current_win())
+      end)
+      eq(true, exec_lua('return _G.enters > 0'))
+    end)
+  end
+
   it('opens a diff with Shift-Enter without moving the panel cursor', function()
     helpers.write_to_file(helpers.test_file, { 'committed' })
     helpers.write_to_file(helpers.scratch .. '/z.txt', { 'z' })
