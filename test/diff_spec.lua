@@ -1411,19 +1411,48 @@ describe('diff panel', function()
     helpers.wait_for_attach()
     local source = api.nvim_get_current_buf()
     api.nvim_buf_set_lines(source, 0, -1, false, { 'unsaved' })
+
+    -- Wait for the hidden buffer's update to be deferred before previewing it (#1611).
+    api.nvim_buf_set_lines(untracked, 0, -1, false, { 'untracked', 'another line' })
+    helpers.expectf(function()
+      eq(true, exec_lua('return require("gitsigns.cache").cache[...].update_on_view', untracked))
+    end)
+
     exec_lua(function()
       vim.keymap.set('n', ']f', function()
         _G.original_mapping = true
       end, { buffer = true, desc = 'Original mapping' })
     end)
+
     open_diff()
     eq({ { 'original' }, { 'unsaved' } }, diff_state())
+
+    -- Recreate the file window while previewing the hidden buffer (#1611).
+    local wins = api.nvim_tabpage_list_wins(0)
+    api.nvim_win_close(wins[#wins], false)
+    select_file('z.txt', '<S-CR>')
+
+    -- The preview must refresh the diff without installing file-window mappings.
+    expect_diff({ '' }, { 'untracked', 'another line' })
+    eq(untracked_maps, api.nvim_buf_get_keymap(untracked, 'n'))
+    helpers.expectf(function()
+      eq(2, exec_lua('return require("gitsigns").get_hunks(...)[1].added.count', untracked))
+    end)
+
+    -- Plain Enter must fire BufEnter only once when switching files.
+    exec_lua(function(buf)
+      vim.g.buf_enters = 0
+      vim.api.nvim_create_autocmd('BufEnter', { buffer = buf, command = 'let g:buf_enters += 1' })
+    end, source)
     select_file('dummy.txt')
+
     helpers.expectf(function()
       eq(source, api.nvim_get_current_buf())
     end)
+    eq(1, exec_lua('return vim.g.buf_enters'))
+
     helpers.feed(']f')
-    expect_diff({ '' }, { 'untracked' })
+    expect_diff({ '' }, { 'untracked', 'another line' })
     eq(untracked, api.nvim_get_current_buf())
     api.nvim_buf_set_lines(untracked, 0, -1, false, { 'edited' })
     helpers.feed('[f')
@@ -2005,19 +2034,56 @@ describe('diff panel', function()
     git('commit', '-m', 'Change two files')
     open_commit('HEAD')
     eq({ { 'original' }, { 'committed' } }, diff_state())
+
     select_file('z.txt', '$')
     local panel = api.nvim_get_current_win()
     local cursor = api.nvim_win_get_cursor(panel)
+
+    -- Shift-Enter must not enter the file window, even briefly (#1611).
+    exec_lua([[
+      vim.g.win_enters = 0
+      vim.api.nvim_create_autocmd('WinEnter', { command = 'let g:win_enters += 1' })
+    ]])
     helpers.feed('<S-CR>')
+
     expect_diff({ '' }, { 'z' })
     eq(panel, api.nvim_get_current_win())
     eq(cursor, api.nvim_win_get_cursor(panel))
+    eq(0, exec_lua('return vim.g.win_enters'))
 
     helpers.feed('<CR>')
     helpers.expectf(function()
       eq(true, exec_lua('return vim.wo.diff'))
     end)
     eq(false, panel == api.nvim_get_current_win())
+  end)
+
+  it('recreates closed diff windows without taking focus on Shift-Enter', function()
+    helpers.write_to_file(helpers.scratch .. '/a.txt', { 'a' })
+    helpers.write_to_file(helpers.scratch .. '/b.txt', { 'b' })
+    open_diff()
+
+    local panel = api.nvim_get_current_win()
+    for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
+      if win ~= panel then
+        api.nvim_win_close(win, false)
+      end
+    end
+
+    select_file('b.txt', '$')
+    local cursor = api.nvim_win_get_cursor(panel)
+
+    -- Recreate closed file windows without taking focus (#1611).
+    exec_lua([[
+      vim.g.win_enters = 0
+      vim.api.nvim_create_autocmd('WinEnter', { command = 'let g:win_enters += 1' })
+    ]])
+    helpers.feed('<S-CR>')
+
+    expect_diff({ '' }, { 'b' })
+    eq(panel, api.nvim_get_current_win())
+    eq(cursor, api.nvim_win_get_cursor(panel))
+    eq(0, exec_lua('return vim.g.win_enters'))
   end)
 
   for _, diff in ipairs({ 'split', 'none' }) do
@@ -2085,8 +2151,12 @@ describe('diff panel', function()
     -- Browsing the panel must not change where navigation starts in the diff.
     select_file('z.txt', '0')
     eq({ 'a.txt' }, selected())
+
+    -- Plugins may ignore window events while BufEnter still enables navigation.
+    exec_lua("vim.o.eventignore = 'WinEnter,WinLeave'")
     api.nvim_set_current_win(right)
     helpers.feed('[f')
+
     expect_diff({ '' }, { 'b' })
     eq({ 'b.txt' }, selected())
     eq(right, api.nvim_get_current_win())
@@ -2100,6 +2170,7 @@ describe('diff panel', function()
       end, panel)
     )
 
+    exec_lua("vim.o.eventignore = ''")
     api.nvim_set_current_win(left)
     helpers.feed('2]f')
     expect_diff({ '' }, { 'z' })
