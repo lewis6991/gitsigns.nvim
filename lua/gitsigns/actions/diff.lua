@@ -191,7 +191,7 @@ end
 --- @field current_file integer
 --- @field scratch table<string, integer>
 --- @field retained table<integer, boolean>
---- @field active_action? Gitsigns.DiffAction
+--- @field active_action? Gitsigns.DiffAction|'diff_keep_focus'
 --- @field pending_refresh? boolean
 --- @field pending_action? [Gitsigns.DiffAction, boolean?, string]
 local DiffPanel = {}
@@ -532,9 +532,8 @@ end
 --- @param buf integer
 --- @param base_buf integer? Omit for a single-buffer view.
 --- @param jump? boolean Jump to the first hunk for a newly loaded buffer.
-function DiffPanel:show_buffers(buf, base_buf, jump)
-  -- Leaving the file window restores mappings before the layout changes.
-  api.nvim_set_current_win(self.panel_win)
+--- @param keep_focus? boolean
+function DiffPanel:show_buffers(buf, base_buf, jump, keep_focus)
   Unified.close(self.right_win, base_buf)
   self.file = base_buf ~= nil
   -- Stop cursor/scroll binding before either window switches buffers, so the
@@ -555,22 +554,21 @@ function DiffPanel:show_buffers(buf, base_buf, jump)
     self.left_win = nil
   end
 
+  -- Switch recreated windows from the panel buffer to trigger deferred updates.
   if not api.nvim_win_is_valid(self.right_win) then
-    api.nvim_set_current_win(self.panel_win)
-    vim.cmd.vsplit({ mods = { split = 'botright', keepalt = true } })
-    self.right_win = api.nvim_get_current_win()
+    self.right_win = api.nvim_open_win(self.buf, false, { split = 'right', win = -1 })
   end
 
-  api.nvim_set_current_win(self.right_win)
   if base_buf and self.diff == 'split' then
     if not self.left_win or not api.nvim_win_is_valid(self.left_win) then
-      vim.cmd.vsplit({ mods = { split = 'aboveleft', keepalt = true } })
-      self.left_win = api.nvim_get_current_win()
+      self.left_win = api.nvim_open_win(self.buf, false, { split = 'left', win = self.right_win })
     end
   end
 
+  if not keep_focus then
+    api.nvim_set_current_win(self.right_win)
+  end
   api.nvim_win_set_buf(self.right_win, buf)
-  api.nvim_set_current_win(self.right_win)
   if not base_buf then
     return
   end
@@ -588,16 +586,16 @@ function DiffPanel:show_buffers(buf, base_buf, jump)
     end)
   end
 
-  api.nvim_set_current_win(self.right_win)
-  vim.cmd.diffupdate()
-
-  if jump then
-    vim.cmd('normal! gg')
-    -- Do not skip a change or deletion at the first line.
-    if fn.diff_hlID(1, 1) == 0 and fn.diff_filler(1) == 0 then
-      vim.cmd('silent! normal! ]c')
+  api.nvim_win_call(self.right_win, function()
+    vim.cmd.diffupdate()
+    if jump then
+      vim.cmd('normal! gg')
+      -- Do not skip a change or deletion at the first line.
+      if fn.diff_hlID(1, 1) == 0 and fn.diff_filler(1) == 0 then
+        vim.cmd('silent! normal! ]c')
+      end
     end
-  end
+  end)
 end
 
 --- Keep this buffer loaded until the last panel using it closes.
@@ -740,7 +738,8 @@ end
 --- @async
 --- @param how Gitsigns.DiffAction
 --- @param node? Gitsigns.DiffNode
-function DiffPanel:open_file(how, node)
+--- @param keep_focus? boolean
+function DiffPanel:open_file(how, node, keep_focus)
   local lnum = api.nvim_win_get_cursor(self.panel_win)[1]
   if lnum <= 2 and self.commit and how == 'diff' then
     local buf, created, loaded = require('gitsigns.actions.show_commit').create_buf(
@@ -750,7 +749,7 @@ function DiffPanel:open_file(how, node)
     )
 
     self:retain(buf, created, loaded)
-    self:show_buffers(buf)
+    self:show_buffers(buf, nil, nil, keep_focus)
     api.nvim_buf_clear_namespace(self.buf, ns_selection, 0, -1)
     return
   end
@@ -799,14 +798,16 @@ function DiffPanel:open_file(how, node)
   end
 
   if how == 'diff' then
-    self:show_buffers(buf, show_diff and old_buf or nil, not loaded)
+    self:show_buffers(buf, show_diff and old_buf or nil, not loaded, keep_focus)
     if not api.nvim_win_is_valid(self.panel_win) or not api.nvim_win_is_valid(self.right_win) then
       return
     end
     if first_hunk then
       local line = math.max(1, math.min(first_hunk.added.start, api.nvim_buf_line_count(buf)))
       api.nvim_win_set_cursor(self.right_win, { line, 0 })
-      vim.cmd('normal! zv')
+      api.nvim_win_call(self.right_win, function()
+        vim.cmd('normal! zv')
+      end)
       Unified.reveal(self.right_win)
     end
     self:mark_current_file(index)
@@ -841,7 +842,7 @@ function DiffPanel:run_action(how, keep_focus, path)
     return
   end
 
-  self.active_action = how
+  self.active_action = how == 'diff' and keep_focus and 'diff_keep_focus' or how
   local focus_win = api.nvim_get_current_win()
 
   -- Keep the repository alive if the panel is closed while Git is reading a file.
@@ -853,7 +854,7 @@ function DiffPanel:run_action(how, keep_focus, path)
       --- @cast how 'stage'|'unstage'|'toggle'
       self:stage_files(how, node)
     else
-      self:open_file(how, node)
+      self:open_file(how, node, keep_focus)
     end
   end)
 
@@ -919,33 +920,38 @@ function DiffPanel:setup_navigation(group)
     ['[c'] = { direction = -1, desc = 'Previous change', unified = true },
   }
 
-  --- Restore this window's mappings before entering another buffer or window.
-  local function unmap()
+  --- Restore mappings, keeping the window while its buffer changes.
+  --- @param keep_window? boolean
+  local function unmap(keep_window)
     for _, undo in ipairs(restore) do
       undo()
     end
 
     restore = {}
-    mapped_win = nil
+    if not keep_window then
+      mapped_win = nil
+    end
   end
 
   api.nvim_create_autocmd({ 'BufLeave', 'WinLeave' }, {
     group = group,
-    callback = function()
+    callback = function(args)
+      local win = api.nvim_get_current_win()
       -- Buffer operations in another window must not remove the current mappings.
-      if api.nvim_get_current_win() == mapped_win then
-        unmap()
+      if win == mapped_win then
+        unmap(args.event == 'BufLeave' and self.active_action == 'diff_keep_focus')
       end
     end,
   })
 
-  -- Install mappings only while one of this panel's diff windows is current.
+  -- BufEnter can run in a non-current window when its buffer is replaced.
   api.nvim_create_autocmd({ 'BufEnter', 'WinEnter' }, {
     group = group,
-    callback = function()
+    callback = function(args)
       local win = api.nvim_get_current_win()
       if
         #restore > 0
+        or (args.event == 'BufEnter' and self.active_action == 'diff_keep_focus' and win ~= mapped_win)
         or (self.diff == 'split' and (not self.left_win or not api.nvim_win_is_valid(self.left_win)))
         or (win ~= self.left_win and win ~= self.right_win)
       then
