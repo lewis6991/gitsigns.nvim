@@ -277,6 +277,9 @@ local function create_win(bufnr, opts, id)
     callback = function()
       if api.nvim_win_is_valid(winid) and api.nvim_get_current_win() ~= winid then
         api.nvim_win_set_config(winid, opts1)
+        if not opts.height then
+          expand_height(winid, #lines, opts.border)
+        end
       end
     end,
   })
