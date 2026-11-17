@@ -461,6 +461,21 @@ describe('gitsigns (with screen)', function()
       blame_line_ui_test('false', 'unix')
     end)
 
+    it('does not mark all lines changed after writing a unix file as dos', function()
+      setup_test_repo()
+      exec_lua([[vim.g.editorconfig = false]])
+      git('config', 'core.autocrlf', 'true')
+      write_to_file(newfile, { 'This', 'is', 'a', 'file' })
+      git('add', newfile)
+      git('commit', '-m', 'commit on main')
+
+      edit(newfile)
+      check({ signs = {} })
+
+      command('set fileformat=dos | write')
+      check({ status = { head = 'main', added = 0, changed = 0, removed = 0 }, signs = {} })
+    end)
+
     for _, case in ipairs({
       {
         name = 'cp866 with CRLF and no final newline',
