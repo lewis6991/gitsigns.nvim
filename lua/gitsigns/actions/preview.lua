@@ -211,7 +211,6 @@ function M.preview_hunk_inline()
     preview_id = DeletedPreview.place_inline_preview_lines(bufnr, ns_inline, hunk, staged, {
       win = winid,
       lno_hl = true,
-      leftcol = true,
       word_diff = true,
     })
   end
