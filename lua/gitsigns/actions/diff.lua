@@ -140,19 +140,19 @@ local function show_help(panel, diff)
   local lines = { { { 'File panel', 'Title' } } } --- @type Gitsigns.LineSpec[]
   for _, map in ipairs(api.nvim_buf_get_keymap(panel, 'n')) do
     local key = map.lhs == ' ' and '<Space>' or map.lhs
-    lines[#lines + 1] = { { ('%-8s %s'):format(key, map.desc or map.rhs), 'Normal' } }
+    lines[#lines + 1] = { { ('%-8s %s'):format(key, map.desc or map.rhs), 'NormalFloat' } }
   end
 
   vim.list_extend(lines, {
-    { { '', 'Normal' } },
+    { { '', 'NormalFloat' } },
     { { 'File buffers', 'Title' } },
-    { { ']f / [f  Next / previous file (accepts count)', 'Normal' } },
+    { { ']f / [f  Next / previous file (accepts count)', 'NormalFloat' } },
   })
   if diff ~= 'none' then
-    lines[#lines + 1] = { { ']c / [c  Next / previous change', 'Normal' } }
+    lines[#lines + 1] = { { ']c / [c  Next / previous change', 'NormalFloat' } }
   end
   vim.list_extend(lines, {
-    { { '', 'Normal' } },
+    { { '', 'NormalFloat' } },
     { { 'q / <Esc> / g?  Close this help', 'Comment' } },
   })
 
