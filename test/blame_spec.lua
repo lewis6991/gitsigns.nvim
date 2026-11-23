@@ -499,6 +499,44 @@ describe('blame', function()
     end)
   end)
 
+  it('finds a file at a revision that predates a rename and later rewrite', function()
+    helpers.git_init_scratch()
+    setup_gitsigns(test_config)
+
+    local old_file = scratch .. '/foo.txt'
+    local new_file = scratch .. '/bar.txt'
+
+    write_to_file(old_file, { 'one', 'two', 'three', 'four', 'five' })
+    git('add', old_file)
+    git('commit', '-m', 'add foo')
+
+    git('mv', old_file, new_file)
+    git('commit', '-m', 'rename foo to bar')
+
+    -- Rewrite the file so that a plain diff against the first commit no longer
+    -- pairs foo.txt with bar.txt as a rename.
+    write_to_file(new_file, { 'alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta' })
+    git('add', new_file)
+    git('commit', '-m', 'rewrite bar')
+
+    edit(new_file)
+    wait_for_attach()
+
+    local result = exec_lua(function(file0, rev)
+      local async = require('gitsigns.async')
+      return async
+        .run(function()
+          local Repo = require('gitsigns.git.repo')
+          local repo = assert(Repo.get(vim.fs.dirname(file0)))
+          local info = repo:ls_tree('bar.txt', rev)
+          return info and info.relpath or false
+        end)
+        :wait(5000)
+    end, new_file, 'HEAD~2')
+
+    eq('foo.txt', result)
+  end)
+
   it('extends full blame popup line highlights to the end of the line', function()
     setup_test_repo({
       test_file_text = {

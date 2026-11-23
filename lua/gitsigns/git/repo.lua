@@ -761,6 +761,7 @@ function M:ls_tree(path, revision)
     -- Not found, see if it was renamed
     log.dprintf('%s not found in %s looking for renames', path, revision)
     local old_path = self:diff_rename_status(revision, true)[path]
+      or self:log_rename_status(revision, path)
     if old_path then
       log.dprintf('found rename %s -> %s', old_path, path)
       return self:ls_tree(old_path, revision)
