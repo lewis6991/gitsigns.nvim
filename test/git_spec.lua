@@ -100,6 +100,39 @@ describe('git', function()
     eq({ 'a_enter', 'a_exit', 'b_enter', 'b_exit' }, result.events)
   end)
 
+  it('discovers a repo after a directory disappears during Git startup', function()
+    setup_test_repo()
+
+    local disappearing = scratch .. '/disappearing'
+    mkdir(disappearing)
+
+    local toplevel = exec_lua(function(root, cwd)
+      local async = require('gitsigns.async')
+      local system = require('gitsigns.system')
+
+      -- Remove the directory after Repo.get() checks it, just before spawning Git.
+      local spawn = system.system
+      system.system = function(cmd, opts, on_exit)
+        if opts and opts.cwd == cwd then
+          assert(vim.uv.fs_rmdir(cwd))
+        end
+        return spawn(cmd, opts, on_exit)
+      end
+
+      local Repo = require('gitsigns.git.repo')
+      system.system = spawn
+
+      local ok, err = async.run(Repo.get, cwd):pwait(5000)
+      assert(not ok and type(err) == 'string' and err:find('ENOENT', 1, true), tostring(err))
+
+      local repo = assert(async.run(Repo.get, root):wait(5000))
+      repo:unref()
+      return repo.toplevel
+    end, scratch, disappearing)
+
+    eq_path(scratch, toplevel)
+  end)
+
   it('log_rename_status handles spaced filenames', function()
     helpers.git_init_scratch()
 
