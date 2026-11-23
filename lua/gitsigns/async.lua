@@ -317,9 +317,19 @@ function Task:_resume(...)
     local fn = ret[2]
     --- @cast fn -string
 
-    -- TODO(lewis6991): refine error handler to be more specific
     local ok, r
-    ok, r = pcall(fn, function(...)
+    local sync_args
+
+    --- @param ... any
+    local function complete(...)
+      if ok == nil then
+        -- Defer inline callbacks until we know whether setup succeeded.
+        sync_args = sync_args or pack_len(...)
+        return
+      elseif not ok then
+        return
+      end
+
       if is_async_handle(r) then
         --- @cast r Gitsigns.async.Handle
         -- We must close children before we resume to ensure
@@ -331,12 +341,20 @@ function Task:_resume(...)
       else
         self:_resume(...)
       end
-    end)
+    end
 
+    ok, r = pcall(fn, complete)
     if not ok then
-      self:_finish(r)
-    elseif is_async_handle(r) then
+      -- Raise from await so the coroutine can run its error cleanup.
+      self:_resume(r or 'await setup failed')
+      return
+    end
+
+    if is_async_handle(r) then
       self._current_child = r
+    end
+    if sync_args then
+      self:_resume(unpack_len(sync_args))
     end
   end
 end
@@ -387,24 +405,25 @@ function M.status(task)
   end
 end
 
+--- @param err? any
+--- @param ... any
+--- @return any ...
+local function check_await(err, ...)
+  if err ~= nil then
+    error(err, 0)
+  end
+  return ...
+end
+
 --- @async
 --- @param task Gitsigns.async.Task<any>
 --- @return any ...
 local function await_task(task)
   --- @param callback fun(err?: string, ...: any)
-  local res = pack_len(coroutine.yield(function(callback)
+  return check_await(coroutine.yield(function(callback)
     task:await(callback)
     return task
   end))
-
-  local err = res[1]
-
-  if err then
-    -- TODO(lewis6991): what is the correct level to pass?
-    error(err, 0)
-  end
-
-  return unpack_len(res, 2)
 end
 
 --- @async
@@ -419,12 +438,15 @@ local function await_cbfun(argc, fun, ...)
 
   --- @param callback fun(...:any)
   --- @return any?
-  return coroutine.yield(function(callback)
-    args[argc] = callback
+  return check_await(coroutine.yield(function(callback)
+    args[argc] = function(...)
+      -- Callback results may include an error value of their own.
+      callback(nil, ...)
+    end
     args.n = math.max(args.n, argc)
     --- @diagnostic disable-next-line: missing-parameter
     return fun(unpack_len(args))
-  end)
+  end))
 end
 
 --- Asynchronous blocking wait
