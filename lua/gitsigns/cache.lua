@@ -65,6 +65,73 @@ function CacheEntry:invalidate(all)
   end
 end
 
+--- Get buffer text in the form Git stores in the index.
+--- @return string[]
+--- @return string fileformat Line endings in the returned text.
+function CacheEntry:buffer_lines()
+  -- Revision buffers already contain stored text. Only restore the line endings
+  -- removed when displaying it, without applying working-tree conversion again.
+  local format = vim.b[self.bufnr].gitsigns_revision_format --[[@as Gitsigns.RevisionFormat?]]
+  if format and format.buffer == vim.bo[self.bufnr].fileformat then
+    local lines = util.buf_lines(self.bufnr, false, format.text)
+    return lines, format.text
+  end
+
+  local fileformat = vim.bo[self.bufnr].fileformat
+  local mode = self.git_obj.normalize_crlf
+
+  -- Fugitive's Unix buffers expose stored CR bytes as content.
+  if
+    self.file_mode
+    or not mode
+    or (fileformat ~= 'dos' and vim.startswith(api.nvim_buf_get_name(self.bufnr), 'fugitive://'))
+  then
+    local lines = util.buf_lines(self.bufnr)
+    return lines, fileformat
+  end
+
+  local encoded, lines = util.buf_lines(self.bufnr, true)
+  local encoding = vim.bo[self.bufnr].fileencoding
+  if require('gitsigns.git').should_normalize_crlf(encoded, lines, encoding, mode) then
+    -- A CR on the last line is content when the file has no final newline.
+    return util.strip_cr(lines, lines[#lines] ~= ''), 'unix'
+  end
+
+  return lines, fileformat
+end
+
+--- Get the comparison text's format for insertion into this buffer.
+--- @param text? string[] Defaults to the cached comparison text.
+--- @return 'unix'|'dos'
+function CacheEntry:compare_fileformat(text)
+  local format = vim.b[self.bufnr].gitsigns_revision_format --[[@as Gitsigns.RevisionFormat?]]
+  if format and format.buffer == vim.bo[self.bufnr].fileformat then
+    return format.text
+  end
+
+  -- In a Unix buffer, CR bytes are always part of the displayed text.
+  if vim.bo[self.bufnr].fileformat ~= 'dos' then
+    return 'unix'
+  end
+
+  text = text or assert(self.compare_text)
+
+  -- Forced text conversion leaves CR in the comparison text as content, even
+  -- when every line ends in CR. Multibyte endings are not converted by Git.
+  if
+    not self.file_mode
+    and self.git_obj.normalize_crlf == 'text'
+    and util.iconv('\r\n', 'utf-8', self.git_obj.encoding) == '\r\n'
+  then
+    return 'unix'
+  end
+
+  -- Mixed text can contain both LF and CRLF terminators. Binary content can
+  -- instead contain literal CR bytes, so only strip it when all endings are DOS.
+  local dos = util.is_dos(text) or not require('gitsigns.git').is_binary(text, text)
+  return dos and 'dos' or 'unix'
+end
+
 --- Keep line-indexed cache state aligned with buffer edits.
 --- @param first integer
 --- @param last_orig integer
@@ -291,7 +358,7 @@ end
 function CacheEntry:get_hunks(greedy, staged)
   if greedy and config.diff_opts.linematch then
     -- Re-run the diff without linematch
-    local buftext = util.buf_lines(self.bufnr)
+    local buftext = self:buffer_lines()
     local text --- @type string[]?
     if staged then
       text = self.compare_text_head
@@ -376,9 +443,22 @@ function CacheEntry:get_hunk(range, greedy, staged)
       hunk.removed.start + hunk.removed.count - 1
     )
   else
-    hunk.added.lines = api.nvim_buf_get_lines(self.bufnr, top - 1, bot, false)
+    local buftext = self:buffer_lines()
+    hunk.added.lines = vim.list_slice(buftext, top, bot)
     hunk.removed.lines =
       vim.list_slice(compare_text, hunk.removed.start, hunk.removed.start + hunk.removed.count - 1)
+
+    -- Partial hunks still need EOF markers to preserve a final literal CR.
+    if bot >= #buftext and buftext[#buftext] ~= '' then
+      hunk.added.no_nl_at_eof = true
+    end
+    if
+      hunk.removed.count > 0
+      and hunk.removed.start + hunk.removed.count > #compare_text
+      and compare_text[#compare_text] ~= ''
+    then
+      hunk.removed.no_nl_at_eof = true
+    end
   end
   return hunk
 end

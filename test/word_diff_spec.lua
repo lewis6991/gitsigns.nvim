@@ -687,6 +687,34 @@ describe('popup preview', function()
     eq(1001, diff_priority)
   end)
 
+  it('highlights a deleted literal CR in a DOS hunk preview', function()
+    setup_test_repo()
+    setup_gitsigns(test_config)
+    helpers.write_to_file(helpers.scratch .. '/.gitattributes', { '*.txt text' })
+    helpers.write_to_file(test_file, { 'one', 'keep\r', 'three' }, { newline = '\r\n' })
+    git('add', test_file)
+    helpers.write_to_file(test_file, { 'one', 'keep', 'three' }, { newline = '\r\n' })
+    edit(test_file)
+    helpers.wait_for_attach()
+
+    local region = exec_lua(function()
+      vim.api.nvim_win_set_cursor(0, { 2, 0 })
+      require('gitsigns').preview_hunk()
+      local popup_win = assert(require('gitsigns.popup').is_open('hunk'))
+      local popup_buf = vim.api.nvim_win_get_buf(popup_win)
+      local ns = vim.api.nvim_get_namespaces().gitsigns_popup
+
+      for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(popup_buf, ns, 0, -1, { details = true })) do
+        if mark[2] == 1 and mark[4].hl_group == 'GitSignsDeleteInline' then
+          return { mark[3], mark[4].end_col }
+        end
+      end
+    end)
+
+    -- The prefix and "keep" occupy five columns; the CR is the changed byte.
+    eq({ 5, 6 }, region)
+  end)
+
   it('reuses deleted and added highlight stacks in preview_hunk', function()
     require_source_hls()
 

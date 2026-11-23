@@ -11,8 +11,7 @@ M.Repo = Repo
 --- @class Gitsigns.GitObj
 --- @field file string
 --- @field encoding string
---- @field i_crlf? boolean Object has crlf
---- @field w_crlf? boolean Working copy has crlf
+--- @field normalize_crlf? 'text'|'auto' Git's line-ending conversion for this file
 --- @field mode_bits string
 ---
 --- Revision the object is tracking against. Nil for index
@@ -40,6 +39,56 @@ Obj.__index = Obj
 
 M.Obj = Obj
 
+--- Check the buffer bytes using Git's automatic text-detection rules.
+--- @param encoded string[]
+--- @param buffer string[]
+--- @return boolean
+function M.is_binary(encoded, buffer)
+  for _, line in ipairs(buffer) do
+    -- Neovim represents a NUL in a buffer line as a newline.
+    if line:find('\n', 1, true) then
+      return true
+    end
+  end
+
+  local text = table.concat(encoded, '\n')
+  if text:find('\0', 1, true) or text:find('\r[^\n]') or text:sub(-1) == '\r' then
+    return true
+  end
+
+  -- Git permits BS, HT, ESC, and FF. Other control bytes count as
+  -- nonprintable, except for a final DOS EOF character.
+  local _, nonprintable = text:gsub('[\1-\7\11\14-\26\28-\31\127]', '')
+  local eof = text:sub(-1) == '\26' and 1 or 0
+  nonprintable = nonprintable - eof
+  if nonprintable == 0 then
+    return false
+  end
+
+  local _, line_endings = text:gsub('[\r\n]', '')
+  local printable = #text - line_endings - nonprintable - eof
+  return nonprintable > math.floor(printable / 128)
+end
+
+--- Check whether Git's CRLF conversion applies to this text.
+--- @param encoded string[] File-encoded bytes before normalization.
+--- @param lines string[] UTF-8 buffer text.
+--- @param encoding string
+--- @param mode 'text'|'auto'
+--- @return boolean
+function M.should_normalize_crlf(encoded, lines, encoding, mode)
+  if encoding == '' then
+    encoding = 'utf-8'
+  end
+
+  -- Git converts bytes. UTF-16 and UTF-32 encode the line endings differently.
+  if util.iconv('\r\n', 'utf-8', encoding) ~= '\r\n' then
+    return false
+  end
+
+  return mode == 'text' or not M.is_binary(encoded, lines)
+end
+
 --- @async
 --- @param self Gitsigns.GitObj
 --- @param revision string?
@@ -61,8 +110,7 @@ local function refresh(self, revision)
   self.object_missing = info.object_missing
   self.mode_bits = info.mode_bits
   self.has_conflicts = info.has_conflicts
-  self.i_crlf = info.i_crlf
-  self.w_crlf = info.w_crlf
+  self.normalize_crlf = info.normalize_crlf
 end
 
 --- @async
@@ -114,28 +162,17 @@ function Obj:get_show_text(revision, relpath)
     return {}
   end
 
-  if not revision and (self.object_missing or not self.object_name) then
+  if revision then
+    --- @cast relpath -?
+    return self.repo:get_show_text_at_revision(revision, relpath, self.encoding)
+  end
+
+  if self.object_missing or not self.object_name then
     log.dprint('no base object')
     return { '' }
   end
 
-  local stdout, stderr
-  if revision then
-    --- @cast relpath -?
-    stdout, stderr = self.repo:get_show_text_at_revision(revision, relpath, self.encoding)
-  else
-    stdout, stderr = self.repo:get_show_text(assert(self.object_name), self.encoding)
-  end
-
-  if not self.i_crlf and self.w_crlf then
-    -- Add cr
-    -- Do not add cr to the newline at the end of file
-    for i = 1, #stdout - 1 do
-      stdout[i] = stdout[i] .. '\r'
-    end
-  end
-
-  return stdout, stderr
+  return self.repo:get_show_text(self.object_name, self.encoding)
 end
 
 --- @param file string
@@ -241,11 +278,12 @@ function Obj:ensure_file_in_index()
 end
 
 --- @async
---- Stage 'lines' as the entire contents of the file
+--- Store file-encoded text in the index.
 --- @param lines string[]
-function Obj:stage_lines(lines)
+--- @param apply_filters? boolean Apply Git's clean filters and line-ending conversion.
+function Obj:stage_lines(lines, apply_filters)
   local relpath = assert(self.relpath)
-  local new_object = self.repo:hash_object(relpath, lines)
+  local new_object = self.repo:hash_object(apply_filters and relpath or nil, lines)
   self.repo:update_index(self.mode_bits, new_object, relpath)
   autocmd_changed(self.file)
 end
@@ -263,13 +301,6 @@ function Obj:stage_hunks(hunks, invert)
 
   local relpath = assert(self.relpath)
   local patch = require('gitsigns.hunks').create_patch(relpath, hunks, self.mode_bits, invert)
-
-  if not self.i_crlf and self.w_crlf then
-    -- Remove cr
-    for i, p in ipairs(patch) do
-      patch[i] = p:gsub('\r$', '')
-    end
-  end
 
   local stat, err = pcall(function()
     self.repo:command({
@@ -362,8 +393,7 @@ function Obj.new(file, revision, encoding, gitdir, toplevel)
   self.object_missing = info.object_missing
   self.mode_bits = info.mode_bits
   self.has_conflicts = info.has_conflicts
-  self.i_crlf = info.i_crlf
-  self.w_crlf = info.w_crlf
+  self.normalize_crlf = info.normalize_crlf
 
   return self
 end

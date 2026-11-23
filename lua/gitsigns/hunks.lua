@@ -110,19 +110,24 @@ function M.create_partial_hunk(hunks, top, bot)
 end
 
 --- @param hunk Gitsigns.Hunk.Hunk
---- @param fileformat string
+--- @param removed_fileformat string
+--- @param added_fileformat string
 --- @return string[]
-function M.patch_lines(hunk, fileformat)
-  local lines = {} --- @type string[]
-  for _, l in ipairs(hunk.removed.lines) do
-    lines[#lines + 1] = '-' .. l
+function M.patch_lines(hunk, removed_fileformat, added_fileformat)
+  local removed, added = hunk.removed.lines, hunk.added.lines
+  if removed_fileformat == 'dos' then
+    removed = util.strip_cr(removed, hunk.removed.no_nl_at_eof)
   end
-  for _, l in ipairs(hunk.added.lines) do
-    lines[#lines + 1] = '+' .. l
+  if added_fileformat == 'dos' then
+    added = util.strip_cr(added, hunk.added.no_nl_at_eof)
   end
 
-  if fileformat == 'dos' then
-    lines = util.strip_cr(lines)
+  local lines = {} --- @type string[]
+  for _, l in ipairs(removed) do
+    lines[#lines + 1] = '-' .. l
+  end
+  for _, l in ipairs(added) do
+    lines[#lines + 1] = '+' .. l
   end
   return lines
 end

@@ -14,6 +14,42 @@ local api = vim.api
 
 local M = {}
 
+--- @class (exact) Gitsigns.RevisionFormat
+--- @field buffer string Buffer 'fileformat' when the revision was read.
+--- @field text 'unix'|'dos' Line endings removed for display and restored for writes.
+
+--- Set the full revision text after it has been decoded to UTF-8.
+--- @param bufnr integer
+--- @param text string[]
+--- @param encoding string
+--- @param fileformat 'unix'|'dos' Line endings in the input text.
+local function set_revision_text(bufnr, text, encoding, fileformat)
+  vim.bo[bufnr].fileencoding = encoding
+
+  local lines
+  if fileformat == 'dos' then
+    lines = util.strip_cr(text, text[#text] ~= '')
+  else
+    lines = vim.deepcopy(text)
+  end
+
+  local utf8_bom = '\239\187\191'
+  local first_line = lines[1]
+  if first_line and vim.startswith(first_line, utf8_bom) then
+    vim.bo[bufnr].bomb = true
+    lines[1] = first_line:sub(#utf8_bom + 1)
+  else
+    vim.bo[bufnr].bomb = false
+  end
+
+  if lines[#lines] == '' then
+    lines[#lines] = nil
+  else
+    vim.bo[bufnr].eol = false
+  end
+  api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+end
+
 --- @param bufnr integer
 --- @param text string[]
 local function read_revision(bufnr, text)
@@ -81,11 +117,23 @@ local function bufread(repo, dbufnr, base, relpath, bufnr)
 
   Status.update(dbufnr, { head = base })
 
+  local fileformat --- @type 'unix'|'dos'
   if bcache then
-    util.set_lines(dbufnr, 0, -1, text, bcache.git_obj.encoding)
+    -- Strip CR only when every stored line uses it as a terminator. Keep mixed
+    -- endings and literal CR visible so the index view can restore their bytes.
+    local dos = vim.bo[dbufnr].fileformat == 'dos'
+      and util.is_dos(text)
+      and (relpath ~= bcache.git_obj.relpath or bcache:compare_fileformat(text) == 'dos')
+    fileformat = dos and 'dos' or 'unix'
+    set_revision_text(dbufnr, text, bcache.git_obj.encoding, fileformat)
   else
     read_revision(dbufnr, text)
+    fileformat = vim.bo[dbufnr].fileformat --[[@as 'unix'|'dos']]
   end
+  vim.b[dbufnr].gitsigns_revision_format = {
+    buffer = vim.bo[dbufnr].fileformat,
+    text = fileformat,
+  }
 
   vim.bo[dbufnr].modifiable = modifiable
   vim.bo[dbufnr].modified = false
@@ -113,10 +161,14 @@ local function bufwrite(bufnr, dbufnr, base)
     bufnr = dbufnr
   end
   local bcache = assert(cache[bufnr])
-  local contents, buftext = util.buf_lines(dbufnr, true)
+  local format = vim.b[dbufnr].gitsigns_revision_format --[[@as Gitsigns.RevisionFormat]]
+  -- An explicit format change uses Git's normal conversion rules when written.
+  local fileformat = format.buffer == vim.bo[dbufnr].fileformat and format.text or nil
+  local contents = util.buf_lines(dbufnr, true, fileformat)
   base = util.norm_base(base)
   bcache.git_obj:lock(function()
-    bcache.git_obj:stage_lines(contents)
+    bcache.git_obj:stage_lines(contents, fileformat == nil)
+    bcache.git_obj:refresh()
   end)
   async.schedule()
   if not api.nvim_buf_is_valid(bufnr) then
@@ -126,7 +178,8 @@ local function bufwrite(bufnr, dbufnr, base)
   -- If diff buffer base matches the git_obj revision then also update the
   -- signs.
   if base == bcache.git_obj.revision then
-    bcache.compare_text = buftext
+    -- Read the stored blob, since Git may have converted the written bytes.
+    bcache:invalidate(true)
     manager.update(bufnr)
   end
 end

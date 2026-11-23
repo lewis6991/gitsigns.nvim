@@ -140,13 +140,14 @@ end
 --- Get buffer text with file line endings and a BOM when 'bomb' is set.
 --- @param bufnr integer
 --- @param encode? boolean Use 'fileencoding' for the text, line endings and any BOM.
+--- @param fileformat? 'unix'|'dos' Override the buffer's line endings.
 --- @return string[] UTF-8 by default; file-encoded bytes when encode is true.
 --- @return string[] utf8_text UTF-8 comparison text.
-function M.buf_lines(bufnr, encode)
+function M.buf_lines(bufnr, encode, fileformat)
   -- nvim_buf_get_lines strips carriage returns if fileformat==dos
   local buftext = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-  local dos = vim.bo[bufnr].fileformat == 'dos'
+  local dos = (fileformat or vim.bo[bufnr].fileformat) == 'dos'
 
   if dos then
     for i = 1, #buftext - 1 do
@@ -224,40 +225,6 @@ function M.noautocmd(events, f)
   vim.o.eventignore = ei
 end
 
---- Set buffer text from UTF-8 comparison lines.
---- @param bufnr integer
---- @param start_row integer
---- @param end_row integer
---- @param lines string[]
---- @param fileencoding? string Encoding to use when writing the buffer.
-function M.set_lines(bufnr, start_row, end_row, lines, fileencoding)
-  if fileencoding then
-    vim.bo[bufnr].fileencoding = fileencoding
-  end
-  if vim.bo[bufnr].fileformat == 'dos' then
-    lines = M.strip_cr(lines)
-  end
-
-  if start_row == 0 and end_row == -1 then
-    lines = vim.deepcopy(lines) --[[@as string[] ]]
-    local utf8_bom = BOM_TABLE['utf-8']
-    local first_line = lines[1]
-    if first_line and vim.startswith(first_line, utf8_bom) then
-      vim.bo[bufnr].bomb = true
-      lines[1] = first_line:sub(#utf8_bom + 1)
-    else
-      vim.bo[bufnr].bomb = false
-    end
-
-    if lines[#lines] == '' then
-      lines[#lines] = nil
-    else
-      vim.bo[bufnr].eol = false
-    end
-  end
-  vim.api.nvim_buf_set_lines(bufnr, start_row, end_row, false, lines)
-end
-
 --- @param time number
 --- @param divisor integer
 --- @param time_word string
@@ -304,7 +271,7 @@ end
 
 --- @param xs string[]
 --- @return boolean
-local function is_dos(xs)
+function M.is_dos(xs)
   -- Do not check CR at EOF
   for i = 1, #xs - 1 do
     local x = xs[i] --[[@as string]]
@@ -315,20 +282,17 @@ local function is_dos(xs)
   return true
 end
 
---- Strip '\r' from the EOL of each line only if all lines end with '\r'
+--- Strip CR terminators from text known to use DOS line endings.
 --- @param xs0 string[]
+--- @param no_nl_at_eof? boolean The last line has no newline, so its CR is content.
 --- @return string[]
-function M.strip_cr(xs0)
-  if not is_dos(xs0) then
-    -- don't strip, return early
-    return xs0
-  end
-
-  -- all lines end with '\r', need to strip
+function M.strip_cr(xs0, no_nl_at_eof)
   local xs = vim.deepcopy(xs0)
-  for i = 1, #xs do
+  for i = 1, #xs - (no_nl_at_eof and 1 or 0) do
     local x = xs[i] --[[@as string]]
-    xs[i] = x:sub(1, -2)
+    if x:sub(-1) == '\r' then
+      xs[i] = x:sub(1, -2)
+    end
   end
   return xs
 end

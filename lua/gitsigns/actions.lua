@@ -357,7 +357,8 @@ C_meta.stage_hunk = { generated_completion = false }
 
 --- @param bufnr integer
 --- @param hunk Gitsigns.Hunk.Hunk
-local function reset_hunk(bufnr, hunk)
+--- @param fileformat 'unix'|'dos' Line endings in the comparison text.
+local function reset_hunk(bufnr, hunk, fileformat)
   local lstart, lend --- @type integer, integer
   if hunk.type == 'delete' then
     lstart = hunk.added.start
@@ -373,7 +374,11 @@ local function reset_hunk(bufnr, hunk)
     vim.bo[bufnr].fixendofline = no_eol
   end
 
-  util.set_lines(bufnr, lstart, lend, hunk.removed.lines)
+  local lines = hunk.removed.lines
+  if fileformat == 'dos' then
+    lines = util.strip_cr(lines, hunk.removed.no_nl_at_eof)
+  end
+  api.nvim_buf_set_lines(bufnr, lstart, lend, false, lines)
 end
 
 --- Reset the lines of the hunk at the cursor position, or all
@@ -406,7 +411,7 @@ function M.reset_hunk(range, opts, callback)
       return
     end
 
-    reset_hunk(bufnr, hunk)
+    reset_hunk(bufnr, hunk, bcache:compare_fileformat())
   end)
 end
 
@@ -431,8 +436,10 @@ function M.reset_buffer()
     return
   end
 
+  -- Restoring a hunk can change buffer text detection; the stored text stays the same.
+  local fileformat = bcache:compare_fileformat()
   for i = #hunks, 1, -1 do
-    reset_hunk(bufnr, hunks[i] --[[@as Gitsigns.Hunk.Hunk]])
+    reset_hunk(bufnr, hunks[i] --[[@as Gitsigns.Hunk.Hunk]], fileformat)
   end
 end
 
@@ -684,15 +691,23 @@ M.get_hunks = function(bufnr)
   if (bufnr or 0) == 0 then
     bufnr = current_buf()
   end
-  if not cache[bufnr] then
+  local bcache = cache[bufnr]
+  if not bcache then
     return
   end
   local ret = {} --- @type Gitsigns.Hunk.Hunk_Public[]
+  if not bcache.hunks or #bcache.hunks == 0 then
+    return ret
+  end
+
+  local removed_fileformat = bcache:compare_fileformat()
+  local _, added_fileformat = bcache:buffer_lines()
+
   -- TODO(lewis6991): allow this to accept a greedy option
-  for _, h in ipairs(cache[bufnr].hunks or {}) do
+  for _, h in ipairs(bcache.hunks) do
     ret[#ret + 1] = {
       head = h.head,
-      lines = Hunks.patch_lines(h, vim.bo[bufnr].fileformat),
+      lines = Hunks.patch_lines(h, removed_fileformat, added_fileformat),
       type = h.type,
       added = h.added,
       removed = h.removed,

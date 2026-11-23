@@ -101,8 +101,10 @@ local function prepare_source(bufnr, source, opts)
   end
 
   local lines = source
-  if vim.bo[bufnr].fileformat == 'dos' then
-    lines = util.strip_cr(lines)
+  local bcache = cache[bufnr]
+  local fileformat = bcache and bcache:compare_fileformat(lines) or vim.bo[bufnr].fileformat
+  if fileformat == 'dos' then
+    lines = util.strip_cr(lines, lines[#lines] ~= '')
   end
 
   if opts.source_cache then
@@ -137,8 +139,8 @@ end
 
 --- @param lines Gitsigns.CapturedLine[]
 --- @param line_hl? Gitsigns.HlName|Gitsigns.HlStack
---- @param word_diff? [integer, string, integer, integer][]
---- @param word_diff_hl Gitsigns.HlName|fun(region_type: string, region: [integer, string, integer, integer]): Gitsigns.HlName?
+--- @param word_diff? Gitsigns.Region[]
+--- @param word_diff_hl Gitsigns.HlName|fun(region_type: string, region: Gitsigns.Region): Gitsigns.HlName?
 --- @param line_priority? integer
 --- @param word_diff_priority? integer
 --- @return Gitsigns.CapturedLine[]
@@ -163,22 +165,29 @@ end
 --- @param removed string[]
 --- @param added string[]
 --- @param kind 'removed'|'added'
---- @return {[1]:integer, [2]:string, [3]:integer, [4]:integer}[]
+--- @return Gitsigns.Region[]
 local function word_diff_regions(removed, added, kind)
   local removed_regions, added_regions = require('gitsigns.diff_int').run_word_diff(removed, added)
   return kind == 'removed' and removed_regions or added_regions
 end
 
 --- @param bufnr integer
---- @param hunk Gitsigns.Hunk.Hunk
---- @return [integer, string, integer, integer][]
-local function removed_word_diff_regions(bufnr, hunk)
-  local removed = hunk.removed.lines
-  local added = hunk.added.lines
+--- @param node Gitsigns.Hunk.Node
+--- @return string[]
+local function node_lines(bufnr, node)
+  local start_row = node.start - 1
+  return api.nvim_buf_get_lines(bufnr, start_row, start_row + node.count, false)
+end
 
-  if vim.bo[bufnr].fileformat == 'dos' then
-    removed = util.strip_cr(removed)
-    added = util.strip_cr(added)
+--- @param source_bufnr integer
+--- @param hunk Gitsigns.Hunk.Hunk
+--- @param added_fileformat string
+--- @return Gitsigns.Region[]
+local function removed_word_diff_regions(source_bufnr, hunk, added_fileformat)
+  local removed = node_lines(source_bufnr, hunk.removed)
+  local added = hunk.added.lines
+  if added_fileformat == 'dos' then
+    added = util.strip_cr(added, hunk.added.no_nl_at_eof)
   end
 
   local removed_regions = require('gitsigns.diff_int').run_word_diff(removed, added)
@@ -188,15 +197,24 @@ end
 --- @param bufnr integer
 --- @param source_bufnr integer
 --- @param hunks Gitsigns.Hunk.Hunk[]
---- @param opts {line_hl: Gitsigns.HlName|Gitsigns.HlStack, word_diff?: boolean, word_diff_hl: Gitsigns.HlName|fun(region_type: string, region: [integer, string, integer, integer]): Gitsigns.HlName?}
+--- @param opts {line_hl: Gitsigns.HlName|Gitsigns.HlStack, word_diff?: boolean, added_fileformat?: string, word_diff_hl: Gitsigns.HlName|fun(region_type: string, region: Gitsigns.Region): Gitsigns.HlName?}
 --- @return Gitsigns.CapturedLine[][]
 function M.capture_removed_hunks_from_source(bufnr, source_bufnr, hunks, opts)
   local ret = {} --- @type Gitsigns.CapturedLine[][]
   for i, hunk in ipairs(hunks) do
+    local regions
+    if opts.word_diff then
+      regions = removed_word_diff_regions(
+        source_bufnr,
+        hunk,
+        opts.added_fileformat or vim.bo[bufnr].fileformat
+      )
+    end
+
     ret[i] = apply_capture_layers(
       Capture.capture_node(source_bufnr, hunk.removed),
       opts.line_hl,
-      opts.word_diff and removed_word_diff_regions(bufnr, hunk) or nil,
+      regions,
       opts.word_diff_hl
     )
   end
@@ -208,14 +226,24 @@ end
 --- @param bufnr integer
 --- @param hunks Gitsigns.Hunk.Hunk[]
 --- @param staged boolean?
---- @param opts {source_cache?: table<string, Gitsigns.HunkPreview.SourceBuf>, line_hl: Gitsigns.HlName|Gitsigns.HlStack, word_diff?: boolean, word_diff_hl: Gitsigns.HlName|fun(region_type: string, region: [integer, string, integer, integer]): Gitsigns.HlName?}
+--- @param opts {source_cache?: table<string, Gitsigns.HunkPreview.SourceBuf>, line_hl: Gitsigns.HlName|Gitsigns.HlStack, word_diff?: boolean, word_diff_hl: Gitsigns.HlName|fun(region_type: string, region: Gitsigns.Region): Gitsigns.HlName?}
 --- @return Gitsigns.CapturedLine[][]
 function M.prepare_removed_hunks(bufnr, hunks, staged, opts)
   local source_bufnr, cleanup = M.prepare_removed_source(bufnr, staged, opts.source_cache)
+  local bcache = assert(cache[bufnr])
+  local added_fileformat --- @type string
+  if staged then
+    added_fileformat = bcache:compare_fileformat()
+  else
+    local _, fileformat = bcache:buffer_lines()
+    added_fileformat = fileformat
+  end
+
   local captured = M.capture_removed_hunks_from_source(bufnr, source_bufnr, hunks, {
     line_hl = opts.line_hl,
     word_diff = opts.word_diff ~= false,
     word_diff_hl = opts.word_diff_hl,
+    added_fileformat = added_fileformat,
   })
   cleanup()
   return captured
@@ -329,13 +357,9 @@ function M.linespec_for_hunk(bufnr, hunk, removed_source, added_source, added_no
   local removed_source_bufnr, cleanup_removed = prepare_source(bufnr, removed_source)
   local added_source_bufnr, cleanup_added = prepare_source(bufnr, added_source)
 
-  local removed = hunk.removed.lines
-  local added = hunk.added.lines
-
-  if vim.bo[bufnr].fileformat == 'dos' then
-    removed = util.strip_cr(removed)
-    added = util.strip_cr(added)
-  end
+  -- Compare the displayed source text. Hunk payloads may already use normalized LF.
+  local removed = node_lines(removed_source_bufnr, hunk.removed)
+  local added = node_lines(added_source_bufnr, added_node)
 
   local ret = {} --- @type Gitsigns.LineSpec[]
   if hunk.removed.count > 0 then

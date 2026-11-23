@@ -23,6 +23,16 @@ local test_file --- @type string
 
 helpers.env()
 
+--- Read the index without converting its line endings.
+--- @return string
+local function index_text()
+  return exec_lua(function(dir)
+    local result = vim.system({ 'git', '-C', dir, 'show', ':newfile.txt' }, { text = false }):wait()
+    assert(result.code == 0, result.stderr)
+    return result.stdout
+  end, scratch)
+end
+
 --- @param exp_hunks string[]
 local function expect_hunks(exp_hunks)
   expectf(function()
@@ -850,6 +860,330 @@ describe('actions', function()
     check({ status = { head = 'main', added = 0, changed = 1, removed = 0 } })
     command_wait_gitsigns_update('Gitsigns stage_hunk')
     check({ status = { head = 'main', added = 0, changed = 0, removed = 0 } })
+  end)
+
+  describe('line endings', function()
+    local file --- @type string
+
+    local function show_index()
+      command('Gitsigns show :%')
+      expectf(function()
+        eq('acwrite', exec_lua('return vim.bo.buftype'))
+      end)
+      wait_for_attach()
+    end
+
+    before_each(function()
+      setup_test_repo()
+      exec_lua([[vim.g.editorconfig = false]])
+      file = helpers.newfile
+      write_to_file(file, { 'one', 'two', 'three' })
+      git('add', file)
+      git('commit', '-m', 'Add file')
+    end)
+
+    for _, case in ipairs({
+      { name = 'autocrlf', autocrlf = 'true' },
+      { name = 'autocrlf input', autocrlf = 'input' },
+      { name = 'a boolean autocrlf alias', autocrlf = 'ON' },
+      { name = 'a numeric autocrlf value', autocrlf = '1k' },
+      { name = 'a bare autocrlf key', bare = true },
+      { name = 'a text attribute', attribute = '*.txt text eol=lf' },
+    }) do
+      it('compares and stages CRLF with ' .. case.name, function()
+        if case.autocrlf then
+          git('config', 'core.autocrlf', case.autocrlf)
+        end
+        if case.attribute then
+          write_to_file(scratch .. '/.gitattributes', { case.attribute })
+        end
+        if case.bare then
+          local config_file = assert(io.open(scratch .. '/.git/config', 'a'))
+          config_file:write('\n[core]\n\tautocrlf\n')
+          config_file:close()
+        end
+
+        edit(file)
+        wait_for_attach()
+        command('setlocal fileformat=dos | write')
+        set_lines(1, 2, { 'TWO' })
+        command('write')
+
+        check({ status = { head = 'main', added = 0, changed = 1, removed = 0 } })
+        api.nvim_win_set_cursor(0, { 2, 0 })
+
+        command('Gitsigns reset_hunk')
+        expectf(function()
+          eq({ 'one', 'two', 'three' }, api.nvim_buf_get_lines(0, 0, -1, false))
+        end)
+        set_lines(1, 2, { 'TWO' })
+        check({ status = { head = 'main', added = 0, changed = 1, removed = 0 } })
+        stage_hunk()
+
+        eq('one\nTWO\nthree\n', index_text())
+        git('diff', '--quiet', '--', file)
+      end)
+    end
+
+    for _, case in ipairs({
+      { name = 'the text attribute is unset', attribute = true },
+      { name = 'an empty autocrlf value overrides true' },
+    }) do
+      it('stages line-ending changes when ' .. case.name, function()
+        if case.attribute then
+          write_to_file(scratch .. '/.gitattributes', { '*.txt -text' })
+        else
+          git('config', 'core.autocrlf', 'true')
+          git('config', '--add', 'core.autocrlf', '')
+        end
+
+        edit(file)
+        wait_for_attach()
+        command('setlocal fileformat=dos | write')
+        check({ status = { head = 'main', added = 0, changed = 3, removed = 0 } })
+        stage_hunk({ 1, 1 })
+
+        eq('one\r\ntwo\nthree\n', index_text())
+        check({ status = { head = 'main', added = 0, changed = 2, removed = 0 } })
+        stage_hunk({ 2, 3 })
+
+        eq('one\r\ntwo\r\nthree\r\n', index_text())
+        git('diff', '--quiet', '--', file)
+      end)
+    end
+
+    for _, case in ipairs({
+      { name = 'a lone CR', line = 'tw\ro' },
+      { name = 'a control byte', line = 'tw\1o' },
+    }) do
+      it('preserves line endings when Git detects binary content with ' .. case.name, function()
+        git('config', 'core.autocrlf', 'true')
+        edit(file)
+        wait_for_attach()
+        command('setlocal fileformat=dos')
+        set_lines(1, 2, { case.line })
+        command('write')
+
+        check({ status = { head = 'main', added = 0, changed = 3, removed = 0 } })
+        stage_hunk()
+
+        eq('one\r\n' .. case.line .. '\r\nthree\r\n', index_text())
+        git('diff', '--quiet', '--', file)
+      end)
+    end
+
+    it('preserves index text when attributes change to text', function()
+      git('config', 'core.autocrlf', 'false')
+      write_to_file(file, { 'one', 'two', 'three' }, { newline = '\r\n' })
+      git('add', file)
+      local original = index_text()
+
+      -- Changing attributes does not convert the blob already in the index.
+      write_to_file(scratch .. '/.gitattributes', { '*.txt text' })
+      write_to_file(file, { 'one', 'changed', 'three' }, { newline = '\r\n' })
+      edit(file)
+      wait_for_attach()
+
+      command('Gitsigns reset_buffer')
+      expectf(function()
+        eq({ 'one\r', 'two\r', 'three\r' }, api.nvim_buf_get_lines(0, 0, -1, false))
+      end)
+
+      -- Git removes one CR before each newline. Keep the stored CR as content.
+      command('write')
+      eq({ 'one\r\r', 'two\r\r', 'three\r\r', '' }, helpers.fn.readfile(file, 'b'))
+      git('diff', '--quiet', '--', file)
+
+      show_index()
+      eq({ 'one\r', 'two\r', 'three\r' }, api.nvim_buf_get_lines(0, 0, -1, false))
+
+      -- Force the write and wait for it to finish, even though the text is unchanged.
+      command('setlocal modified | write')
+      expectf(function()
+        eq(false, exec_lua('return vim.bo.modified'))
+        eq(original, index_text())
+      end)
+    end)
+
+    for _, case in ipairs({
+      {
+        name = 'some lines',
+        lines = { 'one', 'keep\r', 'three' },
+        written_lines = { 'one\r', 'keep\r\r', 'three\r', '' },
+        index = 'one\nkeep\r\nthree\n',
+      },
+      {
+        name = 'every line',
+        lines = { 'one\r', 'keep\r', 'three\r' },
+        written_lines = { 'one\r\r', 'keep\r\r', 'three\r\r', '' },
+        index = 'one\r\nkeep\r\nthree\r\n',
+      },
+    }) do
+      it('preserves literal CR on ' .. case.name .. ' of normalized text', function()
+        write_to_file(scratch .. '/.gitattributes', { '*.txt text' })
+        write_to_file(file, case.lines, { newline = '\r\n' })
+        git('add', file)
+
+        local changed = vim.deepcopy(case.lines)
+        changed[2] = 'changed'
+        write_to_file(file, changed, { newline = '\r\n' })
+        edit(file)
+        wait_for_attach()
+
+        -- Public hunk lines must retain CR bytes that belong to the text.
+        eq({ '-keep\r', '+changed' }, exec_lua('return require("gitsigns").get_hunks()[1].lines'))
+        command('2Gitsigns reset_hunk')
+
+        expectf(function()
+          eq(case.lines, api.nvim_buf_get_lines(0, 0, -1, false))
+        end)
+        command('write')
+        eq(case.written_lines, helpers.fn.readfile(file, 'b'))
+        git('diff', '--quiet', '--', file)
+
+        show_index()
+        eq(case.lines, api.nvim_buf_get_lines(0, 0, -1, false))
+        command('setlocal modified | write')
+        expectf(function()
+          eq(false, exec_lua('return vim.bo.modified'))
+          eq(case.index, index_text())
+        end)
+      end)
+    end
+
+    for _, reset in ipairs({ 'reset_buffer', 'partial reset_hunk' }) do
+      it('preserves literal CR across all hunks in ' .. reset, function()
+        -- The existing index contains binary content; the edited file is plain text.
+        write_to_file(scratch .. '/.gitattributes', { '*.txt -text' })
+        write_to_file(file, { 'one', 'keep\r', 'three', 'four', 'fi\1ve', 'six' })
+        git('add', file)
+        write_to_file(scratch .. '/.gitattributes', { '*.txt text=auto' })
+        write_to_file(
+          file,
+          { 'one', 'changed', 'three', 'four', 'changed-too', 'six' },
+          { newline = '\r\n' }
+        )
+        edit(file)
+        wait_for_attach()
+        check({ status = { head = 'main', added = 0, changed = 2, removed = 0 } })
+
+        if reset == 'reset_buffer' then
+          command('Gitsigns reset_buffer')
+        else
+          -- Restoring the lower hunk makes the buffer count as binary before the next reset.
+          command_wait_gitsigns_update('5Gitsigns reset_hunk')
+          command('2Gitsigns reset_hunk')
+        end
+
+        expectf(function()
+          eq(
+            { 'one', 'keep\r', 'three', 'four', 'fi\1ve', 'six' },
+            api.nvim_buf_get_lines(0, 0, -1, false)
+          )
+        end)
+      end)
+    end
+
+    for _, reset in ipairs({ '1Gitsigns reset_hunk', 'Gitsigns reset_buffer' }) do
+      it('resets mixed line endings in a DOS buffer with ' .. reset, function()
+        git('config', 'core.autocrlf', 'false')
+        write_to_file(file, { 'one\r', 'two', 'three' })
+        git('add', file)
+        write_to_file(file, { 'ONE', 'two', 'three' })
+        edit(file)
+        command('setlocal fileformat=dos')
+        wait_for_attach()
+
+        command(reset)
+        expectf(function()
+          eq({ 'one', 'two', 'three' }, api.nvim_buf_get_lines(0, 0, -1, false))
+        end)
+        command('write')
+        eq({ 'one\r', 'two\r', 'three\r', '' }, helpers.fn.readfile(file, 'b'))
+      end)
+    end
+
+    it('preserves CRLF index bytes when resetting and showing a Unix buffer', function()
+      git('config', 'core.autocrlf', 'false')
+      write_to_file(file, { 'one', 'two', 'three' }, { newline = '\r\n' })
+      git('add', file)
+      write_to_file(file, { 'one', 'changed', 'three' })
+      edit(file)
+      wait_for_attach()
+
+      eq('unix', exec_lua('return vim.bo.fileformat'))
+      eq('-two\r', exec_lua('return require("gitsigns").get_hunks()[1].lines[2]'))
+      command('2Gitsigns reset_hunk')
+      expectf(function()
+        eq({ 'one', 'two\r', 'three' }, api.nvim_buf_get_lines(0, 0, -1, false))
+      end)
+
+      show_index()
+      eq({ 'one\r', 'two\r', 'three\r' }, api.nvim_buf_get_lines(0, 0, -1, false))
+    end)
+
+    it('preserves a literal CR at EOF when resetting and showing DOS text', function()
+      write_to_file(scratch .. '/.gitattributes', { '*.txt text=auto' })
+      write_to_file(file, { 'one', 'keep\r' }, { newline = '\r\n', trailing_newline = false })
+      git('add', file)
+      write_to_file(file, { 'one', 'changed' }, { newline = '\r\n', trailing_newline = false })
+      edit(file)
+      wait_for_attach()
+
+      -- Only the first line has a CRLF terminator; the final CR belongs to the text.
+      eq(
+        { '-one', '-keep\r', '+one', '+changed' },
+        exec_lua('return require("gitsigns").get_hunks()[1].lines')
+      )
+      command('2Gitsigns reset_hunk')
+      expectf(function()
+        eq({ 'one', 'keep\r' }, api.nvim_buf_get_lines(0, 0, -1, false))
+      end)
+
+      show_index()
+      eq({ 'one', 'keep\r' }, api.nvim_buf_get_lines(0, 0, -1, false))
+    end)
+
+    it('stages correctly after writing a CRLF index view', function()
+      git('config', 'core.autocrlf', 'true')
+      write_to_file(file, { 'one', 'two', 'three' }, { newline = '\r\n' })
+      edit(file)
+      wait_for_attach()
+      local source = api.nvim_get_current_buf()
+
+      show_index()
+      -- Index buffers can use a different file format from the stored blob.
+      command('setlocal fileformat=dos')
+      set_lines(1, 2, { 'TWO' })
+      command('write')
+      expectf(function()
+        eq(false, exec_lua('return vim.bo.modified'))
+        eq('one\nTWO\nthree\n', index_text())
+      end)
+
+      api.nvim_set_current_buf(source)
+      check({ status = { head = 'main', added = 0, changed = 1, removed = 0 } })
+      api.nvim_win_set_cursor(0, { 2, 0 })
+      stage_hunk()
+      eq('one\ntwo\nthree\n', index_text())
+      check({ status = { head = 'main', added = 0, changed = 0, removed = 0 } })
+    end)
+
+    it('normalizes CRLF when partially staging an untracked file', function()
+      git('rm', '--cached', file)
+      git('config', 'core.autocrlf', 'true')
+      setup_gitsigns(vim.tbl_extend('force', test_config, { attach_to_untracked = true }))
+      write_to_file(file, { 'one', 'two', 'three' }, { newline = '\r\n' })
+      edit(file)
+      wait_for_attach()
+
+      stage_hunk({ 1, 1 })
+      eq('one\n', index_text())
+      check({ status = { head = 'main', added = 2, changed = 0, removed = 0 } })
+      stage_hunk({ 2, 3 })
+      eq('one\ntwo\nthree\n', index_text())
+      check({ status = { head = 'main', added = 0, changed = 0, removed = 0 } })
+    end)
   end)
 
   it('stages tracked changes after attach in a nested path', function()
