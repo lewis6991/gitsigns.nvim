@@ -179,7 +179,7 @@ M.update = throttle_async({ hash = 1, schedule = true }, function(bufnr)
       end
     end
 
-    local buftext = util.buf_lines(bufnr)
+    local buftext = bcache:buffer_lines()
 
     bcache.hunks = run_diff(bcache.compare_text, buftext)
     if not bcache:schedule() then

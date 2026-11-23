@@ -477,6 +477,13 @@ describe('gitsigns (with screen)', function()
         bom = true,
         fileformat = 'dos',
       },
+      {
+        name = 'UTF-32LE with BOM, CRLF and a text attribute',
+        encoding = 'utf-32le',
+        bom = true,
+        fileformat = 'dos',
+        text_attribute = true,
+      },
     }) do
       it('blames committed and unsaved lines in ' .. case.name, function()
         if case.textconv and fn.executable('iconv') == 0 then
@@ -488,6 +495,9 @@ describe('gitsigns (with screen)', function()
         if case.textconv then
           git('config', 'diff.cp866.textconv', 'iconv -f cp866 -t utf-8')
           write_to_file(scratch .. '/.gitattributes', { '*.txt -text diff=cp866' })
+          git('add', '.gitattributes')
+        elseif case.text_attribute then
+          write_to_file(scratch .. '/.gitattributes', { '*.txt text' })
           git('add', '.gitattributes')
         end
         exec_lua(function(file, opts)

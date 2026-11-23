@@ -788,9 +788,38 @@ end
 --- @field mode_bits? string
 --- @field object_name? string nil if file is untracked
 --- @field object_missing? true File is missing from the selected revision
---- @field i_crlf? boolean (requires git version >= 2.9)
---- @field w_crlf? boolean (requires git version >= 2.9)
+--- @field normalize_crlf? 'text'|'auto' Git's line-ending conversion for this file
 --- @field has_conflicts? true
+
+--- @async
+--- @param repo Gitsigns.Repo
+--- @return boolean
+local function autocrlf_enabled(repo)
+  local output = repo:command(
+    { 'config', '--null', '--get-regexp', '^core\\.autocrlf$' },
+    { ignore_error = true, text = false }
+  )
+  local entries = vim.split(table.concat(output, '\n'), '\0', { plain = true, trimempty = true })
+  local entry = entries[#entries]
+  if not entry then
+    return false
+  end
+  if entry == 'core.autocrlf' then
+    -- A key without a value means true; an explicitly empty value means false.
+    return true
+  end
+
+  -- Git separates the key and value with a newline.
+  local value = entry:sub(#'core.autocrlf\n' + 1):lower()
+  if value == 'input' or value == 'true' or value == 'yes' or value == 'on' then
+    return true
+  end
+
+  -- Git has already validated the config in ls-files. Numeric values may have
+  -- a unit suffix, which does not affect whether they are zero.
+  local number = tonumber((value:gsub('[kmg]$', ''))) or 0
+  return number ~= 0
+end
 
 --- @async
 --- Get information about files in the index and the working tree
@@ -834,6 +863,7 @@ function M:ls_files(file)
   local result = {}
   for _, line in ipairs(results) do
     local parts = vim.split(line, '\t')
+    local eol_info --- @type string?
     if #parts > relpath_idx then -- tracked file
       local attrs = vim.split(assert(parts[1]), '%s+')
       local stage = tonumber(attrs[3])
@@ -844,16 +874,25 @@ function M:ls_files(file)
         result.has_conflicts = true
       end
 
-      if has_eol then
-        result.relpath = parts[3]
-        local eol = vim.split(assert(parts[2]), '%s+')
-        result.i_crlf = eol[1] == 'i/crlf'
-        result.w_crlf = eol[2] == 'w/crlf'
-      else
-        result.relpath = parts[2]
-      end
+      result.relpath = parts[relpath_idx + 1]
+      eol_info = parts[2]
     else -- untracked file
       result.relpath = parts[relpath_idx]
+      eol_info = parts[1]
+    end
+
+    if has_eol then
+      local eol = vim.split(assert(eol_info), '%s+')
+      -- `--eol` reports attributes for tracked and untracked files alike.
+      -- For auto detection, Git preserves an index that already contains CRLF.
+      local index_eol, text_attr = eol[1], eol[3]
+      if text_attr == 'attr/text' then
+        result.normalize_crlf = 'text'
+      elseif index_eol ~= 'i/crlf' and index_eol ~= 'i/mixed' then
+        if text_attr == 'attr/text=auto' or (text_attr == 'attr/' and autocrlf_enabled(self)) then
+          result.normalize_crlf = 'auto'
+        end
+      end
     end
   end
 
@@ -884,10 +923,12 @@ function M:file_info(file, revision)
     end
 
     if info and info.object_type == 'blob' then
+      local worktree_info = self:ls_files(file)
       return {
         relpath = info.relpath,
         mode_bits = info.mode_bits,
         object_name = info.object_name,
+        normalize_crlf = worktree_info and worktree_info.normalize_crlf,
       }
     end
 
@@ -922,14 +963,17 @@ function M:update_index(mode_bits, object, path, add)
 end
 
 --- @async
---- @param path string
+--- @param path? string Apply clean filters for this path when given.
 --- @param lines string[]
 --- @return string
 function M:hash_object(path, lines)
   -- Concatenate the lines into a single string to ensure EOL
   -- is respected
   local text = table.concat(lines, '\n')
-  local res = self:command({ 'hash-object', '-w', '--path', path, '--stdin' }, { stdin = text })[1]
+  local res = self:command(
+    util.flatten({ 'hash-object', '-w', path and { '--path', path }, '--stdin' }),
+    { stdin = text }
+  )[1]
   return assert(res)
 end
 
