@@ -279,7 +279,8 @@ end
 local function reblame(opts, blame, win, revision, parent)
   local blm_win = api.nvim_get_current_win()
   local lnum = api.nvim_win_get_cursor(blm_win)[1]
-  local sha = assert(blame[lnum]).commit.sha
+  local info = assert(blame[lnum])
+  local sha = info.commit.sha
   if parent then
     sha = sha .. '^'
   end
@@ -290,7 +291,10 @@ local function reblame(opts, blame, win, revision, parent)
   vim.cmd.quit()
   api.nvim_set_current_win(win)
 
-  local did_attach = require('gitsigns.actions.diffthis').show(sha)
+  local did_attach = require('gitsigns.actions.diffthis').show(sha, {
+    -- Git reports the filename at the blamed commit itself.
+    path = not parent and info.filename or nil,
+  })
   if not did_attach then
     return
   end
