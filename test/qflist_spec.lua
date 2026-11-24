@@ -95,6 +95,42 @@ describe('qflist', function()
     end)
   end)
 
+  it('includes changes from multiple files with threaded diff', function()
+    local lines = { 'alpha', 'beta', 'gamma', 'delta', 'epsilon' }
+    setup_test_repo({ test_file_text = lines })
+    command('cd ' .. scratch)
+
+    local second = scratch .. '/second.txt'
+    helpers.write_to_file(second, lines)
+    git('add', second)
+    git('commit', '-m', 'Add second file')
+
+    lines[3] = 'GAMMA'
+    helpers.write_to_file(test_file, lines)
+    helpers.write_to_file(second, lines)
+    setup_gitsigns(vim.tbl_extend('force', test_config, {
+      _threaded_diff = true,
+      diff_opts = { linematch = 0 },
+    }))
+
+    exec_lua(function()
+      require('gitsigns.actions').setqflist('all', { open = false })
+    end)
+
+    helpers.expectf(function()
+      local names = exec_lua(function()
+        return vim.tbl_map(function(item)
+          local name = item.filename or vim.api.nvim_buf_get_name(item.bufnr)
+          return vim.fs.basename(name) .. ':' .. item.lnum
+        end, vim.fn.getqflist())
+      end)
+      table.sort(names)
+      local expected = { vim.fs.basename(test_file) .. ':3', 'second.txt:3' }
+      table.sort(expected)
+      eq(expected, names)
+    end)
+  end)
+
   it('includes untracked files inside untracked directories in setqflist all', function()
     setup_test_repo()
     command('cd ' .. scratch)
