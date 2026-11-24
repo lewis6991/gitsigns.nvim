@@ -122,6 +122,66 @@ describe('blame', function()
     eq('gitsigns-blame', exec_lua('return vim.bo.filetype'))
   end)
 
+  --- @param file string
+  --- @return string[]
+  local function reblame_first_line(file)
+    setup_gitsigns(test_config)
+    edit(file)
+    wait_for_attach()
+
+    local source_win = helpers.api.nvim_get_current_win()
+    open_blame_panel()
+    local blame_buf = helpers.api.nvim_get_current_buf()
+
+    feed('gg')
+    feed('r')
+
+    expectf(function()
+      local reopened = exec_lua(function(previous_buf)
+        return vim.bo.filetype == 'gitsigns-blame'
+          and vim.api.nvim_get_current_buf() ~= previous_buf
+      end, blame_buf)
+      eq(true, reopened, 'blame panel did not reopen')
+    end)
+
+    local source_buf = helpers.api.nvim_win_get_buf(source_win)
+    return helpers.api.nvim_buf_get_lines(source_buf, 0, -1, false)
+  end
+
+  it('reblames a commit before a rename and later rewrite', function()
+    local original_lines = { 'first line', 'second line' }
+    setup_test_repo({ test_file_text = original_lines })
+
+    local renamed_file = scratch .. '/renamed.txt'
+    git('mv', test_file, renamed_file)
+    git('commit', '-m', 'rename file')
+
+    -- Keep the first line for blame, but rewrite enough that the index diff
+    -- sees an addition and a deletion.
+    write_to_file(renamed_file, { 'first line', 'replacement content', 'another new line' })
+    git('add', renamed_file)
+    git('commit', '-m', 'rewrite renamed file')
+
+    eq(original_lines, reblame_first_line(renamed_file))
+  end)
+
+  it('reblames the original file when the destination name was used before', function()
+    helpers.git_init_scratch()
+    local original_lines = { 'first line', 'second line' }
+    local renamed_file = scratch .. '/renamed.txt'
+    write_to_file(test_file, original_lines)
+    write_to_file(renamed_file, { 'unrelated file' })
+    git('add', test_file, renamed_file)
+    git('commit', '-m', 'add both files')
+
+    git('rm', renamed_file)
+    git('commit', '-m', 'delete unrelated file')
+    git('mv', test_file, renamed_file)
+    git('commit', '-m', 'rename file')
+
+    eq(original_lines, reblame_first_line(renamed_file))
+  end)
+
   it('renders the default side-panel layout', function()
     setup_gitsigns(test_config)
     setup_test_repo({
