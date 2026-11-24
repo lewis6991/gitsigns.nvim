@@ -99,6 +99,8 @@ local function buildqflist(target)
             end
             local b = changed_file.deleted and {} or util.file_lines(f_abs)
             local hunks = run_diff(a, b)
+            -- Threaded diff can resume in a fast event before the next Git command.
+            async.schedule()
             hunks_to_qflist(f_abs, hunks, qflist)
           end
         end
