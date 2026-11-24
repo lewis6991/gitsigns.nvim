@@ -355,7 +355,7 @@ describe('inline preview', function()
       assert(hunk and hunk.removed.count == 1)
     end)
 
-    local rendered = exec_lua(function()
+    local rendered, gutter_width = exec_lua(function()
       local markid = require('gitsigns.async')
         .run(require('gitsigns.actions.preview').preview_hunk_inline)
         :wait()
@@ -370,13 +370,15 @@ describe('inline preview', function()
           for _, chunk in ipairs(chunks) do
             text[#text + 1] = chunk[1]
           end
-          return table.concat(text)
+          return table.concat(text), vim.fn.getwininfo(vim.api.nvim_get_current_win())[1].textoff
         end
       end
     end)
 
-    assert(rendered)
-    eq('local foo = 1', rendered:sub(1, #'local foo = 1'))
+    assert(rendered and gutter_width)
+    -- An empty statuscolumn still leaves room for the window's gutter.
+    local expected = string.rep(' ', gutter_width) .. 'local foo = 1'
+    eq(expected, rendered:sub(1, #expected))
   end)
 
   it('replicates deleted highlight stacks in virtual lines', function()
@@ -524,6 +526,38 @@ describe('inline preview', function()
       assert(not deleted_row:find('_', 1, true))
       eq(changed_row:sub(3, changed_col - 1), deleted_row:sub(3, deleted_col - 1))
     end)
+  end)
+
+  it('aligns deleted text when a statuscolumn entry is shorter than the gutter', function()
+    setup_test_repo({ test_file_text = { 'one', 'two', 'removed', 'after', 'end' } })
+    setup_gitsigns(test_config)
+    edit(test_file)
+
+    exec_lua(function()
+      vim.wo.statuscolumn = [[%{v:lnum == 3 ? '界 ' : 'gutter '}]]
+      vim.api.nvim_buf_set_lines(0, 2, 3, false, {})
+      vim.api.nvim_win_set_cursor(0, { 2, 0 })
+      vim.cmd('redraw!')
+    end)
+    expectf(function()
+      local hunks = exec_lua("return require('gitsigns').get_hunks()")
+      eq('delete', hunks[1].type)
+    end)
+
+    local deleted_text = exec_lua(function()
+      local preview = require('gitsigns.actions.preview')
+      assert(require('gitsigns.async').run(preview.preview_hunk_inline):wait())
+      vim.cmd('redraw!')
+
+      -- The deleted line should start in the same column as the next buffer line.
+      local next_line = vim.fn.screenpos(0, 3, 1)
+      local chars = {} --- @type string[]
+      for col = next_line.col, next_line.col + #'removed' - 1 do
+        chars[#chars + 1] = vim.fn.screenstring(next_line.row - 1, col)
+      end
+      return table.concat(chars)
+    end)
+    eq('removed', deleted_text)
   end)
 
   it('scopes inline preview rendering to the active window', function()

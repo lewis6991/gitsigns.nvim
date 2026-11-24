@@ -110,18 +110,22 @@ end
 --- @param fmt string
 --- @param win integer
 --- @param lnum integer
+--- @param width integer
 --- @return Gitsigns.VirtTextChunk[]?
-local function eval_statusline_chunks(fmt, win, lnum)
+local function eval_statusline_chunks(fmt, win, lnum, width)
   local ok, data = pcall(api.nvim_eval_statusline, fmt, {
     winid = win,
     use_statuscol_lnum = lnum,
+    maxwidth = width,
     highlights = true,
   })
   if not ok then
     return nil
   end
 
-  return chunks_from_statusline(data.str --[[@as string]], data.highlights or {})
+  -- Neovim fills any space between a short statuscolumn entry and the text.
+  local padding = string.rep(' ', width - data.width)
+  return chunks_from_statusline(data.str .. padding, data.highlights or {})
 end
 
 --- Build virtual-text chunks matching the window's statuscolumn/number columns.
@@ -142,7 +146,8 @@ local function build_prefix(win, lnum, opts)
   -- Base-revision line numbers must stay independent of that buffer's cursor.
   if not opts.absolute_lnum and has_col and statuscol and statuscol ~= '' then
     --- @cast statuscol string
-    chunks = eval_statusline_chunks(statuscol, win, lnum) or fallback_lno_chunks(win, lnum, width)
+    chunks = eval_statusline_chunks(statuscol, win, lnum, width)
+      or fallback_lno_chunks(win, lnum, width)
   else
     local number_col_width = math.min(lno_width(win), width)
     local prefix_width = math.max(width - number_col_width, 0)
