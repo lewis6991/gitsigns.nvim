@@ -821,6 +821,27 @@ local function autocrlf_enabled(repo)
   return number ~= 0
 end
 
+--- Git's line-ending conversion for a file, from the `i/... w/... attr/...`
+--- column of `git ls-files --eol`.
+--- @async
+--- @param eol_info string
+--- @param autocrlf async fun(): boolean Called only when `core.autocrlf` matters
+--- @return 'text'|'auto'?
+local function crlf_mode(eol_info, autocrlf)
+  local eol = vim.split(eol_info, '%s+')
+  -- `--eol` reports attributes for tracked and untracked files alike.
+  -- For auto detection, Git preserves an index that already contains CRLF.
+  local index_eol, text_attr = eol[1], eol[3]
+  if text_attr == 'attr/text' then
+    return 'text'
+  end
+  if index_eol ~= 'i/crlf' and index_eol ~= 'i/mixed' then
+    if text_attr == 'attr/text=auto' or (text_attr == 'attr/' and autocrlf()) then
+      return 'auto'
+    end
+  end
+end
+
 --- @async
 --- Get information about files in the index and the working tree
 --- @param file string
@@ -860,6 +881,11 @@ function M:ls_files(file)
 
   local relpath_idx = has_eol and 2 or 1
 
+  --- @async
+  local function autocrlf()
+    return autocrlf_enabled(self)
+  end
+
   local result = {}
   for _, line in ipairs(results) do
     local parts = vim.split(line, '\t')
@@ -882,21 +908,69 @@ function M:ls_files(file)
     end
 
     if has_eol then
-      local eol = vim.split(assert(eol_info), '%s+')
-      -- `--eol` reports attributes for tracked and untracked files alike.
-      -- For auto detection, Git preserves an index that already contains CRLF.
-      local index_eol, text_attr = eol[1], eol[3]
-      if text_attr == 'attr/text' then
-        result.normalize_crlf = 'text'
-      elseif index_eol ~= 'i/crlf' and index_eol ~= 'i/mixed' then
-        if text_attr == 'attr/text=auto' or (text_attr == 'attr/' and autocrlf_enabled(self)) then
-          result.normalize_crlf = 'auto'
-        end
-      end
+      result.normalize_crlf = crlf_mode(assert(eol_info), autocrlf) or result.normalize_crlf
     end
   end
 
   return result
+end
+
+-- Paths per `git ls-files` call. This keeps the command line below the Windows
+-- limit of 32767 characters, even for paths of up to 260 characters.
+local LS_FILES_BATCH = 100
+
+--- @async
+--- Get Git's line-ending conversion for many files. `ls_files` costs a
+--- `git ls-files` call per file, plus a `git config` call for files without a
+--- `text` attribute. This runs `git ls-files` once per `LS_FILES_BATCH` files
+--- and reads `core.autocrlf` at most once. Files that Git does not convert are
+--- absent from the result.
+--- @param files string[]
+--- @return table<string,'text'|'auto'> modes Keyed by path
+function M:normalize_crlf_modes(files)
+  local modes = {} --- @type table<string,'text'|'auto'>
+  if not check_version(2, 9) then
+    return modes
+  end
+
+  local enabled --- @type boolean?
+  --- @async
+  local function autocrlf()
+    if enabled == nil then
+      enabled = autocrlf_enabled(self)
+    end
+    return enabled
+  end
+
+  for i = 1, #files, LS_FILES_BATCH do
+    local lines, stderr, code = self:command(
+      util.flatten({
+        'ls-files',
+        '--stage',
+        '--others',
+        '--exclude-standard',
+        '--eol',
+        '--',
+        vim.list_slice(files, i, i + LS_FILES_BATCH - 1),
+      }),
+      { ignore_error = true }
+    )
+    if code > 0 then
+      log.dprintf('ls-files failed: %s', stderr)
+    end
+
+    for _, line in ipairs(lines) do
+      -- Tracked: `<mode> <object> <stage>\t<eol>\t<path>`, untracked: `<eol>\t<path>`
+      local parts = vim.split(line, '\t')
+      local n = #parts
+      local mode = n > 1 and crlf_mode(assert(parts[n - 1]), autocrlf)
+      if mode then
+        modes[parts[n]] = mode
+      end
+    end
+  end
+
+  return modes
 end
 
 --- @param revision? string
