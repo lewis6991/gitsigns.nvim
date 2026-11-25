@@ -95,6 +95,7 @@ local validate = vim.validate
 --- @field watch_gitdir { enable: boolean, follow_files: boolean }
 --- @field max_file_length integer
 --- @field update_debounce integer
+--- @field update_hidden_buffers boolean
 --- @field status_formatter fun(_: Gitsigns.StatusObj): string
 --- @field current_line_blame boolean
 --- @field current_line_blame_formatter string|Gitsigns.CurrentLineBlameFmtFun
@@ -630,6 +631,14 @@ M.schema = {
     default = 100,
     description = [[
       Debounce time for updates (in milliseconds).
+    ]],
+  },
+
+  update_hidden_buffers = {
+    type = 'boolean',
+    default = false,
+    description = [[
+      Update all buffers, even those that are not active.
     ]],
   },
 
