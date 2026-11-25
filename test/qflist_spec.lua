@@ -154,4 +154,127 @@ describe('qflist', function()
       eq_path(untracked, names[1])
     end)
   end)
+
+  it('follows Git CRLF normalization in setqflist all', function()
+    local lines = { 'one', 'two', 'three', 'four', 'five' }
+    setup_test_repo({ test_file_text = lines })
+    command('cd ' .. scratch)
+    setup_gitsigns(test_config)
+
+    -- The index stores LF and the working tree has CRLF, so only line 3 differs.
+    git('config', 'core.autocrlf', 'true')
+    lines[3] = 'THREE'
+    helpers.write_to_file(test_file, lines, { newline = '\r\n' })
+
+    exec_lua(function()
+      require('gitsigns.actions').setqflist('all', { open = false })
+    end)
+
+    helpers.expectf(function()
+      local texts = exec_lua(function()
+        return vim.tbl_map(function(item)
+          return item.text
+        end, vim.fn.getqflist())
+      end) --- @type string[]
+
+      eq({ 'Changed (-3 +3): THREE' }, texts)
+    end)
+  end)
+
+  it('keeps CRLF that Git stores in the index in setqflist all', function()
+    local lines = { 'one', 'two', 'three', 'four', 'five' }
+    setup_test_repo({ test_file_text = lines, no_add = true })
+    command('cd ' .. scratch)
+    setup_gitsigns(test_config)
+
+    -- Git does not convert a file whose index entry already has CRLF.
+    helpers.write_to_file(test_file, lines, { newline = '\r\n' })
+    git('add', test_file)
+    git('commit', '-m', 'Add CRLF file')
+    git('config', 'core.autocrlf', 'true')
+    lines[3] = 'THREE'
+    helpers.write_to_file(test_file, lines, { newline = '\r\n' })
+
+    exec_lua(function()
+      require('gitsigns.actions').setqflist('all', { open = false })
+    end)
+
+    helpers.expectf(function()
+      local texts = exec_lua(function()
+        return vim.tbl_map(function(item)
+          return item.text
+        end, vim.fn.getqflist())
+      end) --- @type string[]
+
+      eq(1, #texts)
+      eq(true, texts[1]:match('^Changed %(%-3 %+3%)') ~= nil)
+    end)
+  end)
+
+  it('looks up the CRLF rules of all files at once in setqflist all', function()
+    local lines = { 'one', 'two', 'three', 'four', 'five' }
+    setup_test_repo({ test_file_text = lines, no_add = true })
+    command('cd ' .. scratch)
+    setup_gitsigns(test_config)
+
+    local nested = scratch .. '/sub/nested.txt'
+    local raw = scratch .. '/raw.txt'
+    local crlf = scratch .. '/crlf.txt'
+    local untracked = scratch .. '/untracked.txt'
+
+    helpers.write_to_file(scratch .. '/.gitattributes', { 'raw.txt -text' })
+    helpers.write_to_file(test_file, lines)
+    helpers.write_to_file(nested, lines)
+    helpers.write_to_file(raw, lines)
+    -- Git does not convert a file whose index entry already has CRLF.
+    helpers.write_to_file(crlf, lines, { newline = '\r\n' })
+    git('add', '.')
+    git('commit', '-m', 'Add files')
+    git('config', 'core.autocrlf', 'true')
+
+    lines[3] = 'THREE'
+    for _, file in ipairs({ test_file, nested, raw, crlf, untracked }) do
+      helpers.write_to_file(file, lines, { newline = '\r\n' })
+    end
+
+    command('Gitsigns clear_debug')
+    exec_lua(function()
+      require('gitsigns.actions').setqflist('all', { open = false })
+    end)
+
+    helpers.expectf(function()
+      local texts = exec_lua(function()
+        local ret = {} --- @type table<string,string>
+        for _, item in ipairs(vim.fn.getqflist()) do
+          local name = item.filename or vim.api.nvim_buf_get_name(item.bufnr)
+          ret[vim.fs.basename(name)] = item.text
+        end
+        return ret
+      end) --- @type table<string,string>
+
+      local function text(file)
+        return texts[vim.fs.basename(file)]
+      end
+
+      -- Converted: Git stores LF.
+      eq('Changed (-3 +3): THREE', text(test_file))
+      eq('Changed (-3 +3): THREE', text(nested))
+      eq('Added   (-0,0 +1,5): one', text(untracked))
+      -- Not converted: the index has CRLF, or the file has the `-text` attribute.
+      eq(true, text(crlf):match('^Changed %(%-3 %+3%)') ~= nil)
+      eq(true, text(raw):match('^Changed %(%-1,5 %+1,5%)') ~= nil)
+    end)
+
+    --- @param needle string
+    --- @return integer
+    local function count(needle)
+      return #vim.tbl_filter(function(msg)
+        return msg:find(needle, 1, true) ~= nil
+      end, helpers.debug_messages())
+    end
+
+    -- One Git call for the line endings of all files, and one for `core.autocrlf`.
+    eq(1, count('ls-files --stage --others --exclude-standard --eol'))
+    eq(1, count('core\\.autocrlf'))
+  end)
 end)

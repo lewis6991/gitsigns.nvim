@@ -35,6 +35,42 @@ local function hunks_to_qflist(buf_or_filename, hunks, qflist)
   end
 end
 
+--- Make a function that converts working tree lines to the form Git stores in
+--- the index, so they can be diffed against the output of `git show`.
+---
+--- Only text with a CR can change. The first such file looks up the conversion
+--- of all `paths` at once, so a repository without CRs makes no Git calls and
+--- one with CRs makes a few per run, not a few per file.
+--- @param repo Gitsigns.Repo
+--- @param paths string[]
+--- @return async fun(path: string, lines: string[]): string[]
+local function stored_lines_fn(repo, paths)
+  local modes --- @type table<string,'text'|'auto'>?
+
+  --- @async
+  return function(path, lines)
+    local has_cr = false
+    for _, line in ipairs(lines) do
+      if vim.endswith(line, '\r') then
+        has_cr = true
+        break
+      end
+    end
+    if not has_cr then
+      return lines
+    end
+
+    modes = modes or repo:normalize_crlf_modes(paths)
+    local mode = modes[path]
+    if mode and git.should_normalize_crlf(lines, lines, 'utf-8', mode) then
+      -- A CR on the last line is content when the file has no final newline.
+      return util.strip_cr(lines, lines[#lines] ~= '')
+    end
+
+    return lines
+  end
+end
+
 --- @async
 --- @param target 'all'|'attached'|integer?
 --- @return table[]?
@@ -79,6 +115,7 @@ local function buildqflist(target)
         changed_paths[i] = changed_file.path
       end
       local diff_attrs = r:check_attr('diff', changed_paths)
+      local stored_lines = stored_lines_fn(r, changed_paths)
 
       for _, changed_file in ipairs(changed_files) do
         local f = changed_file.path
@@ -97,7 +134,7 @@ local function buildqflist(target)
             if stderr and changed_file.deleted and (not config.base or config.base == ':0') then
               a = r:get_show_text('HEAD:' .. (changed_file.oldpath or f))
             end
-            local b = changed_file.deleted and {} or util.file_lines(f_abs)
+            local b = changed_file.deleted and {} or stored_lines(f, util.file_lines(f_abs))
             local hunks = run_diff(a, b)
             -- Threaded diff can resume in a fast event before the next Git command.
             async.schedule()
