@@ -1,5 +1,6 @@
 local async = require('gitsigns.async')
 local config = require('gitsigns.config').config
+local DiffBuffers = require('gitsigns.diff_buffers')
 local manager = require('gitsigns.manager')
 local message = require('gitsigns.message')
 local util = require('gitsigns.util')
@@ -13,6 +14,7 @@ local throttle_async = require('gitsigns.debounce').throttle_async
 local api = vim.api
 
 local M = {}
+local pending_reads = {} --- @type table<string, Gitsigns.async.Event>
 
 --- @class (exact) Gitsigns.RevisionFormat
 --- @field buffer string Buffer 'fileformat' when the revision was read.
@@ -72,6 +74,45 @@ local function read_revision(bufnr, text)
   end
 end
 
+--- Set revision text, using the source encoding when it is known.
+--- @param bufnr integer
+--- @param text string[]
+--- @param bcache? Gitsigns.CacheEntry
+--- @param relpath? string
+--- @return 'unix'|'dos' text_format
+local function populate_revision(bufnr, text, bcache, relpath)
+  local bo = vim.bo[bufnr]
+  local modifiable = bo.modifiable
+  local same_file = bcache and relpath == bcache.git_obj.relpath
+  bo.modifiable = true
+  bo.fileformat = bcache and same_file and vim.bo[bcache.bufnr].fileformat
+    or (text[1] and text[1]:sub(-1) == '\r' and 'dos' or 'unix')
+
+  local text_format --- @type 'unix'|'dos'
+  if bcache then
+    -- Keep mixed endings and literal CR so editable index buffers can restore their bytes.
+    local dos = bo.fileformat == 'dos'
+      and util.is_dos(text)
+      and (not same_file or bcache:compare_fileformat(text) == 'dos')
+    text_format = dos and 'dos' or 'unix'
+    set_revision_text(bufnr, text, bcache.git_obj.encoding, text_format)
+  else
+    read_revision(bufnr, text)
+    text_format = bo.fileformat --[[@as 'unix'|'dos']]
+  end
+
+  bo.modifiable = modifiable
+  bo.modified = false
+  return text_format
+end
+
+--- @param name string
+--- @return integer?
+local function find_buffer(name)
+  -- bufnr() can interpret a name as a pattern when there is no exact match.
+  return util.bufexists(name) and vim.fn.bufnr(name) or nil
+end
+
 --- @async
 --- @param repo Gitsigns.Repo
 --- @param dbufnr integer
@@ -105,38 +146,13 @@ local function bufread(repo, dbufnr, base, relpath, bufnr)
     end
   end
 
-  -- Match the source file's format before replacing text and restoring protection.
-  local modifiable = vim.bo[dbufnr].modifiable
-  vim.bo[dbufnr].modifiable = true
-  vim.bo[dbufnr].fileformat = bcache
-      and relpath == bcache.git_obj.relpath
-      and vim.bo[assert(bufnr)].fileformat
-    or (text[1] and text[1]:sub(-1) == '\r' and 'dos' or 'unix')
-
-  vim.bo[dbufnr].filetype = vim.filetype.match({ buf = dbufnr })
-
-  Status.update(dbufnr, { head = base })
-
-  local fileformat --- @type 'unix'|'dos'
-  if bcache then
-    -- Strip CR only when every stored line uses it as a terminator. Keep mixed
-    -- endings and literal CR visible so the index view can restore their bytes.
-    local dos = vim.bo[dbufnr].fileformat == 'dos'
-      and util.is_dos(text)
-      and (relpath ~= bcache.git_obj.relpath or bcache:compare_fileformat(text) == 'dos')
-    fileformat = dos and 'dos' or 'unix'
-    set_revision_text(dbufnr, text, bcache.git_obj.encoding, fileformat)
-  else
-    read_revision(dbufnr, text)
-    fileformat = vim.bo[dbufnr].fileformat --[[@as 'unix'|'dos']]
-  end
+  local text_format = populate_revision(dbufnr, text, bcache, relpath)
   vim.b[dbufnr].gitsigns_revision_format = {
     buffer = vim.bo[dbufnr].fileformat,
-    text = fileformat,
+    text = text_format,
   }
-
-  vim.bo[dbufnr].modifiable = modifiable
-  vim.bo[dbufnr].modified = false
+  vim.bo[dbufnr].filetype = vim.filetype.match({ buf = dbufnr })
+  Status.update(dbufnr, { head = base })
 
   -- TODO(lewis6991): make this blocking
   require('gitsigns.attach').attach({
@@ -200,33 +216,53 @@ function M.create_revision_buf(repo, base, relpath, bufnr)
   local name_base = base or (bufnr and assert(cache[bufnr]).git_obj.revision) or ':0'
   local bufname = ('gitsigns://%s//%s:%s'):format(repo.gitdir, name_base, relpath)
 
-  local exists = util.bufexists(bufname)
-  local dbuf = exists and vim.fn.bufnr(bufname) or api.nvim_create_buf(false, true)
-  local loaded = exists and api.nvim_buf_is_loaded(dbuf)
+  -- Neovim marks a new scratch buffer loaded before its Git read finishes.
+  while pending_reads[bufname] do
+    pending_reads[bufname]:wait()
+  end
 
   -- Editable index buffers already have a BufReadCmd to reload them.
-  if exists and (loaded or vim.bo[dbuf].buftype == 'acwrite') then
+  local dbuf = find_buffer(bufname)
+  local loaded = dbuf ~= nil and api.nvim_buf_is_loaded(dbuf)
+  if dbuf and (loaded or vim.bo[dbuf].buftype == 'acwrite') then
     return bufname, dbuf, false, loaded
   end
 
-  if not exists then
-    -- Reloads must preserve retention by a panel or unified view.
-    vim.bo[dbuf].bufhidden = 'wipe'
-    api.nvim_buf_set_name(dbuf, bufname)
-  end
-
-  -- An unloaded historical buffer needs its contents populated again.
-  local ok, err = pcall(bufread, repo, dbuf, base, relpath, bufnr)
+  local created = not dbuf
+  dbuf = dbuf or api.nvim_create_buf(false, true)
+  local ready = async.event()
+  pending_reads[bufname] = ready
+  local ok, err = pcall(function()
+    if created then
+      -- Reloads must preserve retention by a panel or unified view.
+      vim.bo[dbuf].bufhidden = 'wipe'
+      api.nvim_buf_set_name(dbuf, bufname)
+    end
+    bufread(repo, dbuf, base, relpath, bufnr)
+  end)
   if not ok then
     message.error(err --[[@as string]])
     async.schedule()
+  end
 
+  -- Let the first caller retain the finished buffer or discard its read.
+  vim.schedule(function()
+    pending_reads[bufname] = nil
+    ready:set()
+  end)
+
+  if not ok then
     -- A failed reload must not delete a buffer that already belonged to the user.
-    if exists then
-      vim.bo[dbuf].modifiable = false
-    else
-      api.nvim_buf_delete(dbuf, { force = true })
+    if api.nvim_buf_is_valid(dbuf) then
+      if created then
+        DiffBuffers.discard(dbuf, true)
+      else
+        vim.bo[dbuf].modifiable = false
+      end
     end
+    return
+  end
+  if not api.nvim_buf_is_loaded(dbuf) then
     return
   end
 
@@ -255,7 +291,59 @@ function M.create_revision_buf(repo, base, relpath, bufnr)
     vim.bo[dbuf].modifiable = false
   end
 
-  return bufname, dbuf, not exists, loaded
+  return bufname, dbuf, created, false
+end
+
+--- Open an immutable index snapshot for the diff panel.
+--- @async
+--- @param repo Gitsigns.Repo
+--- @param oid string
+--- @param relpath string
+--- @return integer? buf
+--- @return boolean? created
+--- @return boolean? loaded
+function M.create_snapshot_buf(repo, oid, relpath)
+  local name = ('gitsigns-blob://%s//%s:%s'):format(repo.gitdir, oid, relpath)
+  local buf = find_buffer(name)
+  if buf and api.nvim_buf_is_loaded(buf) then
+    return buf, false, true
+  end
+
+  -- Read before publishing a buffer. Another panel may finish the same read first.
+  local text, err = repo:get_show_text(oid)
+  async.schedule()
+  buf = find_buffer(name)
+  if buf and api.nvim_buf_is_loaded(buf) then
+    return buf, false, true
+  end
+  if err then
+    message.error(err)
+    return
+  end
+
+  local created = not buf
+  buf = buf or api.nvim_create_buf(false, true)
+  local ok, read_err = pcall(populate_revision, buf, text)
+  if not api.nvim_buf_is_valid(buf) then
+    return
+  end
+
+  local bo = vim.bo[buf]
+  bo.modifiable = false
+  if not ok then
+    DiffBuffers.discard(buf, created)
+    message.error(read_err --[[@as string]])
+    return
+  end
+
+  bo.buftype = 'nowrite'
+  if created then
+    bo.bufhidden = 'wipe'
+    api.nvim_buf_set_name(buf, name)
+  end
+  bo.filetype = vim.filetype.match({ buf = buf })
+  Status.update(buf, { head = oid })
+  return buf, created, false
 end
 
 --- @async

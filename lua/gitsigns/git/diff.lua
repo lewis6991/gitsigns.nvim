@@ -1,18 +1,34 @@
 local util = require('gitsigns.util')
+local FileMode = require('gitsigns.git').FileMode
 local uv = vim.uv
+
+--- @alias Gitsigns.DiffSectionKind 'unstaged'|'staged'
+
+--- @class (exact) Gitsigns.DiffSection
+--- @field kind? Gitsigns.DiffSectionKind Nil for an explicit revision comparison.
+--- @field entries Gitsigns.DiffEntry[]
 
 --- @class (exact) Gitsigns.DiffEntry
 --- @field path string
 --- @field oldpath? string
---- @field status string One column for revisions; index and worktree columns otherwise.
+--- @field status string One column per comparison, or two columns for an explicit base vs worktree.
 --- @field index_paths? string[]
 --- @field worktree_paths? string[]
 --- @field old_mode string
 --- @field mode string
+--- @field worktree_mode? string Preview target for a staged row.
 --- @field old_oid string
 --- @field oid string
 --- @field added integer? Nil for binary files.
 --- @field removed integer? Nil for binary files.
+
+--- @class (exact) Gitsigns.DiffStatus
+--- @field path string
+--- @field status string Index and worktree status columns.
+--- @field mode? string Worktree mode.
+--- @field oldpath? string Rename or copy origin.
+--- @field ours_mode? string Stage 2 mode for an unmerged path.
+--- @field ours_oid? string Stage 2 object ID for an unmerged path.
 
 --- @async
 --- @param repo Gitsigns.Repo
@@ -122,7 +138,7 @@ end
 --- @param repo Gitsigns.Repo
 --- @param git_opts string[]
 --- @param paths string[]
---- @return {path:string, status:string, mode?:string, oldpath?:string}[]
+--- @return Gitsigns.DiffStatus[]
 local function read_status(repo, git_opts, paths)
   local out = command(
     repo,
@@ -141,7 +157,7 @@ local function read_status(repo, git_opts, paths)
 
   -- NUL delimiters preserve whitespace and newlines within filenames.
   local records = vim.split(table.concat(out, '\n'), '\0', { plain = true, trimempty = true })
-  local entries = {}
+  local entries = {} --- @type Gitsigns.DiffStatus[]
   local i = 1
 
   while i <= #records do
@@ -152,11 +168,14 @@ local function read_status(repo, git_opts, paths)
       -- Nested repositories are listed with a trailing slash.
       entries[#entries + 1] = { path = record:sub(3):gsub('/$', ''), status = '??' }
     elseif kind == '1' or kind == '2' or kind == 'u' then
-      -- Ordinary/renamed records contain HEAD/index modes and hashes; unmerged
-      -- records contain three stages. Retain the worktree mode and status.
-      local pattern = kind == 'u' and '^u (..) %S+ %d+ %d+ %d+ (%d+) %x+ %x+ %x+ (.*)$'
-        or '^[12] (..) %S+ %d+ %d+ (%d+) %x+ %x+ (.*)$'
-      local status, mode, path = record:match(pattern)
+      local status, mode, path, ours_mode, ours_oid
+      if kind == 'u' then
+        -- Stage 2 is the comparison base for unmerged files.
+        status, ours_mode, mode, ours_oid, path =
+          record:match('^u (..) %S+ %d+ (%d+) %d+ (%d+) %x+ (%x+) %x+ (.*)$')
+      else
+        status, mode, path = record:match('^[12] (..) %S+ %d+ %d+ (%d+) %x+ %x+ (.*)$')
+      end
       assert(status and mode and path, 'Invalid status record')
 
       -- Renames have a score before the path and the origin in the next NUL record.
@@ -173,6 +192,8 @@ local function read_status(repo, git_opts, paths)
         status = status:gsub('%.', ' '),
         mode = mode,
         oldpath = oldpath,
+        ours_mode = ours_mode,
+        ours_oid = ours_oid,
       }
     end
     i = i + 1
@@ -181,19 +202,37 @@ local function read_status(repo, git_opts, paths)
   return entries
 end
 
+--- @param path string
+--- @param index_mode? string
+--- @return Gitsigns.GitFileMode?
+local function worktree_mode(path, index_mode)
+  local stat = uv.fs_lstat(path)
+  if not stat then
+    return
+  elseif stat.type == 'file' then
+    return FileMode.regular
+  elseif stat.type == 'link' then
+    return FileMode.symlink
+  elseif
+    stat.type == 'directory' and (index_mode == FileMode.gitlink or uv.fs_lstat(path .. '/.git'))
+  then
+    -- A submodule checkout can be uninitialized.
+    return FileMode.gitlink
+  end
+end
+
 --- Add an untracked path, including a replacement for a staged deletion.
 --- @async
 --- @param repo Gitsigns.Repo
 --- @param path string
 --- @param entries Gitsigns.DiffEntry[]
 --- @param by_path table<string, Gitsigns.DiffEntry>
+--- @return Gitsigns.DiffEntry?
 local function add_untracked(repo, path, entries, by_path)
-  local stat = uv.fs_lstat(repo.toplevel .. '/' .. path)
-  if not stat then
+  local mode = worktree_mode(repo.toplevel .. '/' .. path)
+  if not mode then
     return
   end
-
-  local mode = stat.type == 'link' and '120000' or stat.type == 'directory' and '160000' or '100644'
   local entry = by_path[path]
   if entry then
     -- A staged deletion can have an untracked replacement at the same path.
@@ -203,7 +242,7 @@ local function add_untracked(repo, path, entries, by_path)
     entry = {
       path = path,
       status = '??',
-      old_mode = '000000',
+      old_mode = FileMode.missing,
       mode = mode,
       old_oid = '',
       oid = '',
@@ -212,13 +251,13 @@ local function add_untracked(repo, path, entries, by_path)
     by_path[path] = entry
   end
 
-  if stat.type == 'directory' then
+  if mode == FileMode.gitlink then
     -- Untracked repositories are displayed as one added gitlink line.
     entry.added, entry.removed = 1, entry.removed or 0
   else
     -- The index omits these paths. Compare replacements directly with
     -- their old blob, and new files with an empty file.
-    local sides = entry.old_mode ~= '000000' and { entry.old_oid, '--', './' .. path }
+    local sides = entry.old_mode ~= FileMode.missing and { entry.old_oid, '--', './' .. path }
       or { '--no-index', '--', '/dev/null', './' .. path }
     local stats, stats_err, code = repo:command(
       util.flatten({ 'diff', '--numstat', '-z', sides }),
@@ -232,6 +271,59 @@ local function add_untracked(repo, path, entries, by_path)
     local added, removed = record:match('^([%d-]+)\t([%d-]+)\t')
     entry.added, entry.removed = tonumber(added), tonumber(removed)
   end
+  return entry
+end
+
+--- Read each side of the index independently for the default diff panel.
+--- @async
+--- @param repo Gitsigns.Repo
+--- @param base string
+--- @param git_opts string[]
+--- @param paths string[]
+--- @return Gitsigns.DiffSection[]
+local function read_worktree_diff(repo, base, git_opts, paths)
+  -- Exclude raw U records. For conflicts Git can emit a second record with
+  -- the actual diff against our side, which supplies the modes and diffstat.
+  local args = { git_opts, 'diff', '--diff-filter=u', '--ita-invisible-in-index' }
+  local unstaged, unstaged_by_path = read_diff(repo, util.flatten({ args, '--ours' }), paths)
+  local staged = read_diff(repo, util.flatten({ args, '--cached', base }), paths)
+
+  for _, change in ipairs(read_status(repo, git_opts, paths)) do
+    if change.status == '??' then
+      local entry = add_untracked(repo, change.path, unstaged, unstaged_by_path)
+      if entry then
+        entry.status = '?'
+      end
+    elseif change.ours_mode then
+      local entry = unstaged_by_path[change.path]
+      if entry then
+        entry.status = 'U'
+      else
+        -- Keep unresolved paths visible even when they match our side exactly.
+        unstaged[#unstaged + 1] = {
+          path = change.path,
+          status = 'U',
+          old_mode = change.ours_mode,
+          old_oid = assert(change.ours_oid),
+          mode = assert(change.mode),
+          oid = '',
+          added = 0,
+          removed = 0,
+        }
+      end
+    end
+  end
+
+  -- Staged rows describe the index and display the working file.
+  for _, entry in ipairs(staged) do
+    entry.worktree_mode = worktree_mode(repo.toplevel .. '/' .. entry.path, entry.mode)
+      or FileMode.missing
+  end
+
+  return {
+    { kind = 'unstaged', entries = unstaged },
+    { kind = 'staged', entries = staged },
+  }
 end
 
 --- @async
@@ -242,7 +334,7 @@ end
 --- @param show_commit? boolean Compare a commit with its first parent.
 --- @return string? base Base revision; nil when showing a root commit.
 --- @return string? target Target revision; nil for the working tree.
---- @return Gitsigns.DiffEntry[] entries
+--- @return Gitsigns.DiffSection[] sections
 --- @return string[]? commit Summary, author, date, and message for a single commit.
 return function(repo, revision, paths, cwd, show_commit)
   paths = paths or {}
@@ -278,6 +370,7 @@ return function(repo, revision, paths, cwd, show_commit)
     -- Hash the empty tree without writing an object, for repositories without commits.
     base = code == 0 and head[1]
       or repo:command({ 'hash-object', '-t', 'tree', '--stdin' }, { stdin = '' })[1]
+    return base, nil, read_worktree_diff(repo, assert(base), git_opts, paths)
   elseif from then
     base, target = resolve(repo, from), resolve(repo, assert(to))
     if dots == '...' then
@@ -326,7 +419,7 @@ return function(repo, revision, paths, cwd, show_commit)
           entry = {
             path = path,
             status = change.status,
-            old_mode = mode or '000000',
+            old_mode = mode or FileMode.missing,
             old_oid = oid or '',
             mode = assert(change.mode),
             oid = '',
@@ -352,5 +445,5 @@ return function(repo, revision, paths, cwd, show_commit)
     end
   end
 
-  return base, target, entries, commit
+  return base, target, { { entries = entries } }, commit
 end

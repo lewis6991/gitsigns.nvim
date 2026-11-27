@@ -10,6 +10,21 @@ local api = vim.api
 local refs = {} --- @type table<integer, Gitsigns.DiffBufferRef>
 local M = {}
 
+--- Dispose of a newly created buffer from an abandoned read.
+--- @param buf integer?
+--- @param created boolean?
+function M.discard(buf, created)
+  if
+    buf
+    and created
+    and not refs[buf]
+    and api.nvim_buf_is_valid(buf)
+    and #vim.fn.win_findbuf(buf) == 0
+  then
+    api.nvim_buf_delete(buf, { force = true })
+  end
+end
+
 --- Keep a buffer loaded until the last view using it closes.
 --- @param buf integer
 --- @param created? boolean

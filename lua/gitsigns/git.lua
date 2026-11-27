@@ -8,6 +8,14 @@ local M = {}
 
 M.Repo = Repo
 
+--- @enum Gitsigns.GitFileMode
+M.FileMode = {
+  missing = '000000',
+  regular = '100644',
+  symlink = '120000',
+  gitlink = '160000',
+}
+
 --- @class Gitsigns.GitObj
 --- @field file string
 --- @field encoding string
@@ -197,21 +205,30 @@ end
 --- @param repo Gitsigns.Repo
 --- @param entries Gitsigns.DiffEntry[]
 --- @param how 'stage'|'unstage'|'toggle'
+--- @param section? Gitsigns.DiffSectionKind
 --- @return string[]? files Updated absolute paths, or nil if there was nothing to do.
-function M.stage_files(repo, entries, how)
+function M.stage_files(repo, entries, how, section)
   -- A directory may contain both staged and unstaged files. Gather both operations.
   local stage_paths = {} --- @type string[]
   local unstage_paths = {} --- @type string[]
 
   for _, entry in ipairs(entries) do
-    local index_status, worktree_status = entry.status:match('(.)(.)')
-
-    -- Include both sides of renames so Git also updates the old path.
-    if worktree_status ~= ' ' then
-      vim.list_extend(stage_paths, entry.worktree_paths or { entry.path })
-    end
-    if index_status ~= ' ' and index_status ~= '?' then
-      vim.list_extend(unstage_paths, entry.index_paths or { entry.path })
+    -- Split panels take staging direction and rename paths from the selected side.
+    if section then
+      local paths = section == 'staged' and unstage_paths or stage_paths
+      paths[#paths + 1] = entry.path
+      if entry.oldpath then
+        paths[#paths + 1] = entry.oldpath
+      end
+    else
+      -- Explicit worktree comparisons carry both statuses and their own rename paths.
+      local index_status, worktree_status = entry.status:match('(.)(.)')
+      if worktree_status ~= ' ' then
+        vim.list_extend(stage_paths, entry.worktree_paths or { entry.path })
+      end
+      if index_status ~= ' ' and index_status ~= '?' then
+        vim.list_extend(unstage_paths, entry.index_paths or { entry.path })
+      end
     end
   end
 

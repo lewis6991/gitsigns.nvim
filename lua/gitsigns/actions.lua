@@ -1044,28 +1044,40 @@ C_meta.show = { raw_args = true }
 --- Click or press `<CR>` on an entry to open it or toggle its directory fold.
 --- Newly loaded files open at their first change. Already loaded
 --- buffers keep their cursor position using Neovim's normal buffer behaviour.
---- Reviewed buffers stay loaded until the panel closes. Cleanup preserves
---- buffers that were already loaded, modified, or open in other windows.
+--- Working-tree and revision buffers stay loaded until the panel closes.
+--- Cleanup preserves buffers that were already loaded, modified, or open in
+--- other windows.
 --- From the panel or a file window, `]f` / `[f` open the next / previous file
 --- while keeping focus in the current window. A count skips files; navigation
 --- stops at either end.
 ---
---- Working-tree comparisons list each file once. The two status columns show
+--- The Unstaged section compares the working tree with the index. The Staged
+--- section lists index changes relative to HEAD. Opening a staged row compares
+--- HEAD with the working file and shows its usual staged signs. A file appears
+--- in both sections when it has both kinds of changes. Untracked files are
+--- marked `?` under Unstaged.
+---
+--- With an explicit working-tree base, each file appears once. Columns show
 --- index changes (relative to HEAD) and working-tree changes (relative to the
 --- index). A blank means unchanged and `?` means untracked. For example,
 --- `M ` is staged, ` M` is unstaged, and `MM` has both kinds of changes.
 --- Fully staged filenames use [[hl-GitSignsDiffStaged]].
+---
 --- Press `s` to stage a file, `u` to unstage it, or `<Space>` to toggle
---- staging. This stages remaining working-tree changes; otherwise it
---- unstages the file. On a directory, these keys act on all listed files
---- beneath it, including nested directories.
+--- staging. Stage from Unstaged and unstage from Staged. With an explicit
+--- working-tree base, `<Space>` stages remaining working-tree changes or
+--- unstages a fully staged file.
+--- On a directory, these keys act on all listed files beneath it, including
+--- nested directories.
 --- These actions operate on saved files and leave unsaved buffer edits intact.
 --- Staging or unstaging from the panel or a file buffer refreshes the tree
---- and keeps the displayed file.
+--- and keeps the displayed file while it still has changes.
 --- The file list, status columns and diffstats reflect saved files and
 --- refresh on write. Unsaved edits appear in the file pane.
+--- With [[gitsigns-config-watch_gitdir]] enabled, Git index changes also refresh
+--- the panel.
 ---
---- Regular working-tree files are editable; revision buffers are read-only.
+--- Regular working-tree files are editable. Index snapshots and revision buffers are read-only.
 --- See [[diff-mode]] for diff navigation.
 ---
 --- Press `gu` in the file panel to toggle a unified view, showing
