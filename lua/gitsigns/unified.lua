@@ -217,6 +217,7 @@ end
 --- @param base_buf integer
 --- @param created? boolean
 --- @param loaded? boolean
+--- @return Gitsigns.UnifiedView
 function M.show(win, base_buf, created, loaded)
   DiffBuffers.retain(base_buf, created, loaded)
   M.close(win)
@@ -224,11 +225,13 @@ function M.show(win, base_buf, created, loaded)
   local buf = api.nvim_win_get_buf(win)
   local ns = api.nvim_create_namespace('gitsigns_unified_' .. win)
   api.nvim__ns_set(ns, { wins = { win } })
-  views[win] = { buf = buf, base = base_buf, ns = ns }
+  local view = { buf = buf, base = base_buf, ns = ns }
+  views[win] = view
   require('gitsigns.actions.preview').clear_preview_inline(buf)
   watch(buf)
   watch(base_buf)
   update(win)
+  return view
 end
 
 require('gitsigns.manager').on_win(function(ctx)
